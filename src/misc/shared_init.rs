@@ -24,7 +24,7 @@ pub enum ProviderType {
 
 pub struct SharedDeps {
     pub sqlite: Arc<SqlitePool>,
-    pub ens_lookup: UnboundedSender<Address>,
+    pub ens_lookup_worker: UnboundedSender<Address>,
     pub provider: Arc<GenericProvider>,
     pub provider_type: ProviderType,
 }
@@ -49,7 +49,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
 
     Ok(SharedDeps {
         sqlite: sqlite_conn,
-        ens_lookup,
+        ens_lookup_worker: ens_lookup,
         provider,
         provider_type,
     })

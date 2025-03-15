@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use alloy::providers::Provider;
 use eyre::{eyre, Result};
+use mevlog::misc::ens_utils::ENSLookup;
 use mevlog::misc::revm_tracing::init_revm_db;
 use mevlog::misc::shared_init::{init_deps, ConnOpts, TraceMode};
 use mevlog::misc::utils::SEPARATORER;
@@ -94,7 +95,7 @@ impl TxArgs {
             .populate_txs(
                 &txs_filter,
                 &sqlite,
-                None,
+                &ENSLookup::Sync,
                 &provider,
                 revm_db.as_mut(),
                 &self.conn_opts,

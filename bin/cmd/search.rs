@@ -1,5 +1,6 @@
 use alloy::providers::Provider;
 use eyre::{eyre, Result};
+use mevlog::misc::ens_utils::ENSLookup;
 use mevlog::misc::shared_init::{init_deps, ConnOpts};
 use mevlog::misc::utils::SEPARATORER;
 use mevlog::models::mev_block::process_block;
@@ -22,9 +23,14 @@ impl SearchArgs {
         let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
-        let ens_lookup = shared_deps.ens_lookup;
 
         let mev_filter = TxsFilter::new(&self.filter, None, self.conn_opts.trace.as_ref(), false)?;
+
+        let ens_lookup = if mev_filter.ens_filter_enabled() {
+            ENSLookup::Sync
+        } else {
+            ENSLookup::Async(shared_deps.ens_lookup_worker)
+        };
 
         let latest_block = provider.get_block_number().await?;
         let block_range = BlockRange::from_str(&self.blocks, latest_block)?;
@@ -40,6 +46,11 @@ impl SearchArgs {
                 &self.conn_opts,
             )
             .await?;
+        }
+
+        // Allow async ENS lookups to finish
+        if !mev_filter.ens_filter_enabled() {
+            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         }
         Ok(())
     }

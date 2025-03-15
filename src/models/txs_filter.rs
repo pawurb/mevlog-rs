@@ -289,6 +289,10 @@ impl TxsFilter {
 
         false
     }
+
+    pub fn ens_filter_enabled(&self) -> bool {
+        matches!(self.tx_from, Some(FromFilter::ENSName(_)))
+    }
 }
 
 #[derive(Debug)]

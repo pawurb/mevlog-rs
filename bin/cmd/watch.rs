@@ -2,6 +2,7 @@ use alloy::providers::Provider;
 use clap::Parser;
 use eyre::Result;
 use futures_util::StreamExt;
+use mevlog::misc::ens_utils::ENSLookup;
 use mevlog::misc::shared_init::{init_deps, ConnOpts, ProviderType};
 use mevlog::misc::utils::SEPARATORER;
 use mevlog::models::mev_block::process_block;
@@ -20,11 +21,16 @@ impl WatchArgs {
     pub async fn run(&self) -> Result<()> {
         let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
-        let ens_lookup = shared_deps.ens_lookup;
         let provider = shared_deps.provider;
 
         println!("{}", SEPARATORER);
         let mev_filter = TxsFilter::new(&self.filter, None, self.conn_opts.trace.as_ref(), true)?;
+        let ens_lookup = if mev_filter.ens_filter_enabled() {
+            ENSLookup::Sync
+        } else {
+            ENSLookup::Async(shared_deps.ens_lookup_worker)
+        };
+
         let block_number = provider.get_block_number().await?;
         process_block(
             &provider,

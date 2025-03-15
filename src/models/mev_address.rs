@@ -2,10 +2,9 @@ use colored::Colorize;
 use eyre::Result;
 use revm::primitives::Address;
 use std::{fmt, sync::Arc};
-use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    misc::ens_utils::{ens_reverse_lookup_cached_async, ens_reverse_lookup_cached_sync},
+    misc::ens_utils::{ens_reverse_lookup_cached_async, ens_reverse_lookup_cached_sync, ENSLookup},
     GenericProvider,
 };
 
@@ -18,12 +17,14 @@ pub struct MEVAddress {
 impl MEVAddress {
     pub async fn new(
         address: Address,
-        ens_lookup: Option<&UnboundedSender<Address>>,
+        ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
     ) -> Result<Self> {
         let ens_name = match ens_lookup {
-            Some(sender) => ens_reverse_lookup_cached_async(address, sender).await?,
-            None => ens_reverse_lookup_cached_sync(address, provider).await?,
+            ENSLookup::Async(lookup_worker) => {
+                ens_reverse_lookup_cached_async(address, lookup_worker).await?
+            }
+            ENSLookup::Sync => ens_reverse_lookup_cached_sync(address, provider).await?,
         };
         Ok(Self { address, ens_name })
     }

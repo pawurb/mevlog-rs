@@ -1,11 +1,10 @@
 use std::{borrow::Cow, path::PathBuf, sync::Arc};
 
+use crate::GenericProvider;
 use alloy::{primitives::Keccak256, sol};
 use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
-
-use crate::GenericProvider;
 
 use super::shared_init::{init_provider, ConnOpts};
 
@@ -13,7 +12,7 @@ pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
 sol! {
     #[sol(rpc)]
-    contract ENSLookup {
+    contract ENSLookupOracle {
         function getNameForNode(bytes32 node) public view returns (string memory);
     }
 }
@@ -21,13 +20,25 @@ sol! {
 pub const ENS_LOOKUP: Address = address!("0xc69c0eb9ec6e71e97c1ed25212d203ad5010d8b2");
 pub const MISSING_NAME: &str = "N";
 
+pub enum ENSLookup {
+    Sync,
+    Async(UnboundedSender<Address>),
+}
+
+enum ENSEntry {
+    Known(String),
+    KnownEmpty,
+    Unknown,
+}
+
 pub async fn ens_reverse_lookup_cached_async(
     target: Address,
     ens_sender: &UnboundedSender<Address>,
 ) -> Result<Option<String>> {
     match read_ens_cache(target).await? {
-        Some(name) => Ok(Some(name)),
-        None => {
+        ENSEntry::Known(name) => Ok(Some(name)),
+        ENSEntry::KnownEmpty => Ok(None),
+        ENSEntry::Unknown => {
             ens_sender.send(target)?;
             Ok(None)
         }
@@ -39,8 +50,9 @@ pub async fn ens_reverse_lookup_cached_sync(
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<String>> {
     match read_ens_cache(target).await? {
-        Some(name) => Ok(Some(name)),
-        None => {
+        ENSEntry::Known(name) => Ok(Some(name)),
+        ENSEntry::KnownEmpty => Ok(None),
+        ENSEntry::Unknown => {
             let name = ens_reverse_lookup(target, provider).await?;
             write_ens_cache(target, name.clone()).await?;
             Ok(name)
@@ -55,7 +67,7 @@ async fn ens_reverse_lookup(
     let name = reverse_address(&target);
     let node = namehash(&name);
 
-    let ens_lookup = ENSLookup::new(ENS_LOOKUP, provider);
+    let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
     let result = ens_lookup.getNameForNode(node).call().await?._0;
     let name = {
         let name = result;
@@ -68,18 +80,18 @@ async fn ens_reverse_lookup(
     Ok(name)
 }
 
-async fn read_ens_cache(target: Address) -> Result<Option<String>> {
+async fn read_ens_cache(target: Address) -> Result<ENSEntry> {
     match cacache::read(&ens_cache_dir(), target.to_string()).await {
         Ok(bytes) => {
             let name = String::from_utf8(bytes)
                 .map_err(|e| eyre::eyre!("Invalid UTF-8 in cache: {}", e))?;
             if name.len() == 1 {
-                Ok(None)
+                Ok(ENSEntry::KnownEmpty)
             } else {
-                Ok(Some(name))
+                Ok(ENSEntry::Known(name))
             }
         }
-        Err(_) => Ok(None),
+        Err(_) => Ok(ENSEntry::Unknown),
     }
 }
 

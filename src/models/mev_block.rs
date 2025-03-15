@@ -11,12 +11,12 @@ use revm::primitives::{address, Address, FixedBytes};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use std::{collections::HashMap, fmt};
-use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::Semaphore;
 use tracing::{debug, error};
 
 use crate::misc::coinbase_bribe::{find_coinbase_transfer, TraceData};
 use crate::misc::db_actions::PROGRESS_CHARS;
+use crate::misc::ens_utils::ENSLookup;
 use crate::misc::revm_tracing::{
     init_revm_db, revm_commit_tx, revm_touching_accounts, revm_tx_calls, RevmBlockContext,
 };
@@ -66,7 +66,7 @@ pub async fn process_block(
     provider: &Arc<GenericProvider>,
     conn: Arc<SqlitePool>,
     block_number: u64,
-    ens_lookup: &UnboundedSender<Address>,
+    ens_lookup: &ENSLookup,
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
 ) -> Result<()> {
@@ -93,7 +93,7 @@ pub async fn process_block(
         .populate_txs(
             txs_filter,
             &conn,
-            Some(ens_lookup),
+            ens_lookup,
             provider,
             revm_db.as_mut(),
             conn_opts,
@@ -177,7 +177,7 @@ impl MEVBlock {
         &mut self,
         filter: &TxsFilter,
         sqlite: &Arc<SqlitePool>,
-        ens_lookup: Option<&UnboundedSender<Address>>,
+        ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         conn_opts: &ConnOpts,

@@ -7,8 +7,8 @@ use sqlx::SqlitePool;
 use std::ops::{Add, Div};
 use std::str::FromStr;
 use std::{fmt, sync::Arc};
-use tokio::sync::mpsc::UnboundedSender;
 
+use crate::misc::ens_utils::ENSLookup;
 use crate::misc::utils::{
     wei_to_eth, ETHERSCAN_URL, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN,
 };
@@ -49,7 +49,7 @@ impl MEVTransaction {
         tx_hash: FixedBytes<32>,
         index: u64,
         sqlite: &Arc<SqlitePool>,
-        ens_lookup: Option<&UnboundedSender<Address>>,
+        ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
     ) -> Result<Self> {
         let method_sig = if let Some(input) = tx_req.clone().input.input {

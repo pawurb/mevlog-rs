@@ -29,6 +29,12 @@ mevlog watch -p 0:19
 
 A few examples of currently supported queries:
 
+- find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
+
+```bash
+mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
+```
+
 - unknown method signature contract call in top position (likely an MEV bot):
 
 ```bash
@@ -106,18 +112,6 @@ This mode uses the `debug_traceTransaction` method. It's usually not available o
 This mode leverages Revm tracing by downloading all the relevant storage slots and running simulations locally. If you want to trace a transaction at position 10, Revm must first simulate all the previous transactions from this block. It can be slow and cause throttling from public endpoints. This mode works only on HTTP endpoints. Websockets are currently not supported.
 
 Subsequent `revm` simulations for the same block and transaction range use cached data and should be significantly faster.
-
-## ENS filters
-
-`mevlog` asynchronously gathers and caches ENS domain resolutions, allowing for queries like this one:
-
-- find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
-
-```bash
-mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
-```
-
-But in order for it to work without significant performance overhead, you need to first keep the `mevlog` running in a `watch` mode to build up the ENS cache data.
 
 ## Analyzing a single transaction data
 
