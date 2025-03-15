@@ -5,7 +5,17 @@
 
 Rust-based CLI tool for querying and monitoring EVM blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
-`mevlog` allows you to analyze transaction details, detect validator bribes, track storage changes, search by block ranges, ENS domains, emitted event names, gas prices, and method calls. All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
+`mevlog` allows you to analyze transaction details via a simple CLI interface. It currently offers the following features:
+
+- regexp search by emmited event names 
+- search by ENS names
+- filter txs based on their position in a block
+- search by root method calls
+- track smart contract storage changes
+- detect validator bribes
+- filter txs by real (including bribe) gas prices and cost
+
+All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
 ## Getting started
 
@@ -35,7 +45,7 @@ A few examples of currently supported queries:
 mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
 ```
 
-- unknown method signature contract call in top position (likely an MEV bot):
+- unknown method signature contract call in a top position (likely an MEV bot):
 
 ```bash
 mevlog search -b 10:latest --method "<Unknown>" -p 0
