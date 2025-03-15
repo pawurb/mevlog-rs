@@ -26,6 +26,9 @@ pub struct TxArgs {
     )]
     after: Option<u8>,
 
+    #[arg(short, long, alias = "r", help = "Reverse the order of txs")]
+    pub reverse: bool,
+
     #[command(flatten)]
     conn_opts: ConnOpts,
 }
@@ -68,7 +71,7 @@ impl TxArgs {
         let mut mev_block = MEVBlock::new(
             block_number,
             position_range.as_ref(),
-            false,
+            self.reverse,
             &provider,
             self.conn_opts.trace.as_ref(),
         )
@@ -88,7 +91,7 @@ impl TxArgs {
             gas_price: None,
             real_tx_cost: None,
             real_gas_price: None,
-            reversed_order: false,
+            reversed_order: self.reverse,
         };
 
         mev_block
