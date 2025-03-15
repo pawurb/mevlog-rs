@@ -79,11 +79,11 @@ All the above queries use only standard block and logs input. By enabling `--tra
 mevlog search -b 5:latest -p 0 --real-tx-cost ge20000000000000000 --trace revm
 ```
 
-- find txs that changed storage slots of the {% blank_link Balancer vault contract ## https://etherscan.io/address/0xba12222222228d8ba445958a75a0704d566bf2c8 %}:
+- find txs that changed storage slots of the [Balancer vault contract](https://etherscan.io/address/0xba12222222228d8ba445958a75a0704d566bf2c8):
 
 `mevlog search -b 10:latest --touching 0xba12222222228d8ba445958a75a0704d566bf2c8 --trace rpc`
 
-You can also filter by real (including bribe) per gas price:
+You can also filter by real (including bribe) gas price:
 
 ```bash
 mevlog search -b 5:latest -p 0:5 --real-gas-price ge10000000000 --trace rpc
@@ -108,9 +108,9 @@ Options:
       --real-tx-cost <REAL_TX_COST>
           Filter by real (including coinbase bribe) tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')
       --gas-price <GAS_PRICE>
-          Filter by effective gas price in wei (e.g., 'gte2000000000', 'lte2000000000')
+          Filter by effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')
       --real-gas-price <REAL_GAS_PRICE>
-          Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'gte2000000000', 'lte2000000000')
+          Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')
 ```
 
 Both `search` and `watch` support the same filtering options.

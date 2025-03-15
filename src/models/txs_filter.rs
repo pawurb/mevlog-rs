@@ -70,7 +70,7 @@ pub struct SharedFilterOpts {
     #[arg(
         alias = "rgp",
         long,
-        help = "Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'gte2000000000', 'lte2000000000')"
+        help = "Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')"
     )]
     pub real_gas_price: Option<String>,
 
@@ -158,7 +158,7 @@ impl FromStr for DiffOperator {
             "ge" => Ok(DiffOperator::GreaterOrEq),
             "le" => Ok(DiffOperator::LessOrEq),
             _ => Err(format!(
-                "Invalid operator: '{}' use 'lte' (Less or Equal) or 'ge' (Greater or Equal)",
+                "Invalid operator: '{}' use 'le' (Less or Equal) or 'ge' (Greater or Equal)",
                 s
             )),
         }
