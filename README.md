@@ -79,6 +79,10 @@ All the above queries use only standard block and logs input. By enabling `--tra
 mevlog search -b 5:latest -p 0 --real-tx-cost ge20000000000000000 --trace revm
 ```
 
+- find txs that changed storage slots of the {% blank_link Balancer vault contract ## https://etherscan.io/address/0xba12222222228d8ba445958a75a0704d566bf2c8 %}:
+
+`mevlog search -b 10:latest --touching 0xba12222222228d8ba445958a75a0704d566bf2c8 --trace rpc`
+
 You can also filter by real (including bribe) per gas price:
 
 ```bash
