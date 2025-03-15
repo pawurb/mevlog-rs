@@ -7,7 +7,7 @@ use revm::primitives::address;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let rpc_url = std::env::var("ETH_RPC_WS_URL").expect("ETH_RPC_WS_URL must be set");
+    let rpc_url = std::env::var("ETH_WS_URL").expect("ETH_WS_URL must be set");
     let ws = WsConnect::new(rpc_url);
     let provider = ProviderBuilder::new().on_ws(ws).await?;
     let provider = Arc::new(provider);
