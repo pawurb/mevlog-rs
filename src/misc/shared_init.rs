@@ -38,7 +38,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
 
     if !db_file_exists() {
         let _ = std::fs::create_dir_all(config_path());
-        println!("Downloading database file");
+        println!("Database file missing");
         download_db_file().await?;
     }
 

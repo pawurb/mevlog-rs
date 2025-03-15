@@ -1,4 +1,5 @@
-## mevlog-rs - explore Ethereum from your terminal [![Latest Version](https://img.shields.io/crates/v/mevlog.svg)](https://crates.io/crates/pg-extras) [![GH Actions](https://github.com/pawurb/mevlog-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/pawurb/mevlog-rs/actions)
+## mevlog-rs - explore Ethereum from your terminal 
+[![Latest Version](https://img.shields.io/crates/v/mevlog.svg)](https://crates.io/crates/pg-extras) [![GH Actions](https://github.com/pawurb/mevlog-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/pawurb/mevlog-rs/actions)
  
 ![Big bribe](big-bribe-tx.png)
 
@@ -10,7 +11,7 @@ Rust-based CLI tool for querying and monitoring EVM blockchain transactions, wit
 
 ```bash
 cargo install mevlog
-mevlog watch --rpc-url https://eth.merkle.io --trace revm
+mevlog watch --rpc-url https://eth.merkle.io 
 ```
 
 On initial run `mevlog` downloads ~130mb [openchain.xyz signatures database](https://openchain.xyz/signatures) and extracts it to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
@@ -27,12 +28,6 @@ mevlog watch -p 0:19
 ## Supported filtering options
 
 A few examples of currently supported queries:
-
-- find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
-
-```bash
-mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
-```
 
 - unknown method signature contract call in top position (likely an MEV bot):
 
@@ -65,7 +60,7 @@ All the above queries use only standard block and logs input. By enabling `--tra
 - query last 5 blocks for a top transaction that paid over 0.02 ETH total (including coinbase bribe) transaction cost:
 
 ```bash
-mevlog search -b 5:latest -p 0 --real-tx-cost gte20000000000000000 --trace revm
+mevlog search -b 5:latest -p 0 --real-tx-cost ge20000000000000000 --trace revm
 ```
 
 You can also filter by real (including bribe) per gas price:
@@ -74,7 +69,7 @@ You can also filter by real (including bribe) per gas price:
 mevlog search -b 5:latest -p 0:5 --real-gas-price ge10000000000 --trace rpc
 ```
 
-All the filter conditions can be combined. Here's a full list of currently supported filters:
+All the filter conditions can be combined. Here's a complete list of currently supported filters:
 
 ```
 Options:
@@ -83,11 +78,11 @@ Options:
   -t, --touching <TOUCHING>
           Filter by contracts with storage changed by the transaction
       --event <EVENT>
-          Include txs by event names matching the provided regex or string and optionally an address
+          Include txs by event names matching the provided regex or signature and optionally an address
       --not-event <NOT_EVENT>
-          Exclude txs by event names matching the provided regex or string and optionally an address
+          Exclude txs by event names matching the provided regex or signature and optionally an address
       --method <METHOD>
-          Include txs by root method names matching the provided regex or string
+          Include txs with root method names matching the provided regex or signature
       --tx-cost <TX_COST>
           Filter by tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')
       --real-tx-cost <REAL_TX_COST>
@@ -112,16 +107,28 @@ This mode leverages Revm tracing by downloading all the relevant storage slots a
 
 Subsequent `revm` simulations for the same block and transaction range use cached data and should be significantly faster.
 
+## ENS filters
+
+`mevlog` asynchronously gathers and caches ENS domain resolutions, allowing for queries like this one:
+
+- find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
+
+```bash
+mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
+```
+
+But in order for it to work without significant performance overhead, you need to first keep the `mevlog` running in a `watch` mode to build up the ENS cache data.
+
 ## Analyzing a single transaction data
 
 ```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --trace revm
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 
 ```
 
 This command displays info for a single target transaction. By adding `--before` `--after` arguments you can include surrounding transactions:
 
 ```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --trace revm -B 1 -A 1
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -B 1 -A 1
 ```
 
 You can reverse the display order by adding the `--reverse` flag.
