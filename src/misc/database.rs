@@ -14,6 +14,7 @@ use tracing::info;
 use super::shared_init::config_path;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
+const SCHEMA_VERSION: u64 = 3;
 
 pub async fn init_sqlite_db(db_url: Option<String>) -> Result<()> {
     let db_url = db_url.unwrap_or(default_db_path().to_string_lossy().into_owned());
@@ -31,7 +32,7 @@ pub async fn init_sqlite_db(db_url: Option<String>) -> Result<()> {
     match Sqlite::create_database(&db_url).await {
         Ok(_) => {
             info!("Create {} db success", &db_url);
-            // Run migrations
+
             let db = SqlitePool::connect(&db_url).await?;
             match MIGRATOR.run(&db).await {
                 Ok(_) => info!("Migrations run successfully"),
@@ -62,5 +63,5 @@ pub async fn sqlite_truncate_wal(conn: &SqlitePool) -> Result<()> {
 }
 
 pub fn default_db_path() -> PathBuf {
-    config_path().join("signatures-sqlite.db")
+    config_path().join(format!("signatures-sqlite-v{}.db", SCHEMA_VERSION))
 }

@@ -8,15 +8,6 @@ pub struct DBEvent {
     pub signature: String,
 }
 
-impl sqlx::FromRow<'_, sqlx::sqlite::SqliteRow> for DBEvent {
-    fn from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
-        Ok(DBEvent {
-            signature_hash: row.get(0),
-            signature: row.try_get(1)?,
-        })
-    }
-}
-
 impl DBEvent {
     pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
         let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM events WHERE signature = ?)")
@@ -41,13 +32,15 @@ impl DBEvent {
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {
-        let signature_hash = signature_hash[2..].to_string();
+        let signature_hash = signature_hash.trim_start_matches("0x");
+        let signature_hash_bytes = hex::decode(signature_hash).expect("Invalid hex");
+
         let result = sqlx::query(
             r#"
             SELECT signature FROM events WHERE signature_hash = ? LIMIT 1
             "#,
         )
-        .bind(signature_hash.as_bytes().to_vec())
+        .bind(signature_hash_bytes)
         .fetch_optional(conn)
         .await?;
 
@@ -58,8 +51,8 @@ impl DBEvent {
     }
 
     pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<()> {
-        let signature_hash_bytes: Vec<u8> = self.signature_hash.as_bytes().to_vec();
-        let signature_hash_bytes: Vec<u8> = signature_hash_bytes.iter().skip(2).cloned().collect();
+        let signature_hash = self.signature_hash.trim_start_matches("0x");
+        let signature_hash_bytes = hex::decode(signature_hash).expect("Invalid hex");
 
         sqlx::query(
             r#"
