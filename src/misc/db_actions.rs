@@ -8,7 +8,7 @@ use std::cmp::min;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 
-const DB_FILE_URL: &str = "https://d39my35jed0oxi.cloudfront.net/signatures-sqlite.db.gz";
+const DB_FILE_URL: &str = "https://d39my35jed0oxi.cloudfront.net/signatures-sqlite-v2.db.gz";
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 
 pub fn db_file_exists() -> bool {

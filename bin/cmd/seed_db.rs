@@ -7,7 +7,7 @@ use clap::Parser;
 use eyre::Result;
 use mevlog::{
     misc::database::{init_sqlite_db, sqlite_conn, sqlite_truncate_wal},
-    models::{db_event::NewEvent, db_method::NewMethod},
+    models::{db_event::DBEvent, db_method::DBMethod},
 };
 use tracing::info;
 
@@ -43,7 +43,7 @@ impl SeedDBArgs {
             }
 
             if signature_hash.len() == 10 {
-                let new_method = NewMethod {
+                let new_method = DBMethod {
                     signature: signature.to_string(),
                     signature_hash: signature_hash.to_string(),
                 };
@@ -52,7 +52,7 @@ impl SeedDBArgs {
             }
 
             if signature_hash.len() == 66 {
-                let new_event = NewEvent {
+                let new_event = DBEvent {
                     signature: signature.to_string(),
                     signature_hash: signature_hash.to_string(),
                 };
