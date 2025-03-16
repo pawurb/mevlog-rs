@@ -8,7 +8,7 @@ Rust-based CLI tool for querying and monitoring EVM blockchain transactions, wit
 `mevlog` allows you to analyze transaction details via a simple CLI interface. It currently offers the following features:
 
 - regexp search by emmited event names 
-- search by ENS names
+- search by ENS domain names
 - filter txs based on their position in a block
 - search by root method calls
 - track smart contract storage changes
@@ -24,7 +24,7 @@ cargo install mevlog
 mevlog watch --rpc-url https://eth.merkle.io 
 ```
 
-On initial run `mevlog` downloads ~130mb [openchain.xyz signatures database](https://openchain.xyz/signatures) and extracts it to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
+On initial run `mevlog` downloads ~120mb [openchain.xyz signatures database](https://openchain.xyz/signatures) and extracts it to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
 
 To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
 
@@ -35,7 +35,7 @@ You can change it using the `--position` argument:
 mevlog watch -p 0:19 
 ```
 
-## Supported filtering options
+## Filtering options
 
 A few examples of currently supported queries:
 
@@ -51,10 +51,10 @@ mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
 mevlog search -b 10:latest --method "<Unknown>" -p 0
 ```
 
-- query the last 50 blocks for transaction in the top 10 slots that transferred [PEPE](https://etherscan.io/token/0x6982508145454ce325ddbe47a25d4ec3d2311933) token:
+- query the last 50 blocks for transaction in the top 20 slots that transferred [PEPE](https://etherscan.io/token/0x6982508145454ce325ddbe47a25d4ec3d2311933) token:
 
 ```bash
-mevlog search -b 50:latest -p 0:10 --event "Transfer(address,address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933"
+mevlog search -b 50:latest -p 0:20 --event "Transfer(address,address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933"
 ```
 
 - blocks between 22034300 and 22034320, position 0 transaction that did not emit any `Swap` events:
@@ -68,6 +68,17 @@ mevlog search -b 22034300:22034320 -p 0 --not-event "/(Swap).+/"
 ```bash
 mevlog search -b 22045400:22045420 --event "/(?i)(rebase).+/" --event "/(Transfer).+/"
 ```
+
+### Event filters
+
+The `--event` and `--not-event` options allow filtering transactions based on emitted events. The filter criteria can be:
+
+- a contract address matching on any emmited events `0x6982508145454ce325ddbe47a25d4ec3d2311933`
+- a full event signature `Transfer(address,uint256)`
+- a regular expression pattern `/(?i)(rebase).+/`
+- a combination of an event signature and a contract address `Transfer(address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933`
+
+You can supply mutiple `--event` and `--not-event` flags for precise control over which transactions are included or excluded.
 
 ### EVM tracing filters
 
