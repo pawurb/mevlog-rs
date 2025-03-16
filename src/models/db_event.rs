@@ -4,31 +4,23 @@ use sqlx::Row;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct DBEvent {
-    id: i64,
-    signature_hash: String,
-    signature: String,
+    pub signature_hash: String,
+    pub signature: String,
 }
 
 impl sqlx::FromRow<'_, sqlx::sqlite::SqliteRow> for DBEvent {
     fn from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
         Ok(DBEvent {
-            id: row.get(0),
-            signature_hash: row.get(1),
-            signature: row.try_get(2)?,
+            signature_hash: row.get(0),
+            signature: row.try_get(1)?,
         })
     }
 }
 
-#[derive(Debug)]
-pub struct NewEvent {
-    pub signature_hash: String,
-    pub signature: String,
-}
-
 impl DBEvent {
-    pub async fn exists(id: &i64, conn: &sqlx::SqlitePool) -> Result<bool> {
-        let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM events WHERE id = ?)")
-            .bind(id)
+    pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
+        let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM events WHERE signature = ?)")
+            .bind(signature)
             .fetch_one(conn)
             .await?
             .get::<bool, _>(0);
@@ -49,12 +41,13 @@ impl DBEvent {
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {
+        let signature_hash = signature_hash[2..].to_string();
         let result = sqlx::query(
             r#"
             SELECT signature FROM events WHERE signature_hash = ? LIMIT 1
             "#,
         )
-        .bind(signature_hash)
+        .bind(signature_hash.as_bytes().to_vec())
         .fetch_optional(conn)
         .await?;
 
@@ -63,23 +56,23 @@ impl DBEvent {
             None => Ok(None),
         }
     }
-}
 
-impl NewEvent {
-    pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<DBEvent> {
-        let event: DBEvent = sqlx::query_as(
+    pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+        let signature_hash_bytes: Vec<u8> = self.signature_hash.as_bytes().to_vec();
+        let signature_hash_bytes: Vec<u8> = signature_hash_bytes.iter().skip(2).cloned().collect();
+
+        sqlx::query(
             r#"
             INSERT INTO events (signature_hash, signature)
             VALUES (?, ?)
-            RETURNING *
             "#,
         )
-        .bind(&self.signature_hash)
+        .bind(signature_hash_bytes)
         .bind(&self.signature)
-        .fetch_one(conn)
+        .execute(conn)
         .await?;
 
-        Ok(event)
+        Ok(())
     }
 }
 
@@ -143,15 +136,16 @@ pub mod test {
     async fn create_and_get_event() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let new_event = NewEvent {
+        let new_event = DBEvent {
             signature_hash: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
                 .to_string(),
             signature: "Transfer(address,address,uint256)".to_string(),
         };
 
-        let event = new_event.save(&conn).await?;
+        dbg!(&new_event);
+        new_event.save(&conn).await?;
 
-        let exists = DBEvent::exists(&event.id, &conn).await?;
+        let exists = DBEvent::exists(&new_event.signature, &conn).await?;
 
         assert_eq!(DBEvent::count(&conn).await?, 1);
 
@@ -159,7 +153,7 @@ pub mod test {
 
         assert_eq!(DBEvent::count(&conn).await?, 1);
 
-        let other_event = NewEvent {
+        let other_event = DBEvent {
             signature_hash: "0x45cceb0b830632de1c7fbebdf472f48e739c65f12da600c969011fc84dc602dd"
                 .to_string(),
             signature: "Sync(u256,uint256)".to_string(),
@@ -173,7 +167,7 @@ pub mod test {
         )
         .await?;
 
-        assert!(signature.is_some());
+        assert_eq!(signature.unwrap(), "Sync(u256,uint256)");
 
         Ok(())
     }

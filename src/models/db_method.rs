@@ -4,31 +4,23 @@ use sqlx::Row;
 #[allow(dead_code)]
 #[derive(Debug)]
 pub struct DBMethod {
-    id: i64,
-    signature_hash: String,
-    signature: String,
+    pub signature_hash: String,
+    pub signature: String,
 }
 
 impl sqlx::FromRow<'_, sqlx::sqlite::SqliteRow> for DBMethod {
     fn from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
         Ok(DBMethod {
-            id: row.get(0),
-            signature_hash: row.get(1),
-            signature: row.try_get(2)?,
+            signature_hash: row.get(0),
+            signature: row.try_get(1)?,
         })
     }
 }
 
-#[derive(Debug)]
-pub struct NewMethod {
-    pub signature_hash: String,
-    pub signature: String,
-}
-
 impl DBMethod {
-    pub async fn exists(id: &i64, conn: &sqlx::SqlitePool) -> Result<bool> {
-        let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM methods WHERE id = ?)")
-            .bind(id)
+    pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
+        let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM methods WHERE signature = ?)")
+            .bind(signature)
             .fetch_one(conn)
             .await?
             .get::<bool, _>(0);
@@ -49,12 +41,13 @@ impl DBMethod {
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {
+        let signature_hash = signature_hash[2..].to_string();
         let result = sqlx::query(
             r#"
-            SELECT signature FROM methods WHERE signature_hash = ?
+            SELECT signature FROM methods WHERE signature_hash = ? LIMIT 1
             "#,
         )
-        .bind(signature_hash)
+        .bind(signature_hash.as_bytes().to_vec())
         .fetch_optional(conn)
         .await?;
 
@@ -63,23 +56,23 @@ impl DBMethod {
             None => Ok(None),
         }
     }
-}
 
-impl NewMethod {
-    pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<DBMethod> {
-        let event: DBMethod = sqlx::query_as(
+    pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+        let signature_hash_bytes: Vec<u8> = self.signature_hash.as_bytes().to_vec();
+        let signature_hash_bytes: Vec<u8> = signature_hash_bytes.iter().skip(2).cloned().collect();
+
+        sqlx::query(
             r#"
             INSERT INTO methods (signature_hash, signature)
             VALUES (?, ?)
-            RETURNING *
             "#,
         )
-        .bind(&self.signature_hash)
+        .bind(signature_hash_bytes)
         .bind(&self.signature)
-        .fetch_one(conn)
+        .execute(conn)
         .await?;
 
-        Ok(event)
+        Ok(())
     }
 }
 
@@ -89,17 +82,17 @@ pub mod test {
     use crate::models::db_event::test::setup_test_db;
 
     #[tokio::test]
-    async fn create_and_get_event() -> Result<()> {
+    async fn create_and_get_method() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let new_event = NewMethod {
+        let new_method = DBMethod {
             signature_hash: "0x022c0d9f".to_string(),
             signature: "swap(uint256,uint256,address,bytes)".to_string(),
         };
 
-        let event = new_event.save(&conn).await?;
+        new_method.save(&conn).await?;
 
-        let exists = DBMethod::exists(&event.id, &conn).await?;
+        let exists = DBMethod::exists(&new_method.signature, &conn).await?;
 
         assert_eq!(DBMethod::count(&conn).await?, 1);
 
@@ -107,16 +100,16 @@ pub mod test {
 
         assert_eq!(DBMethod::count(&conn).await?, 1);
 
-        let other_event = NewMethod {
+        let other_method = DBMethod {
             signature_hash: "0x3ccfd60b".to_string(),
             signature: "withdraw()".to_string(),
         };
 
-        other_event.save(&conn).await?;
+        other_method.save(&conn).await?;
 
         let signature = DBMethod::find_by_hash("0x3ccfd60b", &conn).await?;
 
-        assert!(signature.is_some());
+        assert_eq!(signature.unwrap(), "withdraw()");
 
         Ok(())
     }
