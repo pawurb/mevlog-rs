@@ -2,7 +2,7 @@
 name = "mevlog"
 version = "0.3.0"
 edition = "2021"
-repository = "https://github.com/pawurb/mevlog"
+repository = "https://github.com/pawurb/mevlog-rs"
 description = "Ethereum transactions monitoring and querying CLI powered by Revm"
 readme = "README.md"
 license = "MIT"
