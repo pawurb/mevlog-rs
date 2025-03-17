@@ -1,7 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::path::{Path, PathBuf};
 
 use sqlx::{
     migrate::{MigrateDatabase, Migrator},
@@ -45,11 +42,11 @@ pub async fn init_sqlite_db(db_url: Option<String>) -> Result<()> {
     Ok(())
 }
 
-pub async fn sqlite_conn(db_url: Option<String>) -> Result<Arc<SqlitePool>> {
+pub async fn sqlite_conn(db_url: Option<String>) -> Result<SqlitePool> {
     let db_url = db_url.unwrap_or(default_db_path().to_string_lossy().into_owned());
 
     match SqlitePool::connect(&db_url).await {
-        Ok(conn) => Ok(Arc::new(conn)),
+        Ok(conn) => Ok(conn),
         Err(error) => eyre::bail!("Error connecting to db: {}", error),
     }
 }

@@ -64,7 +64,7 @@ pub struct MEVBlock {
 
 pub async fn process_block(
     provider: &Arc<GenericProvider>,
-    conn: Arc<SqlitePool>,
+    conn: &SqlitePool,
     block_number: u64,
     ens_lookup: &ENSLookup,
     txs_filter: &TxsFilter,
@@ -92,7 +92,7 @@ pub async fn process_block(
     mev_block
         .populate_txs(
             txs_filter,
-            &conn,
+            conn,
             ens_lookup,
             provider,
             revm_db.as_mut(),
@@ -176,7 +176,7 @@ impl MEVBlock {
     pub async fn populate_txs(
         &mut self,
         filter: &TxsFilter,
-        sqlite: &Arc<SqlitePool>,
+        sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
@@ -451,7 +451,7 @@ impl MEVBlock {
     async fn ingest_logs(
         &mut self,
         filter: &TxsFilter,
-        sqlite: &Arc<SqlitePool>,
+        sqlite: &SqlitePool,
         provider: &Arc<GenericProvider>,
     ) -> Result<()> {
         let block_number = BlockNumberOrTag::Number(self.block_number);

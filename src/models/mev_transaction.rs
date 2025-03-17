@@ -48,7 +48,7 @@ impl MEVTransaction {
         tx_req: TransactionRequest,
         tx_hash: FixedBytes<32>,
         index: u64,
-        sqlite: &Arc<SqlitePool>,
+        sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
     ) -> Result<Self> {

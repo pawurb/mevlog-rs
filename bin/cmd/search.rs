@@ -39,7 +39,7 @@ impl SearchArgs {
         for block_number in block_range.from..=block_range.to {
             process_block(
                 &provider,
-                sqlite.clone(),
+                &sqlite,
                 block_number,
                 &ens_lookup,
                 &mev_filter,

@@ -6,7 +6,7 @@ use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes};
 use sqlx::SqlitePool;
-use std::{fmt, sync::Arc};
+use std::fmt;
 
 #[derive(Debug)]
 pub struct MEVLog {
@@ -19,7 +19,7 @@ impl MEVLog {
     pub async fn new(
         first_topic: &FixedBytes<32>,
         inner_log: AlloyLog,
-        sqlite: &Arc<SqlitePool>,
+        sqlite: &SqlitePool,
     ) -> Result<Self> {
         let signature = DBEvent::find_by_hash(&format!("{}", first_topic), sqlite).await?;
 

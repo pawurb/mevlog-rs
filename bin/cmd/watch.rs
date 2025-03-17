@@ -34,7 +34,7 @@ impl WatchArgs {
         let block_number = provider.get_block_number().await?;
         process_block(
             &provider,
-            sqlite.clone(),
+            &sqlite,
             block_number,
             &ens_lookup,
             &mev_filter,
@@ -49,7 +49,7 @@ impl WatchArgs {
                 while let Some(block) = blocks_stream.next().await {
                     process_block(
                         &provider,
-                        sqlite.clone(),
+                        &sqlite,
                         block.number,
                         &ens_lookup,
                         &mev_filter,
@@ -71,7 +71,7 @@ impl WatchArgs {
                     current_block_number = new_block_number;
                     process_block(
                         &provider,
-                        sqlite.clone(),
+                        &sqlite,
                         current_block_number,
                         &ens_lookup,
                         &mev_filter,

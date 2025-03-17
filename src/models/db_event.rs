@@ -71,7 +71,7 @@ impl DBEvent {
 
 #[cfg(test)]
 pub mod test {
-    use std::{fs, sync::Arc};
+    use std::fs;
 
     use crate::misc::database::{init_sqlite_db, sqlite_conn};
 
@@ -79,7 +79,7 @@ pub mod test {
     use sqlx::sqlite::SqlitePool;
     use uuid::Uuid;
 
-    pub async fn setup_test_db() -> (Arc<SqlitePool>, SqliteCleaner) {
+    pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
         let uuid = Uuid::new_v4();
         let db_path = format!("/tmp/{}-mevlog-test.db", uuid);
         let db_url = format!("sqlite://{}", db_path);

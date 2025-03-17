@@ -23,7 +23,7 @@ pub enum ProviderType {
 }
 
 pub struct SharedDeps {
-    pub sqlite: Arc<SqlitePool>,
+    pub sqlite: SqlitePool,
     pub ens_lookup_worker: UnboundedSender<Address>,
     pub provider: Arc<GenericProvider>,
     pub provider_type: ProviderType,
