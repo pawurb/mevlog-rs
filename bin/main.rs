@@ -1,11 +1,18 @@
 mod cmd;
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 #[cfg(feature = "dev")]
 use cmd::seed_db::SeedDBArgs;
 
 use cmd::{search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs};
 use eyre::Result;
 use mevlog::misc::utils::init_logs;
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum ColorMode {
+    Always,
+    Auto,
+    Never,
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -18,7 +25,11 @@ https://github.com/pawurb/mevlog-rs"
 pub struct MLArgs {
     #[command(subcommand)]
     pub cmd: MLSubcommand,
+
+    #[arg(long, value_enum, default_value = "auto", global = true)]
+    pub color: ColorMode,
 }
+
 #[derive(Subcommand, Debug)]
 pub enum MLSubcommand {
     #[command(about = "Monitor Ethereum transactions", alias = "w")]
@@ -50,6 +61,12 @@ type ML = MLSubcommand;
 
 async fn execute() -> Result<()> {
     let args = MLArgs::parse();
+
+    match args.color {
+        ColorMode::Always => colored::control::set_override(true),
+        ColorMode::Never => colored::control::set_override(false),
+        ColorMode::Auto => {}
+    }
 
     match args.cmd {
         ML::Watch(args) => {
