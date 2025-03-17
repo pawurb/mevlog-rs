@@ -3,7 +3,7 @@
  
 ![Big bribe](big-bribe-tx.png)
 
-Rust-based CLI tool for querying and monitoring EVM blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
+Rust-based CLI tool for querying and monitoring Ethereum blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
 `mevlog` allows you to analyze transaction details via a simple CLI interface. It currently offers the following features:
 
@@ -16,6 +16,8 @@ Rust-based CLI tool for querying and monitoring EVM blockchain transactions, wit
 - filter txs by real (including bribe) gas prices and cost
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
+
+You can [check out this article](https://pawelurbanek.com/long-tail-mev-revm) for technical details on how this project is implemented.
 
 ## Getting started
 
