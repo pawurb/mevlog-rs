@@ -22,6 +22,14 @@ You can [check out this article](https://pawelurbanek.com/long-tail-mev-revm) fo
 ## Getting started
 
 ```bash
+git clone https://github.com/pawurb/mevlog-rs
+cd mevlog-rs
+cargo install --path .
+```
+
+or install from the [crates.io](https://crates.io/crates/mevlog):
+
+```bash
 cargo install mevlog
 mevlog watch --rpc-url https://eth.merkle.io 
 ```
