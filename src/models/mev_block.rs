@@ -22,7 +22,7 @@ use crate::misc::revm_tracing::{
 };
 use crate::misc::rpc_tracing::{rpc_touching_accounts, rpc_tx_calls};
 use crate::misc::shared_init::{ConnOpts, TraceMode};
-use crate::misc::utils::{ToU64, SEPARATORER};
+use crate::misc::utils::{ToU64, SEPARATOR, SEPARATORER};
 use crate::models::txs_filter::TxsFilter;
 use crate::GenericProvider;
 
@@ -60,6 +60,7 @@ pub struct MEVBlock {
     revm_context: RevmBlockContext,
     txs_count: u64,
     reversed_order: bool,
+    top_metadata: bool,
 }
 
 pub async fn process_block(
@@ -86,6 +87,7 @@ pub async fn process_block(
         txs_filter.reversed_order,
         provider,
         conn_opts.trace.as_ref(),
+        txs_filter.top_metadata,
     )
     .await?;
 
@@ -112,6 +114,7 @@ impl MEVBlock {
         reversed_order: bool,
         provider: &Arc<GenericProvider>,
         trace_mode: Option<&TraceMode>,
+        block_info_top: bool,
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
@@ -170,6 +173,7 @@ impl MEVBlock {
             revm_context,
             reversed_order,
             all_transactions: all_txs,
+            top_metadata: block_info_top,
         })
     }
 
@@ -211,6 +215,7 @@ impl MEVBlock {
                 sqlite,
                 ens_lookup,
                 provider,
+                filter.top_metadata,
             )
             .await
             {
@@ -539,6 +544,12 @@ impl fmt::Display for MEVBlock {
 
         let mut indexes = self.mev_transactions.keys().collect::<Vec<_>>();
         indexes.sort();
+
+        if self.top_metadata {
+            writeln!(f, "{}", block_metadata(self).blue().bold())?;
+            writeln!(f, "{}", SEPARATOR)?;
+        }
+
         if !self.reversed_order {
             indexes.reverse();
         }
@@ -556,27 +567,27 @@ impl fmt::Display for MEVBlock {
             writeln!(f, "{}", "No matching transactions.".yellow())?;
         }
 
-        let timestamp = self.revm_context.timestamp;
-        let age = chrono::Utc::now().timestamp() - timestamp as i64;
-        let base_fee_gwei = self.revm_context.basefee.to_u64() as f64 / 1000000000.0;
-        writeln!(
-            f,
-            "{}",
-            format!(
-                "Block {} | Age {} | Base {:.2} gwei | Txs {}/{}",
-                self.block_number,
-                format_age(age),
-                base_fee_gwei,
-                indexes.len(),
-                self.txs_count,
-            )
-            .blue()
-            .bold()
-        )?;
-        writeln!(f, "{}", SEPARATORER)?;
+        if !self.top_metadata {
+            writeln!(f, "{}", block_metadata(self).blue().bold())?;
+            writeln!(f, "{}", SEPARATORER)?;
+        }
 
         Ok(())
     }
+}
+
+fn block_metadata(block: &MEVBlock) -> String {
+    let timestamp = block.revm_context.timestamp;
+    let age = chrono::Utc::now().timestamp() - timestamp as i64;
+    let base_fee_gwei = block.revm_context.basefee.to_u64() as f64 / 1000000000.0;
+    format!(
+        "Block {} | Age {} | Base {:.2} gwei | Txs {}/{}",
+        block.block_number,
+        format_age(age),
+        base_fee_gwei,
+        block.mev_transactions.len(),
+        block.txs_count,
+    )
 }
 
 fn format_age(seconds: i64) -> String {

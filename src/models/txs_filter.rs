@@ -76,6 +76,13 @@ pub struct SharedFilterOpts {
 
     #[arg(short, long, alias = "r", help = "Reverse the order of txs")]
     pub reverse: bool,
+
+    #[arg(
+        long,
+        alias = "tm",
+        help = "Display block and txs metadata info on top"
+    )]
+    pub top_metadata: bool,
 }
 
 #[derive(Debug)]
@@ -179,6 +186,7 @@ pub struct TxsFilter {
     pub gas_price: Option<GasPriceQuery>,
     pub real_gas_price: Option<GasPriceQuery>,
     pub reversed_order: bool,
+    pub top_metadata: bool,
 }
 
 impl TxsFilter {
@@ -253,6 +261,7 @@ impl TxsFilter {
                 None => None,
             },
             reversed_order: filter_opts.reverse,
+            top_metadata: filter_opts.top_metadata,
         })
     }
 

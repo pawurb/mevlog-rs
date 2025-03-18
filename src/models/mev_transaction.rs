@@ -39,6 +39,7 @@ pub struct MEVTransaction {
     pub coinbase_transfer: Option<U256>,
     pub inner: TransactionRequest,
     pub receipt_data: Option<ReceiptData>,
+    pub top_metadata: bool,
 }
 
 impl MEVTransaction {
@@ -51,6 +52,7 @@ impl MEVTransaction {
         sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
+        top_metadata: bool,
     ) -> Result<Self> {
         let method_sig = if let Some(input) = tx_req.clone().input.input {
             if input.len() >= 8 {
@@ -84,6 +86,7 @@ impl MEVTransaction {
             coinbase_transfer: None,
             inner: tx_req,
             receipt_data: None,
+            top_metadata,
         })
     }
 
@@ -148,23 +151,44 @@ impl MEVTransaction {
 
 impl fmt::Display for MEVTransaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for log in &self.log_groups {
-            write!(f, "{}", log)?;
+        if !self.top_metadata {
+            for log in &self.log_groups {
+                write!(f, "{}", log)?;
+            }
         }
-        writeln!(f, "{} ->", self.source)?;
-        writeln!(
-            f,
-            "  {}::{}",
-            display_target(self.to),
-            self.method_name.purple(),
-        )?;
 
-        writeln!(
-            f,
-            "[{}] {}",
-            self.index,
-            &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
-        )?;
+        if self.top_metadata {
+            writeln!(
+                f,
+                "[{}] {}",
+                self.index,
+                &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
+            )?;
+
+            writeln!(f)?;
+            writeln!(f, "{} ->", self.source)?;
+            writeln!(
+                f,
+                "  {}::{}",
+                display_target(self.to),
+                self.method_name.purple(),
+            )?;
+        } else {
+            writeln!(f, "{} ->", self.source)?;
+            writeln!(
+                f,
+                "  {}::{}",
+                display_target(self.to),
+                self.method_name.purple(),
+            )?;
+
+            writeln!(
+                f,
+                "[{}] {}",
+                self.index,
+                &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
+            )?;
+        }
 
         writeln!(f)?;
 
@@ -246,7 +270,19 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
-        writeln!(f, "{}", SEPARATOR)?;
+        if self.top_metadata {
+            writeln!(f)?;
+            for log in &self.log_groups {
+                write!(f, "{}", log)?;
+            }
+        }
+
+        if self.top_metadata {
+            write!(f, "{}", SEPARATOR)?;
+        } else {
+            writeln!(f, "{}", SEPARATOR)?;
+        }
+
         Ok(())
     }
 }

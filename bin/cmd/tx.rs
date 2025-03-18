@@ -29,6 +29,13 @@ pub struct TxArgs {
     #[arg(short, long, alias = "r", help = "Reverse the order of txs")]
     pub reverse: bool,
 
+    #[arg(
+        long,
+        alias = "tm",
+        help = "Display block and txs metadata info on top"
+    )]
+    pub top_metadata: bool,
+
     #[command(flatten)]
     conn_opts: ConnOpts,
 }
@@ -74,6 +81,7 @@ impl TxArgs {
             self.reverse,
             &provider,
             self.conn_opts.trace.as_ref(),
+            self.top_metadata,
         )
         .await?;
 
@@ -92,6 +100,7 @@ impl TxArgs {
             real_tx_cost: None,
             real_gas_price: None,
             reversed_order: self.reverse,
+            top_metadata: self.top_metadata,
         };
 
         mev_block
