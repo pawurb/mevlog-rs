@@ -20,9 +20,20 @@ sol! {
 const ENS_LOOKUP: Address = address!("0xc69c0eb9ec6e71e97c1ed25212d203ad5010d8b2");
 const MISSING_NAME: &str = "N";
 
+#[derive(Debug)]
 pub enum ENSLookup {
     Sync,
     Async(UnboundedSender<Address>),
+}
+
+impl ENSLookup {
+    pub async fn sync_lookup(ens_query: Option<String>) -> bool {
+        if ens_query.is_none() {
+            return false;
+        }
+
+        !(known_ens_name(&ens_query.unwrap()).await)
+    }
 }
 
 enum ENSEntry {
@@ -43,6 +54,10 @@ pub async fn ens_reverse_lookup_cached_async(
             Ok(None)
         }
     }
+}
+
+pub async fn known_ens_name(name: &str) -> bool {
+    cacache::read(&ens_cache_dir(), name).await.is_ok()
 }
 
 pub async fn ens_reverse_lookup_cached_sync(
@@ -96,6 +111,10 @@ async fn read_ens_cache(target: Address) -> Result<ENSEntry> {
 }
 
 async fn write_ens_cache(target: Address, name: Option<String>) -> Result<()> {
+    if let Some(name) = &name {
+        cacache::write(&ens_cache_dir(), name.to_string(), "T").await?;
+    };
+
     let name_record = match &name {
         Some(name) => name.as_str(),
         None => MISSING_NAME,

@@ -299,8 +299,11 @@ impl TxsFilter {
         false
     }
 
-    pub fn ens_filter_enabled(&self) -> bool {
-        matches!(self.tx_from, Some(FromFilter::ENSName(_)))
+    pub fn ens_query(&self) -> Option<String> {
+        self.tx_from.as_ref().and_then(|from| match from {
+            FromFilter::ENSName(name) => Some(name.clone()),
+            _ => None,
+        })
     }
 }
 

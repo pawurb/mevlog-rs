@@ -26,7 +26,7 @@ impl SearchArgs {
 
         let mev_filter = TxsFilter::new(&self.filter, None, self.conn_opts.trace.as_ref(), false)?;
 
-        let ens_lookup = if mev_filter.ens_filter_enabled() {
+        let ens_lookup = if ENSLookup::sync_lookup(mev_filter.ens_query()).await {
             ENSLookup::Sync
         } else {
             ENSLookup::Async(shared_deps.ens_lookup_worker)

@@ -12,7 +12,7 @@ use revm::primitives::FixedBytes;
 
 #[derive(Debug, clap::Parser)]
 pub struct TxArgs {
-    tx_hash: String,
+    tx_hash: FixedBytes<32>,
     #[arg(
         long,
         short = 'B',
@@ -42,19 +42,14 @@ pub struct TxArgs {
 
 impl TxArgs {
     pub async fn run(&self) -> Result<()> {
-        let tx_hash: FixedBytes<32> = self
-            .tx_hash
-            .parse()
-            .map_err(|_| eyre!("Invalid tx hash format: {}", self.tx_hash))?;
-
         check_range(self.before)?;
         check_range(self.after)?;
 
         let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
-        let tx = provider.get_transaction_by_hash(tx_hash).await?;
-        let tx = tx.ok_or_else(|| eyre!("tx {} not found", tx_hash))?;
+        let tx = provider.get_transaction_by_hash(self.tx_hash).await?;
+        let tx = tx.ok_or_else(|| eyre!("tx {} not found", self.tx_hash))?;
 
         let block_number = tx.block_number.expect("commited tx must have block number");
         let Some(tx_index) = tx.transaction_index else {
