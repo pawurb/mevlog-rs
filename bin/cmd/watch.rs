@@ -37,6 +37,7 @@ impl WatchArgs {
             &sqlite,
             block_number,
             &ens_lookup,
+            &shared_deps.symbols_lookup_worker,
             &mev_filter,
             &self.conn_opts,
         )
@@ -52,6 +53,7 @@ impl WatchArgs {
                         &sqlite,
                         block.number,
                         &ens_lookup,
+                        &shared_deps.symbols_lookup_worker,
                         &mev_filter,
                         &self.conn_opts,
                     )
@@ -74,6 +76,7 @@ impl WatchArgs {
                         &sqlite,
                         current_block_number,
                         &ens_lookup,
+                        &shared_deps.symbols_lookup_worker,
                         &mev_filter,
                         &self.conn_opts,
                     )

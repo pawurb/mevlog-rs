@@ -4,5 +4,6 @@ pub mod mev_address;
 pub mod mev_block;
 pub mod mev_log;
 pub mod mev_log_group;
+pub mod mev_log_signature;
 pub mod mev_transaction;
 pub mod txs_filter;

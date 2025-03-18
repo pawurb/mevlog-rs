@@ -14,7 +14,10 @@ use tracing::debug;
 use crate::{misc::db_actions::download_db_file, GenericProvider};
 
 use super::{
-    database::sqlite_conn, db_actions::db_file_exists, ens_utils::start_ens_lookup_worker,
+    database::sqlite_conn,
+    db_actions::db_file_exists,
+    ens_utils::start_ens_lookup_worker,
+    symbol_utils::{start_symbols_lookup_worker, SymbolLookupWorker},
 };
 
 pub enum ProviderType {
@@ -25,6 +28,7 @@ pub enum ProviderType {
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub ens_lookup_worker: UnboundedSender<Address>,
+    pub symbols_lookup_worker: SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub provider_type: ProviderType,
 }
@@ -43,13 +47,15 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     }
 
     let sqlite_conn = sqlite_conn(None).await?;
-    let ens_lookup = start_ens_lookup_worker(conn_opts);
+    let ens_lookup_worker = start_ens_lookup_worker(conn_opts);
+    let symbols_lookup_worker = start_symbols_lookup_worker(conn_opts);
     let (provider, provider_type) = init_provider(conn_opts).await?;
     let provider = Arc::new(provider);
 
     Ok(SharedDeps {
         sqlite: sqlite_conn,
-        ens_lookup_worker: ens_lookup,
+        ens_lookup_worker,
+        symbols_lookup_worker,
         provider,
         provider_type,
     })

@@ -22,6 +22,7 @@ use crate::misc::revm_tracing::{
 };
 use crate::misc::rpc_tracing::{rpc_touching_accounts, rpc_tx_calls};
 use crate::misc::shared_init::{ConnOpts, TraceMode};
+use crate::misc::symbol_utils::SymbolLookupWorker;
 use crate::misc::utils::{ToU64, SEPARATOR, SEPARATORER};
 use crate::models::txs_filter::TxsFilter;
 use crate::GenericProvider;
@@ -68,6 +69,7 @@ pub async fn process_block(
     conn: &SqlitePool,
     block_number: u64,
     ens_lookup: &ENSLookup,
+    symbols_lookup: &SymbolLookupWorker,
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
 ) -> Result<()> {
@@ -96,6 +98,7 @@ pub async fn process_block(
             txs_filter,
             conn,
             ens_lookup,
+            symbols_lookup,
             provider,
             revm_db.as_mut(),
             conn_opts,
@@ -177,11 +180,13 @@ impl MEVBlock {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn populate_txs(
         &mut self,
         filter: &TxsFilter,
         sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
+        symbols_lookup: &SymbolLookupWorker,
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         conn_opts: &ConnOpts,
@@ -243,7 +248,8 @@ impl MEVBlock {
             self.mev_transactions.insert(tx_index, mev_tx);
         }
 
-        self.ingest_logs(filter, sqlite, provider).await?;
+        self.ingest_logs(filter, sqlite, symbols_lookup, provider)
+            .await?;
         self.non_trace_filter_txs(filter).await?;
 
         if filter.prefetch_receipts() {
@@ -457,6 +463,7 @@ impl MEVBlock {
         &mut self,
         filter: &TxsFilter,
         sqlite: &SqlitePool,
+        symbols_lookup: &SymbolLookupWorker,
         provider: &Arc<GenericProvider>,
     ) -> Result<()> {
         let block_number = BlockNumberOrTag::Number(self.block_number);
@@ -486,13 +493,19 @@ impl MEVBlock {
                 continue;
             };
 
+            if let Some(position_range) = &filter.tx_position {
+                if tx_index < position_range.from || tx_index > position_range.to {
+                    continue;
+                }
+            }
+
             if let Some(indexes) = &filter.tx_indexes {
                 if !indexes.contains(&tx_index) {
                     continue;
                 }
             }
 
-            let mev_log = match MEVLog::new(first_topic, log.clone(), sqlite).await {
+            let mev_log = match MEVLog::new(first_topic, &log, symbols_lookup, sqlite).await {
                 Ok(log) => log,
                 Err(e) => {
                     error!("Error: {}", e);
@@ -512,7 +525,7 @@ impl MEVBlock {
             filter.events.iter().all(|event_query| {
                 tx.logs()
                     .iter()
-                    .any(|log| event_query.matches(&log.signature, &log.source()))
+                    .any(|log| event_query.matches(&log.signature.signature, &log.source()))
             })
         });
 
@@ -520,7 +533,7 @@ impl MEVBlock {
             !filter.not_events.iter().any(|not_event_query| {
                 tx.logs()
                     .iter()
-                    .any(|log| not_event_query.matches(&log.signature, &log.source()))
+                    .any(|log| not_event_query.matches(&log.signature.signature, &log.source()))
             })
         });
 

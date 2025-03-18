@@ -108,6 +108,7 @@ impl TxArgs {
                 &txs_filter,
                 &sqlite,
                 &ENSLookup::Sync,
+                &shared_deps.symbols_lookup_worker,
                 &provider,
                 revm_db.as_mut(),
                 &self.conn_opts,
@@ -116,6 +117,9 @@ impl TxArgs {
 
         println!("{}", SEPARATORER);
         print!("{}", mev_block);
+
+        // Allow async ENS and symbols lookups to finish
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
     }
 }

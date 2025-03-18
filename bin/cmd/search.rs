@@ -42,16 +42,15 @@ impl SearchArgs {
                 &sqlite,
                 block_number,
                 &ens_lookup,
+                &shared_deps.symbols_lookup_worker,
                 &mev_filter,
                 &self.conn_opts,
             )
             .await?;
         }
 
-        // Allow async ENS lookups to finish
-        if !mev_filter.ens_filter_enabled() {
-            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-        }
+        // Allow async ENS and symbols lookups to finish
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
     }
 }

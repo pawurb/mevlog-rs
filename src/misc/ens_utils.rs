@@ -17,8 +17,8 @@ sol! {
     }
 }
 
-pub const ENS_LOOKUP: Address = address!("0xc69c0eb9ec6e71e97c1ed25212d203ad5010d8b2");
-pub const MISSING_NAME: &str = "N";
+const ENS_LOOKUP: Address = address!("0xc69c0eb9ec6e71e97c1ed25212d203ad5010d8b2");
+const MISSING_NAME: &str = "N";
 
 pub enum ENSLookup {
     Sync,

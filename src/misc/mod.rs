@@ -5,4 +5,5 @@ pub mod ens_utils;
 pub mod revm_tracing;
 pub mod rpc_tracing;
 pub mod shared_init;
+pub mod symbol_utils;
 pub mod utils;
