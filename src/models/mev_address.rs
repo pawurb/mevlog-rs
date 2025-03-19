@@ -41,7 +41,7 @@ impl MEVAddress {
 impl fmt::Display for MEVAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.ens_name {
-            Some(name) => write!(f, "{}", format!("<{}>", name).yellow()),
+            Some(name) => write!(f, "{}", format!("{}", name).yellow()),
             None => write!(f, "{}", self.address.to_string().yellow()),
         }
     }
