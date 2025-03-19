@@ -572,6 +572,8 @@ impl fmt::Display for MEVBlock {
         indexes.sort();
 
         if self.top_metadata {
+            writeln!(f)?;
+            writeln!(f, "{}", SEPARATORER)?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
             writeln!(f, "{}", SEPARATOR)?;
         }
