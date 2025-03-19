@@ -42,6 +42,7 @@ flate2 = "1.1.0"
 regex = "1.11.1"
 chrono = "0.4.40"
 bigdecimal = "0.4.7"
+html-escape = "0.2.13"
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "js"] }

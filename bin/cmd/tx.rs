@@ -111,7 +111,7 @@ impl TxArgs {
             .await?;
 
         println!("{}", SEPARATORER);
-        print!("{}", mev_block);
+        mev_block.print();
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

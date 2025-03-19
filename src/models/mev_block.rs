@@ -23,7 +23,7 @@ use crate::misc::revm_tracing::{
 use crate::misc::rpc_tracing::{rpc_touching_accounts, rpc_tx_calls};
 use crate::misc::shared_init::{ConnOpts, TraceMode};
 use crate::misc::symbol_utils::SymbolLookupWorker;
-use crate::misc::utils::{ToU64, SEPARATOR, SEPARATORER};
+use crate::misc::utils::{ToU64, ETH_TRANSFER, SEPARATOR, SEPARATORER, UNKNOWN};
 use crate::models::txs_filter::TxsFilter;
 use crate::GenericProvider;
 
@@ -105,7 +105,7 @@ pub async fn process_block(
         )
         .await?;
 
-    print!("{}", mev_block);
+    mev_block.print();
 
     Ok(())
 }
@@ -547,6 +547,19 @@ impl MEVBlock {
 
         Ok(())
     }
+
+    pub fn print(&self) {
+        let mev_block_str = format!("{}", self);
+        print!("{}", escape_html(&mev_block_str));
+    }
+}
+
+fn escape_html(input: &str) -> String {
+    let escaped = html_escape::encode_text(&input);
+    let escaped = escaped.replace("-&gt;", "->");
+    let escaped = escaped.replace("&lt;Unknown&gt;", UNKNOWN);
+    let escaped = escaped.replace("&lt;ETH transfer&gt", ETH_TRANSFER);
+    escaped.to_string()
 }
 
 impl fmt::Display for MEVBlock {
