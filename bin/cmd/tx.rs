@@ -42,8 +42,8 @@ pub struct TxArgs {
 
 impl TxArgs {
     pub async fn run(&self) -> Result<()> {
-        check_range(self.before)?;
-        check_range(self.after)?;
+        check_range(self.before, "--before")?;
+        check_range(self.after, "--after")?;
 
         let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
@@ -128,15 +128,19 @@ fn get_matching_indexes(
     result.insert(source_tx_index);
 
     if let Some(count) = after {
-        for i in 1..=count as u64 {
-            result.insert(source_tx_index + i);
+        if count > 0 {
+            for i in 1..=count as u64 {
+                result.insert(source_tx_index + i);
+            }
         }
     }
 
     if let Some(count) = before {
-        for i in 1..=count as u64 {
-            if source_tx_index >= i {
-                result.insert(source_tx_index - i);
+        if count > 0 {
+            for i in 1..=count as u64 {
+                if source_tx_index >= i {
+                    result.insert(source_tx_index - i);
+                }
             }
         }
     }
@@ -144,14 +148,10 @@ fn get_matching_indexes(
     result
 }
 
-fn check_range(value: Option<u8>) -> Result<()> {
+fn check_range(value: Option<u8>, label: &str) -> Result<()> {
     if let Some(value) = value {
         if value > 5 {
-            eyre::bail!("--before must be less than or equal 5");
-        }
-
-        if value < 1 {
-            eyre::bail!("--before must be greater than 0");
+            eyre::bail!("{} must be less than or equal 5", label);
         }
     }
 
