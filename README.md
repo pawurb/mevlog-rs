@@ -1,7 +1,7 @@
 ## mevlog-rs - explore Ethereum from your terminal 
 [![Latest Version](https://img.shields.io/crates/v/mevlog.svg)](https://crates.io/crates/mevlog) [![GH Actions](https://github.com/pawurb/mevlog-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/pawurb/mevlog-rs/actions)
  
-![Big bribe](big-bribe-tx.png)
+![Big bribe](big-bribe-tx2.png)
 
 Rust-based CLI tool for querying and monitoring Ethereum blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
