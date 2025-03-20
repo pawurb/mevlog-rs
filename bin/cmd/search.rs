@@ -35,7 +35,9 @@ impl SearchArgs {
         let latest_block = provider.get_block_number().await?;
         let block_range = BlockRange::from_str(&self.blocks, latest_block)?;
 
-        println!("{}", SEPARATORER);
+        if !mev_filter.top_metadata {
+            println!("{}", SEPARATORER);
+        }
         for block_number in block_range.from..=block_range.to {
             process_block(
                 &provider,
@@ -49,6 +51,9 @@ impl SearchArgs {
             .await?;
         }
 
+        if mev_filter.top_metadata {
+            println!("{}", SEPARATORER);
+        }
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())

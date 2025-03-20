@@ -572,10 +572,8 @@ impl fmt::Display for MEVBlock {
         indexes.sort();
 
         if self.top_metadata {
-            writeln!(f)?;
             writeln!(f, "{}", SEPARATORER)?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
-            writeln!(f, "{}", SEPARATOR)?;
         }
 
         if !self.reversed_order {
@@ -596,6 +594,7 @@ impl fmt::Display for MEVBlock {
         }
 
         if !self.top_metadata {
+            writeln!(f, "{}", SEPARATOR)?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
             writeln!(f, "{}", SEPARATORER)?;
         }

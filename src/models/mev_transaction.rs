@@ -157,6 +157,8 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
+        writeln!(f, "{}", SEPARATOR)?;
+
         if self.top_metadata {
             writeln!(
                 f,
@@ -277,11 +279,10 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
-        if self.top_metadata {
-            write!(f, "{}", SEPARATOR)?;
-        } else {
-            writeln!(f, "{}", SEPARATOR)?;
-        }
+        // if self.top_metadata {
+        //     write!(f, "{}", SEPARATOR)?;
+        // } else {
+        // }
 
         Ok(())
     }

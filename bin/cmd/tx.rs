@@ -110,7 +110,10 @@ impl TxArgs {
             )
             .await?;
 
-        println!("{}", SEPARATORER);
+        if !txs_filter.top_metadata {
+            println!("{}", SEPARATORER);
+        }
+
         mev_block.print();
 
         // Allow async ENS and symbols lookups to finish
