@@ -1,5 +1,9 @@
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tracing::debug;
 
 use alloy::{
@@ -65,9 +69,8 @@ pub async fn init_revm_db(block_number: u64, conn_opts: &ConnOpts) -> Result<Opt
         .with_chain_id(1)
         .with_block(&block.inner);
 
-    let cache_path = home::home_dir()
-        .unwrap()
-        .join(format!(".mevlog/.revm-cache/{}.json", block_number));
+    let cache_path = revm_cache_path(block_number)?;
+
     let db = BlockchainDb::new(meta, Some(cache_path));
     let shared = SharedBackend::spawn_backend(
         Arc::new(provider.clone()),
@@ -78,6 +81,18 @@ pub async fn init_revm_db(block_number: u64, conn_opts: &ConnOpts) -> Result<Opt
     let cache_db = CacheDB::new(shared);
 
     Ok(Some(RevmUtils { anvil, cache_db }))
+}
+
+pub fn revm_cache_path(block_number: u64) -> Result<PathBuf> {
+    let foundry_revm_cache = home::home_dir().unwrap().join(".foundry/cache/rpc/mainnet");
+
+    if Path::new(&foundry_revm_cache).exists() {
+        Ok(foundry_revm_cache.join(format!("{}", block_number)))
+    } else {
+        Ok(home::home_dir()
+            .unwrap()
+            .join(format!(".mevlog/.revm-cache/{}", block_number)))
+    }
 }
 
 pub struct RevmBlockContext {

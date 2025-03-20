@@ -18,7 +18,8 @@ use crate::misc::coinbase_bribe::{find_coinbase_transfer, TraceData};
 use crate::misc::db_actions::PROGRESS_CHARS;
 use crate::misc::ens_utils::ENSLookup;
 use crate::misc::revm_tracing::{
-    init_revm_db, revm_commit_tx, revm_touching_accounts, revm_tx_calls, RevmBlockContext,
+    init_revm_db, revm_cache_path, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
+    RevmBlockContext,
 };
 use crate::misc::rpc_tracing::{rpc_touching_accounts, rpc_tx_calls};
 use crate::misc::shared_init::{ConnOpts, TraceMode};
@@ -359,12 +360,8 @@ impl MEVBlock {
         Ok(())
     }
 
-    fn revm_data_cached(&self) -> bool {
-        let cache_path = home::home_dir().unwrap().join(format!(
-            ".mevlog/.revm-cache/{}.json",
-            self.block_number - 1
-        ));
-        cache_path.exists()
+    fn revm_data_cached(&self) -> Result<bool> {
+        Ok(revm_cache_path(self.block_number - 1)?.exists())
     }
 
     async fn trace_txs_revm(
@@ -374,7 +371,7 @@ impl MEVBlock {
     ) -> Result<()> {
         let total_txs = self.all_transactions.len() - 1;
 
-        let progress_bar = if !self.revm_data_cached() {
+        let progress_bar = if !self.revm_data_cached()? {
             let pb = ProgressBar::new(total_txs as u64);
             pb.set_style(ProgressStyle::default_bar()
         .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})")
