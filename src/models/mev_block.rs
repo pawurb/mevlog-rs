@@ -14,6 +14,7 @@ use std::{collections::HashMap, fmt};
 use tokio::sync::Semaphore;
 use tracing::{debug, error};
 
+use crate::misc::args_parsing::PositionRange;
 use crate::misc::coinbase_bribe::{find_coinbase_transfer, TraceData};
 use crate::misc::db_actions::PROGRESS_CHARS;
 use crate::misc::ens_utils::ENSLookup;
@@ -30,7 +31,7 @@ use crate::GenericProvider;
 
 use super::mev_log::MEVLog;
 use super::mev_transaction::{MEVTransaction, ReceiptData};
-use super::txs_filter::{FromFilter, PositionRange};
+use super::txs_filter::FromFilter;
 
 sol! {
     #[sol(rpc)]

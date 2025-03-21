@@ -2,12 +2,13 @@ use std::collections::HashSet;
 
 use alloy::providers::Provider;
 use eyre::{eyre, Result};
+use mevlog::misc::args_parsing::PositionRange;
 use mevlog::misc::ens_utils::ENSLookup;
 use mevlog::misc::revm_tracing::init_revm_db;
 use mevlog::misc::shared_init::{init_deps, ConnOpts, TraceMode};
 use mevlog::misc::utils::SEPARATORER;
 use mevlog::models::mev_block::MEVBlock;
-use mevlog::models::txs_filter::{PositionRange, TxsFilter};
+use mevlog::models::txs_filter::TxsFilter;
 use revm::primitives::FixedBytes;
 
 #[derive(Debug, clap::Parser)]
