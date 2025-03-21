@@ -142,7 +142,13 @@ pub fn revm_touching_accounts(
 
     let trace_types = HashSet::from_iter([TraceType::StateDiff]);
     let mut insp = TracingInspector::new(TracingInspectorConfig::from_parity_config(&trace_types));
-    let (trace, _) = inspect(cache_db, env, &mut insp).unwrap();
+    let (trace, _) = match inspect(cache_db, env, &mut insp) {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::warn!("revm_touching_accounts failed. {:?}", e);
+            return Ok(HashSet::new());
+        }
+    };
 
     Ok(trace.state.keys().cloned().collect())
 }
@@ -202,7 +208,14 @@ pub fn revm_tx_calls(
 
     let trace_types = HashSet::from_iter([TraceType::Trace]);
     let mut insp = TracingInspector::new(TracingInspectorConfig::from_parity_config(&trace_types));
-    let (trace, _) = inspect(cache_db, env, &mut insp).unwrap();
+    let (trace, _) = match inspect(cache_db, env, &mut insp) {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::warn!("revm_tx_calls failed. {:?}", e);
+            return Ok(vec![]);
+        }
+    };
+
     let full_trace = insp
         .into_parity_builder()
         .into_trace_results(&trace.result, &trace_types);
