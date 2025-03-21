@@ -462,14 +462,14 @@ impl FromStr for PositionRange {
             {
                 let from = from
                     .parse::<u64>()
-                    .map_err(|_| eyre!("Invalid start block: '{}'", from))?;
+                    .map_err(|_| eyre!("Invalid start position: '{}'", from))?;
                 let to = to
                     .parse::<u64>()
-                    .map_err(|_| eyre!("Invalid end block: '{}'", to))?;
+                    .map_err(|_| eyre!("Invalid end position: '{}'", to))?;
 
                 if from > to {
                     eyre::bail!(
-                        "Start block '{}' must be less than or equal to end block '{}'",
+                        "Start position '{}' must be less than or equal to end position '{}'",
                         from,
                         to
                     )

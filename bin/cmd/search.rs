@@ -33,7 +33,7 @@ impl SearchArgs {
         };
 
         let latest_block = provider.get_block_number().await?;
-        let block_range = BlockRange::from_str(&self.blocks, latest_block)?;
+        let block_range = BlocksRange::from_str(&self.blocks, latest_block)?;
 
         if !mev_filter.top_metadata {
             println!("{}", SEPARATORER);
@@ -61,17 +61,17 @@ impl SearchArgs {
 }
 
 #[derive(Debug, PartialEq)]
-struct BlockRange {
+pub struct BlocksRange {
     from: u64,
     to: u64,
 }
 
-impl BlockRange {
+impl BlocksRange {
     pub fn from_str(input: &str, latest_block: u64) -> Result<Self> {
         let parts: Vec<&str> = input.split(':').collect();
 
         let result: Result<Self> = match parts.as_slice() {
-            ["latest"] => Ok(BlockRange {
+            ["latest"] => Ok(BlocksRange {
                 from: latest_block,
                 to: latest_block,
             }),
@@ -79,7 +79,7 @@ impl BlockRange {
                 let block = single
                     .parse::<u64>()
                     .map_err(|_| eyre!("Invalid block number: '{}'", single))?;
-                Ok(BlockRange {
+                Ok(BlocksRange {
                     from: block,
                     to: block,
                 })
@@ -104,7 +104,7 @@ impl BlockRange {
                     )
                 }
 
-                Ok(BlockRange { from, to })
+                Ok(BlocksRange { from, to })
             }
             [from, to] if *to == "latest" || to.is_empty() => {
                 let num_blocks = from
@@ -122,7 +122,7 @@ impl BlockRange {
                 let from = latest_block - num_blocks + 1;
                 let to = latest_block;
 
-                Ok(BlockRange { from, to })
+                Ok(BlocksRange { from, to })
             }
 
             _ => eyre::bail!("Invalid block range format: '{}'", input),
@@ -144,12 +144,12 @@ impl BlockRange {
 
 #[cfg(test)]
 mod tests {
-    use super::*; // Import the function from the parent module
+    use super::*;
 
     #[test]
     fn test_single_block() {
         let latest_block = 1500;
-        let range = BlockRange::from_str("890", latest_block).unwrap();
+        let range = BlocksRange::from_str("890", latest_block).unwrap();
         assert_eq!(range.from, 890);
         assert_eq!(range.to, 890);
     }
@@ -157,7 +157,7 @@ mod tests {
     #[test]
     fn test_numeric_block_range() {
         let latest_block = 2000;
-        let range = BlockRange::from_str("999:1200", latest_block).unwrap();
+        let range = BlocksRange::from_str("999:1200", latest_block).unwrap();
         assert_eq!(range.from, 999);
         assert_eq!(range.to, 1200);
     }
@@ -165,15 +165,15 @@ mod tests {
     #[test]
     fn test_negative_block_range() {
         let latest_block = 1000;
-        let range = BlockRange::from_str("100:", latest_block).unwrap();
-        assert_eq!(range.from, 901); // latest_block - 100
+        let range = BlocksRange::from_str("100:", latest_block).unwrap();
+        assert_eq!(range.from, 901); // latest_block - 99
         assert_eq!(range.to, 1000); // latest_block
     }
 
     #[test]
     fn test_latest_block_range() {
         let latest_block = 5000;
-        let range = BlockRange::from_str("2:latest", latest_block).unwrap();
+        let range = BlocksRange::from_str("2:latest", latest_block).unwrap();
         assert_eq!(range.from, 4999); // latest_block - 1
         assert_eq!(range.to, 5000); // latest_block
     }
@@ -181,28 +181,28 @@ mod tests {
     #[test]
     fn test_invalid_block_format() {
         let latest_block = 1000;
-        let err = BlockRange::from_str("abc:def", latest_block).unwrap_err();
+        let err = BlocksRange::from_str("abc:def", latest_block).unwrap_err();
         assert!(err.to_string().contains("Invalid block range format"));
     }
 
     #[test]
     fn test_invalid_start_block() {
         let latest_block = 2000;
-        let err = BlockRange::from_str("abc:1200", latest_block).unwrap_err();
+        let err = BlocksRange::from_str("abc:1200", latest_block).unwrap_err();
         assert!(err.to_string().contains("Invalid block range format"));
     }
 
     #[test]
     fn test_invalid_end_block() {
         let latest_block = 2000;
-        let err = BlockRange::from_str("999:xyz", latest_block).unwrap_err();
+        let err = BlocksRange::from_str("999:xyz", latest_block).unwrap_err();
         assert!(err.to_string().contains("Invalid block range format"));
     }
 
     #[test]
     fn test_range_exceeding_latest_block() {
         let latest_block = 1500;
-        let err = BlockRange::from_str("1400:1600", latest_block).unwrap_err();
+        let err = BlocksRange::from_str("1400:1600", latest_block).unwrap_err();
         assert!(err
             .to_string()
             .contains("Invalid range: end block '1600' exceeds the latest block '1500'"));
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn test_start_block_greater_than_end() {
         let latest_block = 1500;
-        let err = BlockRange::from_str("1200:1100", latest_block).unwrap_err();
+        let err = BlocksRange::from_str("1200:1100", latest_block).unwrap_err();
         assert!(err
             .to_string()
             .contains("Start block '1200' must be less than or equal to end block '1100'"));
