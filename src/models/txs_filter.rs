@@ -7,7 +7,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::misc::{args_parsing::PositionRange, shared_init::TraceMode};
+use crate::misc::{args_parsing::PositionRange, eth_unit_parser::parse_value_with_operator, shared_init::TraceMode};
 
 use super::mev_transaction::MEVTransaction;
 
@@ -49,28 +49,28 @@ pub struct SharedFilterOpts {
     #[arg(
         alias = "tc",
         long,
-        help = "Filter by tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')"
+        help = "Filter by tx cost (e.g., 'ge10000000000000000', 'le0.01ether')"
     )]
     pub tx_cost: Option<String>,
 
     #[arg(
         alias = "rtc",
         long,
-        help = "Filter by real (including coinbase bribe) tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')"
+        help = "Filter by real (including coinbase bribe) tx cost (e.g., 'ge10000000000000000', 'le0.01ether')"
     )]
     pub real_tx_cost: Option<String>,
 
     #[arg(
         alias = "gp",
         long,
-        help = "Filter by effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')"
+        help = "Filter by effective gas price (e.g., 'ge2000000000', 'le5gwei')"
     )]
     pub gas_price: Option<String>,
 
     #[arg(
         alias = "rgp",
         long,
-        help = "Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')"
+        help = "Filter by real (including coinbase bribe) effective gas price (e.g., 'ge2000000000', 'le5gwei')"
     )]
     pub real_gas_price: Option<String>,
 
@@ -141,14 +141,13 @@ impl FromStr for TxCostQuery {
 fn parse_query(s: &str) -> Result<(DiffOperator, U256)> {
     let trimmed = s.trim();
     if trimmed.len() < 2 {
-        eyre::bail!("Invalid coinbase diff query: '{}'", s);
+        eyre::bail!("Invalid value query: '{}'", s);
     }
 
-    let (op_str, num_str) = trimmed.split_at(2);
-    let operator = DiffOperator::from_str(op_str).map_err(|e| eyre!("Parse error: {:?}", e))?;
-    let diff = num_str.parse().map_err(|e| eyre!("Parse error: {:?}", e))?;
+    let (op_str, value) = parse_value_with_operator(trimmed)?;
+    let operator = DiffOperator::from_str(&op_str).map_err(|e| eyre!("Parse error: {:?}", e))?;
 
-    Ok((operator, diff))
+    Ok((operator, value))
 }
 
 #[derive(Debug)]
