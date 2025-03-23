@@ -569,6 +569,17 @@ impl fmt::Display for MEVBlock {
         let mut indexes = self.mev_transactions.keys().collect::<Vec<_>>();
         indexes.sort();
 
+        if indexes.is_empty() {
+            writeln!(
+                f,
+                "{:width$} {}",
+                block_metadata(self).blue().bold(),
+                "No matching transactions".yellow(),
+                width = 53
+            )?;
+            return Ok(());
+        }
+
         if self.top_metadata {
             writeln!(f, "{}", SEPARATORER)?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
@@ -587,10 +598,6 @@ impl fmt::Display for MEVBlock {
             }
         }
 
-        if indexes.is_empty() {
-            writeln!(f, "{}", "No matching transactions.".yellow())?;
-        }
-
         if !self.top_metadata {
             writeln!(f, "{}", SEPARATOR)?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
@@ -606,12 +613,14 @@ fn block_metadata(block: &MEVBlock) -> String {
     let age = chrono::Utc::now().timestamp() - timestamp as i64;
     let base_fee_gwei = block.revm_context.basefee.to_u64() as f64 / 1000000000.0;
     format!(
-        "Block {} | Age {} | Base {:.2} gwei | Txs {}/{}",
+        "{} | Age {:age_width$} | Base {:base_width$.2} gwei | Txs {}/{}",
         block.block_number,
         format_age(age),
         base_fee_gwei,
         block.mev_transactions.len(),
         block.txs_count,
+        age_width = 3,
+        base_width = 6
     )
 }
 
