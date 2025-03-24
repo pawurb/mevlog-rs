@@ -58,7 +58,8 @@ pub struct MEVBlock {
     eth_price: f64,
     block_number: u64,
     mev_transactions: HashMap<u64, MEVTransaction>,
-    all_transactions: HashMap<u64, TxData>,
+    // needed only for revm trace commits
+    revm_transactions: HashMap<u64, TxData>,
     inner: AlloyBlock,
     revm_context: RevmBlockContext,
     txs_count: u64,
@@ -136,7 +137,7 @@ impl MEVBlock {
         };
         let revm_context = RevmBlockContext::new(&block);
 
-        let all_txs: HashMap<u64, TxData> = match trace_mode {
+        let revm_transactions: HashMap<u64, TxData> = match trace_mode {
             Some(TraceMode::Revm) => {
                 let range = match position_range {
                     Some(range) => range,
@@ -177,7 +178,7 @@ impl MEVBlock {
             inner: block,
             revm_context,
             reversed_order,
-            all_transactions: all_txs,
+            revm_transactions,
             top_metadata: block_info_top,
         })
     }
@@ -370,7 +371,7 @@ impl MEVBlock {
         filter: &TxsFilter,
         revm_db: &mut CacheDB<SharedBackend>,
     ) -> Result<()> {
-        let total_txs = self.all_transactions.len() - 1;
+        let total_txs = self.revm_transactions.len() - 1;
 
         let progress_bar = if !self.revm_data_cached()? {
             let pb = ProgressBar::new(total_txs as u64);
@@ -387,7 +388,7 @@ impl MEVBlock {
 
         for i in 0..=total_txs {
             let i = i as u64;
-            let tx_data = self.all_transactions.get(&i).expect("Tx not found");
+            let tx_data = self.revm_transactions.get(&i).expect("Tx not found");
 
             if let Some(pb) = &progress_bar {
                 pb.set_position(i);

@@ -1,4 +1,4 @@
-use eyre::{eyre, Result};
+use eyre::{bail, Result};
 use revm::primitives::U256;
 use std::str::FromStr;
 
@@ -17,7 +17,7 @@ impl FromStr for EthUnit {
             "wei" => Ok(EthUnit::Wei),
             "gwei" => Ok(EthUnit::Gwei),
             "ether" | "eth" => Ok(EthUnit::Ether),
-            _ => Err(eyre!("Unknown unit: {}", s)),
+            _ => bail!("Unknown unit: {}", s),
         }
     }
 }
@@ -56,10 +56,7 @@ pub fn parse_eth_value(input: &str) -> Result<U256> {
     }
 
     if numeric_part.is_empty() || unit_part.is_empty() {
-        return Err(eyre!(
-            "Invalid format: expected '<number><unit>', got '{}'",
-            input
-        ));
+        bail!("Invalid format: expected '<number><unit>', got '{}'", input)
     }
 
     let unit = EthUnit::from_str(&unit_part)?;
@@ -75,7 +72,7 @@ fn parse_decimal_value(value_str: &str, unit: EthUnit) -> Result<U256> {
 
     let parts: Vec<&str> = value_str.split('.').collect();
     if parts.len() != 2 {
-        return Err(eyre!("Invalid decimal format in '{}'", value_str));
+        bail!("Invalid decimal format in '{}'", value_str)
     }
 
     let whole_part: U256 = if parts[0].is_empty() {

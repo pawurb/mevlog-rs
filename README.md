@@ -99,7 +99,7 @@ All the above queries use only standard block and logs input. By enabling `--tra
 - query last 5 blocks for a top transaction that paid over 0.02 ETH total (including coinbase bribe) transaction cost:
 
 ```bash
-mevlog search -b 5:latest -p 0 --real-tx-cost ge20000000000000000 --trace revm
+mevlog search -b 5:latest -p 0 --real-tx-cost ge0.02ether --trace revm
 ```
 
 - find txs that changed storage slots of the [Balancer vault contract](https://etherscan.io/address/0xba12222222228d8ba445958a75a0704d566bf2c8):
@@ -109,7 +109,7 @@ mevlog search -b 5:latest -p 0 --real-tx-cost ge20000000000000000 --trace revm
 You can also filter by real (including bribe) gas price:
 
 ```bash
-mevlog search -b 5:latest -p 0:5 --real-gas-price ge10000000000 --trace rpc
+mevlog search -b 5:latest -p 0:5 --real-gas-price ge10gwei --trace rpc
 ```
 
 All the filter conditions can be combined. Here's a complete list of currently supported filters:
@@ -127,9 +127,9 @@ Options:
       --method <METHOD>
           Include txs with root method names matching the provided regex or signature
       --tx-cost <TX_COST>
-          Filter by tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')
+          Filter by tx cost in wei (e.g., 'le10000000000000000', 'ge0.01ether')
       --real-tx-cost <REAL_TX_COST>
-          Filter by real (including coinbase bribe) tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')
+          Filter by real (including coinbase bribe) tx cost in wei (e.g., 'le10000000000000000', 'ge0.01ether')
       --gas-price <GAS_PRICE>
           Filter by effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')
       --real-gas-price <REAL_GAS_PRICE>
