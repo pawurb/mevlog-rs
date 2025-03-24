@@ -7,7 +7,9 @@ use std::{
     str::FromStr,
 };
 
-use crate::misc::{args_parsing::PositionRange, shared_init::TraceMode};
+use crate::misc::{
+    args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::TraceMode,
+};
 
 use super::mev_transaction::MEVTransaction;
 
@@ -49,28 +51,28 @@ pub struct SharedFilterOpts {
     #[arg(
         alias = "tc",
         long,
-        help = "Filter by tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')"
+        help = "Filter by tx cost (e.g., 'ge10000000000000000', 'le0.01ether')"
     )]
     pub tx_cost: Option<String>,
 
     #[arg(
         alias = "rtc",
         long,
-        help = "Filter by real (including coinbase bribe) tx cost in wei (e.g., 'ge10000000000000000', 'le10000000000000000')"
+        help = "Filter by real (including coinbase bribe) tx cost (e.g., 'ge10000000000000000', 'le0.01ether')"
     )]
     pub real_tx_cost: Option<String>,
 
     #[arg(
         alias = "gp",
         long,
-        help = "Filter by effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')"
+        help = "Filter by effective gas price (e.g., 'ge2000000000', 'le5gwei')"
     )]
     pub gas_price: Option<String>,
 
     #[arg(
         alias = "rgp",
         long,
-        help = "Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')"
+        help = "Filter by real (including coinbase bribe) effective gas price (e.g., 'ge2000000000', 'le5gwei')"
     )]
     pub real_gas_price: Option<String>,
 
@@ -87,15 +89,15 @@ pub struct SharedFilterOpts {
 
 #[derive(Debug)]
 pub struct PriceQuery {
-    pub value: U256,
+    pub gas_price: U256,
     pub operator: DiffOperator,
 }
 
 impl PriceQuery {
-    pub fn matches(&self, value: U256) -> bool {
+    pub fn matches(&self, gas_price: U256) -> bool {
         match self.operator {
-            DiffOperator::GreaterOrEq => value >= self.value,
-            DiffOperator::LessOrEq => value <= self.value,
+            DiffOperator::GreaterOrEq => gas_price >= self.gas_price,
+            DiffOperator::LessOrEq => gas_price <= self.gas_price,
         }
     }
 }
@@ -104,23 +106,34 @@ impl FromStr for PriceQuery {
     type Err = eyre::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (operator, value) = parse_query(s)?;
+        let (operator, gas_price) = parse_query(s)?;
 
-        Ok(PriceQuery { operator, value })
+        Ok(PriceQuery {
+            operator,
+            gas_price,
+        })
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn parse_query(s: &str) -> Result<(DiffOperator, U256)> {
     let trimmed = s.trim();
-    if trimmed.len() < 2 {
-        eyre::bail!("Invalid coinbase diff query: '{}'", s);
+    if trimmed.len() < 3 {
+        // Need at least "ge1"
+        eyre::bail!("Invalid value query: '{}'", s);
     }
 
-    let (op_str, num_str) = trimmed.split_at(2);
-    let operator = DiffOperator::from_str(op_str).map_err(|e| eyre!("Parse error: {:?}", e))?;
-    let diff = num_str.parse().map_err(|e| eyre!("Parse error: {:?}", e))?;
+    // Extract the operator part (first 2 chars)
+    let op_str = &trimmed[0..2];
+    let value_str = &trimmed[2..];
 
-    Ok((operator, diff))
+    // Reuse the existing DiffOperator::from_str implementation
+    let operator = DiffOperator::from_str(op_str).map_err(|e| eyre!("Parse error: {}", e))?;
+
+    // Parse the value part with Ethereum unit support
+    let value = parse_eth_value(value_str)?;
+
+    Ok((operator, value))
 }
 
 #[derive(Debug)]
@@ -399,6 +412,131 @@ impl FromFilter {
         eyre::bail!(
             "Invalid input: '{}' is not an Ethereum address or ENS name",
             value
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_query() {
+        // Test with wei values
+        let (op, value) = parse_query("ge1000000000").unwrap();
+        assert!(
+            matches!(op, DiffOperator::GreaterOrEq),
+            "Should be GreaterOrEq operator"
+        );
+        assert_eq!(
+            value,
+            U256::from(1000000000),
+            "Should parse raw wei value correctly"
+        );
+
+        // Test with gwei values
+        let (op, value) = parse_query("ge5gwei").unwrap();
+        assert!(
+            matches!(op, DiffOperator::GreaterOrEq),
+            "Should be GreaterOrEq operator"
+        );
+        assert_eq!(
+            value,
+            U256::from(5_000_000_000_u128),
+            "Should convert 5 gwei to wei correctly"
+        );
+
+        // Test with ether values
+        let (op, value) = parse_query("le0.01ether").unwrap();
+        assert!(
+            matches!(op, DiffOperator::LessOrEq),
+            "Should be LessOrEq operator"
+        );
+        assert_eq!(
+            value,
+            U256::from(10).pow(U256::from(16)),
+            "Should convert 0.01 ether to wei correctly"
+        );
+
+        // Test invalid operator
+        let result = parse_query("xx5gwei");
+        assert!(result.is_err(), "Should reject invalid operators");
+    }
+
+    #[test]
+    fn test_gas_price_query_from_str() {
+        // Test with gwei
+        let query = PriceQuery::from_str("ge10gwei").unwrap();
+        assert!(
+            matches!(query.operator, DiffOperator::GreaterOrEq),
+            "Should parse GreaterOrEq operator"
+        );
+        assert_eq!(
+            query.gas_price,
+            U256::from(10_000_000_000_u128),
+            "Should parse 10 gwei correctly"
+        );
+
+        // Test with ether (unusual but should work)
+        let query = PriceQuery::from_str("le0.000001ether").unwrap();
+        assert!(
+            matches!(query.operator, DiffOperator::LessOrEq),
+            "Should parse LessOrEq operator"
+        );
+        assert_eq!(
+            query.gas_price,
+            U256::from(10).pow(U256::from(12)),
+            "Should parse 0.000001 ether correctly"
+        );
+    }
+
+    #[test]
+    fn test_matches_functionality() {
+        let tx_cost = PriceQuery {
+            gas_price: U256::from(5_000_000_000_u128), // 5 gwei
+            operator: DiffOperator::GreaterOrEq,
+        };
+
+        // Test greater than
+        assert!(
+            tx_cost.matches(U256::from(6_000_000_000_u128)),
+            "Should match when value is greater than threshold"
+        );
+
+        // Test equal
+        assert!(
+            tx_cost.matches(U256::from(5_000_000_000_u128)),
+            "Should match when value is equal to threshold"
+        );
+
+        // Test less than
+        assert!(
+            !tx_cost.matches(U256::from(4_000_000_000_u128)),
+            "Should not match when value is less than threshold"
+        );
+
+        // Now test LessOrEq
+        let gas_price = PriceQuery {
+            gas_price: U256::from(10_000_000_000_u128), // 10 gwei
+            operator: DiffOperator::LessOrEq,
+        };
+
+        // Test greater than
+        assert!(
+            !gas_price.matches(U256::from(11_000_000_000_u128)),
+            "Should not match when value is greater than threshold"
+        );
+
+        // Test equal
+        assert!(
+            gas_price.matches(U256::from(10_000_000_000_u128)),
+            "Should match when value is equal to threshold"
+        );
+
+        // Test less than
+        assert!(
+            gas_price.matches(U256::from(9_000_000_000_u128)),
+            "Should match when value is less than threshold"
         );
     }
 }
