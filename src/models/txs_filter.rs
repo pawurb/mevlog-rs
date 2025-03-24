@@ -88,12 +88,12 @@ pub struct SharedFilterOpts {
 }
 
 #[derive(Debug)]
-pub struct GasPriceQuery {
+pub struct PriceQuery {
     pub gas_price: U256,
     pub operator: DiffOperator,
 }
 
-impl GasPriceQuery {
+impl PriceQuery {
     pub fn matches(&self, gas_price: U256) -> bool {
         match self.operator {
             DiffOperator::GreaterOrEq => gas_price >= self.gas_price,
@@ -102,13 +102,13 @@ impl GasPriceQuery {
     }
 }
 
-impl FromStr for GasPriceQuery {
+impl FromStr for PriceQuery {
     type Err = eyre::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (operator, gas_price) = parse_query(s)?;
 
-        Ok(GasPriceQuery {
+        Ok(PriceQuery {
             operator,
             gas_price,
         })
@@ -193,8 +193,8 @@ pub struct TxsFilter {
     pub match_method: Option<SignatureQuery>,
     pub tx_cost: Option<TxCostQuery>,
     pub real_tx_cost: Option<TxCostQuery>,
-    pub gas_price: Option<GasPriceQuery>,
-    pub real_gas_price: Option<GasPriceQuery>,
+    pub gas_price: Option<PriceQuery>,
+    pub real_gas_price: Option<PriceQuery>,
     pub reversed_order: bool,
     pub top_metadata: bool,
 }
@@ -530,7 +530,7 @@ mod tests {
     #[test]
     fn test_gas_price_query_from_str() {
         // Test with gwei
-        let query = GasPriceQuery::from_str("ge10gwei").unwrap();
+        let query = PriceQuery::from_str("ge10gwei").unwrap();
         assert!(
             matches!(query.operator, DiffOperator::GreaterOrEq),
             "Should parse GreaterOrEq operator"
@@ -542,7 +542,7 @@ mod tests {
         );
 
         // Test with ether (unusual but should work)
-        let query = GasPriceQuery::from_str("le0.000001ether").unwrap();
+        let query = PriceQuery::from_str("le0.000001ether").unwrap();
         assert!(
             matches!(query.operator, DiffOperator::LessOrEq),
             "Should parse LessOrEq operator"
@@ -580,7 +580,7 @@ mod tests {
         );
 
         // Now test LessOrEq
-        let gas_price = GasPriceQuery {
+        let gas_price = PriceQuery {
             gas_price: U256::from(10_000_000_000_u128), // 10 gwei
             operator: DiffOperator::LessOrEq,
         };
