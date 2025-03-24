@@ -436,26 +436,26 @@ impl FromFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     // Add existing tests here if any
-    
+
     #[test]
     fn test_parse_query() {
         // Test with wei values
         let (op, value) = parse_query("ge1000000000").unwrap();
         assert!(matches!(op, DiffOperator::GreaterOrEq));
         assert_eq!(value, U256::from(1000000000));
-        
+
         // Test with gwei values
         let (op, value) = parse_query("ge5gwei").unwrap();
         assert!(matches!(op, DiffOperator::GreaterOrEq));
         assert_eq!(value, U256::from(5_000_000_000_u128));
-        
+
         // Test with ether values
         let (op, value) = parse_query("le0.01ether").unwrap();
         assert!(matches!(op, DiffOperator::LessOrEq));
         assert_eq!(value, U256::from(10).pow(U256::from(16)));
-        
+
         // Test invalid operator
         let result = parse_query("xx5gwei");
         assert!(result.is_err());

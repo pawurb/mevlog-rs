@@ -124,19 +124,19 @@ mod tests {
     fn test_parse_eth_value() {
         // Test wei values
         assert_eq!(parse_eth_value("100").unwrap(), U256::from(100));
-        
+
         // Test gwei values
         assert_eq!(
-            parse_eth_value("5gwei").unwrap(), 
+            parse_eth_value("5gwei").unwrap(),
             U256::from(5) * U256::from(10).pow(U256::from(9))
         );
-        
+
         // Test ether values
         assert_eq!(
             parse_eth_value("1ether").unwrap(),
             U256::from(10).pow(U256::from(18))
         );
-        
+
         assert_eq!(
             parse_eth_value("0.5ether").unwrap(),
             U256::from(10).pow(U256::from(18)) / U256::from(2)
@@ -147,16 +147,10 @@ mod tests {
     fn test_parse_value_with_operator() {
         let (op, value) = parse_value_with_operator("ge5gwei").unwrap();
         assert_eq!(op, "ge");
-        assert_eq!(
-            value, 
-            U256::from(5) * U256::from(10).pow(U256::from(9))
-        );
-        
+        assert_eq!(value, U256::from(5) * U256::from(10).pow(U256::from(9)));
+
         let (op, value) = parse_value_with_operator("le0.01ether").unwrap();
         assert_eq!(op, "le");
-        assert_eq!(
-            value,
-            U256::from(10).pow(U256::from(18)) / U256::from(100)
-        );
+        assert_eq!(value, U256::from(10).pow(U256::from(18)) / U256::from(100));
     }
 }
