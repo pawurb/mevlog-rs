@@ -66,9 +66,17 @@ impl TxArgs {
             _ => (None, None),
         };
 
+        let tx_indexes = get_matching_indexes(tx_index, self.before, self.after);
+
+        let max_index = tx_indexes
+            .clone()
+            .into_iter()
+            .max()
+            .expect("tx_indexes must have at least one element");
+
         let position_range = Some(PositionRange {
             from: 0,
-            to: tx_index,
+            to: max_index,
         });
 
         let mut mev_block = MEVBlock::new(
@@ -80,8 +88,6 @@ impl TxArgs {
             self.top_metadata,
         )
         .await?;
-
-        let tx_indexes = get_matching_indexes(tx_index, self.before, self.after);
 
         let txs_filter = TxsFilter {
             tx_indexes: Some(tx_indexes),
