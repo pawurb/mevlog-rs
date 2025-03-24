@@ -86,55 +86,27 @@ pub struct SharedFilterOpts {
 }
 
 #[derive(Debug)]
-pub struct GasPriceQuery {
-    pub gas_price: U256,
+pub struct PriceQuery {
+    pub value: U256,
     pub operator: DiffOperator,
 }
 
-impl GasPriceQuery {
-    pub fn matches(&self, gas_price: U256) -> bool {
+impl PriceQuery {
+    pub fn matches(&self, value: U256) -> bool {
         match self.operator {
-            DiffOperator::GreaterOrEq => gas_price >= self.gas_price,
-            DiffOperator::LessOrEq => gas_price <= self.gas_price,
+            DiffOperator::GreaterOrEq => value >= self.value,
+            DiffOperator::LessOrEq => value <= self.value,
         }
     }
 }
 
-impl FromStr for GasPriceQuery {
+impl FromStr for PriceQuery {
     type Err = eyre::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (operator, gas_price) = parse_query(s)?;
+        let (operator, value) = parse_query(s)?;
 
-        Ok(GasPriceQuery {
-            operator,
-            gas_price,
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct TxCostQuery {
-    pub diff: U256,
-    pub operator: DiffOperator,
-}
-
-impl TxCostQuery {
-    pub fn matches(&self, diff: U256) -> bool {
-        match self.operator {
-            DiffOperator::GreaterOrEq => diff >= self.diff,
-            DiffOperator::LessOrEq => diff <= self.diff,
-        }
-    }
-}
-
-impl FromStr for TxCostQuery {
-    type Err = eyre::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (operator, diff) = parse_query(s)?;
-
-        Ok(TxCostQuery { operator, diff })
+        Ok(PriceQuery { operator, value })
     }
 }
 
@@ -181,10 +153,10 @@ pub struct TxsFilter {
     pub events: Vec<EventQuery>,
     pub not_events: Vec<EventQuery>,
     pub match_method: Option<SignatureQuery>,
-    pub tx_cost: Option<TxCostQuery>,
-    pub real_tx_cost: Option<TxCostQuery>,
-    pub gas_price: Option<GasPriceQuery>,
-    pub real_gas_price: Option<GasPriceQuery>,
+    pub tx_cost: Option<PriceQuery>,
+    pub real_tx_cost: Option<PriceQuery>,
+    pub gas_price: Option<PriceQuery>,
+    pub real_gas_price: Option<PriceQuery>,
     pub reversed_order: bool,
     pub top_metadata: bool,
 }
