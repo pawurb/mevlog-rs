@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::misc::{
-    args_parsing::PositionRange, eth_unit_parser::parse_value_with_operator, shared_init::TraceMode,
+    args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::TraceMode,
 };
 
 use super::mev_transaction::MEVTransaction;
@@ -143,12 +143,20 @@ impl FromStr for TxCostQuery {
 #[allow(clippy::result_large_err)]
 fn parse_query(s: &str) -> Result<(DiffOperator, U256)> {
     let trimmed = s.trim();
-    if trimmed.len() < 2 {
+    if trimmed.len() < 3 {
+        // Need at least "ge1"
         eyre::bail!("Invalid value query: '{}'", s);
     }
 
-    let (op_str, value) = parse_value_with_operator(trimmed)?;
-    let operator = DiffOperator::from_str(&op_str).map_err(|e| eyre!("Parse error: {:?}", e))?;
+    // Extract the operator part (first 2 chars)
+    let op_str = &trimmed[0..2];
+    let value_str = &trimmed[2..];
+
+    // Reuse the existing DiffOperator::from_str implementation
+    let operator = DiffOperator::from_str(op_str).map_err(|e| eyre!("Parse error: {}", e))?;
+
+    // Parse the value part with Ethereum unit support
+    let value = parse_eth_value(value_str)?;
 
     Ok((operator, value))
 }

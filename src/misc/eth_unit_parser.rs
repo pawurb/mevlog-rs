@@ -89,25 +89,6 @@ pub fn parse_eth_value(input: &str) -> Result<U256> {
     }
 }
 
-/// Parses a value with an operator prefix like "ge5gwei" or "le0.01ether"
-#[allow(clippy::result_large_err)]
-pub fn parse_value_with_operator(input: &str) -> Result<(String, U256)> {
-    if input.len() < 4 {
-        // At minimum need "ge1" + something
-        return Err(eyre!("Input too short: {}", input));
-    }
-
-    let operator = &input[0..2];
-    if operator != "ge" && operator != "le" {
-        return Err(eyre!("Invalid operator: must start with 'ge' or 'le'"));
-    }
-
-    let value_str = &input[2..];
-    let value = parse_eth_value(value_str)?;
-
-    Ok((operator.to_string(), value))
-}
-
 /// Create a U256 from an f64 value, potentially losing precision
 pub fn u256_from_f64_lossy(value: f64) -> U256 {
     let value_string = format!("{:.0}", value);
@@ -141,16 +122,5 @@ mod tests {
             parse_eth_value("0.5ether").unwrap(),
             U256::from(10).pow(U256::from(18)) / U256::from(2)
         );
-    }
-
-    #[test]
-    fn test_parse_value_with_operator() {
-        let (op, value) = parse_value_with_operator("ge5gwei").unwrap();
-        assert_eq!(op, "ge");
-        assert_eq!(value, U256::from(5) * U256::from(10).pow(U256::from(9)));
-
-        let (op, value) = parse_value_with_operator("le0.01ether").unwrap();
-        assert_eq!(op, "le");
-        assert_eq!(value, U256::from(10).pow(U256::from(18)) / U256::from(100));
     }
 }
