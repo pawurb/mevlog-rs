@@ -115,31 +115,6 @@ impl FromStr for PriceQuery {
     }
 }
 
-#[derive(Debug)]
-pub struct TxCostQuery {
-    pub diff: U256,
-    pub operator: DiffOperator,
-}
-
-impl TxCostQuery {
-    pub fn matches(&self, diff: U256) -> bool {
-        match self.operator {
-            DiffOperator::GreaterOrEq => diff >= self.diff,
-            DiffOperator::LessOrEq => diff <= self.diff,
-        }
-    }
-}
-
-impl FromStr for TxCostQuery {
-    type Err = eyre::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (operator, diff) = parse_query(s)?;
-
-        Ok(TxCostQuery { operator, diff })
-    }
-}
-
 #[allow(clippy::result_large_err)]
 fn parse_query(s: &str) -> Result<(DiffOperator, U256)> {
     let trimmed = s.trim();
@@ -191,8 +166,8 @@ pub struct TxsFilter {
     pub events: Vec<EventQuery>,
     pub not_events: Vec<EventQuery>,
     pub match_method: Option<SignatureQuery>,
-    pub tx_cost: Option<TxCostQuery>,
-    pub real_tx_cost: Option<TxCostQuery>,
+    pub tx_cost: Option<PriceQuery>,
+    pub real_tx_cost: Option<PriceQuery>,
     pub gas_price: Option<PriceQuery>,
     pub real_gas_price: Option<PriceQuery>,
     pub reversed_order: bool,
@@ -489,45 +464,6 @@ mod tests {
     }
 
     #[test]
-    fn test_tx_cost_query_from_str() {
-        // Test with gwei
-        let query = TxCostQuery::from_str("ge5gwei").unwrap();
-        assert!(
-            matches!(query.operator, DiffOperator::GreaterOrEq),
-            "Should parse GreaterOrEq operator"
-        );
-        assert_eq!(
-            query.diff,
-            U256::from(5_000_000_000_u128),
-            "Should parse 5 gwei correctly"
-        );
-
-        // Test with ether
-        let query = TxCostQuery::from_str("le0.1ether").unwrap();
-        assert!(
-            matches!(query.operator, DiffOperator::LessOrEq),
-            "Should parse LessOrEq operator"
-        );
-        assert_eq!(
-            query.diff,
-            U256::from(10).pow(U256::from(17)),
-            "Should parse 0.1 ether correctly"
-        );
-
-        // Test with raw wei
-        let query = TxCostQuery::from_str("ge1000000").unwrap();
-        assert!(
-            matches!(query.operator, DiffOperator::GreaterOrEq),
-            "Should parse GreaterOrEq operator"
-        );
-        assert_eq!(
-            query.diff,
-            U256::from(1000000),
-            "Should parse raw wei value correctly"
-        );
-    }
-
-    #[test]
     fn test_gas_price_query_from_str() {
         // Test with gwei
         let query = PriceQuery::from_str("ge10gwei").unwrap();
@@ -556,8 +492,8 @@ mod tests {
 
     #[test]
     fn test_matches_functionality() {
-        let tx_cost = TxCostQuery {
-            diff: U256::from(5_000_000_000_u128), // 5 gwei
+        let tx_cost = PriceQuery {
+            gas_price: U256::from(5_000_000_000_u128), // 5 gwei
             operator: DiffOperator::GreaterOrEq,
         };
 
