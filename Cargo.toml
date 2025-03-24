@@ -9,7 +9,7 @@ license = "MIT"
 categories = ["command-line-utilities"]
 
 [dependencies]
-tokio = "1.44.0"
+tokio = { version = "1.44.0" }
 alloy = { version = "0.12.4", features = ["full", "node-bindings"] }
 revm-inspectors = "0.16.0"
 eyre = "0.6.12"

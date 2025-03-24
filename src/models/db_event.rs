@@ -135,7 +135,6 @@ pub mod test {
             signature: "Transfer(address,address,uint256)".to_string(),
         };
 
-        dbg!(&new_event);
         new_event.save(&conn).await?;
 
         let exists = DBEvent::exists(&new_event.signature, &conn).await?;

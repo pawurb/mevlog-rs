@@ -35,4 +35,4 @@ jobs:
           cargo clippy --all --all-features -- -D warnings
       - name: Run tests 'core'
         run: | 
-          cargo test
+          cargo test --lib -- --nocapture
