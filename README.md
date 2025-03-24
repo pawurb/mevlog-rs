@@ -5,6 +5,8 @@
 
 Rust-based CLI tool for querying and monitoring Ethereum blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
+There's also [a beta web version](https://mevlog.rs/) available.
+
 `mevlog` allows you to analyze transaction details via a simple CLI interface. It currently offers the following features:
 
 - regexp search by emmited event names 
