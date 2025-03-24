@@ -78,15 +78,15 @@ fn parse_decimal_value(value_str: &str, unit: EthUnit) -> Result<U256> {
         return Err(eyre!("Invalid decimal format in '{}'", value_str));
     }
 
-    let whole_part: U256 = if parts[0].is_empty() { 
-        U256::from(0) 
+    let whole_part: U256 = if parts[0].is_empty() {
+        U256::from(0)
     } else {
         parts[0].parse()?
     };
-    
+
     // Calculate the decimal part with proper scaling
     let decimal_str = parts[1];
-    
+
     if !decimal_str.is_empty() {
         // Prevent overflows by limiting decimal precision
         let max_decimal_len = 77; // U256 can represent approximately 77 decimal digits
@@ -95,19 +95,19 @@ fn parse_decimal_value(value_str: &str, unit: EthUnit) -> Result<U256> {
         } else {
             decimal_str
         };
-        
+
         let decimal_part: U256 = limited_decimal.parse()?;
-        
+
         // Calculate decimal scaling factor
         let decimal_scale = U256::from(10).pow(U256::from(limited_decimal.len()));
-        
+
         // Apply unit multiplier to whole and decimal parts separately
         let whole_in_wei = whole_part * unit.multiplier();
         let decimal_in_wei = decimal_part * unit.multiplier() / decimal_scale;
-        
+
         return Ok(whole_in_wei + decimal_in_wei);
     }
-    
+
     // Just whole part
     Ok(whole_part * unit.multiplier())
 }
@@ -128,25 +128,25 @@ mod tests {
     fn test_parse_eth_value() {
         // Test wei values
         assert_eq!(
-            parse_eth_value("100").unwrap(), 
-            U256::from(100), 
+            parse_eth_value("100").unwrap(),
+            U256::from(100),
             "Should parse raw integer as wei"
         );
-        
+
         // Test gwei values
         assert_eq!(
-            parse_eth_value("5gwei").unwrap(), 
+            parse_eth_value("5gwei").unwrap(),
             U256::from(5) * U256::from(10).pow(U256::from(9)),
             "Should convert 5 gwei to wei correctly"
         );
-        
+
         // Test ether values
         assert_eq!(
             parse_eth_value("1ether").unwrap(),
             U256::from(10).pow(U256::from(18)),
             "Should convert 1 ether to wei correctly"
         );
-        
+
         assert_eq!(
             parse_eth_value("0.5ether").unwrap(),
             U256::from(10).pow(U256::from(18)) / U256::from(2),
