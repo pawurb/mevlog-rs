@@ -25,7 +25,7 @@ use crate::misc::revm_tracing::{
 use crate::misc::rpc_tracing::{rpc_touching_accounts, rpc_tx_calls};
 use crate::misc::shared_init::{ConnOpts, TraceMode};
 use crate::misc::symbol_utils::SymbolLookupWorker;
-use crate::misc::utils::{ToU64, ETH_TRANSFER, SEPARATOR, SEPARATORER, UNKNOWN};
+use crate::misc::utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN};
 use crate::models::txs_filter::TxsFilter;
 use crate::GenericProvider;
 
@@ -600,7 +600,6 @@ impl fmt::Display for MEVBlock {
         }
 
         if !self.top_metadata {
-            writeln!(f, "{}", SEPARATOR)?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
             writeln!(f, "{}", SEPARATORER)?;
         }

@@ -157,9 +157,8 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
-        writeln!(f, "{}", SEPARATOR)?;
-
         if self.top_metadata {
+            writeln!(f, "{}", SEPARATOR)?;
             writeln!(
                 f,
                 "[{}] {}",
@@ -195,6 +194,10 @@ impl fmt::Display for MEVTransaction {
         writeln!(f)?;
 
         if let Some(receipt) = &self.receipt_data {
+            if !receipt.success {
+                writeln!(f, "{}", "Tx reverted!".red().bold())?;
+            }
+
             writeln!(
                 f,
                 "{:width$} {:.2} GWEI",
@@ -273,16 +276,18 @@ impl fmt::Display for MEVTransaction {
         }
 
         if self.top_metadata {
-            writeln!(f)?;
+            if !&self.log_groups.is_empty() {
+                writeln!(f)?;
+            }
+
             for log in &self.log_groups {
                 write!(f, "{}", log)?;
             }
         }
 
-        // if self.top_metadata {
-        //     write!(f, "{}", SEPARATOR)?;
-        // } else {
-        // }
+        if !self.top_metadata {
+            writeln!(f, "{}", SEPARATOR)?;
+        }
 
         Ok(())
     }
