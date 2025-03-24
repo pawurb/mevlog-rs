@@ -36,7 +36,7 @@ impl EthUnit {
 #[allow(clippy::result_large_err)]
 pub fn parse_eth_value(input: &str) -> Result<U256> {
     // Check if the input is a pure number
-    if input.chars().all(|c| c.is_digit(10) || c == '.') {
+    if input.chars().all(|c| c.is_ascii_digit() || c == '.') {
         // Parse as Wei by default
         return Ok(input.parse::<U256>()?);
     }
@@ -47,7 +47,7 @@ pub fn parse_eth_value(input: &str) -> Result<U256> {
     let mut seen_dot = false;
 
     for c in input.chars() {
-        if c.is_digit(10) {
+        if c.is_ascii_digit() {
             numeric_part.push(c);
         } else if c == '.' && !seen_dot {
             seen_dot = true;
