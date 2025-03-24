@@ -7,7 +7,9 @@ use std::{
     str::FromStr,
 };
 
-use crate::misc::{args_parsing::PositionRange, eth_unit_parser::parse_value_with_operator, shared_init::TraceMode};
+use crate::misc::{
+    args_parsing::PositionRange, eth_unit_parser::parse_value_with_operator, shared_init::TraceMode,
+};
 
 use super::mev_transaction::MEVTransaction;
 

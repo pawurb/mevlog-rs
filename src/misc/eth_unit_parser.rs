@@ -57,26 +57,29 @@ pub fn parse_eth_value(input: &str) -> Result<U256> {
     }
 
     if numeric_part.is_empty() || unit_part.is_empty() {
-        return Err(eyre!("Invalid format: expected '<number><unit>', got '{}'", input));
+        return Err(eyre!(
+            "Invalid format: expected '<number><unit>', got '{}'",
+            input
+        ));
     }
 
     let unit = EthUnit::from_str(&unit_part)?;
-    
+
     // Handle decimal values
     if seen_dot {
         let parts: Vec<&str> = numeric_part.split('.').collect();
         if parts.len() != 2 {
             return Err(eyre!("Invalid decimal format in '{}'", numeric_part));
         }
-        
+
         let whole_part = parts[0].parse::<f64>().unwrap_or(0.0);
         let decimal_part = format!("0.{}", parts[1]).parse::<f64>().unwrap_or(0.0);
         let value = whole_part + decimal_part;
-        
+
         // Convert to wei
         let multiplier = unit.multiplier();
         let value_wei = u256_from_f64_lossy(value) * multiplier;
-        
+
         Ok(value_wei)
     } else {
         // Integer value
@@ -87,23 +90,26 @@ pub fn parse_eth_value(input: &str) -> Result<U256> {
 
 /// Parses a value with an operator prefix like "ge5gwei" or "le0.01ether"
 pub fn parse_value_with_operator(input: &str) -> Result<(String, U256)> {
-    if input.len() < 4 {  // At minimum need "ge1" + something
+    if input.len() < 4 {
+        // At minimum need "ge1" + something
         return Err(eyre!("Input too short: {}", input));
     }
-    
+
     let operator = &input[0..2];
     if operator != "ge" && operator != "le" {
         return Err(eyre!("Invalid operator: must start with 'ge' or 'le'"));
     }
-    
+
     let value_str = &input[2..];
     let value = parse_eth_value(value_str)?;
-    
+
     Ok((operator.to_string(), value))
 }
 
 /// Create a U256 from an f64 value, potentially losing precision
 pub fn u256_from_f64_lossy(value: f64) -> U256 {
     let value_string = format!("{:.0}", value);
-    value_string.parse::<U256>().unwrap_or_else(|_| U256::from(value as u64))
+    value_string
+        .parse::<U256>()
+        .unwrap_or_else(|_| U256::from(value as u64))
 }
