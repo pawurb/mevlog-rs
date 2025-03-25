@@ -1,12 +1,13 @@
-use crate::misc::symbol_utils::SymbolLookupWorker;
+use std::fmt;
 
-use super::{db_event::DBEvent, mev_log_signature::MEVLogSignature};
 use alloy::rpc::types::Log as AlloyLog;
 use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes};
 use sqlx::SqlitePool;
-use std::fmt;
+
+use super::{db_event::DBEvent, mev_log_signature::MEVLogSignature};
+use crate::misc::symbol_utils::SymbolLookupWorker;
 
 #[derive(Debug)]
 pub struct MEVLog {

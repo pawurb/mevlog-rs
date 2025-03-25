@@ -2,7 +2,6 @@ mod cmd;
 use clap::{Parser, Subcommand, ValueEnum};
 #[cfg(feature = "dev")]
 use cmd::seed_db::SeedDBArgs;
-
 use cmd::{search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs};
 use eyre::Result;
 use mevlog::misc::utils::init_logs;

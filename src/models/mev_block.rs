@@ -1,37 +1,46 @@
-use alloy::network::TransactionResponse;
-use alloy::rpc::types::{Filter, TransactionRequest};
-use alloy::sol;
-use alloy::{eips::BlockNumberOrTag, providers::Provider, rpc::types::Block as AlloyBlock};
+use std::{collections::HashMap, fmt, sync::Arc};
+
+use alloy::{
+    eips::BlockNumberOrTag,
+    network::TransactionResponse,
+    providers::Provider,
+    rpc::types::{Block as AlloyBlock, Filter, TransactionRequest},
+    sol,
+};
 use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
-use revm::db::CacheDB;
-use revm::primitives::{address, Address, FixedBytes};
+use revm::{
+    db::CacheDB,
+    primitives::{address, Address, FixedBytes},
+};
 use sqlx::SqlitePool;
-use std::sync::Arc;
-use std::{collections::HashMap, fmt};
 use tokio::sync::Semaphore;
 use tracing::{debug, error};
 
-use crate::misc::args_parsing::PositionRange;
-use crate::misc::coinbase_bribe::{find_coinbase_transfer, TraceData};
-use crate::misc::db_actions::PROGRESS_CHARS;
-use crate::misc::ens_utils::ENSLookup;
-use crate::misc::revm_tracing::{
-    init_revm_db, revm_cache_path, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
-    RevmBlockContext,
+use super::{
+    mev_log::MEVLog,
+    mev_transaction::{MEVTransaction, ReceiptData},
+    txs_filter::{FromFilter, TxsFilter},
 };
-use crate::misc::rpc_tracing::{rpc_touching_accounts, rpc_tx_calls};
-use crate::misc::shared_init::{ConnOpts, TraceMode};
-use crate::misc::symbol_utils::SymbolLookupWorker;
-use crate::misc::utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN};
-use crate::models::txs_filter::TxsFilter;
-use crate::GenericProvider;
-
-use super::mev_log::MEVLog;
-use super::mev_transaction::{MEVTransaction, ReceiptData};
-use super::txs_filter::FromFilter;
+use crate::{
+    misc::{
+        args_parsing::PositionRange,
+        coinbase_bribe::{find_coinbase_transfer, TraceData},
+        db_actions::PROGRESS_CHARS,
+        ens_utils::ENSLookup,
+        revm_tracing::{
+            init_revm_db, revm_cache_path, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
+            RevmBlockContext,
+        },
+        rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
+        shared_init::{ConnOpts, TraceMode},
+        symbol_utils::SymbolLookupWorker,
+        utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
+    },
+    GenericProvider,
+};
 
 sol! {
     #[sol(rpc)]

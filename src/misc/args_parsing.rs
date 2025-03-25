@@ -162,9 +162,8 @@ impl FromStr for PositionRange {
 mod tests {
     use revm::primitives::Address;
 
-    use crate::models::txs_filter::{EventQuery, SignatureQuery};
-
     use super::*;
+    use crate::models::txs_filter::{EventQuery, SignatureQuery};
 
     #[test]
     fn test_single_block() {

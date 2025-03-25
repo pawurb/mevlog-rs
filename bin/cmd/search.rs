@@ -1,11 +1,17 @@
 use alloy::providers::Provider;
 use eyre::Result;
-use mevlog::misc::args_parsing::BlocksRange;
-use mevlog::misc::ens_utils::ENSLookup;
-use mevlog::misc::shared_init::{init_deps, ConnOpts};
-use mevlog::misc::utils::SEPARATORER;
-use mevlog::models::mev_block::process_block;
-use mevlog::models::txs_filter::{SharedFilterOpts, TxsFilter};
+use mevlog::{
+    misc::{
+        args_parsing::BlocksRange,
+        ens_utils::ENSLookup,
+        shared_init::{init_deps, ConnOpts},
+        utils::SEPARATORER,
+    },
+    models::{
+        mev_block::process_block,
+        txs_filter::{SharedFilterOpts, TxsFilter},
+    },
+};
 
 #[derive(Debug, clap::Parser)]
 pub struct SearchArgs {

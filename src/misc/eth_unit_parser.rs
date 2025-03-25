@@ -1,6 +1,7 @@
+use std::str::FromStr;
+
 use eyre::{bail, Result};
 use revm::primitives::U256;
-use std::str::FromStr;
 
 #[derive(Debug, Clone, Copy)]
 pub enum EthUnit {

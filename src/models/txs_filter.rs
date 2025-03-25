@@ -1,17 +1,17 @@
-use eyre::{bail, eyre, Result};
-use regex::Regex;
-use revm::primitives::{Address, U256};
 use std::{
     collections::HashSet,
     fmt::{self, Display},
     str::FromStr,
 };
 
+use eyre::{bail, eyre, Result};
+use regex::Regex;
+use revm::primitives::{Address, U256};
+
+use super::mev_transaction::MEVTransaction;
 use crate::misc::{
     args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::TraceMode,
 };
-
-use super::mev_transaction::MEVTransaction;
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct SharedFilterOpts {
@@ -416,9 +416,8 @@ impl FromFilter {
 
 #[cfg(test)]
 mod tests {
-    use crate::misc::utils::GWEI_U128;
-
     use super::*;
+    use crate::misc::utils::GWEI_U128;
 
     #[test]
     fn test_gas_price_query_from_str() {

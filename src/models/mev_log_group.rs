@@ -1,10 +1,10 @@
-use colored::Colorize;
-use revm::primitives::Address;
 use std::fmt;
 
-use crate::misc::utils::ETHERSCAN_URL;
+use colored::Colorize;
+use revm::primitives::Address;
 
 use super::mev_log::MEVLog;
+use crate::misc::utils::ETHERSCAN_URL;
 
 #[derive(Debug)]
 pub struct MEVLogGroup {

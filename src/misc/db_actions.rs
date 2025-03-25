@@ -1,12 +1,16 @@
-use crate::misc::database::default_db_path;
+use std::{
+    cmp::min,
+    fs::{self, File},
+    io::{Read, Write},
+};
+
 use eyre::{eyre, OptionExt, Result};
 use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
-use std::cmp::min;
-use std::fs::{self, File};
-use std::io::{Read, Write};
+
+use crate::misc::database::default_db_path;
 
 const DB_FILE_URL: &str = "https://d39my35jed0oxi.cloudfront.net/signatures-sqlite-v3.db.gz";
 pub const PROGRESS_CHARS: &str = "█▓▒░─";

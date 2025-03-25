@@ -11,14 +11,13 @@ use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
-use crate::{misc::db_actions::download_db_file, GenericProvider};
-
 use super::{
     database::sqlite_conn,
     db_actions::db_file_exists,
     ens_utils::start_ens_lookup_worker,
     symbol_utils::{start_symbols_lookup_worker, SymbolLookupWorker},
 };
+use crate::{misc::db_actions::download_db_file, GenericProvider};
 
 pub enum ProviderType {
     HTTP,

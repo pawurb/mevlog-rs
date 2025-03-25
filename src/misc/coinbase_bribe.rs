@@ -1,5 +1,7 @@
-use alloy::rpc::types::trace::parity::TransactionTrace;
-use alloy::rpc::types::trace::{geth::CallFrame, parity::Action};
+use alloy::rpc::types::trace::{
+    geth::CallFrame,
+    parity::{Action, TransactionTrace},
+};
 use revm::primitives::{Address, U256};
 
 pub struct TraceData {

@@ -5,9 +5,8 @@ use eyre::Result;
 use revm::primitives::Address;
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use crate::{models::mev_log_signature::MEVLogSignatureType, GenericProvider};
-
 use super::shared_init::{init_provider, ConnOpts};
+use crate::{models::mev_log_signature::MEVLogSignatureType, GenericProvider};
 
 sol! {
   #[sol(rpc)]

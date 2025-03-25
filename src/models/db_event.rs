@@ -73,11 +73,11 @@ impl DBEvent {
 pub mod test {
     use std::fs;
 
-    use crate::misc::database::{init_sqlite_db, sqlite_conn};
-
-    use super::*;
     use sqlx::sqlite::SqlitePool;
     use uuid::Uuid;
+
+    use super::*;
+    use crate::misc::database::{init_sqlite_db, sqlite_conn};
 
     pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
         let uuid = Uuid::new_v4();

@@ -1,12 +1,12 @@
 use std::{borrow::Cow, path::PathBuf, sync::Arc};
 
-use crate::GenericProvider;
 use alloy::{primitives::Keccak256, sol};
 use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use super::shared_init::{init_provider, ConnOpts};
+use crate::GenericProvider;
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 

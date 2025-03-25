@@ -1,12 +1,13 @@
-use std::collections::HashSet;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
-use alloy::providers::ext::DebugApi;
-use alloy::rpc::types::trace::geth::{
-    CallFrame, DiffMode, GethDebugBuiltInTracerType, GethDebugTracerType, GethTrace,
-    PreStateConfig, PreStateFrame,
+use alloy::{
+    primitives::TxHash,
+    providers::ext::DebugApi,
+    rpc::types::trace::geth::{
+        CallFrame, DiffMode, GethDebugBuiltInTracerType, GethDebugTracerType,
+        GethDebugTracingOptions, GethTrace, PreStateConfig, PreStateFrame,
+    },
 };
-use alloy::{primitives::TxHash, rpc::types::trace::geth::GethDebugTracingOptions};
 use eyre::Result;
 use revm::primitives::Address;
 

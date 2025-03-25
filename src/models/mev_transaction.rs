@@ -1,21 +1,26 @@
+use std::{
+    fmt,
+    ops::{Add, Div},
+    str::FromStr,
+    sync::Arc,
+};
+
 use alloy::rpc::types::TransactionRequest;
 use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::{ColoredString, Colorize};
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes, TxKind, U256};
 use sqlx::SqlitePool;
-use std::ops::{Add, Div};
-use std::str::FromStr;
-use std::{fmt, sync::Arc};
-
-use crate::misc::ens_utils::ENSLookup;
-use crate::misc::utils::{
-    wei_to_eth, ETHERSCAN_URL, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN,
-};
-use crate::GenericProvider;
 
 use super::{
     db_method::DBMethod, mev_address::MEVAddress, mev_log::MEVLog, mev_log_group::MEVLogGroup,
+};
+use crate::{
+    misc::{
+        ens_utils::ENSLookup,
+        utils::{wei_to_eth, ETHERSCAN_URL, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
+    },
+    GenericProvider,
 };
 
 const LABEL_WIDTH: usize = 18;

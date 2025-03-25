@@ -1,10 +1,8 @@
-use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tracing::debug;
 
 use alloy::{
     consensus::BlockHeader,
@@ -29,10 +27,11 @@ use revm::{
     },
     Database, Evm, GetInspector,
 };
-
-use crate::misc::shared_init::TraceMode;
+use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
+use tracing::debug;
 
 use super::shared_init::ConnOpts;
+use crate::misc::shared_init::TraceMode;
 
 pub struct RevmUtils {
     pub anvil: AnvilInstance,

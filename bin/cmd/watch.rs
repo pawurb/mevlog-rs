@@ -2,11 +2,17 @@ use alloy::providers::Provider;
 use clap::Parser;
 use eyre::Result;
 use futures_util::StreamExt;
-use mevlog::misc::ens_utils::ENSLookup;
-use mevlog::misc::shared_init::{init_deps, ConnOpts, ProviderType};
-use mevlog::misc::utils::SEPARATORER;
-use mevlog::models::mev_block::process_block;
-use mevlog::models::txs_filter::{SharedFilterOpts, TxsFilter};
+use mevlog::{
+    misc::{
+        ens_utils::ENSLookup,
+        shared_init::{init_deps, ConnOpts, ProviderType},
+        utils::SEPARATORER,
+    },
+    models::{
+        mev_block::process_block,
+        txs_filter::{SharedFilterOpts, TxsFilter},
+    },
+};
 
 #[derive(Debug, Parser)]
 pub struct WatchArgs {

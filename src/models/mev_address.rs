@@ -1,7 +1,8 @@
+use std::{fmt, sync::Arc};
+
 use colored::Colorize;
 use eyre::Result;
 use revm::primitives::Address;
-use std::{fmt, sync::Arc};
 
 use crate::{
     misc::ens_utils::{ens_reverse_lookup_cached_async, ens_reverse_lookup_cached_sync, ENSLookup},

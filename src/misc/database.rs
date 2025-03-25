@@ -1,11 +1,10 @@
 use std::path::{Path, PathBuf};
 
+use eyre::Result;
 use sqlx::{
     migrate::{MigrateDatabase, Migrator},
     Sqlite, SqlitePool,
 };
-
-use eyre::Result;
 use tracing::info;
 
 use super::shared_init::config_path;
