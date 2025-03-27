@@ -16,9 +16,9 @@ async fn main() -> Result<()> {
     let addr = address!("0xae2fc483527b8ef99eb5d9b44875f005ba1fae13");
     let name = reverse_address(&addr);
     let node = namehash(&name);
-    dbg!(node);
+    println!("node: {}", node);
 
     let name = ens_reverse_lookup_cached_sync(addr, &provider).await?;
-    dbg!(name);
+    println!("name: {:?}", name);
     Ok(())
 }

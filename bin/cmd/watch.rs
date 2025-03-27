@@ -48,6 +48,7 @@ impl WatchArgs {
             &shared_deps.symbols_lookup_worker,
             &mev_filter,
             &self.conn_opts,
+            &shared_deps.chain,
         )
         .await?;
 
@@ -64,6 +65,7 @@ impl WatchArgs {
                         &shared_deps.symbols_lookup_worker,
                         &mev_filter,
                         &self.conn_opts,
+                        &shared_deps.chain,
                     )
                     .await?;
                 }
@@ -87,6 +89,7 @@ impl WatchArgs {
                         &shared_deps.symbols_lookup_worker,
                         &mev_filter,
                         &self.conn_opts,
+                        &shared_deps.chain,
                     )
                     .await?;
                 }
