@@ -4,4 +4,6 @@ cache/
 out/
 backup.sh
 deploy.sh
+.cryo/
+*.csv
 

@@ -4,17 +4,22 @@ use colored::Colorize;
 use revm::primitives::Address;
 
 use super::mev_log::MEVLog;
-use crate::misc::utils::ETHERSCAN_URL;
+use crate::misc::shared_init::EVMChain;
 
 #[derive(Debug)]
 pub struct MEVLogGroup {
     source: Address,
     pub logs: Vec<MEVLog>,
+    pub chain: EVMChain,
 }
 
 impl MEVLogGroup {
-    pub fn new(source: Address, logs: Vec<MEVLog>) -> Self {
-        Self { source, logs }
+    pub fn new(source: Address, logs: Vec<MEVLog>, chain: EVMChain) -> Self {
+        Self {
+            source,
+            logs,
+            chain,
+        }
     }
 
     pub fn source(&self) -> Address {
@@ -31,7 +36,7 @@ impl fmt::Display for MEVLogGroup {
         writeln!(
             f,
             "  {}",
-            format!("{}/address/{}", ETHERSCAN_URL, self.source).green()
+            format!("{}/address/{}", self.chain.etherscan_url(), self.source).green()
         )?;
         for log in &self.logs {
             writeln!(f, "    {log}")?;

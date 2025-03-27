@@ -5,7 +5,6 @@ use alloy::uint;
 use revm::primitives::U256;
 use tracing_subscriber::fmt::time::OffsetTime;
 
-pub const ETHERSCAN_URL: &str = "https://etherscan.io";
 pub const SEPARATORER: &str = "===============================================================================================";
 pub const SEPARATOR: &str = "-----------------------------------------------------------------------------------------------";
 

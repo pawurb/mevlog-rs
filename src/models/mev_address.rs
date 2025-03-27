@@ -26,6 +26,7 @@ impl MEVAddress {
                 ens_reverse_lookup_cached_async(address, lookup_worker).await?
             }
             ENSLookup::Sync => ens_reverse_lookup_cached_sync(address, provider).await?,
+            ENSLookup::Disabled => None,
         };
         Ok(Self { address, ens_name })
     }

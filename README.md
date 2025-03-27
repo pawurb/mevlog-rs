@@ -148,7 +148,7 @@ This mode uses the `debug_traceTransaction` method. It's usually not available o
 
 ### `--trace revm` 
 
-This mode leverages Revm tracing by downloading all the relevant storage slots and running simulations locally. If you want to trace a transaction at position 10, Revm must first simulate all the previous transactions from this block. It can be slow and cause throttling from public endpoints. This mode works only on HTTP endpoints. Websockets are currently not supported.
+This mode leverages Revm tracing by downloading all the relevant storage slots and running simulations locally. If you want to trace a transaction at position 10, Revm must first simulate all the previous transactions from this block. It can be slow and cause throttling from public endpoints. 
 
 Subsequent `revm` simulations for the same block and transaction range use cached data and should be significantly faster.
 

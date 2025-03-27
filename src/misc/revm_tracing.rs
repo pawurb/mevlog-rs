@@ -30,7 +30,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
 
-use super::shared_init::ConnOpts;
+use super::shared_init::{ConnOpts, EVMChain};
 use crate::misc::shared_init::TraceMode;
 
 pub struct RevmUtils {
@@ -38,7 +38,11 @@ pub struct RevmUtils {
     pub cache_db: CacheDB<SharedBackend>,
 }
 
-pub async fn init_revm_db(block_number: u64, conn_opts: &ConnOpts) -> Result<Option<RevmUtils>> {
+pub async fn init_revm_db(
+    block_number: u64,
+    conn_opts: &ConnOpts,
+    chain: &EVMChain,
+) -> Result<Option<RevmUtils>> {
     match conn_opts.trace {
         Some(TraceMode::Revm) => {}
         _ => return Ok(None),
@@ -64,10 +68,10 @@ pub async fn init_revm_db(block_number: u64, conn_opts: &ConnOpts) -> Result<Opt
         .expect("block not found");
 
     let meta = BlockchainDbMeta::default()
-        .with_chain_id(1)
+        .with_chain_id(chain.chain_id())
         .with_block(&block.inner);
 
-    let cache_path = revm_cache_path(block_number)?;
+    let cache_path = revm_cache_path(block_number, chain)?;
 
     let db = BlockchainDb::new(meta, Some(cache_path));
     let shared = SharedBackend::spawn_backend(
@@ -81,8 +85,11 @@ pub async fn init_revm_db(block_number: u64, conn_opts: &ConnOpts) -> Result<Opt
     Ok(Some(RevmUtils { anvil, cache_db }))
 }
 
-pub fn revm_cache_path(block_number: u64) -> Result<PathBuf> {
-    let foundry_revm_cache = home::home_dir().unwrap().join(".foundry/cache/rpc/mainnet");
+pub fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {
+    // TODO handle dir cache path, right now it's failing
+    let foundry_revm_cache = home::home_dir()
+        .unwrap()
+        .join(format!(".foundry/cache/rpc/{}", chain.name()));
 
     if Path::new(&foundry_revm_cache).exists() {
         Ok(foundry_revm_cache.join(format!("{block_number}")))

@@ -1,12 +1,12 @@
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use alloy::{
-    providers::{ProviderBuilder, WsConnect},
+    providers::{Provider, ProviderBuilder},
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
 use eyre::Result;
-use revm::primitives::Address;
+use revm::primitives::{address, Address};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
@@ -19,9 +19,74 @@ use super::{
 };
 use crate::{misc::db_actions::download_db_file, GenericProvider};
 
-pub enum ProviderType {
-    HTTP,
-    WS,
+#[derive(Debug, PartialEq, Clone)]
+pub enum EVMChainType {
+    Mainnet,
+    Base,
+}
+
+impl EVMChainType {}
+
+#[derive(Debug, Clone)]
+pub struct EVMChain {
+    pub chain_type: EVMChainType,
+    pub rpc_url: String,
+}
+
+impl EVMChainType {
+    pub fn chain_id(&self) -> u64 {
+        match self {
+            EVMChainType::Mainnet => 1,
+            EVMChainType::Base => 8453,
+        }
+    }
+}
+
+impl EVMChain {
+    pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
+        if chain_id == EVMChainType::Mainnet.chain_id() {
+            Ok(Self {
+                rpc_url,
+                chain_type: EVMChainType::Mainnet,
+            })
+        } else if chain_id == EVMChainType::Base.chain_id() {
+            Ok(Self {
+                rpc_url,
+                chain_type: EVMChainType::Base,
+            })
+        } else {
+            eyre::bail!("Invalid chain id {}", chain_id)
+        }
+    }
+
+    pub fn chain_id(&self) -> u64 {
+        self.chain_type.chain_id()
+    }
+
+    pub fn name(&self) -> &str {
+        match self.chain_type {
+            EVMChainType::Mainnet => "ethereum",
+            EVMChainType::Base => "base",
+        }
+    }
+
+    pub fn price_oracle(&self) -> Address {
+        match self.chain_type {
+            EVMChainType::Mainnet => address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"),
+            EVMChainType::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
+        }
+    }
+
+    pub fn etherscan_url(&self) -> &str {
+        match self.chain_type {
+            EVMChainType::Mainnet => "https://etherscan.io",
+            EVMChainType::Base => "https://basescan.org",
+        }
+    }
+
+    pub fn is_optimism(&self) -> bool {
+        self.chain_type == EVMChainType::Base
+    }
 }
 
 pub struct SharedDeps {
@@ -29,13 +94,13 @@ pub struct SharedDeps {
     pub ens_lookup_worker: UnboundedSender<Address>,
     pub symbols_lookup_worker: SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
-    pub provider_type: ProviderType,
+    pub chain: EVMChain,
 }
 
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
-    if conn_opts.rpc_url.is_none() && conn_opts.ws_url.is_none() {
+    if conn_opts.rpc_url.is_none() {
         return Err(eyre::eyre!(
-            "Missing provider URL, use --rpc-url, --ws-url or set ETH_RPC_URL, ETH_WS_URL env vars"
+            "Missing provider URL, use --rpc-url or set ETH_RPC_URL env var"
         ));
     }
 
@@ -48,36 +113,34 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let sqlite_conn = sqlite_conn(None).await?;
     let ens_lookup_worker = start_ens_lookup_worker(conn_opts);
     let symbols_lookup_worker = start_symbols_lookup_worker(conn_opts);
-    let (provider, provider_type) = init_provider(conn_opts).await?;
+    let provider = init_provider(conn_opts).await?;
     let provider = Arc::new(provider);
+
+    let chain_id = provider.get_chain_id().await?;
+    let chain = EVMChain::new(chain_id, conn_opts.rpc_url.clone().unwrap())?;
 
     Ok(SharedDeps {
         sqlite: sqlite_conn,
         ens_lookup_worker,
         symbols_lookup_worker,
         provider,
-        provider_type,
+        chain,
     })
 }
 
-pub async fn init_provider(conn_opts: &ConnOpts) -> Result<(GenericProvider, ProviderType)> {
+pub async fn init_provider(conn_opts: &ConnOpts) -> Result<GenericProvider> {
     let max_retry = 10;
     let backoff = 1000;
     let cups = 100;
     let retry_layer = RetryBackoffLayer::new(max_retry, backoff, cups);
 
-    if let Some(ws_url) = &conn_opts.ws_url {
-        debug!("Initializing WS provider");
-        let ws = WsConnect::new(ws_url);
-        let client = RpcClient::builder().layer(retry_layer).ws(ws).await?;
-        Ok((ProviderBuilder::new().on_client(client), ProviderType::WS))
-    } else if let Some(rpc_url) = &conn_opts.rpc_url {
+    if let Some(rpc_url) = &conn_opts.rpc_url {
         debug!("Initializing HTTP provider");
         let client = RpcClient::builder()
             .layer(retry_layer)
             .http(rpc_url.parse()?);
 
-        Ok((ProviderBuilder::new().on_client(client), ProviderType::HTTP))
+        Ok(ProviderBuilder::new().on_client(client))
     } else {
         unreachable!()
     }
@@ -89,21 +152,8 @@ pub fn config_path() -> PathBuf {
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct ConnOpts {
-    #[arg(
-        long,
-        conflicts_with = "ws_url",
-        help = "The URL of the HTTP provider",
-        env = "ETH_RPC_URL"
-    )]
+    #[arg(long, help = "The URL of the HTTP provider", env = "ETH_RPC_URL")]
     pub rpc_url: Option<String>,
-
-    #[arg(
-        long,
-        conflicts_with = "rpc_url",
-        help = "The URL of the WS provider",
-        env = "ETH_WS_URL"
-    )]
-    pub ws_url: Option<String>,
 
     #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
     pub trace: Option<TraceMode>,

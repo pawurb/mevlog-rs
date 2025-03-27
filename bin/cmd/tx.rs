@@ -60,7 +60,8 @@ impl TxArgs {
             eyre::bail!("tx index must be present");
         };
 
-        let revm_utils = init_revm_db(block_number - 1, &self.conn_opts).await?;
+        let revm_utils =
+            init_revm_db(block_number - 1, &self.conn_opts, &shared_deps.chain).await?;
         let (mut revm_db, _anvil) = match self.conn_opts.trace {
             Some(TraceMode::Revm) => {
                 let utils = revm_utils.expect("Revm must be present");
@@ -89,6 +90,7 @@ impl TxArgs {
             &provider,
             self.conn_opts.trace.as_ref(),
             self.top_metadata,
+            &shared_deps.chain,
         )
         .await?;
 

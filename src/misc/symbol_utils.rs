@@ -36,7 +36,7 @@ pub fn start_symbols_lookup_worker(conn_opts: &ConnOpts) -> SymbolLookupWorker {
 
     let conn_opts = conn_opts.clone();
     tokio::spawn(async move {
-        let (provider, _) = init_provider(&conn_opts).await.unwrap();
+        let provider = init_provider(&conn_opts).await.unwrap();
         let provider = Arc::new(provider);
         while let Some(data) = rx.recv().await {
             let target = data.0;

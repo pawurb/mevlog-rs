@@ -5,7 +5,7 @@ use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use super::shared_init::{init_provider, ConnOpts};
+use super::shared_init::{init_provider, ConnOpts, EVMChain, EVMChainType};
 use crate::GenericProvider;
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
@@ -24,15 +24,28 @@ const MISSING_NAME: &str = "N";
 pub enum ENSLookup {
     Sync,
     Async(UnboundedSender<Address>),
+    Disabled,
 }
 
 impl ENSLookup {
-    pub async fn sync_lookup(ens_query: Option<String>) -> bool {
-        if ens_query.is_none() {
-            return false;
+    pub async fn lookup_mode(
+        ens_query: Option<String>,
+        ens_lookup_worker: UnboundedSender<Address>,
+        chain: &EVMChain,
+    ) -> ENSLookup {
+        if chain.chain_type != EVMChainType::Mainnet {
+            return ENSLookup::Disabled;
         }
 
-        !(known_ens_name(&ens_query.unwrap()).await)
+        if ens_query.is_none() {
+            return ENSLookup::Async(ens_lookup_worker);
+        }
+
+        if known_ens_name(&ens_query.unwrap()).await {
+            ENSLookup::Async(ens_lookup_worker)
+        } else {
+            ENSLookup::Sync
+        }
     }
 }
 
@@ -134,7 +147,7 @@ pub fn start_ens_lookup_worker(conn_opts: &ConnOpts) -> mpsc::UnboundedSender<Ad
 
     let conn_opts = conn_opts.clone();
     tokio::spawn(async move {
-        let (provider, _) = init_provider(&conn_opts).await.unwrap();
+        let provider = init_provider(&conn_opts).await.unwrap();
         let provider = Arc::new(provider);
 
         while let Some(target) = rx.recv().await {
