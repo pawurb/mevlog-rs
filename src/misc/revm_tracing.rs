@@ -60,7 +60,6 @@ pub async fn init_revm_db(block_number: u64, conn_opts: &ConnOpts) -> Result<Opt
 
     let block = provider
         .get_block_by_number(BlockNumberOrTag::Number(block_number))
-        .full()
         .await?
         .expect("block not found");
 
