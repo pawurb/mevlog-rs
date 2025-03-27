@@ -1,7 +1,7 @@
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use alloy::{
-    providers::{ProviderBuilder, WsConnect},
+    providers::{Provider, ProviderBuilder, WsConnect},
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
@@ -24,12 +24,29 @@ pub enum ProviderType {
     WS,
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Chain {
+    Mainnet,
+    Base,
+}
+
+impl Chain {
+    pub fn from_id(id: u64) -> Result<Self> {
+        match id {
+            1 => Ok(Self::Mainnet),
+            8453 => Ok(Self::Base),
+            _ => eyre::bail!("Invalid chain id {}", id),
+        }
+    }
+}
+
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub ens_lookup_worker: UnboundedSender<Address>,
     pub symbols_lookup_worker: SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub provider_type: ProviderType,
+    pub chain: Chain,
 }
 
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
@@ -51,12 +68,16 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let (provider, provider_type) = init_provider(conn_opts).await?;
     let provider = Arc::new(provider);
 
+    let chain_id = provider.get_chain_id().await?;
+    let chain = Chain::from_id(chain_id)?;
+
     Ok(SharedDeps {
         sqlite: sqlite_conn,
         ens_lookup_worker,
         symbols_lookup_worker,
         provider,
         provider_type,
+        chain,
     })
 }
 
