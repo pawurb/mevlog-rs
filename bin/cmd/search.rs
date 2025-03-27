@@ -55,6 +55,7 @@ impl SearchArgs {
                 &shared_deps.symbols_lookup_worker,
                 &mev_filter,
                 &self.conn_opts,
+                &shared_deps.chain,
             )
             .await?;
         }
