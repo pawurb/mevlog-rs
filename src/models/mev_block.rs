@@ -380,6 +380,10 @@ impl MEVBlock {
         filter: &TxsFilter,
         revm_db: &mut CacheDB<SharedBackend>,
     ) -> Result<()> {
+        if self.revm_transactions.is_empty() {
+            return Ok(());
+        }
+
         let total_txs = self.revm_transactions.len() - 1;
 
         let progress_bar = if !self.revm_data_cached()? {

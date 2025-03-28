@@ -50,8 +50,11 @@ async fn main() {
     match execute().await {
         Ok(_) => {}
         Err(e) => {
-            eprintln!("Error: {}", e);
-            std::process::exit(1);
+            if std::env::var("RUST_BACKTRACE").is_ok() {
+                eprintln!("Error: {:#?}", e);
+            } else {
+                eprintln!("Error: {}", e);
+            }
         }
     }
 }
