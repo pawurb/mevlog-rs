@@ -11,10 +11,7 @@ use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
-use revm::{
-    db::CacheDB,
-    primitives::{address, Address, FixedBytes},
-};
+use revm::{db::CacheDB, primitives::FixedBytes};
 use sqlx::SqlitePool;
 use tokio::sync::Semaphore;
 use tracing::{debug, error};
@@ -35,7 +32,7 @@ use crate::{
             RevmBlockContext,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
-        shared_init::{ConnOpts, TraceMode},
+        shared_init::{Chain, ConnOpts, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
@@ -56,8 +53,6 @@ sol! {
     }
 }
 
-const ETH_PRICE_ORACLE: Address = address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
-
 pub struct TxData {
     req: TransactionRequest,
     tx_hash: FixedBytes<32>,
@@ -74,6 +69,7 @@ pub struct MEVBlock {
     txs_count: u64,
     reversed_order: bool,
     top_metadata: bool,
+    chain: Chain,
 }
 
 pub async fn process_block(
@@ -84,8 +80,9 @@ pub async fn process_block(
     symbols_lookup: &SymbolLookupWorker,
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
+    chain: &Chain,
 ) -> Result<()> {
-    let revm_utils = init_revm_db(block_number - 1, conn_opts).await?;
+    let revm_utils = init_revm_db(block_number - 1, conn_opts, chain).await?;
 
     let (mut revm_db, _anvil) = match conn_opts.trace {
         Some(TraceMode::Revm) => {
@@ -102,6 +99,7 @@ pub async fn process_block(
         provider,
         conn_opts.trace.as_ref(),
         txs_filter.top_metadata,
+        chain,
     )
     .await?;
 
@@ -130,10 +128,11 @@ impl MEVBlock {
         provider: &Arc<GenericProvider>,
         trace_mode: Option<&TraceMode>,
         block_info_top: bool,
+        chain: &Chain,
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
-        let price_oracle = IPriceOracle::new(ETH_PRICE_ORACLE, provider.clone());
+        let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
         let eth_price = price_oracle.latestRoundData().call().await?.answer;
         let eth_price = eth_price.low_i64() as f64 / 10e7;
 
@@ -189,6 +188,7 @@ impl MEVBlock {
             reversed_order,
             revm_transactions,
             top_metadata: block_info_top,
+            chain: chain.clone(),
         })
     }
 
@@ -372,7 +372,7 @@ impl MEVBlock {
     }
 
     fn revm_data_cached(&self) -> Result<bool> {
-        Ok(revm_cache_path(self.block_number - 1)?.exists())
+        Ok(revm_cache_path(self.block_number - 1, &self.chain)?.exists())
     }
 
     async fn trace_txs_revm(
