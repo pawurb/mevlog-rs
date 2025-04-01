@@ -35,7 +35,8 @@ pub struct ReceiptData {
 #[derive(Debug)]
 pub struct MEVTransaction {
     eth_price: f64,
-    pub method_name: String,
+    pub signature: String,
+    pub signature_hash: Option<String>,
     pub tx_hash: FixedBytes<32>,
     pub index: u64,
     log_groups: Vec<MEVLogGroup>,
@@ -59,7 +60,7 @@ impl MEVTransaction {
         provider: &Arc<GenericProvider>,
         top_metadata: bool,
     ) -> Result<Self> {
-        let method_sig = if let Some(input) = tx_req.clone().input.input {
+        let signature_hash = if let Some(input) = tx_req.clone().input.input {
             if input.len() >= 8 {
                 Some(format!("0x{}", hex::encode(&input[..4])))
             } else {
@@ -69,7 +70,7 @@ impl MEVTransaction {
             None
         };
 
-        let signature = match method_sig.clone() {
+        let signature = match signature_hash.clone() {
             Some(sig) => {
                 let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
                 sig.unwrap_or(UNKNOWN.to_string())
@@ -85,7 +86,8 @@ impl MEVTransaction {
             tx_hash,
             index,
             log_groups: vec![],
-            method_name: signature,
+            signature,
+            signature_hash,
             source: mev_address,
             to: tx_req.to.unwrap_or(TxKind::Create),
             coinbase_transfer: None,
@@ -177,7 +179,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "  {}::{}",
                 display_target(self.to),
-                self.method_name.purple(),
+                self.signature.purple(),
             )?;
         } else {
             writeln!(f, "{} ->", self.source)?;
@@ -185,7 +187,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "  {}::{}",
                 display_target(self.to),
-                self.method_name.purple(),
+                self.signature.purple(),
             )?;
 
             writeln!(

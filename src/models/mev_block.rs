@@ -551,7 +551,14 @@ impl MEVBlock {
 
         self.mev_transactions.retain(|_, tx| {
             if let Some(method_query) = &filter.match_method {
-                method_query.matches(&tx.method_name)
+                let signature_match = method_query.matches(&tx.signature);
+
+                let signature_hash_match = match &tx.signature_hash {
+                    Some(hash) => method_query.matches(hash),
+                    None => false,
+                };
+
+                signature_match || signature_hash_match
             } else {
                 true
             }

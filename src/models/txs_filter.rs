@@ -44,7 +44,7 @@ pub struct SharedFilterOpts {
     #[arg(
         alias = "m",
         long,
-        help = "Include txs by root method names matching the provided regex or signature"
+        help = "Include txs by root method names matching the provided regex, signature or signature hash"
     )]
     pub method: Option<String>,
 
@@ -350,14 +350,14 @@ impl FromStr for EventQuery {
 
 #[derive(Debug)]
 pub enum SignatureQuery {
-    Name(String),
+    NameOrHash(String),
     Regex(Regex),
 }
 
 impl SignatureQuery {
     pub fn matches(&self, signature: &str) -> bool {
         match self {
-            SignatureQuery::Name(name) => name == signature,
+            SignatureQuery::NameOrHash(name) => name == signature,
             SignatureQuery::Regex(regex) => regex.is_match(signature),
         }
     }
@@ -366,7 +366,7 @@ impl SignatureQuery {
 impl Display for SignatureQuery {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SignatureQuery::Name(name) => write!(f, "{}", name),
+            SignatureQuery::NameOrHash(name) => write!(f, "{}", name),
             SignatureQuery::Regex(regex) => write!(f, "/{}/", regex),
         }
     }
@@ -380,7 +380,7 @@ impl FromStr for SignatureQuery {
             let regex = Regex::new(&input[1..input.len() - 1])?;
             Ok(SignatureQuery::Regex(regex))
         } else {
-            Ok(SignatureQuery::Name(input.to_string()))
+            Ok(SignatureQuery::NameOrHash(input.to_string()))
         }
     }
 }

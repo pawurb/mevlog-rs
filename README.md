@@ -125,15 +125,15 @@ Options:
       --not-event <NOT_EVENT>
           Exclude txs by event names matching the provided regex or signature and optionally an address
       --method <METHOD>
-          Include txs with root method names matching the provided regex or signature
+          Include txs with root method names matching the provided regex, signature or signature hash
       --tx-cost <TX_COST>
-          Filter by tx cost in wei (e.g., 'le10000000000000000', 'ge0.01ether')
+          Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')
       --real-tx-cost <REAL_TX_COST>
-          Filter by real (including coinbase bribe) tx cost in wei (e.g., 'le10000000000000000', 'ge0.01ether')
+          Filter by real (including coinbase bribe) tx cost (e.g., 'le0.001ether', 'ge0.01ether')
       --gas-price <GAS_PRICE>
-          Filter by effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')
+          Filter by effective gas price (e.g., 'ge2gwei', 'le1gwei')
       --real-gas-price <REAL_GAS_PRICE>
-          Filter by real (including coinbase bribe) effective gas price in wei (e.g., 'ge2000000000', 'le2000000000')
+          Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')
 ```
 
 Both `search` and `watch` support the same filtering options.
