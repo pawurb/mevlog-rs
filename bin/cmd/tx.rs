@@ -19,13 +19,13 @@ pub struct TxArgs {
     tx_hash: FixedBytes<32>,
     #[arg(
         long,
-        short = 'B',
+        short = 'b',
         help = "'before' means newer transactions (smaller indexes)"
     )]
     before: Option<u8>,
     #[arg(
         long,
-        short = 'A',
+        short = 'a',
         help = "'after' means older transactions (larger indexes)"
     )]
     after: Option<u8>,

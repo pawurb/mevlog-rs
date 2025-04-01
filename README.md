@@ -159,7 +159,7 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660
 This command displays info for a single target transaction. By adding `--before` `--after` arguments you can include surrounding transactions:
 
 ```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -B 1 -A 1
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 1 -a 1
 ```
 
 You can reverse the display order by adding the `--reverse` flag.
