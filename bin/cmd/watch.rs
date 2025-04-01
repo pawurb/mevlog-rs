@@ -32,11 +32,12 @@ impl WatchArgs {
         println!("{}", SEPARATORER);
         let mev_filter = TxsFilter::new(&self.filter, None, self.conn_opts.trace.as_ref(), true)?;
 
-        let ens_lookup = if ENSLookup::sync_lookup(mev_filter.ens_query()).await {
-            ENSLookup::Sync
-        } else {
-            ENSLookup::Async(shared_deps.ens_lookup_worker)
-        };
+        let ens_lookup = ENSLookup::lookup_mode(
+            mev_filter.ens_query(),
+            shared_deps.ens_lookup_worker,
+            &shared_deps.chain,
+        )
+        .await;
 
         let block_number = provider.get_block_number().await?;
         process_block(
@@ -47,6 +48,7 @@ impl WatchArgs {
             &shared_deps.symbols_lookup_worker,
             &mev_filter,
             &self.conn_opts,
+            &shared_deps.chain,
         )
         .await?;
 
@@ -63,6 +65,7 @@ impl WatchArgs {
                         &shared_deps.symbols_lookup_worker,
                         &mev_filter,
                         &self.conn_opts,
+                        &shared_deps.chain,
                     )
                     .await?;
                 }
@@ -86,6 +89,7 @@ impl WatchArgs {
                         &shared_deps.symbols_lookup_worker,
                         &mev_filter,
                         &self.conn_opts,
+                        &shared_deps.chain,
                     )
                     .await?;
                 }

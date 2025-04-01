@@ -1,12 +1,12 @@
 use std::{path::PathBuf, str::FromStr, sync::Arc};
 
 use alloy::{
-    providers::{ProviderBuilder, WsConnect},
+    providers::{Provider, ProviderBuilder, WsConnect},
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
 use eyre::Result;
-use revm::primitives::Address;
+use revm::primitives::{address, Address};
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
@@ -24,12 +24,52 @@ pub enum ProviderType {
     WS,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub enum Chain {
+    Mainnet,
+    Base,
+}
+
+impl Chain {
+    pub fn new(chain_id: u64) -> Result<Self> {
+        if chain_id == Self::Mainnet.chain_id() {
+            Ok(Self::Mainnet)
+        } else if chain_id == Self::Base.chain_id() {
+            Ok(Self::Base)
+        } else {
+            eyre::bail!("Invalid chain id {}", chain_id)
+        }
+    }
+
+    pub fn chain_id(&self) -> u64 {
+        match self {
+            Self::Mainnet => 1,
+            Self::Base => 8453,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Mainnet => "mainnet",
+            Self::Base => "base",
+        }
+    }
+
+    pub fn price_oracle(&self) -> Address {
+        match self {
+            Self::Mainnet => address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"),
+            Self::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
+        }
+    }
+}
+
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub ens_lookup_worker: UnboundedSender<Address>,
     pub symbols_lookup_worker: SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub provider_type: ProviderType,
+    pub chain: Chain,
 }
 
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
@@ -51,12 +91,16 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let (provider, provider_type) = init_provider(conn_opts).await?;
     let provider = Arc::new(provider);
 
+    let chain_id = provider.get_chain_id().await?;
+    let chain = Chain::new(chain_id)?;
+
     Ok(SharedDeps {
         sqlite: sqlite_conn,
         ens_lookup_worker,
         symbols_lookup_worker,
         provider,
         provider_type,
+        chain,
     })
 }
 
