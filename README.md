@@ -118,6 +118,8 @@ All the filter conditions can be combined. Here's a complete list of currently s
 Options:
   -f, --from <FROM>
           Filter by tx source address or ENS name
+      --to <TO>
+          Filter by tx target address or ENS name
   -t, --touching <TOUCHING>
           Filter by contracts with storage changed by the transaction
       --event <EVENT>
