@@ -18,6 +18,9 @@ pub struct SharedFilterOpts {
     #[arg(short = 'f', long, help = "Filter by tx source address or ENS name")]
     pub from: Option<String>,
 
+    #[arg(long, help = "Filter by tx target address or ENS name")]
+    pub to: Option<String>,
+
     #[arg(short = 'p', long, help_heading = "Tx position or position range in a block (e.g., '0' or '0:10'", num_args(1..))]
     pub position: Option<String>,
 
@@ -158,7 +161,8 @@ impl FromStr for DiffOperator {
 #[derive(Debug)]
 pub struct TxsFilter {
     pub tx_indexes: Option<HashSet<u64>>,
-    pub tx_from: Option<FromFilter>,
+    pub tx_from: Option<AddressFilter>,
+    pub tx_to: Option<AddressFilter>,
     pub touching: Option<Address>,
     pub tx_position: Option<PositionRange>,
     pub events: Vec<EventQuery>,
@@ -217,7 +221,8 @@ impl TxsFilter {
                 None => None,
             },
             tx_indexes,
-            tx_from: FromFilter::new(filter_opts.from.as_deref())?,
+            tx_from: AddressFilter::new(filter_opts.from.as_deref())?,
+            tx_to: AddressFilter::new(filter_opts.to.as_deref())?,
             touching: filter_opts.touching,
             tx_position: match filter_opts.position {
                 Some(ref position) => Some(position.parse()?),
@@ -284,7 +289,7 @@ impl TxsFilter {
 
     pub fn ens_query(&self) -> Option<String> {
         self.tx_from.as_ref().and_then(|from| match from {
-            FromFilter::ENSName(name) => Some(name.clone()),
+            AddressFilter::ENSName(name) => Some(name.clone()),
             _ => None,
         })
     }
@@ -386,12 +391,12 @@ impl FromStr for SignatureQuery {
 }
 
 #[derive(Debug)]
-pub enum FromFilter {
+pub enum AddressFilter {
     Address(Address),
     ENSName(String),
 }
 
-impl FromFilter {
+impl AddressFilter {
     pub fn new(value: Option<&str>) -> Result<Option<Self>> {
         if value.is_none() {
             return Ok(None);
@@ -400,11 +405,13 @@ impl FromFilter {
         let value = value.unwrap();
 
         if let Ok(address) = value.parse::<Address>() {
-            return Ok(Some(FromFilter::Address(address)));
+            return Ok(Some(AddressFilter::Address(address)));
         }
 
         if value.ends_with(".eth") {
-            return Ok(Some(FromFilter::ENSName(value.to_string().to_lowercase())));
+            return Ok(Some(AddressFilter::ENSName(
+                value.to_string().to_lowercase(),
+            )));
         }
 
         eyre::bail!(

@@ -22,7 +22,7 @@ use tracing::{debug, error};
 use super::{
     mev_log::MEVLog,
     mev_transaction::{MEVTransaction, ReceiptData},
-    txs_filter::{FromFilter, TxsFilter},
+    txs_filter::{AddressFilter, TxsFilter},
 };
 use crate::{
     misc::{
@@ -244,12 +244,26 @@ impl MEVBlock {
             };
 
             match &filter.tx_from {
-                Some(FromFilter::Address(from_addr)) => {
+                Some(AddressFilter::Address(from_addr)) => {
                     if &mev_tx.from() != from_addr {
                         continue;
                     }
                 }
-                Some(FromFilter::ENSName(ens_name)) => {
+                Some(AddressFilter::ENSName(ens_name)) => {
+                    if mev_tx.ens_name() != Some(ens_name) {
+                        continue;
+                    }
+                }
+                None => {}
+            }
+
+            match &filter.tx_to {
+                Some(AddressFilter::Address(to_addr)) => {
+                    if mev_tx.to() != Some(*to_addr) {
+                        continue;
+                    }
+                }
+                Some(AddressFilter::ENSName(ens_name)) => {
                     if mev_tx.ens_name() != Some(ens_name) {
                         continue;
                     }
