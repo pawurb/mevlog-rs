@@ -23,7 +23,7 @@ impl MEVLog {
         symbols_lookup_worker: &SymbolLookupWorker,
         sqlite: &SqlitePool,
     ) -> Result<Self> {
-        let signature_str = DBEvent::find_by_hash(&format!("{}", first_topic), sqlite).await?;
+        let signature_str = DBEvent::find_by_hash(&format!("{first_topic}"), sqlite).await?;
 
         let signature = MEVLogSignature::new(
             inner_log.inner.address,
@@ -54,7 +54,7 @@ impl fmt::Display for MEVLog {
         )?;
         for (i, topic) in self.topics.iter().enumerate() {
             if i != 0 {
-                writeln!(f, "      {:?}", topic)?;
+                writeln!(f, "      {topic:?}")?;
             }
         }
         Ok(())

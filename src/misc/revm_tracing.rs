@@ -85,11 +85,11 @@ pub fn revm_cache_path(block_number: u64) -> Result<PathBuf> {
     let foundry_revm_cache = home::home_dir().unwrap().join(".foundry/cache/rpc/mainnet");
 
     if Path::new(&foundry_revm_cache).exists() {
-        Ok(foundry_revm_cache.join(format!("{}", block_number)))
+        Ok(foundry_revm_cache.join(format!("{block_number}")))
     } else {
         Ok(home::home_dir()
             .unwrap()
-            .join(format!(".mevlog/.revm-cache/{}", block_number)))
+            .join(format!(".mevlog/.revm-cache/{block_number}")))
     }
 }
 

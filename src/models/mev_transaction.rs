@@ -167,12 +167,12 @@ impl fmt::Display for MEVTransaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.top_metadata {
             for log in &self.log_groups {
-                write!(f, "{}", log)?;
+                write!(f, "{log}")?;
             }
         }
 
         if self.top_metadata {
-            writeln!(f, "{}", SEPARATOR)?;
+            writeln!(f, "{SEPARATOR}")?;
             writeln!(
                 f,
                 "[{}] {}",
@@ -295,12 +295,12 @@ impl fmt::Display for MEVTransaction {
             }
 
             for log in &self.log_groups {
-                write!(f, "{}", log)?;
+                write!(f, "{log}")?;
             }
         }
 
         if !self.top_metadata {
-            writeln!(f, "{}", SEPARATOR)?;
+            writeln!(f, "{SEPARATOR}")?;
         }
 
         Ok(())
@@ -310,14 +310,14 @@ impl fmt::Display for MEVTransaction {
 fn display_target(to: TxKind) -> ColoredString {
     match to {
         TxKind::Create => "CREATE".green(),
-        TxKind::Call(address) => format!("{}", address).green(),
+        TxKind::Call(address) => format!("{address}").green(),
     }
 }
 
 fn eth_to_usd(value: U256, token_price: f64) -> f64 {
     let decimals = 18;
     let value_dec = BigDecimal::from_str(&value.to_string()).unwrap();
-    let one_eth_dec = BigDecimal::from_str(&format!("1e{}", decimals)).unwrap();
+    let one_eth_dec = BigDecimal::from_str(&format!("1e{decimals}")).unwrap();
     let price_dec = BigDecimal::from_str(&token_price.to_string()).unwrap();
 
     let result = (value_dec / one_eth_dec) * price_dec;

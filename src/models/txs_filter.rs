@@ -151,8 +151,7 @@ impl FromStr for DiffOperator {
             "ge" => Ok(DiffOperator::GreaterOrEq),
             "le" => Ok(DiffOperator::LessOrEq),
             _ => Err(format!(
-                "Invalid operator: '{}' use 'le' (Less or Equal) or 'ge' (Greater or Equal)",
-                s
+                "Invalid operator: '{s}' use 'le' (Less or Equal) or 'ge' (Greater or Equal)"
             )),
         }
     }
@@ -371,8 +370,8 @@ impl SignatureQuery {
 impl Display for SignatureQuery {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            SignatureQuery::NameOrHash(name) => write!(f, "{}", name),
-            SignatureQuery::Regex(regex) => write!(f, "/{}/", regex),
+            SignatureQuery::NameOrHash(name) => write!(f, "{name}"),
+            SignatureQuery::Regex(regex) => write!(f, "/{regex}/"),
         }
     }
 }

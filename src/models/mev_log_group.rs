@@ -34,7 +34,7 @@ impl fmt::Display for MEVLogGroup {
             format!("{}/address/{}", ETHERSCAN_URL, self.source).green()
         )?;
         for log in &self.logs {
-            writeln!(f, "    {}", log)?;
+            writeln!(f, "    {log}")?;
         }
         Ok(())
     }

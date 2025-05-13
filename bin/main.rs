@@ -51,9 +51,9 @@ async fn main() {
         Ok(_) => {}
         Err(e) => {
             if std::env::var("RUST_BACKTRACE").is_ok() {
-                eprintln!("Error: {:#?}", e);
+                eprintln!("Error: {e:#?}");
             } else {
-                eprintln!("Error: {}", e);
+                eprintln!("Error: {e}");
             }
         }
     }
