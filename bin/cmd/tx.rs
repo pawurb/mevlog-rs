@@ -95,6 +95,7 @@ impl TxArgs {
         let txs_filter = TxsFilter {
             tx_indexes: Some(tx_indexes),
             tx_from: None,
+            tx_to: None,
             touching: None,
             tx_position: None,
             events: vec![],

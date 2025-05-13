@@ -122,6 +122,13 @@ impl MEVTransaction {
         self.source.address()
     }
 
+    pub fn to(&self) -> Option<Address> {
+        match self.to {
+            TxKind::Call(address) => Some(address),
+            TxKind::Create => None,
+        }
+    }
+
     pub fn logs(&self) -> Vec<&MEVLog> {
         let mut logs = vec![];
         for log_group in &self.log_groups {
