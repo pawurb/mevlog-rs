@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, sync::Arc};
+use std::{collections::HashMap, fmt, process::Command, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
@@ -133,13 +133,30 @@ impl MEVBlock {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
         let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
+        dbg!(&chain);
         let eth_price = price_oracle.latestRoundData().call().await?.answer;
         let eth_price = eth_price.low_i64() as f64 / 10e7;
 
+        //  cryo txs -b latest --rpc https://eth.merkle.io --n-chunks 1 --csv
+        let cmd = Command::new("cryo")
+            .args(&[
+                "txs",
+                "-b",
+                "latest",
+                "--rpc",
+                "https://eth.merkle.io",
+                "--n-chunks",
+                "1",
+                "--csv",
+            ])
+            .output();
+        dbg!(&cmd);
+        dbg!(&block_number_tag);
         let block = provider
             .get_block_by_number(block_number_tag)
             .full()
             .await?;
+        dbg!(&block);
         let Some(block) = block else {
             eyre::bail!("Full block {} not found", block_number);
         };
