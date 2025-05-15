@@ -25,40 +25,21 @@ pub enum MEVChainType {
     Base,
 }
 
-impl MEVChainType {
-    pub fn chain_id(&self) -> u64 {
-        match self {
-            Self::Mainnet => 1,
-            Self::Base => 8453,
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Mainnet => "mainnet",
-            Self::Base => "base",
-        }
-    }
-
-    pub fn price_oracle(&self) -> Address {
-        match self {
-            Self::Mainnet => address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"),
-            Self::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
-        }
-    }
-
-    pub fn etherscan_url(&self) -> &str {
-        match self {
-            Self::Mainnet => "https://etherscan.io",
-            Self::Base => "https://basescan.org",
-        }
-    }
-}
+impl MEVChainType {}
 
 #[derive(Debug, Clone)]
 pub struct MEVChain {
     pub chain_type: MEVChainType,
     pub rpc_url: String,
+}
+
+impl MEVChainType {
+    pub fn chain_id(&self) -> u64 {
+        match self {
+            MEVChainType::Mainnet => 1,
+            MEVChainType::Base => 8453,
+        }
+    }
 }
 
 impl MEVChain {
@@ -83,15 +64,24 @@ impl MEVChain {
     }
 
     pub fn name(&self) -> &str {
-        self.chain_type.name()
+        match self.chain_type {
+            MEVChainType::Mainnet => "mainnet",
+            MEVChainType::Base => "base",
+        }
     }
 
     pub fn price_oracle(&self) -> Address {
-        self.chain_type.price_oracle()
+        match self.chain_type {
+            MEVChainType::Mainnet => address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"),
+            MEVChainType::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
+        }
     }
 
     pub fn etherscan_url(&self) -> &str {
-        self.chain_type.etherscan_url()
+        match self.chain_type {
+            MEVChainType::Mainnet => "https://etherscan.io",
+            MEVChainType::Base => "https://basescan.org",
+        }
     }
 }
 

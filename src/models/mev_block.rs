@@ -159,8 +159,6 @@ impl MEVBlock {
             chain.name()
         );
 
-        dbg!(&file_path);
-
         let file = std::fs::File::open(file_path)?;
         let reader = std::io::BufReader::new(file);
         let mut csv_reader = csv::Reader::from_reader(reader);

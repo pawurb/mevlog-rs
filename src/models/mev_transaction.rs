@@ -66,7 +66,7 @@ impl MEVTransaction {
         let inner = TransactionRequest {
             from: Some(Address::from_str(&record[4].to_string()).unwrap()),
             to: Some(to),
-            input: TransactionInput::new(Bytes::from(record[9].to_string())),
+            input: TransactionInput::new(Bytes::from_str(&record[9].to_string()).unwrap()),
             gas_price: Some(record[11].to_string().parse::<u128>().unwrap()),
             gas: Some(record[10].to_string().parse::<u64>().unwrap()),
             value: Some(U256::from_str(&record[7].to_string()).unwrap()),
@@ -177,6 +177,7 @@ impl MEVTransaction {
     }
 
     pub fn gas_tx_cost(&self) -> u128 {
+        // TODO chandle tx pos 0 on OP chains, some receipt info missing
         let receipt = self.receipt_data.as_ref().expect("must be fetched");
         receipt.gas_used as u128 * receipt.effective_gas_price
     }

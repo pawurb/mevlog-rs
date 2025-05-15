@@ -30,7 +30,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
 
-use super::shared_init::{MEVChain, ConnOpts};
+use super::shared_init::{ConnOpts, MEVChain};
 use crate::misc::shared_init::TraceMode;
 
 pub struct RevmUtils {
@@ -86,6 +86,7 @@ pub async fn init_revm_db(
 }
 
 pub fn revm_cache_path(block_number: u64, chain: &MEVChain) -> Result<PathBuf> {
+    // TODO handle dir cache path, right now it's failing
     let foundry_revm_cache = home::home_dir()
         .unwrap()
         .join(format!(".foundry/cache/rpc/{}", chain.name()));
@@ -200,6 +201,8 @@ pub fn revm_tx_calls(
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<Vec<TransactionTrace>> {
+    dbg!(&_tx_hash);
+    dbg!(&tx_req);
     let cfg = CfgEnvWithHandlerCfg::new(CfgEnv::default(), HandlerCfg::new(SpecId::LATEST));
 
     let mut tx_env = Default::default();
