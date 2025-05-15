@@ -24,7 +24,7 @@ pub async fn remove_db_files() -> Result<()> {
 
     if path.exists() {
         let str_path = default_db_path().to_string_lossy().into_owned();
-        let pattern = format!("{}*", str_path);
+        let pattern = format!("{str_path}*");
         for entry in glob::glob(&pattern).expect("Failed to read glob pattern") {
             match entry {
                 Ok(path) => match fs::remove_file(&path) {
@@ -32,10 +32,10 @@ pub async fn remove_db_files() -> Result<()> {
                         println!("Removed database file at: {}", path.display());
                     }
                     Err(e) => {
-                        eprintln!("Failed to remove file {:?}: {}", path, e);
+                        eprintln!("Failed to remove file {path:?}: {e}");
                     }
                 },
-                Err(e) => eprintln!("Error reading glob entry: {}", e),
+                Err(e) => eprintln!("Error reading glob entry: {e}"),
             }
         }
     }
@@ -47,7 +47,7 @@ pub async fn download_db_file() -> Result<()> {
     let client = Client::new();
     let db_path = default_db_path().to_string_lossy().into_owned();
 
-    let gz_path = format!("{}.gz", db_path);
+    let gz_path = format!("{db_path}.gz");
 
     let res = client
         .get(url)
@@ -72,7 +72,7 @@ pub async fn download_db_file() -> Result<()> {
         .unwrap()
         .progress_chars(PROGRESS_CHARS));
 
-    pb.set_message(format!("Downloading signatures database to: {}", gz_path));
+    pb.set_message(format!("Downloading signatures database to: {gz_path}"));
 
     let mut gz_file =
         File::create(gz_path.clone()).map_err(|e| eyre!("Failed to create file: {}", e))?;

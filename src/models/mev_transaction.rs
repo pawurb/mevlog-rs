@@ -58,18 +58,18 @@ impl MEVTransaction {
         let to = if record[5].to_string() == "0x" {
             TxKind::Create
         } else {
-            TxKind::Call(Address::from_str(&record[5].to_string()).unwrap())
+            TxKind::Call(Address::from_str(&record[5]).unwrap())
         };
 
-        let tx_hash = FixedBytes::from_str(&record[2].to_string()).unwrap();
+        let tx_hash = FixedBytes::from_str(&record[2]).unwrap();
 
         let inner = TransactionRequest {
-            from: Some(Address::from_str(&record[4].to_string()).unwrap()),
+            from: Some(Address::from_str(&record[4]).unwrap()),
             to: Some(to),
-            input: TransactionInput::new(Bytes::from_str(&record[9].to_string()).unwrap()),
+            input: TransactionInput::new(Bytes::from_str(&record[9]).unwrap()),
             gas_price: Some(record[11].to_string().parse::<u128>().unwrap()),
             gas: Some(record[10].to_string().parse::<u64>().unwrap()),
-            value: Some(U256::from_str(&record[7].to_string()).unwrap()),
+            value: Some(U256::from_str(&record[7]).unwrap()),
             nonce: Some(record[3].to_string().parse::<u64>().unwrap()),
             chain_id: Some(record[12].to_string().parse::<u64>().unwrap()),
             max_fee_per_gas: Some(record[13].to_string().parse::<u128>().unwrap()),
@@ -204,12 +204,12 @@ impl fmt::Display for MEVTransaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.top_metadata {
             for log in &self.log_groups {
-                write!(f, "{}", log)?;
+                write!(f, "{log}")?;
             }
         }
 
         if self.top_metadata {
-            writeln!(f, "{}", SEPARATOR)?;
+            writeln!(f, "{SEPARATOR}")?;
             writeln!(
                 f,
                 "[{}] {}",
@@ -332,12 +332,12 @@ impl fmt::Display for MEVTransaction {
             }
 
             for log in &self.log_groups {
-                write!(f, "{}", log)?;
+                write!(f, "{log}")?;
             }
         }
 
         if !self.top_metadata {
-            writeln!(f, "{}", SEPARATOR)?;
+            writeln!(f, "{SEPARATOR}")?;
         }
 
         Ok(())
@@ -347,14 +347,14 @@ impl fmt::Display for MEVTransaction {
 fn display_target(to: TxKind) -> ColoredString {
     match to {
         TxKind::Create => "CREATE".green(),
-        TxKind::Call(address) => format!("{}", address).green(),
+        TxKind::Call(address) => format!("{address}").green(),
     }
 }
 
 fn eth_to_usd(value: U256, token_price: f64) -> f64 {
     let decimals = 18;
     let value_dec = BigDecimal::from_str(&value.to_string()).unwrap();
-    let one_eth_dec = BigDecimal::from_str(&format!("1e{}", decimals)).unwrap();
+    let one_eth_dec = BigDecimal::from_str(&format!("1e{decimals}")).unwrap();
     let price_dec = BigDecimal::from_str(&token_price.to_string()).unwrap();
 
     let result = (value_dec / one_eth_dec) * price_dec;

@@ -112,7 +112,7 @@ fn parse_decimal_value(value_str: &str, unit: EthUnit) -> Result<U256> {
 
 /// Create a U256 from an f64 value, potentially losing precision
 pub fn u256_from_f64_lossy(value: f64) -> U256 {
-    let value_string = format!("{:.0}", value);
+    let value_string = format!("{value:.0}");
     value_string
         .parse::<U256>()
         .unwrap_or_else(|_| U256::from(value as u64))

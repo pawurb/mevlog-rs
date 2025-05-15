@@ -139,7 +139,7 @@ impl MEVBlock {
         let block_number_int = block_number_tag.as_number().unwrap();
 
         let _cmd = Command::new("cryo")
-            .args(&[
+            .args([
                 "txs",
                 "-b",
                 &block_number_int.to_string(),
@@ -421,7 +421,7 @@ impl MEVBlock {
         .unwrap()
         .progress_chars(PROGRESS_CHARS));
 
-            pb.set_message(format!("Revm: executing transactions 0-{},", total_txs).to_string());
+            pb.set_message(format!("Revm: executing transactions 0-{total_txs},").to_string());
             Some(pb)
         } else {
             None
@@ -596,7 +596,7 @@ impl MEVBlock {
     }
 
     pub fn print(&self) {
-        let mev_block_str = format!("{}", self);
+        let mev_block_str = format!("{self}");
         print!("{}", escape_html(&mev_block_str));
     }
 }
@@ -630,7 +630,7 @@ impl fmt::Display for MEVBlock {
         }
 
         if self.top_metadata {
-            writeln!(f, "{}", SEPARATORER)?;
+            writeln!(f, "{SEPARATORER}")?;
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
         }
 
@@ -641,15 +641,15 @@ impl fmt::Display for MEVBlock {
         for (i, &index) in indexes.iter().enumerate() {
             let tx = &self.mev_transactions[index];
             if i < indexes.len() - 1 {
-                writeln!(f, "{}", tx)?;
+                writeln!(f, "{tx}")?;
             } else {
-                write!(f, "{}", tx)?;
+                write!(f, "{tx}")?;
             }
         }
 
         if !self.top_metadata {
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
-            writeln!(f, "{}", SEPARATORER)?;
+            writeln!(f, "{SEPARATORER}")?;
         }
 
         Ok(())
@@ -674,7 +674,7 @@ fn block_metadata(block: &MEVBlock) -> String {
 
 fn format_age(seconds: i64) -> String {
     if seconds < 60 {
-        format!("{}s", seconds)
+        format!("{seconds}s")
     } else if seconds < 3600 {
         format!("{}m", seconds / 60)
     } else if seconds < 86400 {

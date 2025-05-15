@@ -123,7 +123,7 @@ impl TxArgs {
             .await?;
 
         if !txs_filter.top_metadata {
-            println!("{}", SEPARATORER);
+            println!("{SEPARATORER}");
         }
 
         mev_block.print();

@@ -28,7 +28,7 @@ impl WatchArgs {
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
 
-        println!("{}", SEPARATORER);
+        println!("{SEPARATORER}");
         let mev_filter = TxsFilter::new(&self.filter, None, self.conn_opts.trace.as_ref(), true)?;
 
         let ens_lookup = ENSLookup::lookup_mode(

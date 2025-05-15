@@ -32,10 +32,10 @@ pub async fn init_sqlite_db(db_url: Option<String>) -> Result<()> {
             let db = SqlitePool::connect(&db_url).await?;
             match MIGRATOR.run(&db).await {
                 Ok(_) => info!("Migrations run successfully"),
-                Err(error) => panic!("Failed to run migrations: {}", error),
+                Err(error) => panic!("Failed to run migrations: {error}"),
             }
         }
-        Err(error) => panic!("error: {}", error),
+        Err(error) => panic!("error: {error}"),
     }
 
     Ok(())
@@ -59,5 +59,5 @@ pub async fn sqlite_truncate_wal(conn: &SqlitePool) -> Result<()> {
 }
 
 pub fn default_db_path() -> PathBuf {
-    config_path().join(format!("signatures-sqlite-v{}.db", SCHEMA_VERSION))
+    config_path().join(format!("signatures-sqlite-v{SCHEMA_VERSION}.db"))
 }
