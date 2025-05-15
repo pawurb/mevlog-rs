@@ -5,7 +5,7 @@ use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use super::shared_init::{init_provider, MEVChain, ConnOpts};
+use super::shared_init::{init_provider, ConnOpts, MEVChain, MEVChainType};
 use crate::GenericProvider;
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
@@ -33,7 +33,7 @@ impl ENSLookup {
         ens_lookup_worker: UnboundedSender<Address>,
         chain: &MEVChain,
     ) -> ENSLookup {
-        if chain != &MEVChain::Mainnet {
+        if chain.chain_type != MEVChainType::Mainnet {
             return ENSLookup::Disabled;
         }
 
@@ -147,7 +147,7 @@ pub fn start_ens_lookup_worker(conn_opts: &ConnOpts) -> mpsc::UnboundedSender<Ad
 
     let conn_opts = conn_opts.clone();
     tokio::spawn(async move {
-        let (provider, _) = init_provider(&conn_opts).await.unwrap();
+        let provider = init_provider(&conn_opts).await.unwrap();
         let provider = Arc::new(provider);
 
         while let Some(target) = rx.recv().await {

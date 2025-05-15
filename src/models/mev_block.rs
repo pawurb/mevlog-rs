@@ -1,9 +1,9 @@
-use std::{collections::HashMap, fmt, process::Command, sync::Arc};
+use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
     providers::Provider,
-    rpc::types::{Block as AlloyBlock, Filter, TransactionRequest},
+    rpc::types::{Filter, TransactionRequest},
     sol,
 };
 use colored::Colorize;
@@ -64,7 +64,6 @@ pub struct MEVBlock {
     mev_transactions: HashMap<u64, MEVTransaction>,
     // needed only for revm trace commits
     revm_transactions: HashMap<u64, TxData>,
-    inner: AlloyBlock,
     txs_data: Vec<TxData>,
     revm_context: RevmBlockContext,
     txs_count: u64,
@@ -134,30 +133,35 @@ impl MEVBlock {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
         let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
-        dbg!(&chain);
         let eth_price = price_oracle.latestRoundData().call().await?.answer;
         let eth_price = eth_price.low_i64() as f64 / 10e7;
 
-        //  cryo txs -b latest --rpc https://eth.merkle.io --n-chunks 1 --csv
-        let _ = Command::new("cryo")
+        let block_number_int = block_number_tag.as_number().unwrap();
+
+        let _cmd = Command::new("cryo")
             .args(&[
                 "txs",
                 "-b",
-                "latest",
+                &block_number_int.to_string(),
                 "--rpc",
-                "https://eth.merkle.io",
+                &chain.rpc_url,
                 "--n-chunks",
                 "1",
                 "--csv",
+                "--output-dir",
+                csv_cache_dir().display().to_string().as_str(),
             ])
             .output();
-        dbg!(&block_number);
-        let block_number_int = block_number_tag.as_number().unwrap();
 
-        let file = std::fs::File::open(format!(
-            "{}__transactions__{block_number_int}_to_{block_number_int}.csv",
+        let file_path = format!(
+            "{}/{}__transactions__{block_number_int}_to_{block_number_int}.csv",
+            csv_cache_dir().display(),
             chain.name()
-        ))?;
+        );
+
+        dbg!(&file_path);
+
+        let file = std::fs::File::open(file_path)?;
         let reader = std::io::BufReader::new(file);
         let mut csv_reader = csv::Reader::from_reader(reader);
 
@@ -213,7 +217,6 @@ impl MEVBlock {
             block_number,
             mev_transactions: HashMap::new(),
             txs_count,
-            inner: block,
             revm_context,
             txs_data,
             reversed_order,
@@ -681,4 +684,8 @@ fn format_age(seconds: i64) -> String {
     } else {
         format!("{}d", seconds / 86400)
     }
+}
+
+fn csv_cache_dir() -> PathBuf {
+    home::home_dir().unwrap().join(".mevlog/.csv-cache")
 }

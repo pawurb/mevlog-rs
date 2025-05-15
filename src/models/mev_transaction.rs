@@ -106,8 +106,6 @@ impl MEVTransaction {
             None
         };
 
-        // dbg!(&signature_hash);
-
         let signature = match signature_hash.clone() {
             Some(sig) => {
                 let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
