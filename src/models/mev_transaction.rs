@@ -5,15 +5,16 @@ use std::{
     sync::Arc,
 };
 
-use alloy::rpc::types::TransactionRequest;
+use alloy::rpc::types::{TransactionInput, TransactionRequest};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::{ColoredString, Colorize};
 use eyre::Result;
-use revm::primitives::{Address, FixedBytes, TxKind, U256};
+use revm::primitives::{AccessList, Address, Bytes, FixedBytes, TxKind, U256};
 use sqlx::SqlitePool;
 
 use super::{
-    db_method::DBMethod, mev_address::MEVAddress, mev_log::MEVLog, mev_log_group::MEVLogGroup,
+    db_method::DBMethod, mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog,
+    mev_log_group::MEVLogGroup,
 };
 use crate::{
     misc::{
@@ -39,17 +40,48 @@ pub struct MEVTransaction {
     pub signature_hash: Option<String>,
     pub tx_hash: FixedBytes<32>,
     pub index: u64,
+    pub inner: TransactionRequest,
     log_groups: Vec<MEVLogGroup>,
     source: MEVAddress,
     to: TxKind,
     pub coinbase_transfer: Option<U256>,
-    pub inner: TransactionRequest,
     pub receipt_data: Option<ReceiptData>,
     pub top_metadata: bool,
 }
 
+// block_number,transaction_index,transaction_hash,nonce,from_address,to_address,value_binary,value_string,value_f64,input,gas_limit,gas_used,gas_price,transaction_type,max_priority_fee_per_gas,max_fee_per_gas,success,n_input_bytes,n_input_zero_bytes,n_input_nonzero_bytes,chain_id
 impl MEVTransaction {
     #[allow(clippy::too_many_arguments)]
+    pub async fn req_from_csv(record: csv::StringRecord) -> Result<TxData> {
+        let to = if record[5].to_string() == "0x" {
+            TxKind::Create
+        } else {
+            TxKind::Call(Address::from_str(&record[5].to_string()).unwrap())
+        };
+
+        let tx_hash = FixedBytes::from_str(&record[2].to_string()).unwrap();
+
+        let inner = TransactionRequest {
+            from: Some(Address::from_str(&record[4].to_string()).unwrap()),
+            to: Some(to),
+            input: TransactionInput::new(Bytes::from(record[9].to_string())),
+            gas_price: Some(record[11].to_string().parse::<u128>().unwrap()),
+            gas: Some(record[10].to_string().parse::<u64>().unwrap()),
+            value: Some(U256::from_str(&record[7].to_string()).unwrap()),
+            nonce: Some(record[3].to_string().parse::<u64>().unwrap()),
+            chain_id: Some(record[12].to_string().parse::<u64>().unwrap()),
+            max_fee_per_gas: Some(record[13].to_string().parse::<u128>().unwrap()),
+            max_priority_fee_per_gas: Some(record[14].to_string().parse::<u128>().unwrap_or(0)),
+            access_list: Some(AccessList::from(vec![])),
+            ..Default::default()
+        };
+
+        Ok(TxData {
+            req: inner,
+            tx_hash,
+        })
+    }
+
     pub async fn new(
         eth_price: f64,
         tx_req: TransactionRequest,
@@ -62,13 +94,16 @@ impl MEVTransaction {
     ) -> Result<Self> {
         let signature_hash = if let Some(input) = tx_req.clone().input.input {
             if input.len() >= 8 {
-                Some(format!("0x{}", hex::encode(&input[..4])))
+                let hash = format!("0x{}", hex::encode(&input[..4]));
+                Some(hash)
             } else {
                 None
             }
         } else {
             None
         };
+
+        // dbg!(&signature_hash);
 
         let signature = match signature_hash.clone() {
             Some(sig) => {
@@ -90,8 +125,8 @@ impl MEVTransaction {
             signature_hash,
             source: mev_address,
             to: tx_req.to.unwrap_or(TxKind::Create),
-            coinbase_transfer: None,
             inner: tx_req,
+            coinbase_transfer: None,
             receipt_data: None,
             top_metadata,
         })

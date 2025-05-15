@@ -53,9 +53,10 @@ sol! {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct TxData {
-    req: TransactionRequest,
-    tx_hash: FixedBytes<32>,
+    pub req: TransactionRequest,
+    pub tx_hash: FixedBytes<32>,
 }
 
 pub struct MEVBlock {
@@ -65,6 +66,7 @@ pub struct MEVBlock {
     // needed only for revm trace commits
     revm_transactions: HashMap<u64, TxData>,
     inner: AlloyBlock,
+    txs_data: Vec<TxData>,
     revm_context: RevmBlockContext,
     txs_count: u64,
     reversed_order: bool,
@@ -138,7 +140,7 @@ impl MEVBlock {
         let eth_price = eth_price.low_i64() as f64 / 10e7;
 
         //  cryo txs -b latest --rpc https://eth.merkle.io --n-chunks 1 --csv
-        let cmd = Command::new("cryo")
+        let _ = Command::new("cryo")
             .args(&[
                 "txs",
                 "-b",
@@ -150,17 +152,35 @@ impl MEVBlock {
                 "--csv",
             ])
             .output();
-        dbg!(&cmd);
-        dbg!(&block_number_tag);
-        let block = provider
-            .get_block_by_number(block_number_tag)
-            .full()
-            .await?;
-        dbg!(&block);
+        dbg!(&block_number);
+        let block_number_int = block_number_tag.as_number().unwrap();
+        let file = std::fs::File::open(format!(
+            "ethereum__transactions__{block_number_int}_to_{block_number_int}.csv"
+        ))?;
+        let reader = std::io::BufReader::new(file);
+        let mut csv_reader = csv::Reader::from_reader(reader);
+
+        let mut txs_data = vec![];
+
+        for result in csv_reader.records() {
+            let record = result?;
+            let tx_req = match MEVTransaction::req_from_csv(record).await {
+                Ok(tx) => tx,
+                Err(e) => {
+                    eyre::bail!("Error parsing tx req from csv: {}", e);
+                }
+            };
+            txs_data.push(tx_req);
+        }
+
+        let block = provider.get_block_by_number(block_number_tag).await?;
+
         let Some(block) = block else {
-            eyre::bail!("Full block {} not found", block_number);
+            eyre::bail!("Block {} not found", block_number);
         };
         let revm_context = RevmBlockContext::new(&block);
+
+        let txs_count = txs_data.len() as u64;
 
         let revm_transactions: HashMap<u64, TxData> = match trace_mode {
             Some(TraceMode::Revm) => {
@@ -171,21 +191,13 @@ impl MEVBlock {
                     }
                 };
 
-                block
+                txs_data
                     .clone()
-                    .into_transactions_vec()
                     .into_iter()
-                    .filter_map(|tx| {
-                        let tx_index = tx.transaction_index?;
-                        if tx_index <= range.to {
-                            let tx_hash = tx.tx_hash();
-                            Some((
-                                tx_index,
-                                TxData {
-                                    req: tx.into_request(),
-                                    tx_hash,
-                                },
-                            ))
+                    .enumerate()
+                    .filter_map(|(tx_index, tx_data)| {
+                        if tx_index <= range.to as usize {
+                            Some((tx_index as u64, tx_data))
                         } else {
                             None
                         }
@@ -199,9 +211,10 @@ impl MEVBlock {
             eth_price,
             block_number,
             mev_transactions: HashMap::new(),
-            txs_count: block.transactions.len() as u64,
+            txs_count,
             inner: block,
             revm_context,
+            txs_data,
             reversed_order,
             revm_transactions,
             top_metadata: block_info_top,
@@ -220,15 +233,13 @@ impl MEVBlock {
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         conn_opts: &ConnOpts,
     ) -> Result<()> {
-        let txs = self.inner.clone().into_transactions_vec();
-        for tx in txs {
-            let tx_hash = tx.tx_hash();
-            let Some(tx_index) = tx.transaction_index else {
-                panic!("Tx index not found");
-            };
+        for (tx_index, tx) in self.txs_data.iter().enumerate() {
+            dbg!(&tx_index);
+            let tx_index = tx_index as u64;
+            let tx_hash = tx.tx_hash;
 
             if let Some(indexes) = &filter.tx_indexes {
-                if !indexes.contains(&tx_index) {
+                if !indexes.contains(&(tx_index)) {
                     continue;
                 }
             }
@@ -239,11 +250,9 @@ impl MEVBlock {
                 }
             }
 
-            let tx = tx.clone().into_request();
-
             let mev_tx = match MEVTransaction::new(
                 self.eth_price,
-                tx,
+                tx.req.clone(),
                 tx_hash,
                 tx_index,
                 sqlite,
