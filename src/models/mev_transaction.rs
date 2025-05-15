@@ -5,20 +5,22 @@ use std::{
     sync::Arc,
 };
 
-use alloy::rpc::types::TransactionRequest;
+use alloy::rpc::types::{TransactionInput, TransactionRequest};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::{ColoredString, Colorize};
 use eyre::Result;
-use revm::primitives::{Address, FixedBytes, TxKind, U256};
+use revm::primitives::{AccessList, Address, Bytes, FixedBytes, TxKind, U256};
 use sqlx::SqlitePool;
 
 use super::{
-    db_method::DBMethod, mev_address::MEVAddress, mev_log::MEVLog, mev_log_group::MEVLogGroup,
+    db_method::DBMethod, mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog,
+    mev_log_group::MEVLogGroup,
 };
 use crate::{
     misc::{
         ens_utils::ENSLookup,
-        utils::{wei_to_eth, ETHERSCAN_URL, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
+        shared_init::MEVChain,
+        utils::{wei_to_eth, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
     },
     GenericProvider,
 };
@@ -35,23 +37,56 @@ pub struct ReceiptData {
 #[derive(Debug)]
 pub struct MEVTransaction {
     eth_price: f64,
+    pub chain: MEVChain,
     pub signature: String,
     pub signature_hash: Option<String>,
     pub tx_hash: FixedBytes<32>,
     pub index: u64,
+    pub inner: TransactionRequest,
     log_groups: Vec<MEVLogGroup>,
     source: MEVAddress,
     to: TxKind,
     pub coinbase_transfer: Option<U256>,
-    pub inner: TransactionRequest,
     pub receipt_data: Option<ReceiptData>,
     pub top_metadata: bool,
 }
 
+// block_number,transaction_index,transaction_hash,nonce,from_address,to_address,value_binary,value_string,value_f64,input,gas_limit,gas_used,gas_price,transaction_type,max_priority_fee_per_gas,max_fee_per_gas,success,n_input_bytes,n_input_zero_bytes,n_input_nonzero_bytes,chain_id
 impl MEVTransaction {
     #[allow(clippy::too_many_arguments)]
+    pub async fn req_from_csv(record: csv::StringRecord) -> Result<TxData> {
+        let to = if record[5].to_string() == "0x" {
+            TxKind::Create
+        } else {
+            TxKind::Call(Address::from_str(&record[5]).unwrap())
+        };
+
+        let tx_hash = FixedBytes::from_str(&record[2]).unwrap();
+
+        let inner = TransactionRequest {
+            from: Some(Address::from_str(&record[4]).unwrap()),
+            to: Some(to),
+            input: TransactionInput::new(Bytes::from_str(&record[9]).unwrap()),
+            gas_price: Some(record[11].to_string().parse::<u128>().unwrap()),
+            gas: Some(record[10].to_string().parse::<u64>().unwrap()),
+            value: Some(U256::from_str(&record[7]).unwrap()),
+            nonce: Some(record[3].to_string().parse::<u64>().unwrap()),
+            chain_id: Some(record[12].to_string().parse::<u64>().unwrap()),
+            max_fee_per_gas: Some(record[13].to_string().parse::<u128>().unwrap()),
+            max_priority_fee_per_gas: Some(record[14].to_string().parse::<u128>().unwrap_or(0)),
+            access_list: Some(AccessList::from(vec![])),
+            ..Default::default()
+        };
+
+        Ok(TxData {
+            req: inner,
+            tx_hash,
+        })
+    }
+
     pub async fn new(
         eth_price: f64,
+        chain: MEVChain,
         tx_req: TransactionRequest,
         tx_hash: FixedBytes<32>,
         index: u64,
@@ -62,7 +97,8 @@ impl MEVTransaction {
     ) -> Result<Self> {
         let signature_hash = if let Some(input) = tx_req.clone().input.input {
             if input.len() >= 8 {
-                Some(format!("0x{}", hex::encode(&input[..4])))
+                let hash = format!("0x{}", hex::encode(&input[..4]));
+                Some(hash)
             } else {
                 None
             }
@@ -83,6 +119,7 @@ impl MEVTransaction {
 
         Ok(Self {
             eth_price,
+            chain,
             tx_hash,
             index,
             log_groups: vec![],
@@ -90,8 +127,8 @@ impl MEVTransaction {
             signature_hash,
             source: mev_address,
             to: tx_req.to.unwrap_or(TxKind::Create),
-            coinbase_transfer: None,
             inner: tx_req,
+            coinbase_transfer: None,
             receipt_data: None,
             top_metadata,
         })
@@ -103,13 +140,19 @@ impl MEVTransaction {
                 if last_log.source() == new_log.source() {
                     self.log_groups.last_mut().unwrap().add_log(new_log);
                 } else {
-                    self.log_groups
-                        .push(MEVLogGroup::new(new_log.source(), vec![new_log]));
+                    self.log_groups.push(MEVLogGroup::new(
+                        new_log.source(),
+                        vec![new_log],
+                        self.chain.clone(),
+                    ));
                 }
             }
             None => {
-                self.log_groups
-                    .push(MEVLogGroup::new(new_log.source(), vec![new_log]));
+                self.log_groups.push(MEVLogGroup::new(
+                    new_log.source(),
+                    vec![new_log],
+                    self.chain.clone(),
+                ));
             }
         }
     }
@@ -141,6 +184,7 @@ impl MEVTransaction {
     }
 
     pub fn gas_tx_cost(&self) -> u128 {
+        // TODO chandle tx pos 0 on OP chains, some receipt info missing
         let receipt = self.receipt_data.as_ref().expect("must be fetched");
         receipt.gas_used as u128 * receipt.effective_gas_price
     }
@@ -177,7 +221,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
             )?;
 
             writeln!(f)?;
@@ -201,7 +245,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
             )?;
         }
 

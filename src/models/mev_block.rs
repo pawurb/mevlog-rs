@@ -1,20 +1,16 @@
-use std::{collections::HashMap, fmt, sync::Arc};
+use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
-    network::TransactionResponse,
     providers::Provider,
-    rpc::types::{Block as AlloyBlock, Filter, TransactionRequest},
+    rpc::types::{Filter, TransactionRequest},
     sol,
 };
 use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
-use revm::{
-    db::CacheDB,
-    primitives::{address, Address, FixedBytes},
-};
+use revm::{db::CacheDB, primitives::FixedBytes};
 use sqlx::SqlitePool;
 use tokio::sync::Semaphore;
 use tracing::{debug, error};
@@ -35,7 +31,7 @@ use crate::{
             RevmBlockContext,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
-        shared_init::{ConnOpts, TraceMode},
+        shared_init::{ConnOpts, MEVChain, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
@@ -56,11 +52,10 @@ sol! {
     }
 }
 
-const ETH_PRICE_ORACLE: Address = address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419");
-
+#[derive(Clone, Debug)]
 pub struct TxData {
-    req: TransactionRequest,
-    tx_hash: FixedBytes<32>,
+    pub req: TransactionRequest,
+    pub tx_hash: FixedBytes<32>,
 }
 
 pub struct MEVBlock {
@@ -69,11 +64,12 @@ pub struct MEVBlock {
     mev_transactions: HashMap<u64, MEVTransaction>,
     // needed only for revm trace commits
     revm_transactions: HashMap<u64, TxData>,
-    inner: AlloyBlock,
+    txs_data: Vec<TxData>,
     revm_context: RevmBlockContext,
     txs_count: u64,
     reversed_order: bool,
     top_metadata: bool,
+    chain: MEVChain,
 }
 
 pub async fn process_block(
@@ -84,8 +80,9 @@ pub async fn process_block(
     symbols_lookup: &SymbolLookupWorker,
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
+    chain: &MEVChain,
 ) -> Result<()> {
-    let revm_utils = init_revm_db(block_number - 1, conn_opts).await?;
+    let revm_utils = init_revm_db(block_number - 1, conn_opts, chain).await?;
 
     let (mut revm_db, _anvil) = match conn_opts.trace {
         Some(TraceMode::Revm) => {
@@ -102,6 +99,7 @@ pub async fn process_block(
         provider,
         conn_opts.trace.as_ref(),
         txs_filter.top_metadata,
+        chain,
     )
     .await?;
 
@@ -130,21 +128,62 @@ impl MEVBlock {
         provider: &Arc<GenericProvider>,
         trace_mode: Option<&TraceMode>,
         block_info_top: bool,
+        chain: &MEVChain,
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
-        let price_oracle = IPriceOracle::new(ETH_PRICE_ORACLE, provider.clone());
+        let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
         let eth_price = price_oracle.latestRoundData().call().await?.answer;
         let eth_price = eth_price.low_i64() as f64 / 10e7;
 
-        let block = provider
-            .get_block_by_number(block_number_tag)
-            .full()
-            .await?;
+        let block_number_int = block_number_tag.as_number().unwrap();
+
+        let _cmd = Command::new("cryo")
+            .args([
+                "txs",
+                "-b",
+                &block_number_int.to_string(),
+                "--rpc",
+                &chain.rpc_url,
+                "--n-chunks",
+                "1",
+                "--csv",
+                "--output-dir",
+                csv_cache_dir().display().to_string().as_str(),
+            ])
+            .output();
+
+        let file_path = format!(
+            "{}/{}__transactions__{block_number_int}_to_{block_number_int}.csv",
+            csv_cache_dir().display(),
+            chain.name()
+        );
+
+        let file = std::fs::File::open(file_path)?;
+        let reader = std::io::BufReader::new(file);
+        let mut csv_reader = csv::Reader::from_reader(reader);
+
+        let mut txs_data = vec![];
+
+        for result in csv_reader.records() {
+            let record = result?;
+            let tx_req = match MEVTransaction::req_from_csv(record).await {
+                Ok(tx) => tx,
+                Err(e) => {
+                    eyre::bail!("Error parsing tx req from csv: {}", e);
+                }
+            };
+            txs_data.push(tx_req);
+        }
+
+        let block = provider.get_block_by_number(block_number_tag).await?;
+
         let Some(block) = block else {
-            eyre::bail!("Full block {} not found", block_number);
+            eyre::bail!("Block {} not found", block_number);
         };
         let revm_context = RevmBlockContext::new(&block);
+
+        let txs_count = txs_data.len() as u64;
 
         let revm_transactions: HashMap<u64, TxData> = match trace_mode {
             Some(TraceMode::Revm) => {
@@ -155,21 +194,13 @@ impl MEVBlock {
                     }
                 };
 
-                block
+                txs_data
                     .clone()
-                    .into_transactions_vec()
                     .into_iter()
-                    .filter_map(|tx| {
-                        let tx_index = tx.transaction_index?;
-                        if tx_index <= range.to {
-                            let tx_hash = tx.tx_hash();
-                            Some((
-                                tx_index,
-                                TxData {
-                                    req: tx.into_request(),
-                                    tx_hash,
-                                },
-                            ))
+                    .enumerate()
+                    .filter_map(|(tx_index, tx_data)| {
+                        if tx_index <= range.to as usize {
+                            Some((tx_index as u64, tx_data))
                         } else {
                             None
                         }
@@ -183,12 +214,13 @@ impl MEVBlock {
             eth_price,
             block_number,
             mev_transactions: HashMap::new(),
-            txs_count: block.transactions.len() as u64,
-            inner: block,
+            txs_count,
             revm_context,
+            txs_data,
             reversed_order,
             revm_transactions,
             top_metadata: block_info_top,
+            chain: chain.clone(),
         })
     }
 
@@ -203,15 +235,12 @@ impl MEVBlock {
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         conn_opts: &ConnOpts,
     ) -> Result<()> {
-        let txs = self.inner.clone().into_transactions_vec();
-        for tx in txs {
-            let tx_hash = tx.tx_hash();
-            let Some(tx_index) = tx.transaction_index else {
-                panic!("Tx index not found");
-            };
+        for (tx_index, tx) in self.txs_data.iter().enumerate() {
+            let tx_index = tx_index as u64;
+            let tx_hash = tx.tx_hash;
 
             if let Some(indexes) = &filter.tx_indexes {
-                if !indexes.contains(&tx_index) {
+                if !indexes.contains(&(tx_index)) {
                     continue;
                 }
             }
@@ -222,11 +251,10 @@ impl MEVBlock {
                 }
             }
 
-            let tx = tx.clone().into_request();
-
             let mev_tx = match MEVTransaction::new(
                 self.eth_price,
-                tx,
+                self.chain.clone(),
+                tx.req.clone(),
                 tx_hash,
                 tx_index,
                 sqlite,
@@ -386,7 +414,7 @@ impl MEVBlock {
     }
 
     fn revm_data_cached(&self) -> Result<bool> {
-        Ok(revm_cache_path(self.block_number - 1)?.exists())
+        Ok(revm_cache_path(self.block_number - 1, &self.chain)?.exists())
     }
 
     async fn trace_txs_revm(
@@ -668,4 +696,8 @@ fn format_age(seconds: i64) -> String {
     } else {
         format!("{}d", seconds / 86400)
     }
+}
+
+fn csv_cache_dir() -> PathBuf {
+    home::home_dir().unwrap().join(".mevlog/.csv-cache")
 }

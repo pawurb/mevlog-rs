@@ -55,6 +55,7 @@ async fn main() {
             } else {
                 eprintln!("Error: {e}");
             }
+            std::process::exit(1);
         }
     }
 }
