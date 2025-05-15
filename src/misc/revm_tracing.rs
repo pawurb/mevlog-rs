@@ -30,7 +30,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
 
-use super::shared_init::{Chain, ConnOpts};
+use super::shared_init::{MEVChain, ConnOpts};
 use crate::misc::shared_init::TraceMode;
 
 pub struct RevmUtils {
@@ -41,7 +41,7 @@ pub struct RevmUtils {
 pub async fn init_revm_db(
     block_number: u64,
     conn_opts: &ConnOpts,
-    chain: &Chain,
+    chain: &MEVChain,
 ) -> Result<Option<RevmUtils>> {
     match conn_opts.trace {
         Some(TraceMode::Revm) => {}
@@ -85,7 +85,7 @@ pub async fn init_revm_db(
     Ok(Some(RevmUtils { anvil, cache_db }))
 }
 
-pub fn revm_cache_path(block_number: u64, chain: &Chain) -> Result<PathBuf> {
+pub fn revm_cache_path(block_number: u64, chain: &MEVChain) -> Result<PathBuf> {
     let foundry_revm_cache = home::home_dir()
         .unwrap()
         .join(format!(".foundry/cache/rpc/{}", chain.name()));

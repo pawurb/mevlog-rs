@@ -19,7 +19,8 @@ use super::{
 use crate::{
     misc::{
         ens_utils::ENSLookup,
-        utils::{wei_to_eth, ETHERSCAN_URL, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
+        shared_init::MEVChain,
+        utils::{wei_to_eth, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
     },
     GenericProvider,
 };
@@ -36,6 +37,7 @@ pub struct ReceiptData {
 #[derive(Debug)]
 pub struct MEVTransaction {
     eth_price: f64,
+    pub chain: MEVChain,
     pub signature: String,
     pub signature_hash: Option<String>,
     pub tx_hash: FixedBytes<32>,
@@ -84,6 +86,7 @@ impl MEVTransaction {
 
     pub async fn new(
         eth_price: f64,
+        chain: MEVChain,
         tx_req: TransactionRequest,
         tx_hash: FixedBytes<32>,
         index: u64,
@@ -118,6 +121,7 @@ impl MEVTransaction {
 
         Ok(Self {
             eth_price,
+            chain,
             tx_hash,
             index,
             log_groups: vec![],
@@ -138,13 +142,19 @@ impl MEVTransaction {
                 if last_log.source() == new_log.source() {
                     self.log_groups.last_mut().unwrap().add_log(new_log);
                 } else {
-                    self.log_groups
-                        .push(MEVLogGroup::new(new_log.source(), vec![new_log]));
+                    self.log_groups.push(MEVLogGroup::new(
+                        new_log.source(),
+                        vec![new_log],
+                        self.chain.clone(),
+                    ));
                 }
             }
             None => {
-                self.log_groups
-                    .push(MEVLogGroup::new(new_log.source(), vec![new_log]));
+                self.log_groups.push(MEVLogGroup::new(
+                    new_log.source(),
+                    vec![new_log],
+                    self.chain.clone(),
+                ));
             }
         }
     }
@@ -205,7 +215,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
             )?;
 
             writeln!(f)?;
@@ -229,7 +239,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", ETHERSCAN_URL, self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
             )?;
         }
 

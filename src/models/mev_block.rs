@@ -2,7 +2,6 @@ use std::{collections::HashMap, fmt, process::Command, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
-    network::TransactionResponse,
     providers::Provider,
     rpc::types::{Block as AlloyBlock, Filter, TransactionRequest},
     sol,
@@ -32,7 +31,7 @@ use crate::{
             RevmBlockContext,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
-        shared_init::{Chain, ConnOpts, TraceMode},
+        shared_init::{ConnOpts, MEVChain, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
@@ -71,7 +70,7 @@ pub struct MEVBlock {
     txs_count: u64,
     reversed_order: bool,
     top_metadata: bool,
-    chain: Chain,
+    chain: MEVChain,
 }
 
 pub async fn process_block(
@@ -82,7 +81,7 @@ pub async fn process_block(
     symbols_lookup: &SymbolLookupWorker,
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
-    chain: &Chain,
+    chain: &MEVChain,
 ) -> Result<()> {
     let revm_utils = init_revm_db(block_number - 1, conn_opts, chain).await?;
 
@@ -130,7 +129,7 @@ impl MEVBlock {
         provider: &Arc<GenericProvider>,
         trace_mode: Option<&TraceMode>,
         block_info_top: bool,
-        chain: &Chain,
+        chain: &MEVChain,
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
@@ -154,8 +153,10 @@ impl MEVBlock {
             .output();
         dbg!(&block_number);
         let block_number_int = block_number_tag.as_number().unwrap();
+
         let file = std::fs::File::open(format!(
-            "ethereum__transactions__{block_number_int}_to_{block_number_int}.csv"
+            "{}__transactions__{block_number_int}_to_{block_number_int}.csv",
+            chain.name()
         ))?;
         let reader = std::io::BufReader::new(file);
         let mut csv_reader = csv::Reader::from_reader(reader);
@@ -234,7 +235,6 @@ impl MEVBlock {
         conn_opts: &ConnOpts,
     ) -> Result<()> {
         for (tx_index, tx) in self.txs_data.iter().enumerate() {
-            dbg!(&tx_index);
             let tx_index = tx_index as u64;
             let tx_hash = tx.tx_hash;
 
@@ -252,6 +252,7 @@ impl MEVBlock {
 
             let mev_tx = match MEVTransaction::new(
                 self.eth_price,
+                self.chain.clone(),
                 tx.req.clone(),
                 tx_hash,
                 tx_index,

@@ -5,7 +5,7 @@ use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use super::shared_init::{init_provider, Chain, ConnOpts};
+use super::shared_init::{init_provider, MEVChain, ConnOpts};
 use crate::GenericProvider;
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
@@ -31,9 +31,9 @@ impl ENSLookup {
     pub async fn lookup_mode(
         ens_query: Option<String>,
         ens_lookup_worker: UnboundedSender<Address>,
-        chain: &Chain,
+        chain: &MEVChain,
     ) -> ENSLookup {
-        if chain != &Chain::Mainnet {
+        if chain != &MEVChain::Mainnet {
             return ENSLookup::Disabled;
         }
 
