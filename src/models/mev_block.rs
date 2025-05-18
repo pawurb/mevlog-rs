@@ -642,15 +642,23 @@ fn block_metadata(block: &MEVBlock) -> String {
     let timestamp = block.revm_context.timestamp;
     let age = chrono::Utc::now().timestamp() - timestamp as i64;
     let base_fee_gwei = block.revm_context.basefee.to_u64() as f64 / 1000000000.0;
+    let name = block.chain.name();
+    let capitalized_name = format!(
+        "{}{}",
+        name.chars().next().unwrap().to_uppercase(),
+        &name[1..]
+    );
     format!(
-        "{} | Age {:age_width$} | Base {:base_width$.2} gwei | Txs {}/{}",
+        "{} | Age {:age_width$} | Base {:base_width$.2} gwei | Txs {}/{} | {} [{}]",
         block.block_number,
         format_age(age),
         base_fee_gwei,
         block.mev_transactions.len(),
         block.txs_count,
+        capitalized_name,
+        block.chain.chain_id(),
         age_width = 3,
-        base_width = 6
+        base_width = 6,
     )
 }
 
