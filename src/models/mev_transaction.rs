@@ -19,7 +19,7 @@ use super::{
 use crate::{
     misc::{
         ens_utils::ENSLookup,
-        shared_init::EVMChain,
+        shared_init::{EVMChain, EVMChainType},
         utils::{wei_to_eth, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
     },
     GenericProvider,
@@ -136,8 +136,16 @@ impl MEVTransaction {
 
         let signature = match signature_hash.clone() {
             Some(sig) => {
-                let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
-                sig.unwrap_or(UNKNOWN.to_string())
+                // TODO refactor
+                if chain.chain_type == EVMChainType::Base
+                    && index == 0
+                    && signature_hash == Some("0x098999be".to_string())
+                {
+                    "setL1BlockValuesIsthmus()".to_string()
+                } else {
+                    let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
+                    sig.unwrap_or(UNKNOWN.to_string())
+                }
             }
             None => ETH_TRANSFER.to_string(),
         };
@@ -329,28 +337,31 @@ impl fmt::Display for MEVTransaction {
                 )?;
             }
             None => {
-                writeln!(f, "{}", "[--trace disabled]".red().bold())?;
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Coinbase Transfer:".yellow().bold(),
-                    "N/A".yellow().bold(),
-                    width = LABEL_WIDTH
-                )?;
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Real Tx Cost:".yellow().bold(),
-                    "N/A".yellow().bold(),
-                    width = LABEL_WIDTH
-                )?;
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Real Gas Price:".yellow().bold(),
-                    "N/A".yellow().bold(),
-                    width = LABEL_WIDTH
-                )?;
+                if self.chain.is_optimism() && self.index == 0 {
+                    writeln!(f, "{}", "Head OP Tx".green().bold())?;
+                } else {
+                    writeln!(
+                        f,
+                        "{:width$} {}",
+                        "Coinbase Transfer:".yellow().bold(),
+                        "N/A".yellow().bold(),
+                        width = LABEL_WIDTH
+                    )?;
+                    writeln!(
+                        f,
+                        "{:width$} {}",
+                        "Real Tx Cost:".yellow().bold(),
+                        "N/A".yellow().bold(),
+                        width = LABEL_WIDTH
+                    )?;
+                    writeln!(
+                        f,
+                        "{:width$} {}",
+                        "Real Gas Price:".yellow().bold(),
+                        "N/A".yellow().bold(),
+                        width = LABEL_WIDTH
+                    )?;
+                }
             }
         }
 
