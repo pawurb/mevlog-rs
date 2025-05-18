@@ -38,6 +38,13 @@ impl EVMChainType {
             EVMChainType::Base => 8453,
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            EVMChainType::Mainnet => "mainnet",
+            EVMChainType::Base => "base",
+        }
+    }
 }
 
 impl EVMChain {
@@ -53,7 +60,14 @@ impl EVMChain {
                 chain_type: EVMChainType::Base,
             })
         } else {
-            eyre::bail!("Invalid chain id {}", chain_id)
+            eyre::bail!(
+                "Invalid chain id {}. Currently supported EVM chains:\n{} ({})\n{} ({})",
+                chain_id,
+                EVMChainType::Mainnet.name(),
+                EVMChainType::Mainnet.chain_id(),
+                EVMChainType::Base.name(),
+                EVMChainType::Base.chain_id()
+            )
         }
     }
 
@@ -62,10 +76,7 @@ impl EVMChain {
     }
 
     pub fn name(&self) -> &str {
-        match self.chain_type {
-            EVMChainType::Mainnet => "mainnet",
-            EVMChainType::Base => "base",
-        }
+        self.chain_type.name()
     }
 
     pub fn revm_cache_dir_name(&self) -> &str {
