@@ -23,6 +23,7 @@ use crate::{misc::db_actions::download_db_file, GenericProvider};
 pub enum EVMChainType {
     Mainnet,
     Base,
+    BNB,
 }
 
 #[derive(Debug, Clone)]
@@ -36,6 +37,7 @@ impl EVMChainType {
         match self {
             EVMChainType::Mainnet => 1,
             EVMChainType::Base => 8453,
+            EVMChainType::BNB => 56,
         }
     }
 
@@ -43,32 +45,40 @@ impl EVMChainType {
         match self {
             EVMChainType::Mainnet => "mainnet",
             EVMChainType::Base => "base",
+            EVMChainType::BNB => "bnb",
         }
     }
 }
 
 impl EVMChain {
     pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
-        if chain_id == EVMChainType::Mainnet.chain_id() {
-            Ok(Self {
-                rpc_url,
-                chain_type: EVMChainType::Mainnet,
-            })
-        } else if chain_id == EVMChainType::Base.chain_id() {
-            Ok(Self {
-                rpc_url,
-                chain_type: EVMChainType::Base,
-            })
-        } else {
+        let supported_chains = [EVMChainType::Mainnet, EVMChainType::Base, EVMChainType::BNB];
+        if !supported_chains
+            .iter()
+            .any(|chain| chain.chain_id() == chain_id)
+        {
+            let supported_chains = supported_chains
+                .iter()
+                .map(|chain| format!("{} ({})", chain.name(), chain.chain_id()))
+                .collect::<Vec<_>>()
+                .join("\n")
+                .to_string();
             eyre::bail!(
-                "Invalid chain id {}. Currently supported EVM chains:\n{} ({})\n{} ({})",
+                "Invalid chain id {}. Currently supported EVM chains:\n{}",
                 chain_id,
-                EVMChainType::Mainnet.name(),
-                EVMChainType::Mainnet.chain_id(),
-                EVMChainType::Base.name(),
-                EVMChainType::Base.chain_id()
+                supported_chains
             )
         }
+
+        let matching_chain = supported_chains
+            .iter()
+            .find(|chain| chain.chain_id() == chain_id)
+            .unwrap();
+
+        Ok(Self {
+            rpc_url,
+            chain_type: matching_chain.clone(),
+        })
     }
 
     pub fn chain_id(&self) -> u64 {
@@ -80,16 +90,13 @@ impl EVMChain {
     }
 
     pub fn revm_cache_dir_name(&self) -> &str {
-        match self.chain_type {
-            EVMChainType::Mainnet => self.name(),
-            EVMChainType::Base => self.name(),
-        }
+        self.name()
     }
 
     pub fn cryo_cache_dir_name(&self) -> &str {
         match self.chain_type {
             EVMChainType::Mainnet => "ethereum",
-            EVMChainType::Base => self.name(),
+            _ => self.name(),
         }
     }
 
@@ -97,6 +104,7 @@ impl EVMChain {
         match self.chain_type {
             EVMChainType::Mainnet => address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"),
             EVMChainType::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
+            EVMChainType::BNB => address!("0x0567f2323251f0aab15c8dfb1967e4e8a7d42aee"),
         }
     }
 
@@ -104,11 +112,19 @@ impl EVMChain {
         match self.chain_type {
             EVMChainType::Mainnet => "https://etherscan.io",
             EVMChainType::Base => "https://basescan.org",
+            EVMChainType::BNB => "https://bscscan.com",
         }
     }
 
     pub fn is_optimism(&self) -> bool {
         self.chain_type == EVMChainType::Base
+    }
+
+    pub fn currency_symbol(&self) -> &str {
+        match self.chain_type {
+            EVMChainType::BNB => "BNB",
+            _ => "ETH",
+        }
     }
 }
 

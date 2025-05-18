@@ -296,9 +296,10 @@ impl fmt::Display for MEVTransaction {
 
         writeln!(
             f,
-            "{:width$} {:.5} ETH | ${:.2}",
+            "{:width$} {:.5} {} | ${:.2}",
             "Gas Tx Cost:".green().bold(),
             wei_to_eth(U256::from(self.gas_tx_cost())),
+            self.chain.currency_symbol(),
             eth_to_usd(U256::from(self.gas_tx_cost()), self.eth_price),
             width = LABEL_WIDTH
         )?;
@@ -307,18 +308,20 @@ impl fmt::Display for MEVTransaction {
             Some(coinbase_transfer) => {
                 writeln!(
                     f,
-                    "{:width$} {:.5} ETH | ${:.2}",
+                    "{:width$} {:.5} {} | ${:.2}",
                     "Coinbase Transfer:".green().bold(),
                     wei_to_eth(coinbase_transfer),
+                    self.chain.currency_symbol(),
                     eth_to_usd(coinbase_transfer, self.eth_price),
                     width = LABEL_WIDTH
                 )?;
 
                 writeln!(
                     f,
-                    "{:width$} {:.5} ETH | ${:.2}",
+                    "{:width$} {:.5} {} | ${:.2}",
                     "Real Tx Cost:".green().bold(),
                     wei_to_eth(self.full_tx_cost()),
+                    self.chain.currency_symbol(),
                     eth_to_usd(self.full_tx_cost(), self.eth_price),
                     width = LABEL_WIDTH
                 )?;
