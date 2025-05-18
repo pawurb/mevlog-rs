@@ -174,6 +174,14 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 
 
 You can reverse the display order by adding the `--reverse` flag.
 
+## Supported EVM chains
+
+* [Mainnet](https://etherscan.io)
+* [Base](https://basescan.org)
+* [BSC](https://bscscan.com)
+
+If you want to add an EVM network, please submit a PR as described [in this issue](https://github.com/pawurb/mevlog-rs/issues/9).
+
 ## Project status
 
 WIP, feedback appreciated.
