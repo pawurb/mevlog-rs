@@ -150,14 +150,14 @@ impl MEVBlock {
                 "1",
                 "--csv",
                 "--output-dir",
-                csv_cache_dir().display().to_string().as_str(),
+                cryo_cache_dir().display().to_string().as_str(),
             ])
             .output();
 
         let file_path = format!(
             "{}/{}__transactions__{block_number_int}_to_{block_number_int}.csv",
-            csv_cache_dir().display(),
-            chain.name()
+            cryo_cache_dir().display(),
+            chain.cryo_cache_dir_name()
         );
 
         if which::which("cryo").is_err() {
@@ -668,6 +668,6 @@ fn format_age(seconds: i64) -> String {
     }
 }
 
-fn csv_cache_dir() -> PathBuf {
-    home::home_dir().unwrap().join(".mevlog/.csv-cache")
+fn cryo_cache_dir() -> PathBuf {
+    home::home_dir().unwrap().join(".mevlog/.cryo-cache")
 }

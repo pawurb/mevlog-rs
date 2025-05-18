@@ -63,8 +63,22 @@ impl EVMChain {
 
     pub fn name(&self) -> &str {
         match self.chain_type {
-            EVMChainType::Mainnet => "ethereum",
+            EVMChainType::Mainnet => "mainnet",
             EVMChainType::Base => "base",
+        }
+    }
+
+    pub fn revm_cache_dir_name(&self) -> &str {
+        match self.chain_type {
+            EVMChainType::Mainnet => self.name(),
+            EVMChainType::Base => self.name(),
+        }
+    }
+
+    pub fn cryo_cache_dir_name(&self) -> &str {
+        match self.chain_type {
+            EVMChainType::Mainnet => "ethereum",
+            EVMChainType::Base => self.name(),
         }
     }
 

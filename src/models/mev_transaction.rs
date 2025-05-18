@@ -76,7 +76,7 @@ pub struct MEVTransaction {
 impl MEVTransaction {
     #[allow(clippy::too_many_arguments)]
     pub async fn req_from_csv(record: csv::StringRecord) -> Result<TxData> {
-        let to = if record[5].to_string() == "0x" {
+        let to = if record[5].to_string() == "0x" || record[5].is_empty() {
             TxKind::Create
         } else {
             TxKind::Call(Address::from_str(&record[5]).unwrap())

@@ -86,13 +86,17 @@ pub async fn init_revm_db(
 }
 
 pub fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {
-    // TODO handle dir cache path, right now it's failing
-    let foundry_revm_cache = home::home_dir()
-        .unwrap()
-        .join(format!(".foundry/cache/rpc/{}", chain.name()));
+    let foundry_revm_cache = home::home_dir().unwrap().join(format!(
+        ".foundry/cache/rpc/{}",
+        chain.revm_cache_dir_name()
+    ));
 
     if Path::new(&foundry_revm_cache).exists() {
-        Ok(foundry_revm_cache.join(format!("{block_number}")))
+        if foundry_revm_cache.is_dir() {
+            Ok(foundry_revm_cache.join(format!("{block_number}/storage.json")))
+        } else {
+            Ok(foundry_revm_cache.join(format!("{block_number}")))
+        }
     } else {
         Ok(home::home_dir()
             .unwrap()
