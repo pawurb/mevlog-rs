@@ -160,7 +160,20 @@ impl MEVBlock {
             chain.name()
         );
 
-        let file = std::fs::File::open(file_path)?;
+        if which::which("cryo").is_err() {
+            eyre::bail!("'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo");
+        };
+
+        let file = match std::fs::File::open(file_path.clone()) {
+            Ok(file) => file,
+            Err(e) => {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+                } else {
+                    eyre::bail!("Error opening CSV file: {e}");
+                }
+            }
+        };
         let reader = std::io::BufReader::new(file);
         let mut csv_reader = csv::Reader::from_reader(reader);
 

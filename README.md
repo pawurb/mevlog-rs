@@ -23,6 +23,14 @@ You can [check out this article](https://pawelurbanek.com/long-tail-mev-revm) fo
 
 ## Getting started
 
+Mevlog depends on [cryo CLI](https://github.com/paradigmxyz/cryo) for fetching data. Please install it first by running:
+
+```bash
+cargo install cryo_cli
+```
+
+and then:
+
 ```bash
 git clone https://github.com/pawurb/mevlog-rs
 cd mevlog-rs

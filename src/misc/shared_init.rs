@@ -25,8 +25,6 @@ pub enum EVMChainType {
     Base,
 }
 
-impl EVMChainType {}
-
 #[derive(Debug, Clone)]
 pub struct EVMChain {
     pub chain_type: EVMChainType,
