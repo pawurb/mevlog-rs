@@ -338,7 +338,7 @@ impl fmt::Display for MEVTransaction {
             }
             None => {
                 if self.chain.is_optimism() && self.index == 0 {
-                    writeln!(f, "{}", "Head OP Tx".green().bold())?;
+                    writeln!(f, "{}", "Head Optimism Tx".green().bold())?;
                 } else {
                     writeln!(
                         f,

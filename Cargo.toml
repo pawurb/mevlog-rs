@@ -1,9 +1,9 @@
 [package]
 name = "mevlog"
-version = "0.5.0-rc.1"
+version = "0.5.0"
 edition = "2021"
 repository = "https://github.com/pawurb/mevlog-rs"
-description = "Ethereum transactions monitoring and querying CLI powered by Revm"
+description = "EVM transactions monitoring and querying CLI powered by Revm"
 readme = "README.md"
 license = "MIT"
 categories = ["command-line-utilities"]
