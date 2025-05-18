@@ -337,31 +337,27 @@ impl fmt::Display for MEVTransaction {
                 )?;
             }
             None => {
-                if self.chain.is_optimism() && self.index == 0 {
-                    writeln!(f, "{}", "Head Optimism Tx".green().bold())?;
-                } else {
-                    writeln!(
-                        f,
-                        "{:width$} {}",
-                        "Coinbase Transfer:".yellow().bold(),
-                        "N/A".yellow().bold(),
-                        width = LABEL_WIDTH
-                    )?;
-                    writeln!(
-                        f,
-                        "{:width$} {}",
-                        "Real Tx Cost:".yellow().bold(),
-                        "N/A".yellow().bold(),
-                        width = LABEL_WIDTH
-                    )?;
-                    writeln!(
-                        f,
-                        "{:width$} {}",
-                        "Real Gas Price:".yellow().bold(),
-                        "N/A".yellow().bold(),
-                        width = LABEL_WIDTH
-                    )?;
-                }
+                writeln!(
+                    f,
+                    "{:width$} {}",
+                    "Coinbase Transfer:".yellow().bold(),
+                    "N/A".yellow().bold(),
+                    width = LABEL_WIDTH
+                )?;
+                writeln!(
+                    f,
+                    "{:width$} {}",
+                    "Real Tx Cost:".yellow().bold(),
+                    "N/A".yellow().bold(),
+                    width = LABEL_WIDTH
+                )?;
+                writeln!(
+                    f,
+                    "{:width$} {}",
+                    "Real Gas Price:".yellow().bold(),
+                    "N/A".yellow().bold(),
+                    width = LABEL_WIDTH
+                )?;
             }
         }
 

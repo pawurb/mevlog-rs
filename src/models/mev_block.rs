@@ -213,9 +213,7 @@ impl MEVBlock {
                     .into_iter()
                     .enumerate()
                     .filter_map(|(tx_index, tx_data)| {
-                        if chain.is_optimism() && tx_index == 0 {
-                            None
-                        } else if tx_index <= range.to as usize {
+                        if tx_index <= range.to as usize {
                             Some((tx_index as u64, tx_data))
                         } else {
                             None
