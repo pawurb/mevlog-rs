@@ -16,6 +16,7 @@ There's also [a beta web version](https://mevlog.rs/) available.
 - track smart contract storage changes
 - detect validator bribes
 - filter txs by real (including bribe) gas prices and cost
+- [different EVM networks support](https://github.com/pawurb/mevlog-rs/issues/9)
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
