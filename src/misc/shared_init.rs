@@ -55,7 +55,12 @@ impl EVMChainType {
 
 impl EVMChain {
     pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
-        let supported_chains = [EVMChainType::Mainnet, EVMChainType::Base, EVMChainType::BSC, EVMChainType::Arbitrum];
+        let supported_chains = [
+            EVMChainType::Mainnet,
+            EVMChainType::Base,
+            EVMChainType::BSC,
+            EVMChainType::Arbitrum,
+        ];
         if !supported_chains
             .iter()
             .any(|chain| chain.chain_id() == chain_id)
