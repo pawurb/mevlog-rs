@@ -24,6 +24,7 @@ pub enum EVMChainType {
     Mainnet,
     Base,
     BSC,
+    Arbitrum,
 }
 
 #[derive(Debug, Clone)]
@@ -38,6 +39,7 @@ impl EVMChainType {
             EVMChainType::Mainnet => 1,
             EVMChainType::Base => 8453,
             EVMChainType::BSC => 56,
+            EVMChainType::Arbitrum => 42161,
         }
     }
 
@@ -46,13 +48,19 @@ impl EVMChainType {
             EVMChainType::Mainnet => "mainnet",
             EVMChainType::Base => "base",
             EVMChainType::BSC => "bsc",
+            EVMChainType::Arbitrum => "arbitrum",
         }
     }
 }
 
 impl EVMChain {
     pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
-        let supported_chains = [EVMChainType::Mainnet, EVMChainType::Base, EVMChainType::BSC];
+        let supported_chains = [
+            EVMChainType::Mainnet,
+            EVMChainType::Base,
+            EVMChainType::BSC,
+            EVMChainType::Arbitrum,
+        ];
         if !supported_chains
             .iter()
             .any(|chain| chain.chain_id() == chain_id)
@@ -105,6 +113,7 @@ impl EVMChain {
             EVMChainType::Mainnet => address!("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"),
             EVMChainType::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
             EVMChainType::BSC => address!("0x0567f2323251f0aab15c8dfb1967e4e8a7d42aee"),
+            EVMChainType::Arbitrum => address!("0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"),
         }
     }
 
@@ -113,6 +122,7 @@ impl EVMChain {
             EVMChainType::Mainnet => "https://etherscan.io",
             EVMChainType::Base => "https://basescan.org",
             EVMChainType::BSC => "https://bscscan.com",
+            EVMChainType::Arbitrum => "https://arbiscan.io",
         }
     }
 
