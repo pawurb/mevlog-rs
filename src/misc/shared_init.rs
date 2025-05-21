@@ -69,8 +69,7 @@ impl EVMChainType {
             .join("\n");
 
         format!(
-            "Currently supported EVM chains:\n{}\nVisit https://github.com/pawurb/mevlog-rs/issues/9 to add more.",
-            chains
+            "Currently supported EVM chains:\n{chains}\nVisit https://github.com/pawurb/mevlog-rs/issues/9 to add more."
         )
     }
 }
