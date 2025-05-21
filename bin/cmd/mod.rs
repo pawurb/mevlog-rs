@@ -1,3 +1,4 @@
+pub mod chains;
 pub mod search;
 pub mod seed_db;
 pub mod tx;

@@ -51,30 +51,41 @@ impl EVMChainType {
             EVMChainType::Arbitrum => "arbitrum",
         }
     }
-}
 
-impl EVMChain {
-    pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
-        let supported_chains = [
+    pub fn supported() -> Vec<Self> {
+        vec![
             EVMChainType::Mainnet,
             EVMChainType::Base,
             EVMChainType::BSC,
             EVMChainType::Arbitrum,
-        ];
+        ]
+    }
+
+    pub fn supported_chains_text() -> String {
+        let chains = Self::supported()
+            .iter()
+            .map(|chain| format!("{} ({})", chain.name(), chain.chain_id()))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        format!(
+            "Currently supported EVM chains:\n{}\nVisit https://github.com/pawurb/mevlog-rs/issues/9 to add more.",
+            chains
+        )
+    }
+}
+
+impl EVMChain {
+    pub fn new(chain_id: u64, rpc_url: String) -> Result<Self> {
+        let supported_chains = EVMChainType::supported();
         if !supported_chains
             .iter()
             .any(|chain| chain.chain_id() == chain_id)
         {
-            let supported_chains = supported_chains
-                .iter()
-                .map(|chain| format!("{} ({})", chain.name(), chain.chain_id()))
-                .collect::<Vec<_>>()
-                .join("\n")
-                .to_string();
             eyre::bail!(
-                "Invalid chain id {}. Currently supported EVM chains:\n{}",
+                "Invalid chain id {}. {}",
                 chain_id,
-                supported_chains
+                EVMChainType::supported_chains_text()
             )
         }
 
