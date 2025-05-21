@@ -234,7 +234,11 @@ impl MEVTransaction {
     }
 
     pub fn full_effective_gas_price(&self) -> U256 {
-        self.full_tx_cost().div(U256::from(self.receipt.gas_used))
+        if self.receipt.gas_used == 0 {
+            U256::from(0)
+        } else {
+            self.full_tx_cost().div(U256::from(self.receipt.gas_used))
+        }
     }
 }
 
