@@ -64,12 +64,14 @@ impl EVMChainType {
     pub fn supported_chains_text() -> String {
         let chains = Self::supported()
             .iter()
-            .map(|chain| format!("{} ({})", chain.name(), chain.chain_id()))
+            .map(|chain| format!("- {} ({})", chain.name(), chain.chain_id()))
             .collect::<Vec<_>>()
             .join("\n");
 
         format!(
-            "Currently supported EVM chains:\n{chains}\nVisit https://github.com/pawurb/mevlog-rs/issues/9 to add more."
+            r#"Currently supported EVM chains:
+{chains}
+Visit https://github.com/pawurb/mevlog-rs/issues/9 to add more."#
         )
     }
 }
