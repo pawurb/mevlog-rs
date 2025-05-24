@@ -25,6 +25,7 @@ pub enum EVMChainType {
     Base,
     BSC,
     Arbitrum,
+    Polygon,
 }
 
 #[derive(Debug, Clone)]
@@ -40,6 +41,7 @@ impl EVMChainType {
             EVMChainType::Base => 8453,
             EVMChainType::BSC => 56,
             EVMChainType::Arbitrum => 42161,
+            EVMChainType::Polygon => 137,
         }
     }
 
@@ -49,6 +51,7 @@ impl EVMChainType {
             EVMChainType::Base => "base",
             EVMChainType::BSC => "bsc",
             EVMChainType::Arbitrum => "arbitrum",
+            EVMChainType::Polygon => "polygon",
         }
     }
 
@@ -58,6 +61,7 @@ impl EVMChainType {
             EVMChainType::Base,
             EVMChainType::BSC,
             EVMChainType::Arbitrum,
+            EVMChainType::Polygon,
         ]
     }
 
@@ -126,6 +130,7 @@ impl EVMChain {
             EVMChainType::Base => address!("0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70"),
             EVMChainType::BSC => address!("0x0567f2323251f0aab15c8dfb1967e4e8a7d42aee"),
             EVMChainType::Arbitrum => address!("0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"),
+            EVMChainType::Polygon => address!("0xAB594600376Ec9fD91F8e885dADF0CE036862dE0"),
         }
     }
 
@@ -135,6 +140,7 @@ impl EVMChain {
             EVMChainType::Base => "https://basescan.org",
             EVMChainType::BSC => "https://bscscan.com",
             EVMChainType::Arbitrum => "https://arbiscan.io",
+            EVMChainType::Polygon => "https://polygonscan.com",
         }
     }
 
@@ -145,6 +151,7 @@ impl EVMChain {
     pub fn currency_symbol(&self) -> &str {
         match self.chain_type {
             EVMChainType::BSC => "BNB",
+            EVMChainType::Polygon => "POL",
             _ => "ETH",
         }
     }

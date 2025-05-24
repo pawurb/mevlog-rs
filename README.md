@@ -180,6 +180,7 @@ You can reverse the display order by adding the `--reverse` flag.
 * [Mainnet](https://etherscan.io)
 * [Base](https://basescan.org)
 * [BSC](https://bscscan.com)
+* [Polygon](https://polygonscan.com)
 
 If you want to add an EVM network, please submit a PR as described [in this issue](https://github.com/pawurb/mevlog-rs/issues/9).
 
