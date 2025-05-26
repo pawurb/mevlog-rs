@@ -7,7 +7,7 @@ use mevlog::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
         revm_tracing::init_revm_db,
-        shared_init::{init_deps, ConnOpts, TraceMode},
+        shared_init::{init_deps, ConnOpts, EVMChainType, TraceMode},
         utils::SEPARATORER,
     },
     models::{mev_block::MEVBlock, txs_filter::TxsFilter},
@@ -111,11 +111,17 @@ impl TxArgs {
             top_metadata: self.top_metadata,
         };
 
+        let ens_lookup_mode = if shared_deps.chain.chain_type == EVMChainType::Mainnet {
+            ENSLookup::Sync
+        } else {
+            ENSLookup::Disabled
+        };
+
         mev_block
             .populate_txs(
                 &txs_filter,
                 &sqlite,
-                &ENSLookup::Sync,
+                &ens_lookup_mode,
                 &shared_deps.symbols_lookup_worker,
                 &provider,
                 revm_db.as_mut(),
