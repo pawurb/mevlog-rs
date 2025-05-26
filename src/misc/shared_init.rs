@@ -26,6 +26,10 @@ pub enum EVMChainType {
     BSC,
     Arbitrum,
     Polygon,
+    Metis,
+    Optimism,
+    Avalanche,
+    Linea,
 }
 
 #[derive(Debug, Clone)]
@@ -42,6 +46,10 @@ impl EVMChainType {
             EVMChainType::BSC => 56,
             EVMChainType::Arbitrum => 42161,
             EVMChainType::Polygon => 137,
+            EVMChainType::Metis => 1088,
+            EVMChainType::Optimism => 10,
+            EVMChainType::Avalanche => 43114,
+            EVMChainType::Linea => 59144,
         }
     }
 
@@ -52,6 +60,10 @@ impl EVMChainType {
             EVMChainType::BSC => "bsc",
             EVMChainType::Arbitrum => "arbitrum",
             EVMChainType::Polygon => "polygon",
+            EVMChainType::Metis => "metis",
+            EVMChainType::Optimism => "optimism",
+            EVMChainType::Avalanche => "avalanche",
+            EVMChainType::Linea => "linea",
         }
     }
 
@@ -62,6 +74,10 @@ impl EVMChainType {
             EVMChainType::BSC,
             EVMChainType::Arbitrum,
             EVMChainType::Polygon,
+            EVMChainType::Metis,
+            EVMChainType::Optimism,
+            EVMChainType::Avalanche,
+            EVMChainType::Linea,
         ]
     }
 
@@ -131,6 +147,10 @@ impl EVMChain {
             EVMChainType::BSC => address!("0x0567f2323251f0aab15c8dfb1967e4e8a7d42aee"),
             EVMChainType::Arbitrum => address!("0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612"),
             EVMChainType::Polygon => address!("0xAB594600376Ec9fD91F8e885dADF0CE036862dE0"),
+            EVMChainType::Metis => address!("0xD4a5Bb03B5D66d9bf81507379302Ac2C2DFDFa6D"),
+            EVMChainType::Optimism => address!("0x13e3Ee699D1909E989722E753853AE30b17e08c5"), // ETH/USD
+            EVMChainType::Avalanche => address!("0x0A77230d17318075983913bC2145DB16C7366156"),
+            EVMChainType::Linea => address!("0x3c6Cd9Cc7c7a4c2Cf5a82734CD249D7D593354dA"), // ETH/USD
         }
     }
 
@@ -141,17 +161,23 @@ impl EVMChain {
             EVMChainType::BSC => "https://bscscan.com",
             EVMChainType::Arbitrum => "https://arbiscan.io",
             EVMChainType::Polygon => "https://polygonscan.com",
+            EVMChainType::Metis => "https://andromeda-explorer.metis.io/",
+            EVMChainType::Optimism => "https://optimistic.etherscan.io",
+            EVMChainType::Avalanche => "https://snowtrace.io",
+            EVMChainType::Linea => "https://lineascan.build",
         }
     }
 
     pub fn is_optimism(&self) -> bool {
-        self.chain_type == EVMChainType::Base
+        self.chain_type == EVMChainType::Optimism || self.chain_type == EVMChainType::Base
     }
 
     pub fn currency_symbol(&self) -> &str {
         match self.chain_type {
             EVMChainType::BSC => "BNB",
             EVMChainType::Polygon => "POL",
+            EVMChainType::Avalanche => "AVAX",
+            EVMChainType::Metis => "METIS",
             _ => "ETH",
         }
     }
