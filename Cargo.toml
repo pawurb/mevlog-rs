@@ -1,6 +1,6 @@
 [package]
 name = "mevlog"
-version = "0.5.2"
+version = "0.5.3"
 edition = "2021"
 repository = "https://github.com/pawurb/mevlog-rs"
 description = "EVM transactions monitoring and querying CLI powered by Revm"
