@@ -5,11 +5,14 @@ use std::{
     sync::Arc,
 };
 
-use alloy::rpc::types::{TransactionInput, TransactionRequest};
+use alloy::{
+    rlp::Encodable,
+    rpc::types::{TransactionInput, TransactionRequest},
+};
 use bigdecimal::{BigDecimal, ToPrimitive};
-use colored::{ColoredString, Colorize};
+use colored::Colorize;
 use eyre::Result;
-use revm::primitives::{AccessList, Address, Bytes, FixedBytes, TxKind, U256};
+use revm::primitives::{keccak256, AccessList, Address, Bytes, FixedBytes, TxKind, U256};
 use sqlx::SqlitePool;
 
 use super::{
@@ -46,6 +49,7 @@ pub struct MEVTransaction {
     log_groups: Vec<MEVLogGroup>,
     source: MEVAddress,
     to: TxKind,
+    pub nonce: u64,
     pub coinbase_transfer: Option<U256>,
     pub receipt: ReceiptData,
     pub top_metadata: bool,
@@ -156,6 +160,7 @@ impl MEVTransaction {
         Ok(Self {
             eth_price,
             chain,
+            nonce: tx_req.nonce.unwrap_or(0),
             tx_hash,
             index,
             log_groups: vec![],
@@ -261,24 +266,10 @@ impl fmt::Display for MEVTransaction {
 
             writeln!(f)?;
             writeln!(f, "{} ->", self.source)?;
-            writeln!(
-                f,
-                "  {}::{}",
-                display_target(self.to),
-                self.signature.purple(),
-            )?;
+            writeln!(f, "  {}", display_target(self))?;
         } else {
             writeln!(f, "{} ->", self.source)?;
-            if self.to == TxKind::Create {
-                writeln!(f, "{}", "  CREATE()".green().bold())?;
-            } else {
-                writeln!(
-                    f,
-                    "  {}::{}",
-                    display_target(self.to),
-                    self.signature.purple(),
-                )?;
-            }
+            writeln!(f, "  {}", display_target(self))?;
 
             writeln!(
                 f,
@@ -390,10 +381,28 @@ impl fmt::Display for MEVTransaction {
     }
 }
 
-fn display_target(to: TxKind) -> ColoredString {
-    match to {
-        TxKind::Create => "CREATE".green(),
-        TxKind::Call(address) => format!("{address}").green(),
+fn display_target(tx: &MEVTransaction) -> String {
+    match tx.to {
+        TxKind::Create => {
+            if let Some(from) = tx.inner.from {
+                let mut out = Vec::new();
+
+                let list: [&dyn Encodable; 2] = [&from, &U256::from(tx.nonce)];
+
+                alloy::rlp::encode_list::<_, dyn Encodable>(&list, &mut out);
+
+                let keccak = keccak256(&out);
+                let contract_address = &keccak[12..];
+                let contract_address_str = format!("0x{}", hex::encode(contract_address));
+
+                format!("{}{}", "CREATE::".green(), contract_address_str.red(),)
+            } else {
+                format!("{}", "CREATE()".green())
+            }
+        }
+        TxKind::Call(address) => {
+            format!("{}::{}", address.to_string().green(), tx.signature.purple())
+        }
     }
 }
 
