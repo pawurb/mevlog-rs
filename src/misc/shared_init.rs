@@ -169,10 +169,7 @@ impl EVMChain {
     }
 
     pub fn is_optimism(&self) -> bool {
-        matches!(
-            self.chain_type,
-            EVMChainType::Base | EVMChainType::Optimism
-        )
+        self.chain_type == EVMChainType::Optimism || self.chain_type == EVMChainType::Base
     }
 
     pub fn currency_symbol(&self) -> &str {
