@@ -269,12 +269,16 @@ impl fmt::Display for MEVTransaction {
             )?;
         } else {
             writeln!(f, "{} ->", self.source)?;
-            writeln!(
-                f,
-                "  {}::{}",
-                display_target(self.to),
-                self.signature.purple(),
-            )?;
+            if self.to == TxKind::Create {
+                writeln!(f, "{}", "  CREATE()".green().bold())?;
+            } else {
+                writeln!(
+                    f,
+                    "  {}::{}",
+                    display_target(self.to),
+                    self.signature.purple(),
+                )?;
+            }
 
             writeln!(
                 f,

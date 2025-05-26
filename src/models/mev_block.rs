@@ -297,6 +297,9 @@ impl MEVBlock {
                         continue;
                     }
                 }
+                Some(AddressFilter::CreateCall) => {
+                    eyre::bail!("CREATE query works only for --to filter");
+                }
                 None => {}
             }
 
@@ -308,6 +311,11 @@ impl MEVBlock {
                 }
                 Some(AddressFilter::ENSName(ens_name)) => {
                     if mev_tx.ens_name() != Some(ens_name) {
+                        continue;
+                    }
+                }
+                Some(AddressFilter::CreateCall) => {
+                    if mev_tx.to().is_some() {
                         continue;
                     }
                 }

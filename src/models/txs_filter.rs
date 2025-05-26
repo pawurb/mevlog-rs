@@ -18,7 +18,10 @@ pub struct SharedFilterOpts {
     #[arg(short = 'f', long, help = "Filter by tx source address or ENS name")]
     pub from: Option<String>,
 
-    #[arg(long, help = "Filter by tx target address or ENS name")]
+    #[arg(
+        long,
+        help = "Filter by tx target address, ENS name, or CREATE transactions"
+    )]
     pub to: Option<String>,
 
     #[arg(short = 'p', long, help_heading = "Tx position or position range in a block (e.g., '0' or '0:10'", num_args(1..))]
@@ -393,6 +396,7 @@ impl FromStr for SignatureQuery {
 pub enum AddressFilter {
     Address(Address),
     ENSName(String),
+    CreateCall,
 }
 
 impl AddressFilter {
@@ -402,6 +406,10 @@ impl AddressFilter {
         }
 
         let value = value.unwrap();
+
+        if value == "CREATE" {
+            return Ok(Some(AddressFilter::CreateCall));
+        }
 
         if let Ok(address) = value.parse::<Address>() {
             return Ok(Some(AddressFilter::Address(address)));

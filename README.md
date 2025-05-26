@@ -90,6 +90,12 @@ mevlog search -b 22034300:22034320 -p 0 --not-event "/(Swap).+/"
 mevlog search -b 22045400:22045420 --event "/(?i)(rebase).+/" --event "/(Transfer).+/"
 ```
 
+- query by transactions that created a new smart contract:
+
+```bash
+mevlog search -b 22045400:22045420 --to CREATE
+```
+
 ### Event filters
 
 The `--event` and `--not-event` options allow filtering transactions based on emitted events. The filter criteria can be:
@@ -128,7 +134,7 @@ Options:
   -f, --from <FROM>
           Filter by tx source address or ENS name
       --to <TO>
-          Filter by tx target address or ENS name
+          Filter by tx target address or ENS name, or CREATE transactions
   -t, --touching <TOUCHING>
           Filter by contracts with storage changed by the transaction
       --event <EVENT>
