@@ -181,10 +181,10 @@ You can reverse the display order by adding the `--reverse` flag.
 * [Base](https://basescan.org)
 * [BSC](https://bscscan.com)
 * [Polygon](https://polygonscan.com)
-* Arbitrum,
-* Optimism, 
-* Metis,
-* Linea,
+* Arbitrum
+* Optimism
+* Metis
+* Linea
 * Avalanche
 
 If you want to add an EVM network, please submit a PR as described [in this issue](https://github.com/pawurb/mevlog-rs/issues/9).
