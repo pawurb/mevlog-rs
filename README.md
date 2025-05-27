@@ -1,9 +1,9 @@
-## mevlog-rs - explore Ethereum from your terminal 
+## mevlog-rs - explore EVM chains from your terminal 
 [![Latest Version](https://img.shields.io/crates/v/mevlog.svg)](https://crates.io/crates/mevlog) [![GH Actions](https://github.com/pawurb/mevlog-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/pawurb/mevlog-rs/actions)
  
 ![Big bribe](big-bribe-tx2.png)
 
-Rust-based CLI tool for querying and monitoring Ethereum blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
+Rust-based CLI tool for querying and monitoring Ethereum (and other EVM) blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
 There's also [a beta web version](https://mevlog.rs/) available.
 
@@ -16,7 +16,7 @@ There's also [a beta web version](https://mevlog.rs/) available.
 - track smart contract storage changes
 - detect validator bribes
 - filter txs by real (including bribe) gas prices and cost
-- [different EVM networks support](https://github.com/pawurb/mevlog-rs/issues/9)
+- [multiple EVM networks support](https://github.com/pawurb/mevlog-rs/issues/9)
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
