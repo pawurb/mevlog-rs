@@ -136,6 +136,7 @@ impl EVMChain {
     pub fn cryo_cache_dir_name(&self) -> &str {
         match self.chain_type {
             EVMChainType::Mainnet => "ethereum",
+            EVMChainType::BSC => "bnb",
             _ => self.name(),
         }
     }
