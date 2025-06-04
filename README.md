@@ -189,9 +189,10 @@ You can reverse the display order by adding the `--reverse` flag.
 * [Polygon](https://polygonscan.com)
 * [Arbitrum](https://arbiscan.io)
 * [Optimism](https://optimistic.etherscan.io)
-* [Metis](https://andromeda-explorer.metis.io/)
+* [Metis](https://andromeda-explorer.metis.io)
 * [Linea](https://lineascan.build)
 * [Avalanche](https://snowtrace.io)
+* [Scroll](https://scrollscan.com)
 
 If you want to add an EVM network, please submit a PR as described [in this issue](https://github.com/pawurb/mevlog-rs/issues/9).
 

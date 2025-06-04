@@ -30,6 +30,7 @@ pub enum EVMChainType {
     Optimism,
     Avalanche,
     Linea,
+    Scroll,
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +51,7 @@ impl EVMChainType {
             EVMChainType::Optimism => 10,
             EVMChainType::Avalanche => 43114,
             EVMChainType::Linea => 59144,
+            EVMChainType::Scroll => 534352,
         }
     }
 
@@ -64,6 +66,7 @@ impl EVMChainType {
             EVMChainType::Optimism => "optimism",
             EVMChainType::Avalanche => "avalanche",
             EVMChainType::Linea => "linea",
+            EVMChainType::Scroll => "scroll",
         }
     }
 
@@ -78,6 +81,7 @@ impl EVMChainType {
             EVMChainType::Optimism,
             EVMChainType::Avalanche,
             EVMChainType::Linea,
+            EVMChainType::Scroll,
         ]
     }
 
@@ -137,6 +141,7 @@ impl EVMChain {
         match self.chain_type {
             EVMChainType::Mainnet => "ethereum",
             EVMChainType::BSC => "bnb",
+            EVMChainType::Scroll => "network_534352",
             _ => self.name(),
         }
     }
@@ -154,6 +159,7 @@ impl EVMChain {
             EVMChainType::Optimism => address!("0x13e3Ee699D1909E989722E753853AE30b17e08c5"),
             EVMChainType::Avalanche => address!("0x0A77230d17318075983913bC2145DB16C7366156"),
             EVMChainType::Linea => address!("0x3c6Cd9Cc7c7a4c2Cf5a82734CD249D7D593354dA"),
+            EVMChainType::Scroll => address!("0x6bF14CB0A831078629D993FDeBcB182b21A8774C"),
         }
     }
 
@@ -164,10 +170,11 @@ impl EVMChain {
             EVMChainType::BSC => "https://bscscan.com",
             EVMChainType::Arbitrum => "https://arbiscan.io",
             EVMChainType::Polygon => "https://polygonscan.com",
-            EVMChainType::Metis => "https://andromeda-explorer.metis.io/",
+            EVMChainType::Metis => "https://andromeda-explorer.metis.io",
             EVMChainType::Optimism => "https://optimistic.etherscan.io",
             EVMChainType::Avalanche => "https://snowtrace.io",
             EVMChainType::Linea => "https://lineascan.build",
+            EVMChainType::Scroll => "https://scrollscan.com",
         }
     }
 
