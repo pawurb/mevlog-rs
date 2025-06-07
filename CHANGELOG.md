@@ -2,12 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.5.6] - 2025-06-07
 
 ### 🚀 Features
 
 - Add scroll chain
 - Add filtering by value
+- Display txs value
+- Improve value display
+
+### ⚡ Performance
+
+- Reuse native token price
+
+### ⚙️ Miscellaneous Tasks
+
+- Add changelog
+- Add crate-release changelog hook
 
 ## [0.5.5] - 2025-05-27
 
