@@ -5,7 +5,7 @@ use mevlog::{
     misc::{
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts},
-        utils::SEPARATORER,
+        utils::{get_native_token_price, SEPARATORER},
     },
     models::{
         mev_block::process_block,
@@ -38,6 +38,8 @@ impl WatchArgs {
         )
         .await;
 
+        let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
+
         let block_number = provider.get_block_number().await?;
         process_block(
             &provider,
@@ -48,6 +50,7 @@ impl WatchArgs {
             &mev_filter,
             &self.conn_opts,
             &shared_deps.chain,
+            native_token_price,
         )
         .await?;
 
@@ -70,6 +73,7 @@ impl WatchArgs {
                 &mev_filter,
                 &self.conn_opts,
                 &shared_deps.chain,
+                native_token_price,
             )
             .await?;
         }

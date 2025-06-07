@@ -4,7 +4,6 @@ use alloy::{
     eips::BlockNumberOrTag,
     providers::Provider,
     rpc::types::{Filter, TransactionRequest},
-    sol,
 };
 use colored::Colorize;
 use eyre::Result;
@@ -37,20 +36,6 @@ use crate::{
     GenericProvider,
 };
 
-sol! {
-    #[sol(rpc)]
-    contract IPriceOracle {
-    function latestRoundData()
-        returns (
-        uint80 roundId,
-        int256 answer,
-        uint256 startedAt,
-        uint256 updatedAt,
-        uint80 answeredInRound
-        );
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct TxData {
     pub req: TransactionRequest,
@@ -59,10 +44,9 @@ pub struct TxData {
 }
 
 pub struct MEVBlock {
-    eth_price: f64,
+    native_token_price: f64,
     block_number: u64,
     mev_transactions: HashMap<u64, MEVTransaction>,
-    // needed only for revm trace commits
     revm_transactions: HashMap<u64, TxData>,
     txs_data: Vec<TxData>,
     revm_context: RevmBlockContext,
@@ -82,6 +66,7 @@ pub async fn process_block(
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
     chain: &EVMChain,
+    native_token_price: f64,
 ) -> Result<()> {
     let revm_utils = init_revm_db(block_number - 1, conn_opts, chain).await?;
 
@@ -101,6 +86,7 @@ pub async fn process_block(
         conn_opts.trace.as_ref(),
         txs_filter.top_metadata,
         chain,
+        native_token_price,
     )
     .await?;
 
@@ -122,6 +108,7 @@ pub async fn process_block(
 }
 
 impl MEVBlock {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         block_number: u64,
         position_range: Option<&PositionRange>,
@@ -130,12 +117,9 @@ impl MEVBlock {
         trace_mode: Option<&TraceMode>,
         block_info_top: bool,
         chain: &EVMChain,
+        native_token_price: f64,
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
-
-        let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
-        let eth_price = price_oracle.latestRoundData().call().await?.answer;
-        let eth_price = eth_price.low_i64() as f64 / 10e7;
 
         let block_number_int = block_number_tag.as_number().unwrap();
 
@@ -225,7 +209,7 @@ impl MEVBlock {
         };
 
         Ok(Self {
-            eth_price,
+            native_token_price,
             block_number,
             mev_transactions: HashMap::new(),
             txs_count,
@@ -266,7 +250,7 @@ impl MEVBlock {
             }
 
             let mev_tx = match MEVTransaction::new(
-                self.eth_price,
+                self.native_token_price,
                 self.chain.clone(),
                 tx.req.clone(),
                 tx.receipt.clone(),

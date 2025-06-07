@@ -8,7 +8,7 @@ use mevlog::{
         ens_utils::ENSLookup,
         revm_tracing::init_revm_db,
         shared_init::{init_deps, ConnOpts, EVMChainType, TraceMode},
-        utils::SEPARATORER,
+        utils::{get_native_token_price, SEPARATORER},
     },
     models::{mev_block::MEVBlock, txs_filter::TxsFilter},
 };
@@ -83,6 +83,8 @@ impl TxArgs {
             to: max_index,
         });
 
+        let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
+
         let mut mev_block = MEVBlock::new(
             block_number,
             position_range.as_ref(),
@@ -91,6 +93,7 @@ impl TxArgs {
             self.conn_opts.trace.as_ref(),
             self.top_metadata,
             &shared_deps.chain,
+            native_token_price,
         )
         .await?;
 

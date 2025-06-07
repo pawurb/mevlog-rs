@@ -5,7 +5,7 @@ use mevlog::{
         args_parsing::BlocksRange,
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts},
-        utils::SEPARATORER,
+        utils::{get_native_token_price, SEPARATORER},
     },
     models::{
         mev_block::process_block,
@@ -40,6 +40,8 @@ impl SearchArgs {
         )
         .await;
 
+        let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
+
         let latest_block = provider.get_block_number().await?;
         let block_range = BlocksRange::from_str(&self.blocks, latest_block)?;
 
@@ -56,6 +58,7 @@ impl SearchArgs {
                 &mev_filter,
                 &self.conn_opts,
                 &shared_deps.chain,
+                native_token_price,
             )
             .await?;
         }
