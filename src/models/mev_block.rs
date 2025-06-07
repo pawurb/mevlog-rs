@@ -585,7 +585,7 @@ fn escape_html(input: &str) -> String {
     let escaped = html_escape::encode_text(&input);
     let escaped = escaped.replace("-&gt;", "->");
     let escaped = escaped.replace("&lt;Unknown&gt;", UNKNOWN);
-    let escaped = escaped.replace("&lt;ETH transfer&gt", ETH_TRANSFER);
+    let escaped = escaped.replace("&lt;ETH transfer&gt;", ETH_TRANSFER);
     escaped.to_string()
 }
 

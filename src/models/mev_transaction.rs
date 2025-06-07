@@ -39,7 +39,7 @@ pub struct ReceiptData {
 
 #[derive(Debug)]
 pub struct MEVTransaction {
-    eth_price: f64,
+    native_token_price: f64,
     pub chain: EVMChain,
     pub signature: String,
     pub signature_hash: Option<String>,
@@ -116,7 +116,7 @@ impl MEVTransaction {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        eth_price: f64,
+        native_token_price: f64,
         chain: EVMChain,
         tx_req: TransactionRequest,
         receipt_data: ReceiptData,
@@ -158,7 +158,7 @@ impl MEVTransaction {
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
 
         Ok(Self {
-            eth_price,
+            native_token_price,
             chain,
             nonce: tx_req.nonce.unwrap_or(0),
             tx_hash,
@@ -289,6 +289,26 @@ impl fmt::Display for MEVTransaction {
             writeln!(f, "{}", "Tx reverted!".red().bold())?;
         }
 
+        if self.value() == U256::ZERO {
+            writeln!(
+                f,
+                "{:width$} 0 {}",
+                "Value:".green().bold(),
+                self.chain.currency_symbol(),
+                width = LABEL_WIDTH
+            )?;
+        } else {
+            writeln!(
+                f,
+                "{:width$} {:.5} {} | {}",
+                "Value:".green().bold(),
+                wei_to_eth(self.value()),
+                self.chain.currency_symbol(),
+                display_usd(eth_to_usd(self.value(), self.native_token_price)),
+                width = LABEL_WIDTH
+            )?;
+        }
+
         writeln!(
             f,
             "{:width$} {:.2} GWEI",
@@ -299,11 +319,14 @@ impl fmt::Display for MEVTransaction {
 
         writeln!(
             f,
-            "{:width$} {:.5} {} | ${:.2}",
+            "{:width$} {:.5} {} | {}",
             "Gas Tx Cost:".green().bold(),
             wei_to_eth(U256::from(self.gas_tx_cost())),
             self.chain.currency_symbol(),
-            eth_to_usd(U256::from(self.gas_tx_cost()), self.eth_price),
+            display_usd(eth_to_usd(
+                U256::from(self.gas_tx_cost()),
+                self.native_token_price
+            )),
             width = LABEL_WIDTH
         )?;
 
@@ -311,21 +334,21 @@ impl fmt::Display for MEVTransaction {
             Some(coinbase_transfer) => {
                 writeln!(
                     f,
-                    "{:width$} {:.5} {} | ${:.2}",
+                    "{:width$} {:.5} {} | {}",
                     "Coinbase Transfer:".green().bold(),
                     wei_to_eth(coinbase_transfer),
                     self.chain.currency_symbol(),
-                    eth_to_usd(coinbase_transfer, self.eth_price),
+                    display_usd(eth_to_usd(coinbase_transfer, self.native_token_price)),
                     width = LABEL_WIDTH
                 )?;
 
                 writeln!(
                     f,
-                    "{:width$} {:.5} {} | ${:.2}",
+                    "{:width$} {:.5} {} | {}",
                     "Real Tx Cost:".green().bold(),
                     wei_to_eth(self.full_tx_cost()),
                     self.chain.currency_symbol(),
-                    eth_to_usd(self.full_tx_cost(), self.eth_price),
+                    display_usd(eth_to_usd(self.full_tx_cost(), self.native_token_price)),
                     width = LABEL_WIDTH
                 )?;
 
@@ -420,4 +443,24 @@ fn eth_to_usd(value: U256, token_price: f64) -> f64 {
     let result_rounded = result.round(4);
 
     result_rounded.to_f64().unwrap_or(0.0)
+}
+
+fn display_usd(value: f64) -> String {
+    let rounded = (value * 100.0).round() / 100.0;
+    let formatted = format!("{:.2}", rounded);
+    let parts: Vec<&str> = formatted.split('.').collect();
+    let integer_part = parts[0];
+    let decimal_part = parts.get(1).unwrap_or(&"00");
+
+    // Add commas to integer part
+    let mut result = String::new();
+    let chars: Vec<char> = integer_part.chars().collect();
+    for (i, ch) in chars.iter().enumerate() {
+        if i > 0 && (chars.len() - i) % 3 == 0 {
+            result.push(',');
+        }
+        result.push(*ch);
+    }
+
+    format!("${}.{}", result, decimal_part)
 }
