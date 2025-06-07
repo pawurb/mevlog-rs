@@ -289,25 +289,17 @@ impl fmt::Display for MEVTransaction {
             writeln!(f, "{}", "Tx reverted!".red().bold())?;
         }
 
-        if self.value() == U256::ZERO {
-            writeln!(
-                f,
-                "{:width$} 0 {}",
-                "Value:".green().bold(),
-                self.chain.currency_symbol(),
-                width = LABEL_WIDTH
-            )?;
-        } else {
-            writeln!(
-                f,
-                "{:width$} {:.5} {} | {}",
-                "Value:".green().bold(),
-                wei_to_eth(self.value()),
-                self.chain.currency_symbol(),
-                display_usd(eth_to_usd(self.value(), self.native_token_price)),
-                width = LABEL_WIDTH
-            )?;
-        }
+        writeln!(
+            f,
+            "{:width$} {}",
+            "Value:".green().bold(),
+            display_token_and_usd(
+                self.value(),
+                self.native_token_price,
+                self.chain.currency_symbol()
+            ),
+            width = LABEL_WIDTH
+        )?;
 
         writeln!(
             f,
@@ -319,14 +311,13 @@ impl fmt::Display for MEVTransaction {
 
         writeln!(
             f,
-            "{:width$} {:.5} {} | {}",
+            "{:width$} {}",
             "Gas Tx Cost:".green().bold(),
-            wei_to_eth(U256::from(self.gas_tx_cost())),
-            self.chain.currency_symbol(),
-            display_usd(eth_to_usd(
+            display_token_and_usd(
                 U256::from(self.gas_tx_cost()),
-                self.native_token_price
-            )),
+                self.native_token_price,
+                self.chain.currency_symbol()
+            ),
             width = LABEL_WIDTH
         )?;
 
@@ -334,21 +325,25 @@ impl fmt::Display for MEVTransaction {
             Some(coinbase_transfer) => {
                 writeln!(
                     f,
-                    "{:width$} {:.5} {} | {}",
+                    "{:width$} {}",
                     "Coinbase Transfer:".green().bold(),
-                    wei_to_eth(coinbase_transfer),
-                    self.chain.currency_symbol(),
-                    display_usd(eth_to_usd(coinbase_transfer, self.native_token_price)),
+                    display_token_and_usd(
+                        coinbase_transfer,
+                        self.native_token_price,
+                        self.chain.currency_symbol()
+                    ),
                     width = LABEL_WIDTH
                 )?;
 
                 writeln!(
                     f,
-                    "{:width$} {:.5} {} | {}",
+                    "{:width$} {}",
                     "Real Tx Cost:".green().bold(),
-                    wei_to_eth(self.full_tx_cost()),
-                    self.chain.currency_symbol(),
-                    display_usd(eth_to_usd(self.full_tx_cost(), self.native_token_price)),
+                    display_token_and_usd(
+                        self.full_tx_cost(),
+                        self.native_token_price,
+                        self.chain.currency_symbol()
+                    ),
                     width = LABEL_WIDTH
                 )?;
 
@@ -463,4 +458,28 @@ fn display_usd(value: f64) -> String {
     }
 
     format!("${}.{}", result, decimal_part)
+}
+
+fn display_token_and_usd(value: U256, token_price: f64, currency_symbol: &str) -> String {
+    let usd_value = eth_to_usd(value, token_price);
+
+    if value == U256::ZERO {
+        return format!("0 {}", currency_symbol);
+    }
+
+    if usd_value < 0.01 {
+        format!(
+            "~{:.5} {} | ~{}",
+            wei_to_eth(value),
+            currency_symbol,
+            display_usd(usd_value)
+        )
+    } else {
+        format!(
+            "{:.5} {} | {}",
+            wei_to_eth(value),
+            currency_symbol,
+            display_usd(usd_value)
+        )
+    }
 }
