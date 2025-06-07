@@ -15,7 +15,7 @@ There's also [a beta web version](https://mevlog.rs/) available.
 - search by root method calls
 - track smart contract storage changes
 - detect validator bribes
-- filter txs by real (including bribe) gas prices and cost
+- filter txs by value and real (including bribe) gas prices and cost
 - [multiple EVM networks support](https://github.com/pawurb/mevlog-rs/issues/9)
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
@@ -96,6 +96,12 @@ mevlog search -b 22045400:22045420 --event "/(?i)(rebase).+/" --event "/(Transfe
 mevlog search -b 22045400:22045420 --to CREATE
 ```
 
+- find transactions that transferred more than 1 ETH:
+
+```bash
+mevlog search -b 10:latest --value ge1ether
+```
+
 ### Event filters
 
 The `--event` and `--not-event` options allow filtering transactions based on emitted events. The filter criteria can be:
@@ -151,6 +157,8 @@ Options:
           Filter by effective gas price (e.g., 'ge2gwei', 'le1gwei')
       --real-gas-price <REAL_GAS_PRICE>
           Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')
+      --value <VALUE>
+          Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')
 ```
 
 Both `search` and `watch` support the same filtering options.

@@ -82,6 +82,12 @@ pub struct SharedFilterOpts {
     )]
     pub real_gas_price: Option<String>,
 
+    #[arg(
+        long,
+        help = "Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')"
+    )]
+    pub value: Option<String>,
+
     #[arg(short, long, alias = "r", help = "Reverse the order of txs")]
     pub reverse: bool,
 
@@ -174,6 +180,7 @@ pub struct TxsFilter {
     pub real_tx_cost: Option<PriceQuery>,
     pub gas_price: Option<PriceQuery>,
     pub real_gas_price: Option<PriceQuery>,
+    pub value: Option<PriceQuery>,
     pub reversed_order: bool,
     pub top_metadata: bool,
 }
@@ -219,6 +226,10 @@ impl TxsFilter {
                 None => None,
             },
             real_gas_price: match filter_opts.real_gas_price {
+                Some(ref query) => Some(query.parse()?),
+                None => None,
+            },
+            value: match filter_opts.value {
                 Some(ref query) => Some(query.parse()?),
                 None => None,
             },

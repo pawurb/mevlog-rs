@@ -245,6 +245,10 @@ impl MEVTransaction {
             self.full_tx_cost().div(U256::from(self.receipt.gas_used))
         }
     }
+
+    pub fn value(&self) -> U256 {
+        self.inner.value.unwrap_or(U256::ZERO)
+    }
 }
 
 impl fmt::Display for MEVTransaction {

@@ -322,6 +322,12 @@ impl MEVBlock {
                 None => {}
             }
 
+            if let Some(value_filter) = &filter.value {
+                if !value_filter.matches(mev_tx.value()) {
+                    continue;
+                }
+            }
+
             self.mev_transactions.insert(tx_index, mev_tx);
         }
 

@@ -107,6 +107,7 @@ impl TxArgs {
             gas_price: None,
             real_tx_cost: None,
             real_gas_price: None,
+            value: None,
             reversed_order: self.reverse,
             top_metadata: self.top_metadata,
         };
