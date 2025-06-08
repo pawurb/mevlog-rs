@@ -256,7 +256,7 @@ mod tests {
 
     #[test]
     fn test_valid_signature_and_address() {
-        let input = &format!("Transfer(address,uint256)|{}", PEPE);
+        let input = &format!("Transfer(address,uint256)|{PEPE}");
         let query = EventQuery::from_str(input).unwrap();
 
         assert_eq!(

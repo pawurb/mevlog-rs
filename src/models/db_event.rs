@@ -81,8 +81,8 @@ pub mod test {
 
     pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
         let uuid = Uuid::new_v4();
-        let db_path = format!("/tmp/{}-mevlog-test.db", uuid);
-        let db_url = format!("sqlite://{}", db_path);
+        let db_path = format!("/tmp/{uuid}-mevlog-test.db");
+        let db_url = format!("sqlite://{db_path}");
 
         if fs::remove_file(&db_url).is_ok() {
             println!("DB {} removed", &db_url);
@@ -116,10 +116,10 @@ pub mod test {
                 match entry {
                     Ok(path) => {
                         if let Err(e) = fs::remove_file(&path) {
-                            eprintln!("Failed to remove file {:?}: {}", path, e);
+                            eprintln!("Failed to remove file {path:?}: {e}");
                         }
                     }
-                    Err(e) => eprintln!("Error reading glob entry: {}", e),
+                    Err(e) => eprintln!("Error reading glob entry: {e}"),
                 }
             }
         }

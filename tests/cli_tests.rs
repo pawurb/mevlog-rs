@@ -28,7 +28,7 @@ pub mod tests {
 
         assert!(cmd.stderr.is_empty());
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {}", output);
+        println!("output: {output}");
         assert!(output.contains("Real Gas Price:    18253.30 GWEI"));
 
         Ok(())
@@ -55,7 +55,7 @@ pub mod tests {
 
         assert!(cmd.stderr.is_empty());
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {}", output);
+        println!("output: {output}");
         assert!(output.contains("Real Gas Price:    18253.30 GWEI"));
 
         Ok(())

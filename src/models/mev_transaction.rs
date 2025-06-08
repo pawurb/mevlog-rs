@@ -442,7 +442,7 @@ fn eth_to_usd(value: U256, token_price: f64) -> f64 {
 
 fn display_usd(value: f64) -> String {
     let rounded = (value * 100.0).round() / 100.0;
-    let formatted = format!("{:.2}", rounded);
+    let formatted = format!("{rounded:.2}");
     let parts: Vec<&str> = formatted.split('.').collect();
     let integer_part = parts[0];
     let decimal_part = parts.get(1).unwrap_or(&"00");
@@ -457,14 +457,14 @@ fn display_usd(value: f64) -> String {
         result.push(*ch);
     }
 
-    format!("${}.{}", result, decimal_part)
+    format!("${result}.{decimal_part}")
 }
 
 fn display_token_and_usd(value: U256, token_price: f64, currency_symbol: &str) -> String {
     let usd_value = eth_to_usd(value, token_price);
 
     if value == U256::ZERO {
-        return format!("0 {}", currency_symbol);
+        return format!("0 {currency_symbol}");
     }
 
     if usd_value < 0.01 {
