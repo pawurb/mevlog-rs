@@ -16,6 +16,10 @@ jobs:
         rust: ["stable", "beta", "nightly"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check conventional commits
+        uses: webiny/action-conventional-commits@v1.3.0
       - uses: dtolnay/rust-toolchain@stable
       - name: Set up Rust
         run: | 
