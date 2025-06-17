@@ -31,6 +31,7 @@ pub enum EVMChainType {
     Avalanche,
     Linea,
     Scroll,
+    Fantom,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +53,7 @@ impl EVMChainType {
             EVMChainType::Avalanche => 43114,
             EVMChainType::Linea => 59144,
             EVMChainType::Scroll => 534352,
+            EVMChainType::Fantom => 250,
         }
     }
 
@@ -67,6 +69,7 @@ impl EVMChainType {
             EVMChainType::Avalanche => "avalanche",
             EVMChainType::Linea => "linea",
             EVMChainType::Scroll => "scroll",
+            EVMChainType::Fantom => "fantom",
         }
     }
 
@@ -82,6 +85,7 @@ impl EVMChainType {
             EVMChainType::Avalanche,
             EVMChainType::Linea,
             EVMChainType::Scroll,
+            EVMChainType::Fantom,
         ]
     }
 
@@ -142,6 +146,7 @@ impl EVMChain {
             EVMChainType::Mainnet => "ethereum",
             EVMChainType::BSC => "bnb",
             EVMChainType::Scroll => "network_534352",
+            EVMChainType::Fantom => "network_250",
             _ => self.name(),
         }
     }
@@ -160,6 +165,7 @@ impl EVMChain {
             EVMChainType::Avalanche => address!("0x0A77230d17318075983913bC2145DB16C7366156"),
             EVMChainType::Linea => address!("0x3c6Cd9Cc7c7a4c2Cf5a82734CD249D7D593354dA"),
             EVMChainType::Scroll => address!("0x6bF14CB0A831078629D993FDeBcB182b21A8774C"),
+            EVMChainType::Fantom => address!("0x11DdD3d147E5b83D01cee7070027092397d63658"),
         }
     }
 
@@ -175,6 +181,7 @@ impl EVMChain {
             EVMChainType::Avalanche => "https://snowtrace.io",
             EVMChainType::Linea => "https://lineascan.build",
             EVMChainType::Scroll => "https://scrollscan.com",
+            EVMChainType::Fantom => "https://explorer.fantom.network",
         }
     }
 
@@ -184,6 +191,7 @@ impl EVMChain {
             EVMChainType::Polygon => "POL",
             EVMChainType::Avalanche => "AVAX",
             EVMChainType::Metis => "METIS",
+            EVMChainType::Fantom => "FTM",
             _ => "ETH",
         }
     }
