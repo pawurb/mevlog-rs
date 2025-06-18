@@ -472,7 +472,7 @@ impl MEVBlock {
                 revm_db,
             )?;
 
-            println!("calls: {:?}", calls);
+            println!("calls: {calls:?}");
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
