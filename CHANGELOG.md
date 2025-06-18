@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.7] - 2025-06-18
+
+### 🚀 Features
+
+- Add ETH units
+- Add fantom chain
+
+### 🐛 Bug Fixes
+
+- Fix revm tracing and csv parse logic
+
+### ⚙️ Miscellaneous Tasks
+
+- CI use nightly Rust
+
 ## [0.5.6] - 2025-06-07
 
 ### 🚀 Features
@@ -19,6 +34,7 @@ All notable changes to this project will be documented in this file.
 
 - Add changelog
 - Add crate-release changelog hook
+- Release mevlog version 0.5.6
 
 ## [0.5.5] - 2025-05-27
 
