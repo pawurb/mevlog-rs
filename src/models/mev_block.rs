@@ -32,8 +32,7 @@ use crate::{
         shared_init::{ConnOpts, EVMChain, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
-    },
-    GenericProvider,
+    }, models::mev_transaction::{extract_signature, CallExtract}, GenericProvider
 };
 
 #[derive(Clone, Debug)]
@@ -320,7 +319,7 @@ impl MEVBlock {
         self.non_trace_filter_txs(filter).await?;
 
         match conn_opts.trace {
-            Some(TraceMode::RPC) => self.trace_txs_rpc(filter, provider).await?,
+            Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
             Some(TraceMode::Revm) => {
                 self.trace_txs_revm(filter, revm_db.expect("Revm must be present"))
                     .await?
@@ -334,6 +333,7 @@ impl MEVBlock {
     async fn trace_txs_rpc(
         &mut self,
         filter: &TxsFilter,
+        sqlite: &SqlitePool,
         provider: &Arc<GenericProvider>,
     ) -> Result<()> {
         let tx_indices: Vec<u64> = self.mev_transactions.keys().cloned().collect();
@@ -356,6 +356,20 @@ impl MEVBlock {
             }
 
             let calls = rpc_tx_calls(mev_tx.tx_hash, provider).await?;
+
+            let mut call_extracts = Vec::new();
+            for call in calls.clone() {
+                if let Some(to) = call.to {
+                    let (signature_hash, signature) = extract_signature(&self.chain, Some(&call.input), tx_index, sqlite).await?;
+                    call_extracts.push(CallExtract {
+                        from: call.from,
+                        to,
+                        signature,
+                        signature_hash,
+                    });
+                }
+            }
+            mev_tx.calls = Some(call_extracts);
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
@@ -452,6 +466,8 @@ impl MEVBlock {
                 &self.revm_context,
                 revm_db,
             )?;
+
+            println!("calls: {:?}", calls);
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
