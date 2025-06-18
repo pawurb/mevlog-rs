@@ -32,7 +32,9 @@ use crate::{
         shared_init::{ConnOpts, EVMChain, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
-    }, models::mev_transaction::{extract_signature, CallExtract}, GenericProvider
+    },
+    models::mev_transaction::{extract_signature, CallExtract},
+    GenericProvider,
 };
 
 #[derive(Clone, Debug)]
@@ -360,7 +362,8 @@ impl MEVBlock {
             let mut call_extracts = Vec::new();
             for call in calls.clone() {
                 if let Some(to) = call.to {
-                    let (signature_hash, signature) = extract_signature(&self.chain, Some(&call.input), tx_index, sqlite).await?;
+                    let (signature_hash, signature) =
+                        extract_signature(&self.chain, Some(&call.input), tx_index, sqlite).await?;
                     call_extracts.push(CallExtract {
                         from: call.from,
                         to,

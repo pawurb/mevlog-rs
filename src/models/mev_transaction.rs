@@ -47,7 +47,16 @@ pub struct CallExtract {
 
 impl fmt::Display for CallExtract {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} -> {}::{} ({})", format!("{}", self.from).yellow(), format!("{}",self.to).green(), self.signature.purple(), self.signature_hash.as_ref().unwrap_or(&"no signature found".to_string()))?;
+        write!(
+            f,
+            "{} -> {}::{} ({})",
+            format!("{}", self.from).yellow(),
+            format!("{}", self.to).green(),
+            self.signature.purple(),
+            self.signature_hash
+                .as_ref()
+                .unwrap_or(&"no signature found".to_string())
+        )?;
         Ok(())
     }
 }
@@ -143,7 +152,8 @@ impl MEVTransaction {
         provider: &Arc<GenericProvider>,
         top_metadata: bool,
     ) -> Result<Self> {
-        let (signature_hash, signature) = extract_signature(&chain, tx_req.input.input.as_ref(), index, sqlite).await?;
+        let (signature_hash, signature) =
+            extract_signature(&chain, tx_req.input.input.as_ref(), index, sqlite).await?;
 
         let mev_address =
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
@@ -243,7 +253,12 @@ impl MEVTransaction {
     }
 }
 
-pub async fn extract_signature(chain: &EVMChain, input: Option<&Bytes>, index: u64, sqlite: &sqlx::Pool<sqlx::Sqlite>) -> Result<(Option<String>, String), eyre::Error> {
+pub async fn extract_signature(
+    chain: &EVMChain,
+    input: Option<&Bytes>,
+    index: u64,
+    sqlite: &sqlx::Pool<sqlx::Sqlite>,
+) -> Result<(Option<String>, String), eyre::Error> {
     let signature_hash = {
         if let Some(input) = input {
             if input.len() >= 8 {
