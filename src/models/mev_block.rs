@@ -318,15 +318,17 @@ impl MEVBlock {
 
         self.ingest_logs(filter, sqlite, symbols_lookup, provider)
             .await?;
-        self.non_trace_filter_txs(filter).await?;
 
+        // within trace functions method filtering applies to subcalls
         match conn_opts.trace {
             Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
             Some(TraceMode::Revm) => {
                 self.trace_txs_revm(filter, revm_db.expect("Revm must be present"))
                     .await?
             }
-            _ => {}
+            _ => {
+                self.non_trace_filter_txs(filter).await?;
+            }
         };
 
         Ok(())

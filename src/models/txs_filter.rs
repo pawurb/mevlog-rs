@@ -297,6 +297,17 @@ impl TxsFilter {
             }
         }
 
+        if let Some(calls) = &mev_tx.calls {
+            if let Some(method) = &self.match_method {
+                for call in calls {
+                    if method.matches(&call.signature) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
         false
     }
 
