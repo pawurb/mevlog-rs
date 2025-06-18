@@ -97,7 +97,7 @@ impl MEVTransaction {
             value: Some(U256::from_str(&record[7]).unwrap()),
             nonce: Some(record[3].to_string().parse::<u64>().unwrap()),
             chain_id: Some(record[12].to_string().parse::<u64>().unwrap()),
-            max_fee_per_gas: Some(record[13].to_string().parse::<u128>().unwrap()),
+            max_fee_per_gas: Some(record[15].to_string().parse::<u128>().unwrap_or(0)),
             max_priority_fee_per_gas: Some(record[14].to_string().parse::<u128>().unwrap_or(0)),
             access_list: Some(AccessList::from(vec![])),
             ..Default::default()

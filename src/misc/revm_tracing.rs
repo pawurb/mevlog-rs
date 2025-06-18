@@ -253,7 +253,7 @@ pub fn revm_commit_tx(
     let ref_tx = match evm.transact_commit() {
         Ok(tx) => tx,
         Err(e) => {
-            tracing::warn!("_revm_commit_tx {tx_hash} failed. {:?}", e);
+            tracing::warn!("revm_commit_tx {tx_hash} failed. {:?}", e);
             return Ok(());
         }
     };
@@ -299,11 +299,15 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
     tx_env.data = tx_req.input.input.expect("data must be set");
     tx_env.value = tx_req.value.unwrap_or(U256::ZERO);
     tx_env.gas_limit = tx_req.gas.unwrap_or(21000);
-    tx_env.gas_price = U256::from(
-        tx_req
-            .gas_price
-            .unwrap_or_else(|| tx_req.max_fee_per_gas.expect("gas price")),
-    );
+    // For EIP-1559 transactions, gas_price should be set to max_fee_per_gas
+    tx_env.gas_price = if let Some(max_fee) = tx_req.max_fee_per_gas {
+        U256::from(max_fee)
+    } else if let Some(gas_price) = tx_req.gas_price {
+        U256::from(gas_price)
+    } else {
+        panic!("Transaction must have either gas_price or max_fee_per_gas");
+    };
+
     tx_env.nonce = tx_req.nonce;
     tx_env.gas_priority_fee = tx_req.max_priority_fee_per_gas.map(U256::from);
     tx_env.max_fee_per_blob_gas = tx_req.max_fee_per_blob_gas.map(U256::from);
