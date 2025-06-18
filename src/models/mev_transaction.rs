@@ -261,7 +261,7 @@ pub async fn extract_signature(
 ) -> Result<(Option<String>, String), eyre::Error> {
     let signature_hash = {
         if let Some(input) = input {
-            if input.len() >= 8 {
+            if input.len() >= 4 {
                 let hash = format!("0x{}", hex::encode(&input[..4]));
                 Some(hash)
             } else {

@@ -303,6 +303,11 @@ impl TxsFilter {
                     if method.matches(&call.signature) {
                         return false;
                     }
+                    if let Some(signature_hash) = &call.signature_hash {
+                        if method.matches(signature_hash) {
+                            return false;
+                        }
+                    }
                 }
             }
             return true;
