@@ -78,6 +78,7 @@ pub struct MEVTransaction {
     pub receipt: ReceiptData,
     pub top_metadata: bool,
     pub calls: Option<Vec<CallExtract>>,
+    pub show_calls: bool,
 }
 
 // CSV row:
@@ -151,6 +152,7 @@ impl MEVTransaction {
         ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
         top_metadata: bool,
+        show_calls: bool,
     ) -> Result<Self> {
         let (signature_hash, signature) =
             extract_signature(&chain, tx_req.input.input.as_ref(), index, sqlite).await?;
@@ -174,6 +176,7 @@ impl MEVTransaction {
             receipt: receipt_data,
             top_metadata,
             calls: None,
+            show_calls,
         })
     }
 
@@ -327,13 +330,15 @@ impl fmt::Display for MEVTransaction {
             writeln!(f, "{}", "Tx reverted!".red().bold())?;
         }
 
-        if let Some(calls) = &self.calls {
-            writeln!(f, "{SEPARATOR}")?;
-            writeln!(f, "Calls:")?;
-            for call in calls {
-                writeln!(f, "{call}")?;
+        if self.show_calls {
+            if let Some(calls) = &self.calls {
+                writeln!(f, "{SEPARATOR}")?;
+                writeln!(f, "Calls:")?;
+                for call in calls {
+                    writeln!(f, "{call}")?;
+                }
+                writeln!(f, "{SEPARATOR}")?;
             }
-            writeln!(f, "{SEPARATOR}")?;
         }
 
         writeln!(
