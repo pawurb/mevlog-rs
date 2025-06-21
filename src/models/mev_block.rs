@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc}
 use alloy::{
     eips::BlockNumberOrTag,
     providers::Provider,
-    rpc::types::{Filter, TransactionRequest},
+    rpc::types::{trace::parity::Action, Filter, TransactionRequest},
 };
 use colored::Colorize;
 use eyre::Result;
@@ -33,6 +33,7 @@ use crate::{
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
+    models::mev_transaction::{extract_signature, CallExtract},
     GenericProvider,
 };
 
@@ -260,6 +261,7 @@ impl MEVBlock {
                 ens_lookup,
                 provider,
                 filter.top_metadata,
+                filter.show_calls,
             )
             .await
             {
@@ -317,12 +319,14 @@ impl MEVBlock {
 
         self.ingest_logs(filter, sqlite, symbols_lookup, provider)
             .await?;
+
+        // first exclude txs based non-tracing filters
         self.non_trace_filter_txs(filter).await?;
 
         match conn_opts.trace {
-            Some(TraceMode::RPC) => self.trace_txs_rpc(filter, provider).await?,
+            Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
             Some(TraceMode::Revm) => {
-                self.trace_txs_revm(filter, revm_db.expect("Revm must be present"))
+                self.trace_txs_revm(filter, sqlite, revm_db.expect("Revm must be present"))
                     .await?
             }
             _ => {}
@@ -334,6 +338,7 @@ impl MEVBlock {
     async fn trace_txs_rpc(
         &mut self,
         filter: &TxsFilter,
+        sqlite: &SqlitePool,
         provider: &Arc<GenericProvider>,
     ) -> Result<()> {
         let tx_indices: Vec<u64> = self.mev_transactions.keys().cloned().collect();
@@ -356,6 +361,21 @@ impl MEVBlock {
             }
 
             let calls = rpc_tx_calls(mev_tx.tx_hash, provider).await?;
+
+            let mut call_extracts = Vec::new();
+            for call in calls.clone() {
+                if let Some(to) = call.to {
+                    let (signature_hash, signature) =
+                        extract_signature(&self.chain, Some(&call.input), tx_index, sqlite).await?;
+                    call_extracts.push(CallExtract {
+                        from: call.from,
+                        to,
+                        signature,
+                        signature_hash,
+                    });
+                }
+            }
+            mev_tx.calls = Some(call_extracts);
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
@@ -383,6 +403,7 @@ impl MEVBlock {
     async fn trace_txs_revm(
         &mut self,
         filter: &TxsFilter,
+        sqlite: &SqlitePool,
         revm_db: &mut CacheDB<SharedBackend>,
     ) -> Result<()> {
         if self.revm_transactions.is_empty() {
@@ -404,18 +425,18 @@ impl MEVBlock {
             None
         };
 
-        for i in 0..=total_txs {
-            let i = i as u64;
-            let tx_data = match self.revm_transactions.get(&i) {
+        for tx_index in 0..=total_txs {
+            let tx_index = tx_index as u64;
+            let tx_data = match self.revm_transactions.get(&tx_index) {
                 Some(tx_data) => tx_data,
                 None => continue,
             };
 
             if let Some(pb) = &progress_bar {
-                pb.set_position(i);
+                pb.set_position(tx_index);
             }
 
-            let Some(mev_tx) = self.mev_transactions.get_mut(&i) else {
+            let Some(mev_tx) = self.mev_transactions.get_mut(&tx_index) else {
                 revm_commit_tx(
                     tx_data.tx_hash,
                     tx_data.req.clone(),
@@ -434,7 +455,7 @@ impl MEVBlock {
                 )?;
 
                 if !touching.contains(touched) {
-                    self.mev_transactions.remove(&i);
+                    self.mev_transactions.remove(&tx_index);
 
                     revm_commit_tx(
                         tx_data.tx_hash,
@@ -453,6 +474,24 @@ impl MEVBlock {
                 revm_db,
             )?;
 
+            let mut call_extracts = Vec::new();
+            for call in calls.clone() {
+                if let Action::Call(call_action) = call.action {
+                    let (signature_hash, signature) =
+                        extract_signature(&self.chain, Some(&call_action.input), tx_index, sqlite)
+                            .await?;
+
+                    call_extracts.push(CallExtract {
+                        from: call_action.from,
+                        to: call_action.to,
+                        signature,
+                        signature_hash,
+                    });
+                }
+            }
+
+            mev_tx.calls = Some(call_extracts);
+
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
                 calls.into_iter().map(TraceData::from).collect(),
@@ -461,7 +500,7 @@ impl MEVBlock {
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
 
             if filter.should_exclude(mev_tx) {
-                self.mev_transactions.remove(&i);
+                self.mev_transactions.remove(&tx_index);
             }
 
             revm_commit_tx(

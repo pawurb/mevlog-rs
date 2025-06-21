@@ -37,6 +37,30 @@ pub struct ReceiptData {
     pub gas_used: u64,
 }
 
+#[derive(Debug, Clone)]
+pub struct CallExtract {
+    pub from: Address,
+    pub to: Address,
+    pub signature: String,
+    pub signature_hash: Option<String>,
+}
+
+impl fmt::Display for CallExtract {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} -> {}::{} ({})",
+            format!("{}", self.from).yellow(),
+            format!("{}", self.to).green(),
+            self.signature.purple(),
+            self.signature_hash
+                .as_ref()
+                .unwrap_or(&"no signature found".to_string())
+        )?;
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub struct MEVTransaction {
     native_token_price: f64,
@@ -53,6 +77,8 @@ pub struct MEVTransaction {
     pub coinbase_transfer: Option<U256>,
     pub receipt: ReceiptData,
     pub top_metadata: bool,
+    pub calls: Option<Vec<CallExtract>>,
+    pub show_calls: bool,
 }
 
 // CSV row:
@@ -126,33 +152,10 @@ impl MEVTransaction {
         ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
         top_metadata: bool,
+        show_calls: bool,
     ) -> Result<Self> {
-        let signature_hash = if let Some(input) = tx_req.clone().input.input {
-            if input.len() >= 8 {
-                let hash = format!("0x{}", hex::encode(&input[..4]));
-                Some(hash)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        let signature = match signature_hash.clone() {
-            Some(sig) => {
-                // TODO refactor
-                if chain.chain_type == EVMChainType::Base
-                    && index == 0
-                    && signature_hash == Some("0x098999be".to_string())
-                {
-                    "setL1BlockValuesIsthmus()".to_string()
-                } else {
-                    let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
-                    sig.unwrap_or(UNKNOWN.to_string())
-                }
-            }
-            None => ETH_TRANSFER.to_string(),
-        };
+        let (signature_hash, signature) =
+            extract_signature(&chain, tx_req.input.input.as_ref(), index, sqlite).await?;
 
         let mev_address =
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
@@ -172,6 +175,8 @@ impl MEVTransaction {
             coinbase_transfer: None,
             receipt: receipt_data,
             top_metadata,
+            calls: None,
+            show_calls,
         })
     }
 
@@ -251,6 +256,42 @@ impl MEVTransaction {
     }
 }
 
+pub async fn extract_signature(
+    chain: &EVMChain,
+    input: Option<&Bytes>,
+    index: u64,
+    sqlite: &sqlx::Pool<sqlx::Sqlite>,
+) -> Result<(Option<String>, String), eyre::Error> {
+    let signature_hash = {
+        if let Some(input) = input {
+            if input.len() >= 4 {
+                let hash = format!("0x{}", hex::encode(&input[..4]));
+                Some(hash)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    };
+    let signature = match signature_hash.clone() {
+        Some(sig) => {
+            // TODO refactor
+            if chain.chain_type == EVMChainType::Base
+                && index == 0
+                && signature_hash == Some("0x098999be".to_string())
+            {
+                "setL1BlockValuesIsthmus()".to_string()
+            } else {
+                let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
+                sig.unwrap_or(UNKNOWN.to_string())
+            }
+        }
+        None => ETH_TRANSFER.to_string(),
+    };
+    Ok((signature_hash, signature))
+}
+
 impl fmt::Display for MEVTransaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if !self.top_metadata {
@@ -287,6 +328,17 @@ impl fmt::Display for MEVTransaction {
 
         if !self.receipt.success {
             writeln!(f, "{}", "Tx reverted!".red().bold())?;
+        }
+
+        if self.show_calls {
+            if let Some(calls) = &self.calls {
+                writeln!(f, "{SEPARATOR}")?;
+                writeln!(f, "Calls:")?;
+                for call in calls {
+                    writeln!(f, "{call}")?;
+                }
+                writeln!(f, "{SEPARATOR}")?;
+            }
         }
 
         writeln!(

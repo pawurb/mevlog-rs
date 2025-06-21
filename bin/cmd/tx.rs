@@ -113,6 +113,8 @@ impl TxArgs {
             value: None,
             reversed_order: self.reverse,
             top_metadata: self.top_metadata,
+            match_calls: vec![],
+            show_calls: false,
         };
 
         let ens_lookup_mode = if shared_deps.chain.chain_type == EVMChainType::Mainnet {

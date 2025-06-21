@@ -47,12 +47,22 @@ pub struct SharedFilterOpts {
         help = "Exclude txs by event names matching the provided regex or signature and optionally an address"
     )]
     pub not_event: Option<String>,
+
     #[arg(
         alias = "m",
         long,
         help = "Include txs by root method names matching the provided regex, signature or signature hash"
     )]
     pub method: Option<String>,
+
+    #[arg(
+        long,
+        help = "Include txs by subcalls method names matching the provided regex, signature or signature hash"
+    )]
+    pub calls: Vec<String>,
+
+    #[arg(long, help = "Show detailed tx calls info")]
+    pub show_calls: bool,
 
     #[arg(
         alias = "tc",
@@ -176,6 +186,8 @@ pub struct TxsFilter {
     pub events: Vec<EventQuery>,
     pub not_events: Vec<EventQuery>,
     pub match_method: Option<SignatureQuery>,
+    pub match_calls: Vec<SignatureQuery>,
+    pub show_calls: bool,
     pub tx_cost: Option<PriceQuery>,
     pub real_tx_cost: Option<PriceQuery>,
     pub gas_price: Option<PriceQuery>,
@@ -261,6 +273,12 @@ impl TxsFilter {
                 Some(ref query) => Some(query.parse()?),
                 None => None,
             },
+            match_calls: filter_opts
+                .calls
+                .iter()
+                .map(|query| query.parse())
+                .collect::<Result<Vec<_>>>()?,
+            show_calls: filter_opts.show_calls,
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
         })
@@ -293,6 +311,21 @@ impl TxsFilter {
 
         if let Some(full_effective_gas_price) = &self.real_gas_price {
             if !full_effective_gas_price.matches(mev_tx.full_effective_gas_price()) {
+                return true;
+            }
+        }
+
+        if !self.match_calls.is_empty() {
+            if let Some(calls) = &mev_tx.calls {
+                let any_call_matches = calls.iter().any(|call| {
+                    self.match_calls
+                        .iter()
+                        .any(|query| query.matches(&call.signature))
+                });
+                if !any_call_matches {
+                    return true;
+                }
+            } else {
                 return true;
             }
         }
