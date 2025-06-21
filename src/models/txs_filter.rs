@@ -56,13 +56,12 @@ pub struct SharedFilterOpts {
     pub method: Option<String>,
 
     #[arg(
-        alias = "cls",
         long,
         help = "Include txs by subcalls method names matching the provided regex, signature or signature hash"
     )]
     pub calls: Vec<String>,
 
-    #[arg(alias = "sc", long, help = "Show detailed tx calls info")]
+    #[arg(long, help = "Show detailed tx calls info")]
     pub show_calls: bool,
 
     #[arg(
