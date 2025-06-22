@@ -4,7 +4,7 @@ use colored::Colorize;
 use revm::primitives::Address;
 
 use super::mev_log::MEVLog;
-use crate::misc::shared_init::EVMChain;
+use crate::models::evm_chain::EVMChain;
 
 #[derive(Debug)]
 pub struct MEVLogGroup {

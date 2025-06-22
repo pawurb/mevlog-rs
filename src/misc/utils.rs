@@ -9,8 +9,7 @@ use eyre::Result;
 use revm::primitives::U256;
 use tracing_subscriber::fmt::time::OffsetTime;
 
-use super::shared_init::EVMChain;
-use crate::GenericProvider;
+use crate::{models::evm_chain::EVMChain, GenericProvider};
 
 pub const SEPARATORER: &str = "===============================================================================================";
 pub const SEPARATOR: &str = "-----------------------------------------------------------------------------------------------";

@@ -1,5 +1,5 @@
 use eyre::Result;
-use mevlog::misc::shared_init::EVMChainType;
+use mevlog::models::evm_chain::EVMChainType;
 
 #[derive(Debug, clap::Parser)]
 pub struct ChainsArgs {}

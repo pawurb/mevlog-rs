@@ -7,10 +7,10 @@ use mevlog::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
         revm_tracing::init_revm_db,
-        shared_init::{init_deps, ConnOpts, EVMChainType, TraceMode},
+        shared_init::{init_deps, ConnOpts, TraceMode},
         utils::{get_native_token_price, SEPARATORER},
     },
-    models::{mev_block::MEVBlock, txs_filter::TxsFilter},
+    models::{evm_chain::EVMChainType, mev_block::MEVBlock, txs_filter::TxsFilter},
 };
 use revm::primitives::FixedBytes;
 

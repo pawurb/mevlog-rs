@@ -1,5 +1,6 @@
 pub mod db_event;
 pub mod db_method;
+pub mod evm_chain;
 pub mod mev_address;
 pub mod mev_block;
 pub mod mev_log;

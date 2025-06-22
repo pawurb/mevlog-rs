@@ -22,9 +22,9 @@ use super::{
 use crate::{
     misc::{
         ens_utils::ENSLookup,
-        shared_init::{EVMChain, EVMChainType},
         utils::{wei_to_eth, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
     },
+    models::evm_chain::EVMChain,
     GenericProvider,
 };
 
@@ -276,15 +276,11 @@ pub async fn extract_signature(
     };
     let signature = match signature_hash.clone() {
         Some(sig) => {
-            // TODO refactor
-            if chain.chain_type == EVMChainType::Base
-                && index == 0
-                && signature_hash == Some("0x098999be".to_string())
-            {
-                "setL1BlockValuesIsthmus()".to_string()
+            if let Some(override_sig) = chain.signature_overrides().get(&(sig.clone(), index)) {
+                override_sig.clone()
             } else {
-                let sig = DBMethod::find_by_hash(&sig, sqlite).await?;
-                sig.unwrap_or(UNKNOWN.to_string())
+                let sig_str = DBMethod::find_by_hash(&sig, sqlite).await?;
+                sig_str.unwrap_or(UNKNOWN.to_string())
             }
         }
         None => ETH_TRANSFER.to_string(),

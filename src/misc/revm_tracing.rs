@@ -30,8 +30,8 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
 
-use super::shared_init::{ConnOpts, EVMChain};
-use crate::misc::shared_init::TraceMode;
+use super::shared_init::{ConnOpts, TraceMode};
+use crate::models::evm_chain::EVMChain;
 
 pub struct RevmUtils {
     pub anvil: AnvilInstance,

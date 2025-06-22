@@ -29,11 +29,14 @@ use crate::{
             RevmBlockContext,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
-        shared_init::{ConnOpts, EVMChain, TraceMode},
+        shared_init::{ConnOpts, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
-    models::mev_transaction::{extract_signature, CallExtract},
+    models::{
+        evm_chain::EVMChain,
+        mev_transaction::{extract_signature, CallExtract},
+    },
     GenericProvider,
 };
 

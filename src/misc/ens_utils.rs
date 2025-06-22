@@ -5,8 +5,11 @@ use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use super::shared_init::{init_provider, ConnOpts, EVMChain, EVMChainType};
-use crate::GenericProvider;
+use super::shared_init::{init_provider, ConnOpts};
+use crate::{
+    models::evm_chain::{EVMChain, EVMChainType},
+    GenericProvider,
+};
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
