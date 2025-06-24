@@ -12,7 +12,7 @@ There's also [a beta web version](https://mevlog.rs/) available.
 - regexp search by emmited event names 
 - search by ENS domain names
 - filter txs based on their position in a block
-- search by root method calls
+- search by root and sub calls
 - track smart contract storage changes
 - detect validator bribes
 - filter txs by value and real (including bribe) gas prices and cost
@@ -133,6 +133,12 @@ You can also filter by real (including bribe) gas price:
 mevlog search -b 5:latest -p 0:5 --real-gas-price ge10gwei --trace rpc
 ```
 
+It's possible to search txs by their sub method calls:
+
+```bash
+mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --trace rpc
+```
+
 All the filter conditions can be combined. Here's a complete list of currently supported filters:
 
 ```
@@ -149,6 +155,10 @@ Options:
           Exclude txs by event names matching the provided regex or signature and optionally an address
       --method <METHOD>
           Include txs with root method names matching the provided regex, signature or signature hash
+      --calls <CALLS>
+          Include txs by subcalls method names matching the provided regex, signature or signature hash
+      --show-calls
+          Show detailed tx calls info
       --tx-cost <TX_COST>
           Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')
       --real-tx-cost <REAL_TX_COST>
