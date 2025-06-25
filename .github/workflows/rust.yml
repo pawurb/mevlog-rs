@@ -33,6 +33,6 @@ jobs:
       - name: Lint 
         run: |
           cargo clippy --all --all-features -- -D warnings
-      - name: Run tests 'core'
+      - name: Run tests 
         run: | 
           cargo test --lib -- --nocapture

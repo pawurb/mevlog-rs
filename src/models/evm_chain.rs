@@ -125,13 +125,30 @@ impl EVMChain {
         self.name()
     }
 
-    pub fn cryo_cache_dir_name(&self) -> &str {
-        match self.chain_type {
-            EVMChainType::Mainnet => "ethereum",
-            EVMChainType::BSC => "bnb",
-            EVMChainType::Scroll => "network_534352",
-            EVMChainType::Fantom => "network_250",
-            _ => self.name(),
+    pub fn cryo_cache_dir_name(&self) -> String {
+        // Based on https://github.com/paradigmxyz/cryo/blob/559b65455d7ef6b03e8e9e96a0e50fd4fe8a9c86/crates/cli/src/parse/file_output.rs#L62
+        match self.chain_id() {
+            1 => "ethereum".to_string(),
+            5 => "goerli".to_string(),
+            10 => "optimism".to_string(),
+            56 => "bnb".to_string(),
+            69 => "optimism_kovan".to_string(),
+            100 => "gnosis".to_string(),
+            137 => "polygon".to_string(),
+            420 => "optimism_goerli".to_string(),
+            1101 => "polygon_zkevm".to_string(),
+            1442 => "polygon_zkevm_testnet".to_string(),
+            8453 => "base".to_string(),
+            10200 => "gnosis_chidao".to_string(),
+            17000 => "holesky".to_string(),
+            42161 => "arbitrum".to_string(),
+            42170 => "arbitrum_nova".to_string(),
+            43114 => "avalanche".to_string(),
+            80001 => "polygon_mumbai".to_string(),
+            84531 => "base_goerli".to_string(),
+            7777777 => "zora".to_string(),
+            11155111 => "sepolia".to_string(),
+            chain_id => format!("network_{chain_id}"),
         }
     }
 
