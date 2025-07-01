@@ -88,7 +88,13 @@ pub async fn get_native_token_price(
     provider: &Arc<GenericProvider>,
 ) -> Result<f64> {
     let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
-    let native_token_price = price_oracle.latestRoundData().call().await?.answer;
+    let native_token_price = match price_oracle.latestRoundData().call().await {
+        Ok(price) => price.answer,
+        Err(e) => {
+            println!("Error getting native token price: {:?}", e);
+            return Ok(1.0);
+        }
+    };
     let native_token_price = native_token_price.low_i64() as f64 / 10e7;
     Ok(native_token_price)
 }
