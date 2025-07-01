@@ -91,7 +91,7 @@ pub async fn get_native_token_price(
     let native_token_price = match price_oracle.latestRoundData().call().await {
         Ok(price) => price.answer,
         Err(e) => {
-            println!("Error getting native token price: {:?}", e);
+            println!("Error getting native token price: {e:?}");
             return Ok(1.0);
         }
     };
