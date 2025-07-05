@@ -38,7 +38,7 @@ impl SeedDBArgs {
                 continue;
             };
 
-            if i % 10000 == 0 {
+            if i.is_multiple_of(10000) {
                 tracing::info!("Processing line {}/{}", i, total_lines);
             }
 
