@@ -27,6 +27,9 @@ jobs:
       - name: Check 
         run: | 
           cargo check 
+      - name: Check dev feature flag
+        run: | 
+          cargo check --features dev
       - name: Fmt 
         run: |
           cargo fmt --all --check
