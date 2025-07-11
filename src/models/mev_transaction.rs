@@ -63,7 +63,7 @@ impl fmt::Display for CallExtract {
 
 #[derive(Debug)]
 pub struct MEVTransaction {
-    native_token_price: f64,
+    native_token_price: Option<f64>,
     pub chain: EVMChain,
     pub signature: String,
     pub signature_hash: Option<String>,
@@ -142,7 +142,7 @@ impl MEVTransaction {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        native_token_price: f64,
+        native_token_price: Option<f64>,
         chain: EVMChain,
         tx_req: TransactionRequest,
         receipt_data: ReceiptData,
@@ -508,7 +508,13 @@ fn display_usd(value: f64) -> String {
     format!("${result}.{decimal_part}")
 }
 
-fn display_token_and_usd(value: U256, token_price: f64, currency_symbol: &str) -> String {
+fn display_token_and_usd(value: U256, token_price: Option<f64>, currency_symbol: &str) -> String {
+    if token_price.is_none() {
+        return format!("{}", wei_to_eth(value));
+    }
+
+    let token_price = token_price.unwrap();
+
     let usd_value = eth_to_usd(value, token_price);
 
     if value == U256::ZERO {

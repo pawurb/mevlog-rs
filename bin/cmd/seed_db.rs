@@ -237,13 +237,17 @@ impl SeedDBArgs {
 
 fn get_price_oracles() -> HashMap<u64, String> {
     let mut price_oracles = HashMap::new();
+
+    // Mainnet
     price_oracles.insert(1, "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419".to_string());
 
+    // Base
     price_oracles.insert(
         8453,
         "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70".to_string(),
     );
 
+    // BSC
     price_oracles.insert(56, "0x0567f2323251f0aab15c8dfb1967e4e8a7d42aee".to_string());
 
     price_oracles.insert(
@@ -251,32 +255,40 @@ fn get_price_oracles() -> HashMap<u64, String> {
         "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612".to_string(),
     );
 
+    // Arbitrum
     price_oracles.insert(
         137,
         "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0".to_string(),
     );
 
+    // Metis
     price_oracles.insert(
         1088,
         "0xD4a5Bb03B5D66d9bf81507379302Ac2C2DFDFa6D".to_string(),
     );
+
+    // Optimism
     price_oracles.insert(10, "0x13e3Ee699D1909E989722E753853AE30b17e08c5".to_string());
 
+    // Avalanche
     price_oracles.insert(
         43114,
         "0x0A77230d17318075983913bC2145DB16C7366156".to_string(),
     );
 
+    // Linea
     price_oracles.insert(
         59144,
         "0x3c6Cd9Cc7c7a4c2Cf5a82734CD249D7D593354dA".to_string(),
     );
 
+    // Scroll
     price_oracles.insert(
         534352,
         "0x6bF14CB0A831078629D993FDeBcB182b21A8774C".to_string(),
     );
 
+    // Fantom Opera
     price_oracles.insert(
         250,
         "0x11DdD3d147E5b83D01cee7070027092397d63658".to_string(),

@@ -86,15 +86,19 @@ pub fn wei_to_eth(wei: U256) -> f64 {
 pub async fn get_native_token_price(
     chain: &EVMChain,
     provider: &Arc<GenericProvider>,
-) -> Result<f64> {
+) -> Result<Option<f64>> {
+    if chain.chainlink_oracle.is_none() {
+        return Ok(None);
+    }
+
     let price_oracle = IPriceOracle::new(chain.chainlink_oracle.unwrap(), provider.clone());
     let native_token_price = match price_oracle.latestRoundData().call().await {
         Ok(price) => price.answer,
         Err(e) => {
             println!("Error getting native token price: {e:?}");
-            return Ok(1.0);
+            return Ok(None);
         }
     };
     let native_token_price = native_token_price.low_i64() as f64 / 10e7;
-    Ok(native_token_price)
+    Ok(Some(native_token_price))
 }
