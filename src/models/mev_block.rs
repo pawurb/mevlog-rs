@@ -444,6 +444,15 @@ impl MEVBlock {
         };
 
         for tx_index in 0..=total_txs {
+            let mev_tx_data = self.mev_transactions.get(&(tx_index as u64));
+            let Some(mev_tx) = mev_tx_data else {
+                continue;
+            };
+
+            if !mev_tx.receipt.success {
+                continue;
+            }
+
             let tx_index = tx_index as u64;
             let tx_data = match self.revm_transactions.get(&tx_index) {
                 Some(tx_data) => tx_data,
