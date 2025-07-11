@@ -98,9 +98,10 @@ pub fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {
             Ok(foundry_revm_cache.join(format!("{block_number}")))
         }
     } else {
-        Ok(home::home_dir()
-            .unwrap()
-            .join(format!(".mevlog/.revm-cache/{block_number}")))
+        Ok(home::home_dir().unwrap().join(format!(
+            ".mevlog/.revm-cache/{}/{block_number}.json",
+            chain.revm_cache_dir_name()
+        )))
     }
 }
 
@@ -200,7 +201,7 @@ fn _revm_call_tx(
 }
 
 pub fn revm_tx_calls(
-    _tx_hash: FixedBytes<32>,
+    tx_hash: FixedBytes<32>,
     tx_req: TransactionRequest,
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
@@ -208,7 +209,7 @@ pub fn revm_tx_calls(
     let cfg = CfgEnvWithHandlerCfg::new(CfgEnv::default(), HandlerCfg::new(SpecId::LATEST));
 
     let mut tx_env = Default::default();
-    apply_tx_env(&mut tx_env, tx_req);
+    apply_tx_env(&mut tx_env, tx_req.clone());
 
     let mut block_env = BlockEnv::default();
     apply_block_env(&mut block_env, block_context);
@@ -220,7 +221,7 @@ pub fn revm_tx_calls(
     let (trace, _) = match inspect(cache_db, env, &mut insp) {
         Ok(res) => res,
         Err(e) => {
-            tracing::warn!("revm_tx_calls failed. {:?}", e);
+            tracing::warn!("revm_tx_calls {tx_hash} failed. {:?}", e);
             return Ok(vec![]);
         }
     };
@@ -300,8 +301,17 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
     tx_env.value = tx_req.value.unwrap_or(U256::ZERO);
     tx_env.gas_limit = tx_req.gas.unwrap_or(21000);
     // For EIP-1559 transactions, gas_price should be set to max_fee_per_gas
+    // If max_fee_per_gas is 0, fall back to gas_price
     tx_env.gas_price = if let Some(max_fee) = tx_req.max_fee_per_gas {
-        U256::from(max_fee)
+        if max_fee == 0 {
+            if let Some(gas_price) = tx_req.gas_price {
+                U256::from(gas_price)
+            } else {
+                U256::ZERO
+            }
+        } else {
+            U256::from(max_fee)
+        }
     } else if let Some(gas_price) = tx_req.gas_price {
         U256::from(gas_price)
     } else {

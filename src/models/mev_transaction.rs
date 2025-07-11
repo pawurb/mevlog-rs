@@ -118,7 +118,7 @@ impl MEVTransaction {
             from: Some(Address::from_str(&record[4]).unwrap()),
             to: Some(to),
             input: TransactionInput::new(Bytes::from_str(&record[9]).unwrap()),
-            gas_price: Some(record[11].to_string().parse::<u128>().unwrap()),
+            gas_price: Some(record[12].to_string().parse::<u128>().unwrap()),
             gas: Some(record[10].to_string().parse::<u64>().unwrap()),
             value: Some(U256::from_str(&record[7]).unwrap()),
             nonce: Some(record[3].to_string().parse::<u64>().unwrap()),
