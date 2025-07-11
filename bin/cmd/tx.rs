@@ -117,7 +117,7 @@ impl TxArgs {
             show_calls: false,
         };
 
-        let ens_lookup_mode = if shared_deps.chain.chain_id == 1 {
+        let ens_lookup_mode = if shared_deps.chain.is_mainnet() {
             ENSLookup::Sync
         } else {
             ENSLookup::Disabled

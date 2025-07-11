@@ -230,11 +230,10 @@ impl SeedDBArgs {
 
         Ok(signatures_file)
     }
-
-    // Gas token/USD price oracle
-    // https://docs.chain.link/data-feeds/price-feeds/addresses
 }
 
+// Gas token/USD price oracle
+// https://docs.chain.link/data-feeds/price-feeds/addresses
 fn get_price_oracles() -> HashMap<u64, String> {
     let mut price_oracles = HashMap::new();
 
