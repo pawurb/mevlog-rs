@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     io::{BufRead, BufReader},
     path::Path,
 };
@@ -7,7 +8,7 @@ use clap::Parser;
 use eyre::Result;
 use mevlog::{
     misc::database::{init_sqlite_db, sqlite_conn, sqlite_truncate_wal},
-    models::{db_chain::DbChain, db_event::DBEvent, db_method::DBMethod},
+    models::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
 };
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -82,6 +83,8 @@ impl SeedDBArgs {
         let mut total_processed = 0;
         let mut total_success = 0;
 
+        let price_oracles = get_price_oracles();
+
         for entry in paths {
             match entry {
                 Ok(path) => {
@@ -91,7 +94,7 @@ impl SeedDBArgs {
                         tracing::info!("Processed {} chain files", total_processed);
                     }
 
-                    match self.process_chain_file(&path, conn).await {
+                    match self.process_chain_file(&path, &price_oracles, conn).await {
                         Ok(true) => total_success += 1,
                         Ok(false) => {
                             tracing::debug!("Skipped chain file: {}", path.display());
@@ -115,22 +118,27 @@ impl SeedDBArgs {
         Ok(())
     }
 
-    async fn process_chain_file(&self, path: &Path, conn: &sqlx::SqlitePool) -> Result<bool> {
+    async fn process_chain_file(
+        &self,
+        path: &Path,
+        price_oracles: &HashMap<u64, String>,
+        conn: &sqlx::SqlitePool,
+    ) -> Result<bool> {
         let file_content = std::fs::read_to_string(path)?;
         let chain_data: ChainData = serde_json::from_str(&file_content)?;
 
-        if DbChain::exists(chain_data.chain_id as i64, conn).await? {
+        if DBChain::exists(chain_data.chain_id as i64, conn).await? {
             return Ok(false);
         }
 
         let explorer_url = chain_data.explorers.first().map(|e| e.url.clone());
 
-        let db_chain = DbChain {
+        let db_chain = DBChain {
             id: chain_data.chain_id as i64,
             name: chain_data.name,
             explorer_url,
             currency_symbol: chain_data.native_currency.symbol,
-            chainlink_oracle: None,
+            chainlink_oracle: price_oracles.get(&chain_data.chain_id).cloned(),
             uniswap_v2_pool: None,
         };
 
@@ -222,4 +230,57 @@ impl SeedDBArgs {
 
         Ok(signatures_file)
     }
+
+    // Gas token/USD price oracle
+    // https://docs.chain.link/data-feeds/price-feeds/addresses
+}
+
+fn get_price_oracles() -> HashMap<u64, String> {
+    let mut price_oracles = HashMap::new();
+    price_oracles.insert(1, "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419".to_string());
+
+    price_oracles.insert(
+        8453,
+        "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70".to_string(),
+    );
+
+    price_oracles.insert(56, "0x0567f2323251f0aab15c8dfb1967e4e8a7d42aee".to_string());
+
+    price_oracles.insert(
+        42161,
+        "0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612".to_string(),
+    );
+
+    price_oracles.insert(
+        137,
+        "0xAB594600376Ec9fD91F8e885dADF0CE036862dE0".to_string(),
+    );
+
+    price_oracles.insert(
+        1088,
+        "0xD4a5Bb03B5D66d9bf81507379302Ac2C2DFDFa6D".to_string(),
+    );
+    price_oracles.insert(10, "0x13e3Ee699D1909E989722E753853AE30b17e08c5".to_string());
+
+    price_oracles.insert(
+        43114,
+        "0x0A77230d17318075983913bC2145DB16C7366156".to_string(),
+    );
+
+    price_oracles.insert(
+        59144,
+        "0x3c6Cd9Cc7c7a4c2Cf5a82734CD249D7D593354dA".to_string(),
+    );
+
+    price_oracles.insert(
+        534352,
+        "0x6bF14CB0A831078629D993FDeBcB182b21A8774C".to_string(),
+    );
+
+    price_oracles.insert(
+        250,
+        "0x11DdD3d147E5b83D01cee7070027092397d63658".to_string(),
+    );
+
+    price_oracles
 }

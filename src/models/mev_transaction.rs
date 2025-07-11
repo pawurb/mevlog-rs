@@ -302,7 +302,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.explorer_url, self.tx_hash).yellow(),
             )?;
 
             writeln!(f)?;
@@ -316,7 +316,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.explorer_url, self.tx_hash).yellow(),
             )?;
         }
 
@@ -344,7 +344,7 @@ impl fmt::Display for MEVTransaction {
             display_token_and_usd(
                 self.value(),
                 self.native_token_price,
-                self.chain.currency_symbol()
+                &self.chain.currency_symbol
             ),
             width = LABEL_WIDTH
         )?;
@@ -364,7 +364,7 @@ impl fmt::Display for MEVTransaction {
             display_token_and_usd(
                 U256::from(self.gas_tx_cost()),
                 self.native_token_price,
-                self.chain.currency_symbol()
+                &self.chain.currency_symbol
             ),
             width = LABEL_WIDTH
         )?;
@@ -378,7 +378,7 @@ impl fmt::Display for MEVTransaction {
                     display_token_and_usd(
                         coinbase_transfer,
                         self.native_token_price,
-                        self.chain.currency_symbol()
+                        &self.chain.currency_symbol
                     ),
                     width = LABEL_WIDTH
                 )?;
@@ -390,7 +390,7 @@ impl fmt::Display for MEVTransaction {
                     display_token_and_usd(
                         self.full_tx_cost(),
                         self.native_token_price,
-                        self.chain.currency_symbol()
+                        &self.chain.currency_symbol
                     ),
                     width = LABEL_WIDTH
                 )?;

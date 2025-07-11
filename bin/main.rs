@@ -2,9 +2,7 @@ mod cmd;
 use clap::{Parser, Subcommand, ValueEnum};
 #[cfg(feature = "dev")]
 use cmd::seed_db::SeedDBArgs;
-use cmd::{
-    chains::ChainsArgs, search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs,
-};
+use cmd::{search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs};
 use eyre::Result;
 use mevlog::misc::utils::init_logs;
 
@@ -41,8 +39,6 @@ pub enum MLSubcommand {
     Tx(TxArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
-    #[command(about = "List supported EVM chains")]
-    Chains(ChainsArgs),
     #[cfg(feature = "dev")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
@@ -86,9 +82,6 @@ async fn execute() -> Result<()> {
             args.run().await?;
         }
         ML::UpdateDB(args) => {
-            args.run().await?;
-        }
-        ML::Chains(args) => {
             args.run().await?;
         }
         #[cfg(feature = "dev")]

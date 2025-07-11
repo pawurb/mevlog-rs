@@ -5,7 +5,7 @@ use alloy::{
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
-use eyre::Result;
+use eyre::{eyre, OptionExt, Result};
 use revm::primitives::Address;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
@@ -17,7 +17,11 @@ use super::{
     ens_utils::start_ens_lookup_worker,
     symbol_utils::{start_symbols_lookup_worker, SymbolLookupWorker},
 };
-use crate::{misc::db_actions::download_db_file, models::evm_chain::EVMChain, GenericProvider};
+use crate::{
+    misc::db_actions::download_db_file,
+    models::{db_chain::DBChain, evm_chain::EVMChain},
+    GenericProvider,
+};
 
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
@@ -47,7 +51,10 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let provider = Arc::new(provider);
 
     let chain_id = provider.get_chain_id().await?;
-    let chain = EVMChain::new(chain_id, conn_opts.rpc_url.clone().unwrap())?;
+    let db_chain = DBChain::find(chain_id as i64, &sqlite_conn)
+        .await?
+        .ok_or_eyre(eyre!("Chain {chain_id} not found in database"))?;
+    let chain = EVMChain::new(db_chain, conn_opts.rpc_url.clone().unwrap())?;
 
     Ok(SharedDeps {
         sqlite: sqlite_conn,

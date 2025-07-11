@@ -10,7 +10,7 @@ use mevlog::{
         shared_init::{init_deps, ConnOpts, TraceMode},
         utils::{get_native_token_price, SEPARATORER},
     },
-    models::{evm_chain::EVMChainType, mev_block::MEVBlock, txs_filter::TxsFilter},
+    models::{mev_block::MEVBlock, txs_filter::TxsFilter},
 };
 use revm::primitives::FixedBytes;
 
@@ -117,7 +117,7 @@ impl TxArgs {
             show_calls: false,
         };
 
-        let ens_lookup_mode = if shared_deps.chain.chain_type == EVMChainType::Mainnet {
+        let ens_lookup_mode = if shared_deps.chain.chain_id == 1 {
             ENSLookup::Sync
         } else {
             ENSLookup::Disabled

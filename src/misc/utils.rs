@@ -87,7 +87,7 @@ pub async fn get_native_token_price(
     chain: &EVMChain,
     provider: &Arc<GenericProvider>,
 ) -> Result<f64> {
-    let price_oracle = IPriceOracle::new(chain.price_oracle(), provider.clone());
+    let price_oracle = IPriceOracle::new(chain.chainlink_oracle.unwrap(), provider.clone());
     let native_token_price = match price_oracle.latestRoundData().call().await {
         Ok(price) => price.answer,
         Err(e) => {

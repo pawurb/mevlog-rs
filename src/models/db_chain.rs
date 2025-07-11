@@ -3,7 +3,7 @@ use sqlx::Row;
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct DbChain {
+pub struct DBChain {
     pub id: i64,
     pub name: String,
     pub explorer_url: Option<String>,
@@ -12,7 +12,7 @@ pub struct DbChain {
     pub uniswap_v2_pool: Option<String>,
 }
 
-impl DbChain {
+impl DBChain {
     pub async fn exists(id: i64, conn: &sqlx::SqlitePool) -> Result<bool> {
         let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM chains WHERE id = ?)")
             .bind(id)
@@ -32,7 +32,7 @@ impl DbChain {
         Ok(count)
     }
 
-    pub async fn find(id: i64, conn: &sqlx::SqlitePool) -> Result<Option<DbChain>> {
+    pub async fn find(id: i64, conn: &sqlx::SqlitePool) -> Result<Option<DBChain>> {
         let result = sqlx::query(
             r#"
             SELECT id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool 
@@ -46,7 +46,7 @@ impl DbChain {
         .await?;
 
         match result {
-            Some(row) => Ok(Some(DbChain {
+            Some(row) => Ok(Some(DBChain {
                 id: row.get(0),
                 name: row.get(1),
                 explorer_url: row.get(2),
@@ -58,7 +58,7 @@ impl DbChain {
         }
     }
 
-    pub async fn find_all(conn: &sqlx::SqlitePool) -> Result<Vec<DbChain>> {
+    pub async fn find_all(conn: &sqlx::SqlitePool) -> Result<Vec<DBChain>> {
         let rows = sqlx::query(
             r#"
             SELECT id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool 
@@ -71,7 +71,7 @@ impl DbChain {
 
         let chains = rows
             .into_iter()
-            .map(|row| DbChain {
+            .map(|row| DBChain {
                 id: row.get(0),
                 name: row.get(1),
                 explorer_url: row.get(2),
@@ -142,7 +142,7 @@ pub mod test {
     async fn create_and_get_chain() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let new_chain = DbChain {
+        let new_chain = DBChain {
             id: 1,
             name: "Ethereum".to_string(),
             explorer_url: Some("https://etherscan.io".to_string()),
@@ -153,12 +153,12 @@ pub mod test {
 
         new_chain.save(&conn).await?;
 
-        let exists = DbChain::exists(1, &conn).await?;
+        let exists = DBChain::exists(1, &conn).await?;
         assert!(exists);
 
-        assert_eq!(DbChain::count(&conn).await?, 1);
+        assert_eq!(DBChain::count(&conn).await?, 1);
 
-        let found_chain = DbChain::find(1, &conn).await?;
+        let found_chain = DBChain::find(1, &conn).await?;
         assert!(found_chain.is_some());
 
         let chain = found_chain.unwrap();
@@ -173,7 +173,7 @@ pub mod test {
     async fn find_all_chains() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let chain1 = DbChain {
+        let chain1 = DBChain {
             id: 1,
             name: "Ethereum".to_string(),
             explorer_url: Some("https://etherscan.io".to_string()),
@@ -182,7 +182,7 @@ pub mod test {
             uniswap_v2_pool: None,
         };
 
-        let chain2 = DbChain {
+        let chain2 = DBChain {
             id: 56,
             name: "BNB Smart Chain".to_string(),
             explorer_url: Some("https://bscscan.com".to_string()),
@@ -194,7 +194,7 @@ pub mod test {
         chain1.save(&conn).await?;
         chain2.save(&conn).await?;
 
-        let chains = DbChain::find_all(&conn).await?;
+        let chains = DBChain::find_all(&conn).await?;
         assert_eq!(chains.len(), 2);
         assert_eq!(chains[0].id, 1);
         assert_eq!(chains[1].id, 56);
@@ -206,7 +206,7 @@ pub mod test {
     async fn update_chain() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let mut chain = DbChain {
+        let mut chain = DBChain {
             id: 1,
             name: "Ethereum".to_string(),
             explorer_url: Some("https://etherscan.io".to_string()),
@@ -220,7 +220,7 @@ pub mod test {
         chain.chainlink_oracle = Some("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419".to_string());
         chain.update(&conn).await?;
 
-        let updated_chain = DbChain::find(1, &conn).await?.unwrap();
+        let updated_chain = DBChain::find(1, &conn).await?.unwrap();
         assert_eq!(
             updated_chain.chainlink_oracle,
             Some("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419".to_string())
@@ -233,7 +233,7 @@ pub mod test {
     async fn delete_chain() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let chain = DbChain {
+        let chain = DBChain {
             id: 1,
             name: "Ethereum".to_string(),
             explorer_url: Some("https://etherscan.io".to_string()),
@@ -243,10 +243,10 @@ pub mod test {
         };
 
         chain.save(&conn).await?;
-        assert!(DbChain::exists(1, &conn).await?);
+        assert!(DBChain::exists(1, &conn).await?);
 
-        DbChain::delete(1, &conn).await?;
-        assert!(!DbChain::exists(1, &conn).await?);
+        DBChain::delete(1, &conn).await?;
+        assert!(!DBChain::exists(1, &conn).await?);
 
         Ok(())
     }

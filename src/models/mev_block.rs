@@ -690,8 +690,8 @@ fn block_metadata(block: &MEVBlock) -> String {
         base_fee_gwei,
         block.mev_transactions.len(),
         block.txs_count,
-        block.chain.name().to_uppercase(),
-        block.chain.chain_id(),
+        block.chain.name,
+        block.chain.chain_id,
         age_width = 3,
         base_width = 6,
     )
