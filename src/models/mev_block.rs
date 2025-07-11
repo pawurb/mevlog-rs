@@ -155,10 +155,25 @@ impl MEVBlock {
         let file = match std::fs::File::open(file_path.clone()) {
             Ok(file) => file,
             Err(e) => {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
-                } else {
+                if e.kind() != std::io::ErrorKind::NotFound {
                     eyre::bail!("Error opening CSV file: {e}");
+                }
+
+                let backup_file_path = format!(
+                    "{}/{}__transactions__0{block_number_int}_to_0{block_number_int}.csv",
+                    cryo_cache_dir().display(),
+                    chain.cryo_cache_dir_name()
+                );
+
+                match std::fs::File::open(backup_file_path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::NotFound {
+                            eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+                        } else {
+                            eyre::bail!("Error opening CSV file: {e}");
+                        }
+                    }
                 }
             }
         };
