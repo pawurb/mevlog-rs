@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::OnceLock};
 
+use alloy_chains::NamedChain;
 use eyre::Result;
 use revm::primitives::Address;
 
@@ -35,8 +36,12 @@ impl EVMChain {
         })
     }
 
-    pub fn revm_cache_dir_name(&self) -> &str {
-        &self.name
+    pub fn revm_cache_dir_name(&self) -> String {
+        if let Ok(chain) = NamedChain::try_from(self.chain_id) {
+            chain.to_string()
+        } else {
+            format!("network_{}", self.chain_id)
+        }
     }
 
     pub fn cryo_cache_dir_name(&self) -> String {
