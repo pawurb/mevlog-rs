@@ -6,10 +6,7 @@ use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use super::shared_init::{init_provider, ConnOpts};
-use crate::{
-    models::evm_chain::{EVMChain, EVMChainType},
-    GenericProvider,
-};
+use crate::{models::evm_chain::EVMChain, GenericProvider};
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
@@ -36,7 +33,7 @@ impl ENSLookup {
         ens_lookup_worker: UnboundedSender<Address>,
         chain: &EVMChain,
     ) -> ENSLookup {
-        if chain.chain_type != EVMChainType::Mainnet {
+        if chain.chain_id != 1 {
             return ENSLookup::Disabled;
         }
 

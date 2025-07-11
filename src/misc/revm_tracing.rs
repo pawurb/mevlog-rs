@@ -68,7 +68,7 @@ pub async fn init_revm_db(
         .expect("block not found");
 
     let meta = BlockchainDbMeta::default()
-        .with_chain_id(chain.chain_id())
+        .with_chain_id(chain.chain_id)
         .with_block(&block.inner);
 
     let cache_path = revm_cache_path(block_number, chain)?;

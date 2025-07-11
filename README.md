@@ -45,7 +45,7 @@ cargo install mevlog
 mevlog watch --rpc-url https://eth.merkle.io 
 ```
 
-On initial run `mevlog` downloads ~120mb [openchain.xyz signatures database](https://openchain.xyz/signatures) and extracts it to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
+On initial run `mevlog` downloads ~120mb [openchain.xyz signatures database](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) and extracts it to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
 
 To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
 

@@ -48,7 +48,7 @@ pub struct TxData {
 }
 
 pub struct MEVBlock {
-    native_token_price: f64,
+    native_token_price: Option<f64>,
     block_number: u64,
     mev_transactions: HashMap<u64, MEVTransaction>,
     revm_transactions: HashMap<u64, TxData>,
@@ -70,7 +70,7 @@ pub async fn process_block(
     txs_filter: &TxsFilter,
     conn_opts: &ConnOpts,
     chain: &EVMChain,
-    native_token_price: f64,
+    native_token_price: Option<f64>,
 ) -> Result<()> {
     let revm_utils = init_revm_db(block_number - 1, conn_opts, chain).await?;
 
@@ -121,7 +121,7 @@ impl MEVBlock {
         trace_mode: Option<&TraceMode>,
         block_info_top: bool,
         chain: &EVMChain,
-        native_token_price: f64,
+        native_token_price: Option<f64>,
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
@@ -155,10 +155,25 @@ impl MEVBlock {
         let file = match std::fs::File::open(file_path.clone()) {
             Ok(file) => file,
             Err(e) => {
-                if e.kind() == std::io::ErrorKind::NotFound {
-                    eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
-                } else {
+                if e.kind() != std::io::ErrorKind::NotFound {
                     eyre::bail!("Error opening CSV file: {e}");
+                }
+
+                let backup_file_path = format!(
+                    "{}/{}__transactions__0{block_number_int}_to_0{block_number_int}.csv",
+                    cryo_cache_dir().display(),
+                    chain.cryo_cache_dir_name()
+                );
+
+                match std::fs::File::open(backup_file_path) {
+                    Ok(file) => file,
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::NotFound {
+                            eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+                        } else {
+                            eyre::bail!("Error opening CSV file: {e}");
+                        }
+                    }
                 }
             }
         };
@@ -690,8 +705,8 @@ fn block_metadata(block: &MEVBlock) -> String {
         base_fee_gwei,
         block.mev_transactions.len(),
         block.txs_count,
-        block.chain.name().to_uppercase(),
-        block.chain.chain_id(),
+        block.chain.name,
+        block.chain.chain_id,
         age_width = 3,
         base_width = 6,
     )

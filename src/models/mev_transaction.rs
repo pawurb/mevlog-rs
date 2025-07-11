@@ -63,7 +63,7 @@ impl fmt::Display for CallExtract {
 
 #[derive(Debug)]
 pub struct MEVTransaction {
-    native_token_price: f64,
+    native_token_price: Option<f64>,
     pub chain: EVMChain,
     pub signature: String,
     pub signature_hash: Option<String>,
@@ -142,7 +142,7 @@ impl MEVTransaction {
 
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        native_token_price: f64,
+        native_token_price: Option<f64>,
         chain: EVMChain,
         tx_req: TransactionRequest,
         receipt_data: ReceiptData,
@@ -302,7 +302,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.explorer_url, self.tx_hash).yellow(),
             )?;
 
             writeln!(f)?;
@@ -316,7 +316,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", self.chain.etherscan_url(), self.tx_hash).yellow(),
+                &format!("{}/tx/{}", self.chain.explorer_url, self.tx_hash).yellow(),
             )?;
         }
 
@@ -344,7 +344,7 @@ impl fmt::Display for MEVTransaction {
             display_token_and_usd(
                 self.value(),
                 self.native_token_price,
-                self.chain.currency_symbol()
+                &self.chain.currency_symbol
             ),
             width = LABEL_WIDTH
         )?;
@@ -364,7 +364,7 @@ impl fmt::Display for MEVTransaction {
             display_token_and_usd(
                 U256::from(self.gas_tx_cost()),
                 self.native_token_price,
-                self.chain.currency_symbol()
+                &self.chain.currency_symbol
             ),
             width = LABEL_WIDTH
         )?;
@@ -378,7 +378,7 @@ impl fmt::Display for MEVTransaction {
                     display_token_and_usd(
                         coinbase_transfer,
                         self.native_token_price,
-                        self.chain.currency_symbol()
+                        &self.chain.currency_symbol
                     ),
                     width = LABEL_WIDTH
                 )?;
@@ -390,7 +390,7 @@ impl fmt::Display for MEVTransaction {
                     display_token_and_usd(
                         self.full_tx_cost(),
                         self.native_token_price,
-                        self.chain.currency_symbol()
+                        &self.chain.currency_symbol
                     ),
                     width = LABEL_WIDTH
                 )?;
@@ -508,7 +508,13 @@ fn display_usd(value: f64) -> String {
     format!("${result}.{decimal_part}")
 }
 
-fn display_token_and_usd(value: U256, token_price: f64, currency_symbol: &str) -> String {
+fn display_token_and_usd(value: U256, token_price: Option<f64>, currency_symbol: &str) -> String {
+    if token_price.is_none() {
+        return format!("{}", wei_to_eth(value));
+    }
+
+    let token_price = token_price.unwrap();
+
     let usd_value = eth_to_usd(value, token_price);
 
     if value == U256::ZERO {
