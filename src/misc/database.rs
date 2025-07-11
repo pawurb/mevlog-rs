@@ -10,7 +10,7 @@ use tracing::info;
 use super::shared_init::config_path;
 
 static MIGRATOR: Migrator = sqlx::migrate!();
-const SCHEMA_VERSION: u64 = 3;
+pub const DB_SCHEMA_VERSION: u64 = 4;
 
 pub async fn init_sqlite_db(db_url: Option<String>) -> Result<()> {
     let db_url = db_url.unwrap_or(default_db_path().to_string_lossy().into_owned());
@@ -58,6 +58,10 @@ pub async fn sqlite_truncate_wal(conn: &SqlitePool) -> Result<()> {
     Ok(())
 }
 
+pub fn db_file_name(schema_version: u64) -> String {
+    format!("mevlog-sqlite-v{schema_version}.db")
+}
+
 pub fn default_db_path() -> PathBuf {
-    config_path().join(format!("signatures-sqlite-v{SCHEMA_VERSION}.db"))
+    config_path().join(db_file_name(DB_SCHEMA_VERSION))
 }

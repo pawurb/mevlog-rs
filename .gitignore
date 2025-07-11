@@ -1,5 +1,5 @@
 /target
-*-sqlite.db
+*.db
 cache/
 out/
 backup.sh

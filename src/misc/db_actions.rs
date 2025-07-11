@@ -10,9 +10,8 @@ use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 
-use crate::misc::database::default_db_path;
+use crate::misc::database::{db_file_name, default_db_path, DB_SCHEMA_VERSION};
 
-const DB_FILE_URL: &str = "https://d39my35jed0oxi.cloudfront.net/signatures-sqlite-v3.db.gz";
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 
 pub fn db_file_exists() -> bool {
@@ -43,14 +42,14 @@ pub async fn remove_db_files() -> Result<()> {
 }
 
 pub async fn download_db_file() -> Result<()> {
-    let url = DB_FILE_URL;
+    let url = db_file_url();
     let client = Client::new();
     let db_path = default_db_path().to_string_lossy().into_owned();
 
     let gz_path = format!("{db_path}.gz");
 
     let res = client
-        .get(url)
+        .get(url.clone())
         .send()
         .await
         .map_err(|e| eyre!("Failed to GET from '{}': {}", url, e))?;
@@ -123,4 +122,11 @@ pub async fn download_db_file() -> Result<()> {
     fs::remove_file(&gz_path).map_err(|e| eyre!("Failed to remove .gz file: {}", e))?;
 
     Ok(())
+}
+
+fn db_file_url() -> String {
+    format!(
+        "https://d39my35jed0oxi.cloudfront.net/{}",
+        db_file_name(DB_SCHEMA_VERSION)
+    )
 }
