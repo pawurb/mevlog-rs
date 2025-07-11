@@ -9,6 +9,7 @@ pub struct DbChain {
     pub explorer_url: Option<String>,
     pub currency_symbol: String,
     pub chainlink_oracle: Option<String>,
+    pub uniswap_v2_pool: Option<String>,
 }
 
 impl DbChain {
@@ -34,7 +35,7 @@ impl DbChain {
     pub async fn find(id: i64, conn: &sqlx::SqlitePool) -> Result<Option<DbChain>> {
         let result = sqlx::query(
             r#"
-            SELECT id, name, explorer_url, currency_symbol, chainlink_oracle 
+            SELECT id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool 
             FROM chains 
             WHERE id = ? 
             LIMIT 1
@@ -51,6 +52,7 @@ impl DbChain {
                 explorer_url: row.get(2),
                 currency_symbol: row.get(3),
                 chainlink_oracle: row.get(4),
+                uniswap_v2_pool: row.get(5),
             })),
             None => Ok(None),
         }
@@ -59,7 +61,7 @@ impl DbChain {
     pub async fn find_all(conn: &sqlx::SqlitePool) -> Result<Vec<DbChain>> {
         let rows = sqlx::query(
             r#"
-            SELECT id, name, explorer_url, currency_symbol, chainlink_oracle 
+            SELECT id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool 
             FROM chains 
             ORDER BY id
             "#,
@@ -75,6 +77,7 @@ impl DbChain {
                 explorer_url: row.get(2),
                 currency_symbol: row.get(3),
                 chainlink_oracle: row.get(4),
+                uniswap_v2_pool: row.get(5),
             })
             .collect();
 
@@ -84,8 +87,8 @@ impl DbChain {
     pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<()> {
         sqlx::query(
             r#"
-            INSERT INTO chains (id, name, explorer_url, currency_symbol, chainlink_oracle)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO chains (id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool)
+            VALUES (?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(self.id)
@@ -93,6 +96,7 @@ impl DbChain {
         .bind(&self.explorer_url)
         .bind(&self.currency_symbol)
         .bind(&self.chainlink_oracle)
+        .bind(&self.uniswap_v2_pool)
         .execute(conn)
         .await?;
 
@@ -103,7 +107,7 @@ impl DbChain {
         sqlx::query(
             r#"
             UPDATE chains 
-            SET name = ?, explorer_url = ?, currency_symbol = ?, chainlink_oracle = ?
+            SET name = ?, explorer_url = ?, currency_symbol = ?, chainlink_oracle = ?, uniswap_v2_pool = ?
             WHERE id = ?
             "#,
         )
@@ -111,6 +115,7 @@ impl DbChain {
         .bind(&self.explorer_url)
         .bind(&self.currency_symbol)
         .bind(&self.chainlink_oracle)
+        .bind(&self.uniswap_v2_pool)
         .bind(self.id)
         .execute(conn)
         .await?;
@@ -143,6 +148,7 @@ pub mod test {
             explorer_url: Some("https://etherscan.io".to_string()),
             currency_symbol: "ETH".to_string(),
             chainlink_oracle: Some("0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419".to_string()),
+            uniswap_v2_pool: Some("0xB4e16d0168e52d35CaCD2c6185b44281Ec28C9Dc".to_string()),
         };
 
         new_chain.save(&conn).await?;
@@ -173,6 +179,7 @@ pub mod test {
             explorer_url: Some("https://etherscan.io".to_string()),
             currency_symbol: "ETH".to_string(),
             chainlink_oracle: None,
+            uniswap_v2_pool: None,
         };
 
         let chain2 = DbChain {
@@ -181,6 +188,7 @@ pub mod test {
             explorer_url: Some("https://bscscan.com".to_string()),
             currency_symbol: "BNB".to_string(),
             chainlink_oracle: Some("0x0567F2323251f0Aab15c8dFb1967E4e8A7D42aeE".to_string()),
+            uniswap_v2_pool: Some("0x58F876857a02D6762E0101bb5C46A8c1ED44Dc16".to_string()),
         };
 
         chain1.save(&conn).await?;
@@ -204,6 +212,7 @@ pub mod test {
             explorer_url: Some("https://etherscan.io".to_string()),
             currency_symbol: "ETH".to_string(),
             chainlink_oracle: None,
+            uniswap_v2_pool: None,
         };
 
         chain.save(&conn).await?;
@@ -230,6 +239,7 @@ pub mod test {
             explorer_url: Some("https://etherscan.io".to_string()),
             currency_symbol: "ETH".to_string(),
             chainlink_oracle: None,
+            uniswap_v2_pool: None,
         };
 
         chain.save(&conn).await?;

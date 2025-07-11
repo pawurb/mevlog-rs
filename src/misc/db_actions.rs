@@ -126,7 +126,7 @@ pub async fn download_db_file() -> Result<()> {
 
 fn db_file_url() -> String {
     format!(
-        "https://d39my35jed0oxi.cloudfront.net/{}",
+        "https://d39my35jed0oxi.cloudfront.net/{}.gz",
         db_file_name(DB_SCHEMA_VERSION)
     )
 }

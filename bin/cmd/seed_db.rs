@@ -1,5 +1,4 @@
 use std::{
-    fs::File,
     io::{BufRead, BufReader},
     path::Path,
 };
@@ -51,14 +50,12 @@ impl SeedDBArgs {
 
         tracing::info!("Seeding database");
 
-        // Seed chains first
         self.seed_chains(&conn).await?;
 
-        // Then seed signatures if SEED_FILE_URL is set
-        if let Ok(file_path) = std::env::var("SEED_FILE_URL") {
-            self.seed_signatures(&conn, file_path).await?;
+        if std::env::var("SEED_SIGNATURES").unwrap_or_default() == "true" {
+            self.seed_signatures(&conn).await?;
         } else {
-            tracing::info!("SEED_FILE_URL not set, skipping signature seeding");
+            tracing::info!("SEED_SIGNATURES not set to true, skipping signature seeding");
         }
 
         info!("Truncating WAL");
@@ -122,12 +119,10 @@ impl SeedDBArgs {
         let file_content = std::fs::read_to_string(path)?;
         let chain_data: ChainData = serde_json::from_str(&file_content)?;
 
-        // Check if chain already exists
         if DbChain::exists(chain_data.chain_id as i64, conn).await? {
             return Ok(false);
         }
 
-        // Get the first explorer URL if available
         let explorer_url = chain_data.explorers.first().map(|e| e.url.clone());
 
         let db_chain = DbChain {
@@ -135,23 +130,32 @@ impl SeedDBArgs {
             name: chain_data.name,
             explorer_url,
             currency_symbol: chain_data.native_currency.symbol,
-            chainlink_oracle: None, // Not available in the source data
+            chainlink_oracle: None,
+            uniswap_v2_pool: None,
         };
 
         db_chain.save(conn).await?;
         Ok(true)
     }
 
-    async fn seed_signatures(&self, conn: &sqlx::SqlitePool, file_path: String) -> Result<()> {
-        tracing::info!("Seeding signatures");
+    async fn seed_signatures(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+        tracing::info!("Seeding signatures from OpenChain API");
 
-        let file1 = File::open(file_path.clone())?;
-        let file2 = File::open(file_path)?;
-        let count_reader = BufReader::new(file1);
-        let reader = BufReader::new(file2);
+        let signatures_file = self.get_or_download_signatures_file().await?;
 
-        let total_lines = count_reader.lines().count();
+        tracing::info!("Processing signature data from local file");
 
+        // Count total lines first
+        let file_for_count = std::fs::File::open(&signatures_file)?;
+        let reader_for_count = BufReader::new(file_for_count);
+        let total_lines = reader_for_count.lines().count();
+
+        tracing::info!("Total signature lines to process: {}", total_lines);
+
+        let file = std::fs::File::open(&signatures_file)?;
+        let reader = BufReader::new(file);
+
+        let mut line_count = 0;
         for (i, line) in reader.lines().enumerate() {
             let line = line?;
             let Some((signature_hash, signature)) = line.split_once(',') else {
@@ -179,8 +183,43 @@ impl SeedDBArgs {
 
                 let _ = new_event.save(conn).await;
             }
+
+            line_count += 1;
         }
 
+        tracing::info!("Processed {} signature lines", line_count);
+
         Ok(())
+    }
+
+    async fn get_or_download_signatures_file(&self) -> Result<String> {
+        let today = chrono::Utc::now().format("%Y-%m-%d");
+        let signatures_file = format!("/tmp/signatures_{today}.csv");
+
+        if Path::new(&signatures_file).exists() {
+            tracing::info!("Using existing signatures file: {}", signatures_file);
+            return Ok(signatures_file);
+        }
+
+        let url = "https://api.openchain.xyz/signature-database/v1/export";
+        tracing::info!("Downloading signatures database from: {}", url);
+
+        let response = reqwest::get(url).await?;
+        let mut file = std::fs::File::create(&signatures_file)?;
+        let mut stream = response.bytes_stream();
+
+        use std::io::Write;
+
+        use futures_util::StreamExt;
+
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk?;
+            file.write_all(&chunk)?;
+        }
+
+        file.flush()?;
+        tracing::info!("Downloaded signature database to: {}", signatures_file);
+
+        Ok(signatures_file)
     }
 }

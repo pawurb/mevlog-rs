@@ -5,5 +5,6 @@ CREATE TABLE chains (
     name TEXT NOT NULL,
     explorer_url TEXT,
     currency_symbol TEXT NOT NULL,
-    chainlink_oracle TEXT
+    chainlink_oracle TEXT,
+    uniswap_v2_pool TEXT
 );
