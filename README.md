@@ -3,7 +3,7 @@
  
 ![Big bribe](big-bribe-tx2.png)
 
-Rust-based CLI tool for querying and monitoring Ethereum (and other EVM) blockchain transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
+Rust-based CLI tool for querying and monitoring Ethereum (and [over 2k other EVM chains](#supported-evm-chains)) transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
 There's also [a beta web version](https://mevlog.rs/) available.
 
@@ -45,7 +45,7 @@ cargo install mevlog
 mevlog watch --rpc-url https://eth.merkle.io 
 ```
 
-On initial run `mevlog` downloads ~120mb [openchain.xyz signatures database](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) and extracts it to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
+On initial run `mevlog` downloads ~120mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
 
 To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
 
@@ -201,18 +201,7 @@ You can reverse the display order by adding the `--reverse` flag.
 
 ## Supported EVM chains
 
-* [Mainnet](https://etherscan.io)
-* [Base](https://basescan.org)
-* [BSC](https://bscscan.com)
-* [Polygon](https://polygonscan.com)
-* [Arbitrum](https://arbiscan.io)
-* [Optimism](https://optimistic.etherscan.io)
-* [Metis](https://andromeda-explorer.metis.io)
-* [Linea](https://lineascan.build)
-* [Avalanche](https://snowtrace.io)
-* [Scroll](https://scrollscan.com)
-
-If you want to add an EVM network, please submit a PR as described [in this issue](https://github.com/pawurb/mevlog-rs/issues/9).
+The project currently supports over 2k EVM chains by reading the metadata from [ethereum-list/chains](https://github.com/ethereum-lists/chains). But only a few chains display $USD txs prices from integrated [ChainLink oracles](https://docs.chain.link/data-feeds/price-feeds/addresses). I'm planning to work on improving the coverage.
 
 ## Project status
 
