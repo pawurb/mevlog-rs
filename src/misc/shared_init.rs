@@ -13,7 +13,7 @@ use tracing::debug;
 
 use super::{
     database::sqlite_conn,
-    db_actions::db_file_exists,
+    db_actions::{check_and_create_indexes, db_file_exists},
     ens_utils::start_ens_lookup_worker,
     symbol_utils::{start_symbols_lookup_worker, SymbolLookupWorker},
 };
@@ -42,6 +42,8 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         let _ = std::fs::create_dir_all(config_path());
         println!("Database file missing");
         download_db_file().await?;
+    } else {
+        check_and_create_indexes().await?;
     }
 
     let sqlite_conn = sqlite_conn(None).await?;

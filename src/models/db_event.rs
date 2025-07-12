@@ -50,7 +50,10 @@ impl DBEvent {
         }
     }
 
-    pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+    pub async fn save<'c, E>(&self, executor: E) -> Result<()>
+    where
+        E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
+    {
         let signature_hash = self.signature_hash.trim_start_matches("0x");
         let signature_hash_bytes = hex::decode(signature_hash).expect("Invalid hex");
 
@@ -62,7 +65,7 @@ impl DBEvent {
         )
         .bind(signature_hash_bytes)
         .bind(&self.signature)
-        .execute(conn)
+        .execute(executor)
         .await?;
 
         Ok(())
@@ -160,6 +163,52 @@ pub mod test {
         .await?;
 
         assert_eq!(signature.unwrap(), "Sync(u256,uint256)");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn save_with_transaction() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+
+        let mut tx = conn.begin().await?;
+
+        let event1 = DBEvent {
+            signature_hash: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+                .to_string(),
+            signature: "Transfer(address,address,uint256)".to_string(),
+        };
+
+        let event2 = DBEvent {
+            signature_hash: "0x45cceb0b830632de1c7fbebdf472f48e739c65f12da600c969011fc84dc602dd"
+                .to_string(),
+            signature: "Sync(u256,uint256)".to_string(),
+        };
+
+        event1.save(&mut *tx).await?;
+        event2.save(&mut *tx).await?;
+
+        // Before commit, count should be 0 from outside transaction
+        assert_eq!(DBEvent::count(&conn).await?, 0);
+
+        tx.commit().await?;
+
+        // After commit, both events should be saved
+        assert_eq!(DBEvent::count(&conn).await?, 2);
+
+        let signature1 = DBEvent::find_by_hash(
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            &conn,
+        )
+        .await?;
+        let signature2 = DBEvent::find_by_hash(
+            "0x45cceb0b830632de1c7fbebdf472f48e739c65f12da600c969011fc84dc602dd",
+            &conn,
+        )
+        .await?;
+
+        assert_eq!(signature1.unwrap(), "Transfer(address,address,uint256)");
+        assert_eq!(signature2.unwrap(), "Sync(u256,uint256)");
 
         Ok(())
     }

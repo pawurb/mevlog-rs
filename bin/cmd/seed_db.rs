@@ -164,6 +164,12 @@ impl SeedDBArgs {
         let reader = BufReader::new(file);
 
         let mut line_count = 0;
+        let mut batch_count = 0;
+        let batch_size = 1000;
+
+        // Start first transaction
+        let mut tx = conn.begin().await?;
+
         for (i, line) in reader.lines().enumerate() {
             let line = line?;
             let Some((signature_hash, signature)) = line.split_once(',') else {
@@ -175,24 +181,38 @@ impl SeedDBArgs {
             }
 
             if signature_hash.len() == 10 {
-                let new_method = DBMethod {
-                    signature: signature.to_string(),
+                let method = DBMethod {
                     signature_hash: signature_hash.to_string(),
+                    signature: signature.to_string(),
                 };
 
-                let _ = new_method.save(conn).await;
+                let _ = method.save(&mut *tx).await;
+                batch_count += 1;
             }
 
             if signature_hash.len() == 66 {
-                let new_event = DBEvent {
-                    signature: signature.to_string(),
+                let event = DBEvent {
                     signature_hash: signature_hash.to_string(),
+                    signature: signature.to_string(),
                 };
 
-                let _ = new_event.save(conn).await;
+                let _ = event.save(&mut *tx).await;
+                batch_count += 1;
+            }
+
+            // Commit transaction every batch_size inserts
+            if batch_count >= batch_size {
+                tx.commit().await?;
+                tx = conn.begin().await?;
+                batch_count = 0;
             }
 
             line_count += 1;
+        }
+
+        // Commit any remaining items in the final batch
+        if batch_count > 0 {
+            tx.commit().await?;
         }
 
         tracing::info!("Processed {} signature lines", line_count);

@@ -50,7 +50,10 @@ impl DBMethod {
         }
     }
 
-    pub async fn save(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+    pub async fn save<'c, E>(&self, executor: E) -> Result<()>
+    where
+        E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
+    {
         let signature_hash = self.signature_hash.trim_start_matches("0x");
         let signature_hash_bytes = hex::decode(signature_hash).expect("Invalid hex");
 
@@ -62,7 +65,7 @@ impl DBMethod {
         )
         .bind(signature_hash_bytes)
         .bind(&self.signature)
-        .execute(conn)
+        .execute(executor)
         .await?;
 
         Ok(())
@@ -103,6 +106,42 @@ pub mod test {
         let signature = DBMethod::find_by_hash("0x3ccfd60b", &conn).await?;
 
         assert_eq!(signature.unwrap(), "withdraw()");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn save_with_transaction() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+
+        let mut tx = conn.begin().await?;
+
+        let method1 = DBMethod {
+            signature_hash: "0x022c0d9f".to_string(),
+            signature: "swap(uint256,uint256,address,bytes)".to_string(),
+        };
+
+        let method2 = DBMethod {
+            signature_hash: "0x3ccfd60b".to_string(),
+            signature: "withdraw()".to_string(),
+        };
+
+        method1.save(&mut *tx).await?;
+        method2.save(&mut *tx).await?;
+
+        // Before commit, count should be 0 from outside transaction
+        assert_eq!(DBMethod::count(&conn).await?, 0);
+
+        tx.commit().await?;
+
+        // After commit, both methods should be saved
+        assert_eq!(DBMethod::count(&conn).await?, 2);
+
+        let signature1 = DBMethod::find_by_hash("0x022c0d9f", &conn).await?;
+        let signature2 = DBMethod::find_by_hash("0x3ccfd60b", &conn).await?;
+
+        assert_eq!(signature1.unwrap(), "swap(uint256,uint256,address,bytes)");
+        assert_eq!(signature2.unwrap(), "withdraw()");
 
         Ok(())
     }
