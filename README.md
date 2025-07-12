@@ -3,7 +3,7 @@
  
 ![Big bribe](big-bribe-tx2.png)
 
-Rust-based CLI tool for querying and monitoring Ethereum (and [over 2k other EVM chains](#supported-evm-chains)) transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
+Rust-based CLI tool for querying and monitoring Ethereum (or [any EVM-compatible chain](#supported-evm-chains)) transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
 
 There's also [a beta web version](https://mevlog.rs/) available.
 
@@ -202,6 +202,8 @@ You can reverse the display order by adding the `--reverse` flag.
 ## Supported EVM chains
 
 The project currently supports over 2k EVM chains by reading the metadata from [ethereum-list/chains](https://github.com/ethereum-lists/chains). But only a few chains display $USD txs prices from integrated [ChainLink oracles](https://docs.chain.link/data-feeds/price-feeds/addresses). I'm planning to work on improving the coverage.
+
+If you use it with an unsupported chain, explorer URL and currency symbol is not displayed.
 
 ## Project status
 
