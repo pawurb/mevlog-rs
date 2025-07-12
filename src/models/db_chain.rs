@@ -131,6 +131,17 @@ impl DBChain {
 
         Ok(())
     }
+
+    pub fn unknown(id: i64) -> Self {
+        Self {
+            id,
+            name: "Unknown".to_string(),
+            explorer_url: None,
+            currency_symbol: "???".to_string(),
+            chainlink_oracle: None,
+            uniswap_v2_pool: None,
+        }
+    }
 }
 
 #[cfg(test)]

@@ -5,7 +5,7 @@ use alloy::{
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
-use eyre::{eyre, OptionExt, Result};
+use eyre::Result;
 use revm::primitives::Address;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
@@ -53,7 +53,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let chain_id = provider.get_chain_id().await?;
     let db_chain = DBChain::find(chain_id as i64, &sqlite_conn)
         .await?
-        .ok_or_eyre(eyre!("Chain {chain_id} not found in database"))?;
+        .unwrap_or(DBChain::unknown(chain_id as i64));
     let chain = EVMChain::new(db_chain, conn_opts.rpc_url.clone().unwrap())?;
 
     Ok(SharedDeps {
