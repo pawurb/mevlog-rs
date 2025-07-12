@@ -153,6 +153,8 @@ async fn ensure_database_indexes() -> Result<()> {
             let create_index_sql =
                 format!("CREATE INDEX {index_name} ON {table_name} ({column_name})");
 
+            println!("Creating index: {create_index_sql}");
+
             sqlx::query(&create_index_sql)
                 .execute(&mut conn)
                 .await
