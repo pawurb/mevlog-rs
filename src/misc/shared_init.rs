@@ -79,7 +79,7 @@ pub async fn init_provider(conn_opts: &ConnOpts) -> Result<GenericProvider> {
             .layer(retry_layer)
             .http(rpc_url.parse()?);
 
-        Ok(ProviderBuilder::new().on_client(client))
+        Ok(ProviderBuilder::new().connect_client(client))
     } else {
         unreachable!()
     }

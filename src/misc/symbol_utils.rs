@@ -81,8 +81,8 @@ async fn get_uniswap_symbol_core(target: Address, provider: &Arc<GenericProvider
 
     let (token0, token1) = multicall.aggregate().await?;
 
-    let itoken0 = IERC20::new(token0._0, provider.clone());
-    let itoken1 = IERC20::new(token1._0, provider.clone());
+    let itoken0 = IERC20::new(token0, provider.clone());
+    let itoken1 = IERC20::new(token1, provider.clone());
 
     let multicall = provider
         .multicall()
@@ -90,7 +90,7 @@ async fn get_uniswap_symbol_core(target: Address, provider: &Arc<GenericProvider
         .add(itoken1.symbol());
 
     let (symbol0, symbol1) = multicall.aggregate().await?;
-    write_symbol_cache(target, Some(format!("{}|{}", symbol0._0, symbol1._0))).await?;
+    write_symbol_cache(target, Some(format!("{symbol0}|{symbol1}"))).await?;
 
     Ok(())
 }
@@ -98,7 +98,6 @@ async fn get_uniswap_symbol_core(target: Address, provider: &Arc<GenericProvider
 async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> Result<()> {
     match IERC20::new(target, provider.clone()).symbol().call().await {
         Ok(symbol) => {
-            let symbol = symbol._0;
             write_symbol_cache(target, Some(symbol)).await?;
         }
         Err(_e) => {

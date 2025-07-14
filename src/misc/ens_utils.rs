@@ -96,7 +96,7 @@ async fn ens_reverse_lookup(
     let node = namehash(&name);
 
     let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
-    let result = ens_lookup.getNameForNode(node).call().await?._0;
+    let result = ens_lookup.getNameForNode(node).call().await?;
     let name = {
         let name = result;
         if name.is_empty() {
