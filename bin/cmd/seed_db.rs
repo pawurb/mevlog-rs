@@ -176,7 +176,7 @@ impl SeedDBArgs {
                 continue;
             };
 
-            if i.is_multiple_of(10000) {
+            if i % 10000 == 0 {
                 tracing::info!("Processing signature line {}/{}", i, total_lines);
             }
 
