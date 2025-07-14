@@ -49,6 +49,10 @@ impl TxArgs {
         check_range(self.before, "--before")?;
         check_range(self.after, "--after")?;
 
+        if self.conn_opts.show_calls && self.conn_opts.trace.is_none() {
+            eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
+        }
+
         let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
@@ -114,7 +118,7 @@ impl TxArgs {
             reversed_order: self.reverse,
             top_metadata: self.top_metadata,
             match_calls: vec![],
-            show_calls: false,
+            show_calls: self.conn_opts.show_calls,
         };
 
         let ens_lookup_mode = if shared_deps.chain.is_mainnet() {

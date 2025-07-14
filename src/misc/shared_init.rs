@@ -96,6 +96,9 @@ pub struct ConnOpts {
 
     #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
     pub trace: Option<TraceMode>,
+
+    #[arg(long, help = "Show detailed tx calls info")]
+    pub show_calls: bool,
 }
 
 #[derive(Debug, Clone, clap::Parser)]

@@ -10,7 +10,7 @@ use revm::primitives::{Address, U256};
 
 use super::mev_transaction::MEVTransaction;
 use crate::misc::{
-    args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::TraceMode,
+    args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::ConnOpts,
 };
 
 #[derive(Clone, Debug, clap::Parser)]
@@ -60,9 +60,6 @@ pub struct SharedFilterOpts {
         help = "Include txs by subcalls method names matching the provided regex, signature or signature hash"
     )]
     pub calls: Vec<String>,
-
-    #[arg(long, help = "Show detailed tx calls info")]
-    pub show_calls: bool,
 
     #[arg(
         alias = "tc",
@@ -201,10 +198,10 @@ impl TxsFilter {
     pub fn new(
         filter_opts: &SharedFilterOpts,
         tx_indexes: Option<HashSet<u64>>,
-        trace_mode: Option<&TraceMode>,
+        conn_opts: &ConnOpts,
         watch_mode: bool,
     ) -> Result<Self> {
-        if trace_mode.is_none() {
+        if conn_opts.trace.is_none() {
             if filter_opts.touching.is_some() {
                 eyre::bail!(
                     "'--touching' filter is supported only with --trace [rpc|revm] enabled "
@@ -221,6 +218,10 @@ impl TxsFilter {
                 eyre::bail!(
                     "'--real-gas-price' filter is supported only with --trace [rpc|revm] enabled "
                 )
+            }
+
+            if conn_opts.show_calls {
+                eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
             }
         }
 
@@ -278,7 +279,7 @@ impl TxsFilter {
                 .iter()
                 .map(|query| query.parse())
                 .collect::<Result<Vec<_>>>()?,
-            show_calls: filter_opts.show_calls,
+            show_calls: conn_opts.show_calls,
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
         })

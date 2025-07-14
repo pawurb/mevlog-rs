@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
-use alloy::providers::{ProviderBuilder, WsConnect};
+use alloy::{providers::ProviderBuilder, rpc::client::RpcClient};
 use eyre::Result;
 use mevlog::misc::ens_utils::{ens_reverse_lookup_cached_sync, namehash, reverse_address};
 use revm::primitives::address;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let rpc_url = std::env::var("ETH_WS_URL").expect("ETH_WS_URL must be set");
-    let ws = WsConnect::new(rpc_url);
-    let provider = ProviderBuilder::new().on_ws(ws).await?;
+    let rpc_url = std::env::var("ETH_URL").expect("ETH_URL must be set");
+    let client = RpcClient::builder().http(rpc_url.parse()?);
+    let provider = ProviderBuilder::new().connect_client(client);
     let provider = Arc::new(provider);
 
     // u know who
