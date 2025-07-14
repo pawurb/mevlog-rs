@@ -7,12 +7,12 @@ use std::{
 
 use alloy::{
     rlp::Encodable,
-    rpc::types::{TransactionInput, TransactionRequest},
+    rpc::types::{AccessList, TransactionInput, TransactionRequest},
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::Colorize;
 use eyre::Result;
-use revm::primitives::{keccak256, AccessList, Address, Bytes, FixedBytes, TxKind, U256};
+use revm::primitives::{keccak256, Address, Bytes, FixedBytes, TxKind, U256};
 use sqlx::SqlitePool;
 
 use super::{

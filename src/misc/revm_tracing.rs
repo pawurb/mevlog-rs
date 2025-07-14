@@ -6,26 +6,27 @@ use std::{
 
 use alloy::{
     consensus::BlockHeader,
-    eips::{BlockId, BlockNumberOrTag},
+    eips::{calc_blob_gasprice, eip2930::AccessList, BlockId, BlockNumberOrTag},
     network::AnyNetwork,
     node_bindings::{Anvil, AnvilInstance},
+    primitives::Bytes,
     providers::{Provider, ProviderBuilder},
     rpc::types::{
         trace::parity::{TraceType, TransactionTrace},
-        Block, TransactionRequest,
+        AccessList as AlloyAccessList, Block, TransactionRequest,
     },
 };
 use eyre::Result;
 use foundry_fork_db::{cache::BlockchainDbMeta, BlockchainDb, SharedBackend};
 use revm::{
-    db::CacheDB,
-    inspector_handle_register,
-    primitives::{
-        calc_blob_gasprice, AccessList, Address, BlobExcessGasAndPrice, BlockEnv, Bytes, CfgEnv,
-        CfgEnvWithHandlerCfg, EVMError, EnvWithHandlerCfg, ExecutionResult, FixedBytes, HandlerCfg,
-        Output, ResultAndState, SpecId, TransactTo, TxEnv, U256,
+    context::{
+        result::{ExecutionResult, Output},
+        BlockEnv, TransactTo, TxEnv,
     },
-    Database, Evm, GetInspector,
+    context_interface::block::BlobExcessGasAndPrice,
+    database::CacheDB,
+    primitives::{Address, FixedBytes, TxKind, U256},
+    Context, ExecuteCommitEvm, ExecuteEvm, InspectEvm, MainBuilder, MainContext,
 };
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
@@ -60,7 +61,7 @@ pub async fn init_revm_db(
 
     let provider = ProviderBuilder::new()
         .network::<AnyNetwork>()
-        .on_http(anvil.endpoint().parse()?);
+        .connect_http(anvil.endpoint().parse()?);
 
     let block = provider
         .get_block_by_number(BlockNumberOrTag::Number(block_number))
@@ -68,7 +69,7 @@ pub async fn init_revm_db(
         .expect("block not found");
 
     let meta = BlockchainDbMeta::default()
-        .with_chain_id(chain.chain_id)
+        .set_chain(chain.chain_id.into())
         .with_block(&block.inner);
 
     let cache_path = revm_cache_path(block_number, chain)?;
@@ -126,10 +127,7 @@ impl RevmBlockContext {
             gas_limit: U256::from(block.header.gas_limit),
             basefee: U256::from(block.header.base_fee_per_gas.expect("Base fee missing")),
             excess_blob_gas: block.header.excess_blob_gas,
-            blob_gasprice: block
-                .header
-                .excess_blob_gas
-                .map(|excess_blob_gas| calc_blob_gasprice(excess_blob_gas, true)),
+            blob_gasprice: block.header.excess_blob_gas.map(calc_blob_gasprice),
         }
     }
 }
@@ -140,19 +138,20 @@ pub fn revm_touching_accounts(
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<HashSet<Address>> {
-    let cfg = CfgEnvWithHandlerCfg::new(CfgEnv::default(), HandlerCfg::new(SpecId::LATEST));
-
-    let mut tx_env = Default::default();
-    apply_tx_env(&mut tx_env, tx_req);
-
-    let mut block_env = BlockEnv::default();
-    apply_block_env(&mut block_env, block_context);
-
-    let env = EnvWithHandlerCfg::new_with_cfg_env(cfg.clone(), block_env, tx_env);
-
     let trace_types = HashSet::from_iter([TraceType::StateDiff]);
-    let mut insp = TracingInspector::new(TracingInspectorConfig::from_parity_config(&trace_types));
-    let (trace, _) = match inspect(cache_db, env, &mut insp) {
+    let mut evm = Context::mainnet().with_db(cache_db);
+    evm.modify_block(|block| {
+        apply_block_env(block, block_context);
+    });
+    evm.modify_tx(|tx_env| {
+        apply_tx_env(tx_env, tx_req);
+    });
+    let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
+        TracingInspectorConfig::from_parity_config(&trace_types),
+    ));
+
+    let tx_env = evm.tx.clone();
+    let res = match evm.inspect_tx(tx_env) {
         Ok(res) => res,
         Err(e) => {
             tracing::warn!("revm_touching_accounts failed. {:?}", e);
@@ -160,7 +159,7 @@ pub fn revm_touching_accounts(
         }
     };
 
-    Ok(trace.state.keys().cloned().collect())
+    Ok(res.state.keys().cloned().collect())
 }
 
 fn _revm_call_tx(
@@ -169,17 +168,17 @@ fn _revm_call_tx(
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<Bytes> {
-    let mut evm = Evm::builder()
-        .with_db(cache_db)
-        .modify_block_env(|block| {
-            apply_block_env(block, block_context);
-        })
-        .modify_tx_env(|tx_env| {
-            apply_tx_env(tx_env, tx_req);
-        })
-        .build();
+    let mut evm = Context::mainnet().with_db(cache_db);
+    evm.modify_block(|block| {
+        apply_block_env(block, block_context);
+    });
+    evm.modify_tx(|tx_env| {
+        apply_tx_env(tx_env, tx_req);
+    });
+    let mut evm = evm.build_mainnet();
 
-    let ref_tx = match evm.transact() {
+    let tx_env = evm.tx.clone();
+    let ref_tx = match evm.transact(tx_env) {
         Ok(tx) => tx,
         Err(e) => {
             eyre::bail!("_revm_call_tx {tx_hash} failed. {:?}", e);
@@ -206,19 +205,20 @@ pub fn revm_tx_calls(
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<Vec<TransactionTrace>> {
-    let cfg = CfgEnvWithHandlerCfg::new(CfgEnv::default(), HandlerCfg::new(SpecId::LATEST));
-
-    let mut tx_env = Default::default();
-    apply_tx_env(&mut tx_env, tx_req.clone());
-
-    let mut block_env = BlockEnv::default();
-    apply_block_env(&mut block_env, block_context);
-
-    let env = EnvWithHandlerCfg::new_with_cfg_env(cfg.clone(), block_env, tx_env);
-
     let trace_types = HashSet::from_iter([TraceType::Trace]);
-    let mut insp = TracingInspector::new(TracingInspectorConfig::from_parity_config(&trace_types));
-    let (trace, _) = match inspect(cache_db, env, &mut insp) {
+    let mut evm = Context::mainnet().with_db(cache_db);
+    evm.modify_block(|block| {
+        apply_block_env(block, block_context);
+    });
+    evm.modify_tx(|tx_env| {
+        apply_tx_env(tx_env, tx_req.clone());
+    });
+    let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
+        TracingInspectorConfig::from_parity_config(&trace_types),
+    ));
+
+    let tx_env = evm.tx.clone();
+    let res = match evm.inspect_tx(tx_env) {
         Ok(res) => res,
         Err(e) => {
             tracing::warn!("revm_tx_calls {tx_hash} failed. {:?}", e);
@@ -226,13 +226,14 @@ pub fn revm_tx_calls(
         }
     };
 
-    let full_trace = insp
+    let full_trace = evm
+        .into_inspector()
         .into_parity_builder()
-        .into_trace_results(&trace.result, &trace_types);
+        .into_trace_results(&res.result, &trace_types);
 
-    let txs = &full_trace.trace.to_vec();
+    let txs = &full_trace.trace;
 
-    Ok(txs.to_vec())
+    Ok(txs.clone())
 }
 
 pub fn revm_commit_tx(
@@ -241,17 +242,17 @@ pub fn revm_commit_tx(
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<()> {
-    let mut evm = Evm::builder()
-        .with_db(cache_db)
-        .modify_block_env(|block| {
-            apply_block_env(block, block_context);
-        })
-        .modify_tx_env(|tx| {
-            apply_tx_env(tx, tx_req);
-        })
-        .build();
+    let mut evm = Context::mainnet().with_db(cache_db);
+    evm.modify_block(|block| {
+        apply_block_env(block, block_context);
+    });
+    evm.modify_tx(|tx| {
+        apply_tx_env(tx, tx_req);
+    });
+    let mut evm = evm.build_mainnet();
 
-    let ref_tx = match evm.transact_commit() {
+    let tx_env = evm.tx.clone();
+    let ref_tx = match evm.transact_commit(tx_env) {
         Ok(tx) => tx,
         Err(e) => {
             tracing::warn!("revm_commit_tx {tx_hash} failed. {:?}", e);
@@ -276,10 +277,10 @@ pub fn revm_commit_tx(
 fn apply_block_env(block_env: &mut BlockEnv, block_context: &RevmBlockContext) {
     block_env.number = U256::from(block_context.number);
     block_env.timestamp = U256::from(block_context.timestamp);
-    block_env.coinbase = block_context.coinbase;
+    block_env.beneficiary = block_context.coinbase;
     block_env.difficulty = block_context.difficulty;
-    block_env.gas_limit = block_context.gas_limit;
-    block_env.basefee = block_context.basefee;
+    block_env.gas_limit = block_context.gas_limit.to::<u64>();
+    block_env.basefee = block_context.basefee.to::<u64>();
 
     if let (Some(excess_blob_gas), Some(blob_gasprice)) =
         (block_context.excess_blob_gas, block_context.blob_gasprice)
@@ -293,8 +294,11 @@ fn apply_block_env(block_env: &mut BlockEnv, block_context: &RevmBlockContext) {
 
 fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
     tx_env.caller = tx_req.from.expect("from must be set");
-    tx_env.transact_to = match tx_req.to {
-        Some(to) => to,
+    tx_env.kind = match tx_req.to {
+        Some(to) => match to {
+            TxKind::Call(addr) => TransactTo::Call(addr),
+            TxKind::Create => TransactTo::Create,
+        },
         None => TransactTo::Create,
     };
     tx_env.data = tx_req.input.input.expect("data must be set");
@@ -304,48 +308,24 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
     // If max_fee_per_gas is 0, fall back to gas_price
     tx_env.gas_price = if let Some(max_fee) = tx_req.max_fee_per_gas {
         if max_fee == 0 {
-            if let Some(gas_price) = tx_req.gas_price {
-                U256::from(gas_price)
-            } else {
-                U256::ZERO
-            }
+            tx_req.gas_price.unwrap_or(0)
         } else {
-            U256::from(max_fee)
+            max_fee
         }
     } else if let Some(gas_price) = tx_req.gas_price {
-        U256::from(gas_price)
+        gas_price
     } else {
         panic!("Transaction must have either gas_price or max_fee_per_gas");
     };
 
-    tx_env.nonce = tx_req.nonce;
-    tx_env.gas_priority_fee = tx_req.max_priority_fee_per_gas.map(U256::from);
-    tx_env.max_fee_per_blob_gas = tx_req.max_fee_per_blob_gas.map(U256::from);
-    if let Some(AccessList(list)) = tx_req.access_list {
-        tx_env.access_list = list;
+    tx_env.nonce = tx_req.nonce.unwrap_or(0);
+    tx_env.gas_priority_fee = tx_req.max_priority_fee_per_gas;
+    tx_env.max_fee_per_blob_gas = tx_req.max_fee_per_blob_gas.unwrap_or(0);
+    if let Some(AlloyAccessList(list)) = tx_req.access_list {
+        tx_env.access_list = AccessList::from(list);
     };
     tx_env.chain_id = Some(1_u64);
     if let Some(blob_hashes) = tx_req.blob_versioned_hashes {
         tx_env.blob_hashes = blob_hashes;
     }
-}
-
-fn inspect<DB, I>(
-    db: DB,
-    env: EnvWithHandlerCfg,
-    inspector: I,
-) -> Result<(ResultAndState, EnvWithHandlerCfg), EVMError<DB::Error>>
-where
-    DB: Database,
-    I: GetInspector<DB>,
-{
-    let mut evm = revm::Evm::builder()
-        .with_db(db)
-        .with_external_context(inspector)
-        .with_env_with_handler_cfg(env)
-        .append_handler_register(inspector_handle_register)
-        .build();
-    let res = evm.transact()?;
-    let (_, env) = evm.into_db_and_env_with_handler_cfg();
-    Ok((res, env))
 }

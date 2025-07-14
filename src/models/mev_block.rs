@@ -9,7 +9,7 @@ use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
-use revm::{db::CacheDB, primitives::FixedBytes};
+use revm::{database::CacheDB, primitives::FixedBytes};
 use sqlx::SqlitePool;
 use tracing::{debug, error};
 
