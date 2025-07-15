@@ -107,6 +107,12 @@ pub struct SharedFilterOpts {
 
     #[arg(long, help = "Filter by txs which failed to execute")]
     pub failed: bool,
+
+    #[arg(
+        long,
+        help = "Filter by Transfer events with specific address and optionally amount (e.g., '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' or '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether')"
+    )]
+    pub transfer: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -134,6 +140,60 @@ impl FromStr for PriceQuery {
             operator,
             gas_price,
         })
+    }
+}
+
+#[derive(Debug)]
+pub struct TransferQuery {
+    pub address: Address,
+    pub amount: Option<U256>,
+    pub operator: Option<DiffOperator>,
+}
+
+impl TransferQuery {
+    pub fn matches(&self, address: &Address, amount: &U256) -> bool {
+        if address != &self.address {
+            return false;
+        }
+
+        // If no amount filter is specified, match any amount
+        let (Some(filter_amount), Some(operator)) = (&self.amount, &self.operator) else {
+            return true;
+        };
+
+        match operator {
+            DiffOperator::GreaterOrEq => *amount >= *filter_amount,
+            DiffOperator::LessOrEq => *amount <= *filter_amount,
+        }
+    }
+}
+
+impl FromStr for TransferQuery {
+    type Err = eyre::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split('|').collect();
+
+        if parts.len() == 1 {
+            // Address-only format: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+            let address = parts[0].parse::<Address>()?;
+            Ok(TransferQuery {
+                address,
+                amount: None,
+                operator: None,
+            })
+        } else if parts.len() == 2 {
+            // Address with amount filter: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether"
+            let address = parts[0].parse::<Address>()?;
+            let (operator, amount) = parse_price_query(parts[1])?;
+            Ok(TransferQuery {
+                address,
+                amount: Some(amount),
+                operator: Some(operator),
+            })
+        } else {
+            bail!("Invalid transfer query format. Expected 'address' or 'address|amount_filter' (e.g., '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' or '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether')");
+        }
     }
 }
 
@@ -196,6 +256,8 @@ pub struct TxsFilter {
     pub reversed_order: bool,
     pub failed: bool,
     pub top_metadata: bool,
+    pub transfer: Vec<TransferQuery>,
+    pub show_transfer_amount: bool,
 }
 
 impl TxsFilter {
@@ -287,6 +349,12 @@ impl TxsFilter {
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
             failed: filter_opts.failed,
+            transfer: filter_opts
+                .transfer
+                .iter()
+                .map(|query| query.parse())
+                .collect::<Result<Vec<_>>>()?,
+            show_transfer_amount: shared_opts.transfer_amount,
         })
     }
 
@@ -583,5 +651,119 @@ mod tests {
             gas_price.matches(U256::from(GWEI_U128 * 9)),
             "Should match when value is less than threshold"
         );
+    }
+
+    #[test]
+    fn test_transfer_query_from_str() {
+        let query =
+            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether").unwrap();
+        assert_eq!(
+            query.address,
+            "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert!(matches!(query.operator, Some(DiffOperator::GreaterOrEq)));
+        assert_eq!(
+            query.amount,
+            Some(U256::from(3) * U256::from(10).pow(U256::from(18)))
+        );
+
+        // Test with different amounts
+        let query =
+            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|le1000").unwrap();
+        assert_eq!(query.amount, Some(U256::from(1000)));
+        assert!(matches!(query.operator, Some(DiffOperator::LessOrEq)));
+
+        // Test address-only format
+        let query = TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913").unwrap();
+        assert_eq!(
+            query.address,
+            "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+                .parse::<Address>()
+                .unwrap()
+        );
+        assert!(query.amount.is_none());
+        assert!(query.operator.is_none());
+
+        // Test error cases
+        assert!(TransferQuery::from_str("invalid").is_err());
+        assert!(
+            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|invalid").is_err()
+        );
+    }
+
+    #[test]
+    fn test_transfer_query_matches() {
+        let query = TransferQuery {
+            address: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+                .parse::<Address>()
+                .unwrap(),
+            amount: Some(U256::from(1000)),
+            operator: Some(DiffOperator::GreaterOrEq),
+        };
+
+        let target_address = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+            .parse::<Address>()
+            .unwrap();
+        let other_address = "0x0000000000000000000000000000000000000001"
+            .parse::<Address>()
+            .unwrap();
+
+        // Test address matching
+        assert!(query.matches(&target_address, &U256::from(1000)));
+        assert!(query.matches(&target_address, &U256::from(2000)));
+        assert!(!query.matches(&other_address, &U256::from(2000)));
+
+        // Test amount matching
+        assert!(!query.matches(&target_address, &U256::from(500)));
+        assert!(query.matches(&target_address, &U256::from(1000)));
+        assert!(query.matches(&target_address, &U256::from(1500)));
+
+        // Test address-only matching (no amount filter)
+        let address_only_query = TransferQuery {
+            address: target_address,
+            amount: None,
+            operator: None,
+        };
+
+        // Should match any amount for the correct address
+        assert!(address_only_query.matches(&target_address, &U256::from(1)));
+        assert!(address_only_query.matches(&target_address, &U256::from(1000)));
+        assert!(address_only_query.matches(&target_address, &U256::from(999999)));
+
+        // Should not match different address
+        assert!(!address_only_query.matches(&other_address, &U256::from(1000)));
+    }
+
+    #[test]
+    fn test_multiple_transfer_queries() {
+        let queries = [
+            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge1000").unwrap(),
+            TransferQuery::from_str("0x0000000000000000000000000000000000000001|le500").unwrap(),
+        ];
+
+        let addr1 = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+            .parse::<Address>()
+            .unwrap();
+        let addr2 = "0x0000000000000000000000000000000000000001"
+            .parse::<Address>()
+            .unwrap();
+        let addr3 = "0x0000000000000000000000000000000000000002"
+            .parse::<Address>()
+            .unwrap();
+
+        // Test first query matches
+        assert!(queries.iter().any(|q| q.matches(&addr1, &U256::from(1000))));
+        assert!(queries.iter().any(|q| q.matches(&addr1, &U256::from(2000))));
+        assert!(!queries.iter().any(|q| q.matches(&addr1, &U256::from(500))));
+
+        // Test second query matches
+        assert!(queries.iter().any(|q| q.matches(&addr2, &U256::from(500))));
+        assert!(queries.iter().any(|q| q.matches(&addr2, &U256::from(100))));
+        assert!(!queries.iter().any(|q| q.matches(&addr2, &U256::from(1000))));
+
+        // Test no matches for other address
+        assert!(!queries.iter().any(|q| q.matches(&addr3, &U256::from(1000))));
     }
 }

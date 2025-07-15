@@ -594,7 +594,15 @@ impl MEVBlock {
                 }
             }
 
-            let mev_log = match MEVLog::new(first_topic, &log, symbols_lookup, sqlite).await {
+            let mev_log = match MEVLog::new(
+                first_topic,
+                &log,
+                symbols_lookup,
+                sqlite,
+                filter.show_transfer_amount,
+            )
+            .await
+            {
                 Ok(log) => log,
                 Err(e) => {
                     error!("Error: {}", e);
@@ -640,8 +648,8 @@ impl MEVBlock {
             })
         });
 
-        self.mev_transactions.retain(|_, tx| {
-            if let Some(method_query) = &filter.match_method {
+        if let Some(method_query) = &filter.match_method {
+            self.mev_transactions.retain(|_, tx| {
                 let signature_match = method_query.matches(&tx.signature);
 
                 let signature_hash_match = match &tx.signature_hash {
@@ -650,9 +658,19 @@ impl MEVBlock {
                 };
 
                 signature_match || signature_hash_match
-            } else {
-                true
-            }
+            });
+        }
+
+        self.mev_transactions.retain(|_, tx| {
+            filter.transfer.iter().all(|transfer_query| {
+                tx.logs().iter().any(|log| {
+                    log.is_erc20_transfer()
+                        && log
+                            .signature
+                            .amount
+                            .is_some_and(|amount| transfer_query.matches(&log.source(), &amount))
+                })
+            })
         });
 
         Ok(())
