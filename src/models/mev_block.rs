@@ -9,7 +9,10 @@ use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
-use revm::{database::CacheDB, primitives::FixedBytes};
+use revm::{
+    database::CacheDB,
+    primitives::{FixedBytes, U256},
+};
 use sqlx::SqlitePool;
 use tracing::{debug, error};
 
@@ -402,7 +405,7 @@ impl MEVBlock {
 
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
 
-            if filter.should_exclude(mev_tx) {
+            if filter.tracing_should_exclude(mev_tx) {
                 to_remove.push(tx_index);
             }
         }
@@ -526,7 +529,7 @@ impl MEVBlock {
 
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
 
-            if filter.should_exclude(mev_tx) {
+            if filter.tracing_should_exclude(mev_tx) {
                 self.mev_transactions.remove(&tx_index);
             }
 
@@ -607,11 +610,21 @@ impl MEVBlock {
     }
 
     async fn non_trace_filter_txs(&mut self, filter: &TxsFilter) -> Result<()> {
-        self.mev_transactions.retain(|_, tx| {
-            if filter.failed {
-                return !tx.receipt.success;
-            }
+        if filter.failed {
+            self.mev_transactions.retain(|_, tx| !tx.receipt.success);
+        }
 
+        if let Some(tx_cost) = &filter.tx_cost {
+            self.mev_transactions
+                .retain(|_, tx| tx_cost.matches(U256::from(tx.gas_tx_cost())));
+        }
+
+        if let Some(effective_gas_price) = &filter.gas_price {
+            self.mev_transactions
+                .retain(|_, tx| effective_gas_price.matches(tx.effective_gas_price()));
+        }
+
+        self.mev_transactions.retain(|_, tx| {
             filter.events.iter().all(|event_query| {
                 tx.logs()
                     .iter()

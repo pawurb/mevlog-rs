@@ -297,18 +297,7 @@ impl TxsFilter {
             || self.real_gas_price.is_some()
     }
 
-    pub fn should_exclude(&self, mev_tx: &MEVTransaction) -> bool {
-        if let Some(tx_cost) = &self.tx_cost {
-            if !tx_cost.matches(U256::from(mev_tx.gas_tx_cost())) {
-                return true;
-            }
-        }
-        if let Some(effective_gas_price) = &self.gas_price {
-            if !effective_gas_price.matches(mev_tx.effective_gas_price()) {
-                return true;
-            }
-        }
-
+    pub fn tracing_should_exclude(&self, mev_tx: &MEVTransaction) -> bool {
         if let Some(full_tx_cost) = &self.real_tx_cost {
             if !full_tx_cost.matches(mev_tx.full_tx_cost()) {
                 return true;
