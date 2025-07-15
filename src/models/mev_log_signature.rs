@@ -1,7 +1,7 @@
 use std::fmt;
 
 use eyre::Result;
-use revm::primitives::Address;
+use revm::primitives::{Address, U256};
 
 use crate::misc::{
     symbol_utils::{symbol_lookup_cached_async, SymbolLookupWorker},
@@ -12,6 +12,8 @@ use crate::misc::{
 pub struct MEVLogSignature {
     pub signature: String,
     symbol: Option<String>,
+    pub amount: Option<U256>,
+    show_amount: bool,
 }
 
 #[derive(Debug)]
@@ -26,6 +28,7 @@ impl MEVLogSignature {
         address: Address,
         signature_str: Option<String>,
         symbols_lookup: &SymbolLookupWorker,
+        show_amount: bool,
     ) -> Result<Self> {
         let signature_str = signature_str.unwrap_or(UNKNOWN.to_string());
         let signature_type = get_signature_type(&signature_str);
@@ -35,7 +38,14 @@ impl MEVLogSignature {
         Ok(Self {
             signature: signature_str,
             symbol,
+            amount: None,
+            show_amount,
         })
+    }
+
+    pub fn with_amount(mut self, amount: Option<U256>) -> Self {
+        self.amount = amount;
+        self
     }
 }
 
@@ -53,11 +63,30 @@ fn get_signature_type(signature_str: &str) -> Option<MEVLogSignatureType> {
 
 impl fmt::Display for MEVLogSignature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} {}",
-            self.signature,
-            self.symbol.as_deref().unwrap_or_default()
-        )
+        if let Some(amount) = self.amount {
+            if self.show_amount {
+                write!(
+                    f,
+                    "{} {} {}",
+                    self.signature,
+                    amount,
+                    self.symbol.as_deref().unwrap_or_default()
+                )
+            } else {
+                write!(
+                    f,
+                    "{} {}",
+                    self.signature,
+                    self.symbol.as_deref().unwrap_or_default()
+                )
+            }
+        } else {
+            write!(
+                f,
+                "{} {}",
+                self.signature,
+                self.symbol.as_deref().unwrap_or_default()
+            )
+        }
     }
 }

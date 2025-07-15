@@ -102,6 +102,24 @@ mevlog search -b 22045400:22045420 --to CREATE
 mevlog search -b 10:latest --value ge1ether
 ```
 
+- find transactions that transferred over 1 million USDC
+
+```bash
+mevlog search -b 10:latest --transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei"
+```
+
+- find transactions that emitted any Transfer events for USDC (regardless of amount):
+
+```bash
+mevlog search -b 10:latest --transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+```
+
+- find USDC transfers and display the transfer amounts:
+
+```bash
+mevlog search -b 10:latest --transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" --transfer-amount
+```
+
 ### Event filters
 
 The `--event` and `--not-event` options allow filtering transactions based on emitted events. The filter criteria can be:
@@ -112,6 +130,19 @@ The `--event` and `--not-event` options allow filtering transactions based on em
 - a combination of an event signature and a contract address `Transfer(address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933`
 
 You can supply mutiple `--event` and `--not-event` flags for precise control over which transactions are included or excluded.
+
+### Transfer filters
+
+The `--transfer` option allows filtering transactions that emitted ERC20 Transfer events. The filter criteria can be:
+
+- a contract address matching any transfer amount: `0xa0b86a33e6ba3bc6c2c5ed1b4b29b5473fd5d2de`
+- a contract address with amount filtering: `0xa0b86a33e6ba3bc6c2c5ed1b4b29b5473fd5d2de|ge1000` (transfers >= 1000 tokens)
+- amount operators: `ge` (greater or equal), `le` (less or equal)
+- amount units: raw numbers, `ether`, `gwei`, etc.
+
+You can supply multiple `--transfer` flags to match transfers from different tokens or with different amount criteria.
+
+By default, transfer amounts are not displayed in the logs. Use the `--transfer-amount` flag to show transfer amounts alongside the Transfer events.
 
 ### EVM tracing filters
 
@@ -169,6 +200,10 @@ Options:
           Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')
       --value <VALUE>
           Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')
+      --transfer <TRANSFER>
+          Filter by Transfer events with specific address and optionally amount (e.g., '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' or '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei')
+      --transfer-amount
+          Display transfer amounts in Transfer event logs
       --failed 
           Show only txs which failed to execute
 ```

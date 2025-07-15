@@ -99,6 +99,9 @@ pub struct SharedOpts {
 
     #[arg(long, help = "Show detailed tx calls info")]
     pub show_calls: bool,
+
+    #[arg(long, help = "Display transfer amounts in ERC20 Transfer event logs")]
+    pub transfer_amount: bool,
 }
 
 #[derive(Debug, Clone, clap::Parser)]
