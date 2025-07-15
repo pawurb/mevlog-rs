@@ -5,10 +5,10 @@ use std::{
 };
 
 use eyre::{eyre, OptionExt, Result};
-use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
+use ruzstd::decoding::StreamingDecoder;
 use sqlx::{Connection, SqliteConnection};
 
 use crate::misc::database::{db_file_name, default_db_path, DB_SCHEMA_VERSION};
@@ -47,7 +47,7 @@ pub async fn download_db_file() -> Result<()> {
     let client = Client::new();
     let db_path = default_db_path().to_string_lossy().into_owned();
 
-    let gz_path = format!("{db_path}.gz");
+    let zst_path = format!("{db_path}.zst");
 
     let res = client
         .get(url.clone())
@@ -72,16 +72,16 @@ pub async fn download_db_file() -> Result<()> {
         .unwrap()
         .progress_chars(PROGRESS_CHARS));
 
-    pb.set_message(format!("Downloading signatures database to: {gz_path}"));
+    pb.set_message(format!("Downloading signatures database to: {zst_path}"));
 
-    let mut gz_file =
-        File::create(gz_path.clone()).map_err(|e| eyre!("Failed to create file: {}", e))?;
+    let mut zst_file =
+        File::create(zst_path.clone()).map_err(|e| eyre!("Failed to create file: {}", e))?;
     let mut downloaded: u64 = 0;
     let mut stream = res.bytes_stream();
 
     while let Some(item) = stream.next().await {
         let chunk = item.map_err(|e| eyre!("Error while downloading file: {}", e))?;
-        gz_file
+        zst_file
             .write_all(&chunk)
             .map_err(|e| eyre!("Error while writing to file: {}", e))?;
         let new = min(downloaded + (chunk.len() as u64), compressed_size);
@@ -91,7 +91,7 @@ pub async fn download_db_file() -> Result<()> {
 
     pb.finish_with_message("Download complete");
 
-    let gz_file = File::open(gz_path.clone()).map_err(|e| eyre!("Failed to open file: {}", e))?;
+    let zst_file = File::open(zst_path.clone()).map_err(|e| eyre!("Failed to open file: {}", e))?;
     let mut db_file = File::create(db_path).map_err(|e| eyre!("Failed to create file: {}", e))?;
 
     let pb = ProgressBar::new(uncompressed_size);
@@ -99,15 +99,18 @@ pub async fn download_db_file() -> Result<()> {
         .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
         .unwrap()
         .progress_chars(PROGRESS_CHARS));
-    pb.set_message("Unzipping database file".to_string());
+    pb.set_message("Decompressing database file".to_string());
 
-    let mut gz_decoder = GzDecoder::new(gz_file);
+    let mut zst_decoder = StreamingDecoder::new(&zst_file)
+        .map_err(|e| eyre!("Failed to create zstd decoder: {}", e))?;
     let mut buffer = [0u8; 8192];
     let mut decompressed_size = 0;
     loop {
-        let bytes_read = gz_decoder
-            .read(&mut buffer)
-            .map_err(|e| eyre!("Error during extraction: {}", e))?;
+        let bytes_read = match zst_decoder.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(e) => return Err(eyre!("Error during extraction: {}", e)),
+        };
         if bytes_read == 0 {
             break;
         }
@@ -120,7 +123,7 @@ pub async fn download_db_file() -> Result<()> {
 
     pb.finish_with_message("Extraction complete");
 
-    fs::remove_file(&gz_path).map_err(|e| eyre!("Failed to remove .gz file: {}", e))?;
+    fs::remove_file(&zst_path).map_err(|e| eyre!("Failed to remove .zst file: {}", e))?;
 
     ensure_database_indexes().await?;
 
@@ -181,7 +184,7 @@ pub async fn check_and_create_indexes() -> Result<()> {
 
 fn db_file_url() -> String {
     format!(
-        "https://d39my35jed0oxi.cloudfront.net/{}.gz",
+        "https://d39my35jed0oxi.cloudfront.net/{}.zst",
         db_file_name(DB_SCHEMA_VERSION)
     )
 }

@@ -63,23 +63,23 @@ if ! aws configure list-profiles | grep -q "^$AWS_PROFILE$"; then
     exit 1
 fi
 
-# Extract filename and create gzipped version
+# Extract filename and create zstd compressed version
 DB_FILENAME=$(basename "$DATABASE_PATH")
 DB_DIRNAME=$(dirname "$DATABASE_PATH")
-GZIPPED_FILE="${DB_DIRNAME}/${DB_FILENAME}.gz"
+COMPRESSED_FILE="${DB_DIRNAME}/${DB_FILENAME}.zst"
 
 print_status "Starting database upload process..."
 print_status "Database file: $DATABASE_PATH"
-print_status "Gzipped file: $GZIPPED_FILE"
+print_status "Compressed file: $COMPRESSED_FILE"
 
-# Step 1: Gzip the database file
-print_status "Compressing database file..."
-if gzip -9 -c "$DATABASE_PATH" > "$GZIPPED_FILE"; then
+# Step 1: Compress the database file with zstd
+print_status "Compressing database file with zstd -19..."
+if zstd -19 -c "$DATABASE_PATH" > "$COMPRESSED_FILE"; then
     print_status "Database compressed successfully"
     
     # Show compression ratio
     ORIGINAL_SIZE=$(stat -f%z "$DATABASE_PATH" 2>/dev/null || stat -c%s "$DATABASE_PATH" 2>/dev/null)
-    COMPRESSED_SIZE=$(stat -f%z "$GZIPPED_FILE" 2>/dev/null || stat -c%s "$GZIPPED_FILE" 2>/dev/null)
+    COMPRESSED_SIZE=$(stat -f%z "$COMPRESSED_FILE" 2>/dev/null || stat -c%s "$COMPRESSED_FILE" 2>/dev/null)
     RATIO=$(echo "scale=1; $COMPRESSED_SIZE * 100 / $ORIGINAL_SIZE" | bc 2>/dev/null || echo "N/A")
     print_status "Compression ratio: ${RATIO}% (${ORIGINAL_SIZE} -> ${COMPRESSED_SIZE} bytes)"
 else
@@ -88,18 +88,18 @@ else
 fi
 
 # Step 2: Upload to S3
-S3_KEY="${DB_FILENAME}.gz"
+S3_KEY="${DB_FILENAME}.zst"
 print_status "Uploading to S3: s3://$S3_BUCKET/$S3_KEY"
 
-if aws s3 cp "$GZIPPED_FILE" "s3://$S3_BUCKET/$S3_KEY" \
+if aws s3 cp "$COMPRESSED_FILE" "s3://$S3_BUCKET/$S3_KEY" \
     --profile "$AWS_PROFILE" \
-    --content-encoding gzip \
+    --content-encoding zstd \
     --content-type "application/octet-stream" \
     --metadata "uncompressed-size=$ORIGINAL_SIZE"; then
     print_status "File uploaded successfully to S3"
 else
     print_error "Failed to upload file to S3"
-    rm -f "$GZIPPED_FILE"
+    rm -f "$COMPRESSED_FILE"
     exit 1
 fi
 
@@ -118,13 +118,13 @@ if [ $? -eq 0 ]; then
     print_status "Invalidation ID: $INVALIDATION_ID"
 else
     print_error "Failed to create CloudFront invalidation"
-    rm -f "$GZIPPED_FILE"
+    rm -f "$COMPRESSED_FILE"
     exit 1
 fi
 
-# Cleanup: Remove local gzipped file
-print_status "Cleaning up local gzipped file..."
-rm -f "$GZIPPED_FILE"
+# Cleanup: Remove local compressed file
+print_status "Cleaning up local compressed file..."
+rm -f "$COMPRESSED_FILE"
 
 print_status "✅ Database upload and CloudFront invalidation completed successfully!"
 print_status "File available at: https://$(aws cloudfront get-distribution --id $CLOUDFRONT_DISTRIBUTION_ID --profile $AWS_PROFILE --query 'Distribution.DomainName' --output text)/$S3_KEY"
