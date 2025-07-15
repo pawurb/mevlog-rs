@@ -169,6 +169,8 @@ Options:
           Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')
       --value <VALUE>
           Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')
+      --failed 
+          Show only txs which failed to execute
 ```
 
 Both `search` and `watch` support the same filtering options.

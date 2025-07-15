@@ -119,6 +119,7 @@ impl TxArgs {
             top_metadata: self.top_metadata,
             match_calls: vec![],
             show_calls: self.shared_opts.show_calls,
+            failed: false,
         };
 
         let ens_lookup_mode = if shared_deps.chain.is_mainnet() {

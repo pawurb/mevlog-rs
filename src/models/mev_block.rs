@@ -608,6 +608,10 @@ impl MEVBlock {
 
     async fn non_trace_filter_txs(&mut self, filter: &TxsFilter) -> Result<()> {
         self.mev_transactions.retain(|_, tx| {
+            if filter.failed {
+                return !tx.receipt.success;
+            }
+
             filter.events.iter().all(|event_query| {
                 tx.logs()
                     .iter()

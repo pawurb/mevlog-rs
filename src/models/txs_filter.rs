@@ -104,6 +104,9 @@ pub struct SharedFilterOpts {
         help = "Display block and txs metadata info on top"
     )]
     pub top_metadata: bool,
+
+    #[arg(long, help = "Filter by txs which failed to execute")]
+    pub failed: bool,
 }
 
 #[derive(Debug)]
@@ -191,6 +194,7 @@ pub struct TxsFilter {
     pub real_gas_price: Option<PriceQuery>,
     pub value: Option<PriceQuery>,
     pub reversed_order: bool,
+    pub failed: bool,
     pub top_metadata: bool,
 }
 
@@ -282,6 +286,7 @@ impl TxsFilter {
             show_calls: shared_opts.show_calls,
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
+            failed: filter_opts.failed,
         })
     }
 
