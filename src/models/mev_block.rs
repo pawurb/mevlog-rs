@@ -29,7 +29,7 @@ use crate::{
             RevmBlockContext,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
-        shared_init::{ConnOpts, TraceMode},
+        shared_init::{SharedOpts, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
@@ -68,13 +68,13 @@ pub async fn process_block(
     ens_lookup: &ENSLookup,
     symbols_lookup: &SymbolLookupWorker,
     txs_filter: &TxsFilter,
-    conn_opts: &ConnOpts,
+    shared_opts: &SharedOpts,
     chain: &EVMChain,
     native_token_price: Option<f64>,
 ) -> Result<()> {
-    let revm_utils = init_revm_db(block_number - 1, conn_opts, chain).await?;
+    let revm_utils = init_revm_db(block_number - 1, shared_opts, chain).await?;
 
-    let (mut revm_db, _anvil) = match conn_opts.trace {
+    let (mut revm_db, _anvil) = match shared_opts.trace {
         Some(TraceMode::Revm) => {
             let utils = revm_utils.expect("Revm must be present");
             (Some(utils.cache_db), Some(utils.anvil))
@@ -87,7 +87,7 @@ pub async fn process_block(
         txs_filter.tx_position.as_ref(),
         txs_filter.reversed_order,
         provider,
-        conn_opts.trace.as_ref(),
+        shared_opts.trace.as_ref(),
         txs_filter.top_metadata,
         chain,
         native_token_price,
@@ -102,7 +102,7 @@ pub async fn process_block(
             symbols_lookup,
             provider,
             revm_db.as_mut(),
-            conn_opts,
+            shared_opts,
         )
         .await?;
 
@@ -250,7 +250,7 @@ impl MEVBlock {
         symbols_lookup: &SymbolLookupWorker,
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
-        conn_opts: &ConnOpts,
+        shared_opts: &SharedOpts,
     ) -> Result<()> {
         for (tx_index, tx) in self.txs_data.iter().enumerate() {
             let tx_index = tx_index as u64;
@@ -341,7 +341,7 @@ impl MEVBlock {
         // first exclude txs based non-tracing filters
         self.non_trace_filter_txs(filter).await?;
 
-        match conn_opts.trace {
+        match shared_opts.trace {
             Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
             Some(TraceMode::Revm) => {
                 self.trace_txs_revm(filter, sqlite, revm_db.expect("Revm must be present"))

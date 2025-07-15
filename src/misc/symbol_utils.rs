@@ -5,7 +5,7 @@ use eyre::Result;
 use revm::primitives::Address;
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use super::shared_init::{init_provider, ConnOpts};
+use super::shared_init::{init_provider, SharedOpts};
 use crate::{models::mev_log_signature::MEVLogSignatureType, GenericProvider};
 
 sol! {
@@ -31,12 +31,12 @@ enum SymbolEntry {
 
 pub type SymbolLookupWorker = UnboundedSender<(Address, MEVLogSignatureType)>;
 
-pub fn start_symbols_lookup_worker(conn_opts: &ConnOpts) -> SymbolLookupWorker {
+pub fn start_symbols_lookup_worker(shared_opts: &SharedOpts) -> SymbolLookupWorker {
     let (tx, mut rx) = mpsc::unbounded_channel::<(Address, MEVLogSignatureType)>();
 
-    let conn_opts = conn_opts.clone();
+    let shared_opts = shared_opts.clone();
     tokio::spawn(async move {
-        let provider = init_provider(&conn_opts).await.unwrap();
+        let provider = init_provider(&shared_opts).await.unwrap();
         let provider = Arc::new(provider);
         while let Some(data) = rx.recv().await {
             let target = data.0;

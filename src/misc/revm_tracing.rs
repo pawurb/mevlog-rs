@@ -31,7 +31,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
 
-use super::shared_init::{ConnOpts, TraceMode};
+use super::shared_init::{SharedOpts, TraceMode};
 use crate::models::evm_chain::EVMChain;
 
 pub struct RevmUtils {
@@ -41,15 +41,15 @@ pub struct RevmUtils {
 
 pub async fn init_revm_db(
     block_number: u64,
-    conn_opts: &ConnOpts,
+    shared_opts: &SharedOpts,
     chain: &EVMChain,
 ) -> Result<Option<RevmUtils>> {
-    match conn_opts.trace {
+    match shared_opts.trace {
         Some(TraceMode::Revm) => {}
         _ => return Ok(None),
     };
 
-    let Some(rpc_url) = &conn_opts.rpc_url else {
+    let Some(rpc_url) = &shared_opts.rpc_url else {
         eyre::bail!("--tracing revm works only with HTTP provider");
     };
 

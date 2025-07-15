@@ -4,7 +4,7 @@ use mevlog::{
     misc::{
         args_parsing::BlocksRange,
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts},
+        shared_init::{init_deps, SharedOpts},
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{
@@ -22,16 +22,16 @@ pub struct SearchArgs {
     filter: SharedFilterOpts,
 
     #[command(flatten)]
-    conn_opts: ConnOpts,
+    shared_opts: SharedOpts,
 }
 
 impl SearchArgs {
     pub async fn run(&self) -> Result<()> {
-        let shared_deps = init_deps(&self.conn_opts).await?;
+        let shared_deps = init_deps(&self.shared_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
 
-        let mev_filter = TxsFilter::new(&self.filter, None, &self.conn_opts, false)?;
+        let mev_filter = TxsFilter::new(&self.filter, None, &self.shared_opts, false)?;
 
         let ens_lookup = ENSLookup::lookup_mode(
             mev_filter.ens_query(),
@@ -56,7 +56,7 @@ impl SearchArgs {
                 &ens_lookup,
                 &shared_deps.symbols_lookup_worker,
                 &mev_filter,
-                &self.conn_opts,
+                &self.shared_opts,
                 &shared_deps.chain,
                 native_token_price,
             )

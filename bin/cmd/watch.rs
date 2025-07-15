@@ -4,7 +4,7 @@ use eyre::Result;
 use mevlog::{
     misc::{
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts},
+        shared_init::{init_deps, SharedOpts},
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{
@@ -19,17 +19,17 @@ pub struct WatchArgs {
     filter: SharedFilterOpts,
 
     #[command(flatten)]
-    conn_opts: ConnOpts,
+    shared_opts: SharedOpts,
 }
 
 impl WatchArgs {
     pub async fn run(&self) -> Result<()> {
-        let shared_deps = init_deps(&self.conn_opts).await?;
+        let shared_deps = init_deps(&self.shared_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
 
         println!("{SEPARATORER}");
-        let mev_filter = TxsFilter::new(&self.filter, None, &self.conn_opts, true)?;
+        let mev_filter = TxsFilter::new(&self.filter, None, &self.shared_opts, true)?;
 
         let ens_lookup = ENSLookup::lookup_mode(
             mev_filter.ens_query(),
@@ -48,7 +48,7 @@ impl WatchArgs {
             &ens_lookup,
             &shared_deps.symbols_lookup_worker,
             &mev_filter,
-            &self.conn_opts,
+            &self.shared_opts,
             &shared_deps.chain,
             native_token_price,
         )
@@ -71,7 +71,7 @@ impl WatchArgs {
                 &ens_lookup,
                 &shared_deps.symbols_lookup_worker,
                 &mev_filter,
-                &self.conn_opts,
+                &self.shared_opts,
                 &shared_deps.chain,
                 native_token_price,
             )

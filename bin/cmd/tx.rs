@@ -7,7 +7,7 @@ use mevlog::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
         revm_tracing::init_revm_db,
-        shared_init::{init_deps, ConnOpts, TraceMode},
+        shared_init::{init_deps, SharedOpts, TraceMode},
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{mev_block::MEVBlock, txs_filter::TxsFilter},
@@ -41,7 +41,7 @@ pub struct TxArgs {
     pub top_metadata: bool,
 
     #[command(flatten)]
-    conn_opts: ConnOpts,
+    shared_opts: SharedOpts,
 }
 
 impl TxArgs {
@@ -49,11 +49,11 @@ impl TxArgs {
         check_range(self.before, "--before")?;
         check_range(self.after, "--after")?;
 
-        if self.conn_opts.show_calls && self.conn_opts.trace.is_none() {
+        if self.shared_opts.show_calls && self.shared_opts.trace.is_none() {
             eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
         }
 
-        let shared_deps = init_deps(&self.conn_opts).await?;
+        let shared_deps = init_deps(&self.shared_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
         let tx = provider.get_transaction_by_hash(self.tx_hash).await?;
@@ -65,8 +65,8 @@ impl TxArgs {
         };
 
         let revm_utils =
-            init_revm_db(block_number - 1, &self.conn_opts, &shared_deps.chain).await?;
-        let (mut revm_db, _anvil) = match self.conn_opts.trace {
+            init_revm_db(block_number - 1, &self.shared_opts, &shared_deps.chain).await?;
+        let (mut revm_db, _anvil) = match self.shared_opts.trace {
             Some(TraceMode::Revm) => {
                 let utils = revm_utils.expect("Revm must be present");
                 (Some(utils.cache_db), Some(utils.anvil))
@@ -94,7 +94,7 @@ impl TxArgs {
             position_range.as_ref(),
             self.reverse,
             &provider,
-            self.conn_opts.trace.as_ref(),
+            self.shared_opts.trace.as_ref(),
             self.top_metadata,
             &shared_deps.chain,
             native_token_price,
@@ -118,7 +118,7 @@ impl TxArgs {
             reversed_order: self.reverse,
             top_metadata: self.top_metadata,
             match_calls: vec![],
-            show_calls: self.conn_opts.show_calls,
+            show_calls: self.shared_opts.show_calls,
         };
 
         let ens_lookup_mode = if shared_deps.chain.is_mainnet() {
@@ -135,7 +135,7 @@ impl TxArgs {
                 &shared_deps.symbols_lookup_worker,
                 &provider,
                 revm_db.as_mut(),
-                &self.conn_opts,
+                &self.shared_opts,
             )
             .await?;
 

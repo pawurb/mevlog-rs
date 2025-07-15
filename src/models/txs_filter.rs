@@ -10,7 +10,7 @@ use revm::primitives::{Address, U256};
 
 use super::mev_transaction::MEVTransaction;
 use crate::misc::{
-    args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::ConnOpts,
+    args_parsing::PositionRange, eth_unit_parser::parse_eth_value, shared_init::SharedOpts,
 };
 
 #[derive(Clone, Debug, clap::Parser)]
@@ -198,10 +198,10 @@ impl TxsFilter {
     pub fn new(
         filter_opts: &SharedFilterOpts,
         tx_indexes: Option<HashSet<u64>>,
-        conn_opts: &ConnOpts,
+        shared_opts: &SharedOpts,
         watch_mode: bool,
     ) -> Result<Self> {
-        if conn_opts.trace.is_none() {
+        if shared_opts.trace.is_none() {
             if filter_opts.touching.is_some() {
                 eyre::bail!(
                     "'--touching' filter is supported only with --trace [rpc|revm] enabled "
@@ -220,7 +220,7 @@ impl TxsFilter {
                 )
             }
 
-            if conn_opts.show_calls {
+            if shared_opts.show_calls {
                 eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
             }
         }
@@ -279,7 +279,7 @@ impl TxsFilter {
                 .iter()
                 .map(|query| query.parse())
                 .collect::<Result<Vec<_>>>()?,
-            show_calls: conn_opts.show_calls,
+            show_calls: shared_opts.show_calls,
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
         })

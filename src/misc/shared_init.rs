@@ -31,8 +31,8 @@ pub struct SharedDeps {
     pub chain: EVMChain,
 }
 
-pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
-    if conn_opts.rpc_url.is_none() {
+pub async fn init_deps(shared_opts: &SharedOpts) -> Result<SharedDeps> {
+    if shared_opts.rpc_url.is_none() {
         return Err(eyre::eyre!(
             "Missing provider URL, use --rpc-url or set ETH_RPC_URL env var"
         ));
@@ -47,16 +47,16 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     }
 
     let sqlite_conn = sqlite_conn(None).await?;
-    let ens_lookup_worker = start_ens_lookup_worker(conn_opts);
-    let symbols_lookup_worker = start_symbols_lookup_worker(conn_opts);
-    let provider = init_provider(conn_opts).await?;
+    let ens_lookup_worker = start_ens_lookup_worker(shared_opts);
+    let symbols_lookup_worker = start_symbols_lookup_worker(shared_opts);
+    let provider = init_provider(shared_opts).await?;
     let provider = Arc::new(provider);
 
     let chain_id = provider.get_chain_id().await?;
     let db_chain = DBChain::find(chain_id as i64, &sqlite_conn)
         .await?
         .unwrap_or(DBChain::unknown(chain_id as i64));
-    let chain = EVMChain::new(db_chain, conn_opts.rpc_url.clone().unwrap())?;
+    let chain = EVMChain::new(db_chain, shared_opts.rpc_url.clone().unwrap())?;
 
     Ok(SharedDeps {
         sqlite: sqlite_conn,
@@ -67,13 +67,13 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     })
 }
 
-pub async fn init_provider(conn_opts: &ConnOpts) -> Result<GenericProvider> {
+pub async fn init_provider(shared_opts: &SharedOpts) -> Result<GenericProvider> {
     let max_retry = 10;
     let backoff = 1000;
     let cups = 100;
     let retry_layer = RetryBackoffLayer::new(max_retry, backoff, cups);
 
-    if let Some(rpc_url) = &conn_opts.rpc_url {
+    if let Some(rpc_url) = &shared_opts.rpc_url {
         debug!("Initializing HTTP provider");
         let client = RpcClient::builder()
             .layer(retry_layer)
@@ -90,7 +90,7 @@ pub fn config_path() -> PathBuf {
 }
 
 #[derive(Clone, Debug, clap::Parser)]
-pub struct ConnOpts {
+pub struct SharedOpts {
     #[arg(long, help = "The URL of the HTTP provider", env = "ETH_RPC_URL")]
     pub rpc_url: Option<String>,
 
