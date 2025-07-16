@@ -3,11 +3,9 @@ use std::{
     time::{Duration, Instant},
 };
 
-use ::time::UtcOffset;
 use alloy::{sol, uint};
 use eyre::Result;
 use revm::primitives::U256;
-use tracing_subscriber::fmt::time::OffsetTime;
 
 use crate::{models::evm_chain::EVMChain, GenericProvider};
 
@@ -37,12 +35,21 @@ sol! {
 }
 
 pub fn init_logs() {
-    let offset = UtcOffset::from_hms(1, 0, 0).expect("should get CET offset");
-    let time_format =
-        time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]").unwrap();
-    let timer = OffsetTime::new(offset, time_format);
+    #[cfg(not(feature = "tokio-console"))]
+    {
+        let offset = ::time::UtcOffset::from_hms(1, 0, 0).expect("should get CET offset");
+        let time_format =
+            time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
+                .unwrap();
+        let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, time_format);
 
-    tracing_subscriber::fmt().with_timer(timer).init();
+        tracing_subscriber::fmt().with_timer(timer).init();
+    }
+
+    #[cfg(feature = "tokio-console")]
+    {
+        console_subscriber::init();
+    }
 }
 
 pub fn measure_start(label: &str) -> (String, Instant) {

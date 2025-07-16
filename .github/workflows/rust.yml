@@ -25,9 +25,12 @@ jobs:
       - name: Check 
         run: | 
           cargo check 
-      - name: Check dev feature flag
+      - name: Check tokio-console feature flag
         run: | 
-          cargo check --features dev
+          cargo check --features tokio-console
+      - name: Check seed-db feature flag
+        run: | 
+          cargo check --features seed-db
       - name: Fmt 
         run: |
           cargo fmt --all --check

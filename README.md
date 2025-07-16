@@ -242,6 +242,20 @@ The project currently supports over 2k EVM chains by reading the metadata from [
 
 If you use it with an unsupported chain, explorer URL and currency symbol is not displayed.
 
+## Development
+
+`tokio-console` feature adds support for [tokio-console](https://github.com/tokio-rs/console):
+
+```bash
+RUSTFLAGS="--cfg tokio_unstable" cargo run --features=tokio-console --bin mevlog watch
+```
+
+`seed-db` feature enables action to populate signatures and chains metadata SQLite database:
+
+```bash
+cargo run --features=seed-db --bin mevlog seed-db
+```
+
 ## Project status
 
 WIP, feedback appreciated.

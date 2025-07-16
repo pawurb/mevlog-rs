@@ -1,6 +1,6 @@
 mod cmd;
 use clap::{Parser, Subcommand, ValueEnum};
-#[cfg(feature = "dev")]
+#[cfg(feature = "seed-db")]
 use cmd::seed_db::SeedDBArgs;
 use cmd::{search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs};
 use eyre::Result;
@@ -39,7 +39,7 @@ pub enum MLSubcommand {
     Tx(TxArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
-    #[cfg(feature = "dev")]
+    #[cfg(feature = "seed-db")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
 }
@@ -84,7 +84,7 @@ async fn execute() -> Result<()> {
         ML::UpdateDB(args) => {
             args.run().await?;
         }
-        #[cfg(feature = "dev")]
+        #[cfg(feature = "seed-db")]
         ML::SeedDB(args) => {
             args.run().await?;
         }

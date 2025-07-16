@@ -9,7 +9,8 @@ license = "MIT"
 categories = ["command-line-utilities"]
 
 [dependencies]
-tokio = { version = "1.44.0" }
+tokio = { version = "1.44.0", features = ["rt-multi-thread", "macros", "net", "fs", "time", "sync", "io-util"] }
+
 alloy = { version = "1.0", features = ["full", "node-bindings"] }
 revm-inspectors = "0.26.5"
 eyre = "0.6.12"
@@ -46,6 +47,7 @@ html-escape = "0.2.13"
 csv = "1.3.1"
 which = "7.0.3"
 alloy-chains = "0.2.5"
+console-subscriber = { version = "0.4.1", optional = true }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "js"] }
@@ -59,4 +61,5 @@ name = "find_ens_name"
 path = "examples/find_ens_name.rs"
 
 [features]
-dev = []
+seed-db = []
+tokio-console = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
