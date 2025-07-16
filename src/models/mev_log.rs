@@ -23,7 +23,7 @@ impl MEVLog {
         inner_log: &AlloyLog,
         symbols_lookup_worker: &SymbolLookupWorker,
         sqlite: &SqlitePool,
-        show_transfer_amount: bool,
+        show_erc20_transfer_amount: bool,
     ) -> Result<Self> {
         let signature_str = DBEvent::find_by_hash(&format!("{first_topic}"), sqlite).await?;
         let data = inner_log.inner.data.data.to_vec();
@@ -32,7 +32,7 @@ impl MEVLog {
             inner_log.inner.address,
             signature_str.clone(),
             symbols_lookup_worker,
-            show_transfer_amount,
+            show_erc20_transfer_amount,
         )
         .await?;
 

@@ -599,7 +599,7 @@ impl MEVBlock {
                 &log,
                 symbols_lookup,
                 sqlite,
-                filter.show_transfer_amount,
+                filter.show_erc20_transfer_amount,
             )
             .await
             {
@@ -662,7 +662,7 @@ impl MEVBlock {
         }
 
         self.mev_transactions.retain(|_, tx| {
-            filter.transfer.iter().all(|transfer_query| {
+            filter.erc20_transfers.iter().all(|transfer_query| {
                 tx.logs().iter().any(|log| {
                     log.is_erc20_transfer()
                         && log

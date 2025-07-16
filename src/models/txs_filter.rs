@@ -110,9 +110,9 @@ pub struct SharedFilterOpts {
 
     #[arg(
         long,
-        help = "Filter by Transfer events with specific address and optionally amount (e.g., '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' or '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether')"
+        help = "Filter by ERC20 Transfer events with specific address and optionally amount (e.g., '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' or '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether')"
     )]
-    pub transfer: Vec<String>,
+    pub erc20_transfer: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -144,13 +144,13 @@ impl FromStr for PriceQuery {
 }
 
 #[derive(Debug)]
-pub struct TransferQuery {
+pub struct ERC20TransferQuery {
     pub address: Address,
     pub amount: Option<U256>,
     pub operator: Option<DiffOperator>,
 }
 
-impl TransferQuery {
+impl ERC20TransferQuery {
     pub fn matches(&self, address: &Address, amount: &U256) -> bool {
         if address != &self.address {
             return false;
@@ -168,7 +168,7 @@ impl TransferQuery {
     }
 }
 
-impl FromStr for TransferQuery {
+impl FromStr for ERC20TransferQuery {
     type Err = eyre::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -177,7 +177,7 @@ impl FromStr for TransferQuery {
         if parts.len() == 1 {
             // Address-only format: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
             let address = parts[0].parse::<Address>()?;
-            Ok(TransferQuery {
+            Ok(ERC20TransferQuery {
                 address,
                 amount: None,
                 operator: None,
@@ -186,7 +186,7 @@ impl FromStr for TransferQuery {
             // Address with amount filter: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether"
             let address = parts[0].parse::<Address>()?;
             let (operator, amount) = parse_price_query(parts[1])?;
-            Ok(TransferQuery {
+            Ok(ERC20TransferQuery {
                 address,
                 amount: Some(amount),
                 operator: Some(operator),
@@ -256,8 +256,8 @@ pub struct TxsFilter {
     pub reversed_order: bool,
     pub failed: bool,
     pub top_metadata: bool,
-    pub transfer: Vec<TransferQuery>,
-    pub show_transfer_amount: bool,
+    pub erc20_transfers: Vec<ERC20TransferQuery>,
+    pub show_erc20_transfer_amount: bool,
 }
 
 impl TxsFilter {
@@ -349,12 +349,12 @@ impl TxsFilter {
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
             failed: filter_opts.failed,
-            transfer: filter_opts
-                .transfer
+            erc20_transfers: filter_opts
+                .erc20_transfer
                 .iter()
                 .map(|query| query.parse())
                 .collect::<Result<Vec<_>>>()?,
-            show_transfer_amount: shared_opts.transfer_amount,
+            show_erc20_transfer_amount: shared_opts.erc20_transfer_amount,
         })
     }
 
@@ -656,7 +656,8 @@ mod tests {
     #[test]
     fn test_transfer_query_from_str() {
         let query =
-            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether").unwrap();
+            ERC20TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether")
+                .unwrap();
         assert_eq!(
             query.address,
             "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
@@ -671,12 +672,14 @@ mod tests {
 
         // Test with different amounts
         let query =
-            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|le1000").unwrap();
+            ERC20TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|le1000")
+                .unwrap();
         assert_eq!(query.amount, Some(U256::from(1000)));
         assert!(matches!(query.operator, Some(DiffOperator::LessOrEq)));
 
         // Test address-only format
-        let query = TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913").unwrap();
+        let query =
+            ERC20TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913").unwrap();
         assert_eq!(
             query.address,
             "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
@@ -687,15 +690,16 @@ mod tests {
         assert!(query.operator.is_none());
 
         // Test error cases
-        assert!(TransferQuery::from_str("invalid").is_err());
+        assert!(ERC20TransferQuery::from_str("invalid").is_err());
         assert!(
-            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|invalid").is_err()
+            ERC20TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|invalid")
+                .is_err()
         );
     }
 
     #[test]
     fn test_transfer_query_matches() {
-        let query = TransferQuery {
+        let query = ERC20TransferQuery {
             address: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
                 .parse::<Address>()
                 .unwrap(),
@@ -721,7 +725,7 @@ mod tests {
         assert!(query.matches(&target_address, &U256::from(1500)));
 
         // Test address-only matching (no amount filter)
-        let address_only_query = TransferQuery {
+        let address_only_query = ERC20TransferQuery {
             address: target_address,
             amount: None,
             operator: None,
@@ -739,8 +743,10 @@ mod tests {
     #[test]
     fn test_multiple_transfer_queries() {
         let queries = [
-            TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge1000").unwrap(),
-            TransferQuery::from_str("0x0000000000000000000000000000000000000001|le500").unwrap(),
+            ERC20TransferQuery::from_str("0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge1000")
+                .unwrap(),
+            ERC20TransferQuery::from_str("0x0000000000000000000000000000000000000001|le500")
+                .unwrap(),
         ];
 
         let addr1 = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
