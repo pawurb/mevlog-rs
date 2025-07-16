@@ -9,14 +9,14 @@ There's also [a beta web version](https://mevlog.rs/) available.
 
 `mevlog` allows you to analyze transaction details via a simple CLI interface. It currently offers the following features:
 
-- regexp search by emmited event names 
+- regexp search by emitted event names  
 - search by ENS domain names
 - filter txs based on their position in a block
-- search by root and sub calls
+- search by root and internal method calls
 - track smart contract storage changes
 - detect validator bribes
 - filter txs by value and real (including bribe) gas prices and cost
-- [multiple EVM networks support](https://github.com/pawurb/mevlog-rs/issues/9)
+– filter by the amount of a specific ERC20 token sent
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
@@ -24,7 +24,7 @@ You can [check out this article](https://pawelurbanek.com/long-tail-mev-revm) fo
 
 ## Getting started
 
-Mevlog depends on [cryo CLI](https://github.com/paradigmxyz/cryo) for fetching data. Please install it first by running:
+Mevlog uses [cryo CLI](https://github.com/paradigmxyz/cryo) for fetching data. Please install it first by running:
 
 ```bash
 cargo install cryo_cli
@@ -45,7 +45,7 @@ cargo install mevlog
 mevlog watch --rpc-url https://eth.merkle.io 
 ```
 
-On initial run `mevlog` downloads ~120mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
+On initial run `mevlog` downloads ~80mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
 
 To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
 
@@ -108,13 +108,7 @@ mevlog search -b 10:latest --value ge1ether
 mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei"
 ```
 
-- find transactions that emitted any Transfer events for USDC (regardless of amount):
-
-```bash
-mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
-```
-
-- find USDC transfers and display the amounts:
+- find transactions that emitted any Transfer events for USDC and display amounts:
 
 ```bash
 mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" --erc20-transfer-amount
@@ -124,7 +118,7 @@ mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3
 
 The `--event` and `--not-event` options allow filtering transactions based on emitted events. The filter criteria can be:
 
-- a contract address matching on any emmited events `0x6982508145454ce325ddbe47a25d4ec3d2311933`
+- a contract address matching on any emitted events `0x6982508145454ce325ddbe47a25d4ec3d2311933`
 - a full event signature `Transfer(address,uint256)`
 - a regular expression pattern `/(?i)(rebase).+/`
 - a combination of an event signature and a contract address `Transfer(address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933`
@@ -258,4 +252,4 @@ cargo run --features=seed-db --bin mevlog seed-db
 
 ## Project status
 
-WIP, feedback appreciated.
+WIP, feedback appreciated. I'm currently seeking a sponsor to help cover archive node costs for [mevlog.rs](https://mevlog.rs/). My goal is to make a hosted search web UI publicly available.
