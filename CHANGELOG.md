@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0] - 2025-07-17
+
+### 🚀 Features
+
+- Filtering & watching by subcalls (#17)
+- Allow for working with chains that are not hardcoded yet (#18)
+- Add chains info to sqlite database (#19)
+- Support unsupported chains
+- Add failed txs filter
+- Add --transfer filter and display amount (#21)
+
+### 🐛 Bug Fixes
+
+- Fix Revm simulations and cache
+- Dont revm simulate failed txs
+- Enable and validate show-calls
+- Fix non tracing filters
+
+### 🚜 Refactor
+
+- Refactor chain signature overrides
+- Add complete cryo_cache_dir_name values
+- Conn_opts to shared_opts
+
+### ⚡ Performance
+
+- Optimize hosted db size and seed performance
+- Use zstd for sqlite compression
+
+### ⚙️ Miscellaneous Tasks
+
+- CI check dev feature flag
+- Add sqlite db upload script
+- Update alloy and Revm (#20)
+- Disable nightly lint and unstable feature
+- Rename --transfer to --erc20-transfer
+- Add tokio-console support
+
 ## [0.5.7] - 2025-06-18
 
 ### 🚀 Features
@@ -16,6 +54,7 @@ All notable changes to this project will be documented in this file.
 ### ⚙️ Miscellaneous Tasks
 
 - CI use nightly Rust
+- Release mevlog version 0.5.7
 
 ## [0.5.6] - 2025-06-07
 
