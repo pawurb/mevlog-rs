@@ -39,6 +39,7 @@ All notable changes to this project will be documented in this file.
 - Disable nightly lint and unstable feature
 - Rename --transfer to --erc20-transfer
 - Add tokio-console support
+- Release mevlog version 0.6.0
 
 ## [0.5.7] - 2025-06-18
 

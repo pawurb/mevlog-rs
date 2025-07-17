@@ -5,7 +5,7 @@
 
 Rust-based CLI tool for querying Ethereum (or any EVM-compatible chain) transactions, with flexible filtering and EVM tracing capabilities. 
 
-When working on an MEV bot, I could not find a simple way to search for specific transactions. So i started building this tool to work as an _"SQL for blockchain"_. 
+When working on an MEV bot, I could not find a simple way to search for specific transactions. I wrote one-off query scripts, and wanted to generalize them in an easy to reuse tool. So I started building `mevlog` to work as an _"SQL for blockchain"_. 
 
 `mevlog` allows you to find and analyze transaction details via a simple CLI interface. It currently offers the following features:
 
