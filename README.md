@@ -3,11 +3,11 @@
  
 ![Big bribe](big-bribe-tx2.png)
 
-Rust-based CLI tool for querying and monitoring Ethereum (or [any EVM-compatible chain](#supported-evm-chains)) transactions, with flexible filtering and EVM tracing capabilities. It's a tool for MEV searchers who prefer command-line workflows over web-based explorers.
+Rust-based CLI tool for querying Ethereum (or any EVM-compatible chain) transactions, with flexible filtering and EVM tracing capabilities. 
 
-There's also [a beta web version](https://mevlog.rs/) available.
+When working on an MEV bot, I could not find a simple way to search for specific transactions. So i started building this tool to work as an _"SQL for blockchain"_. 
 
-`mevlog` allows you to analyze transaction details via a simple CLI interface. It currently offers the following features:
+`mevlog` allows you to find and analyze transaction details via a simple CLI interface. It currently offers the following features:
 
 - regexp search by emitted event names  
 - search by ENS domain names
@@ -15,12 +15,14 @@ There's also [a beta web version](https://mevlog.rs/) available.
 - search by root and internal method calls
 - track smart contract storage changes
 - detect validator bribes
+- filter by the amount of a specific ERC20 token sent
 - filter txs by value and real (including bribe) gas prices and cost
-– filter by the amount of a specific ERC20 token sent
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
 You can [check out this article](https://pawelurbanek.com/long-tail-mev-revm) for technical details on how this project is implemented.
+
+There's also [a beta web version](https://mevlog.rs/) available.
 
 ## Getting started
 
