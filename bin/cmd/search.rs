@@ -27,7 +27,7 @@ pub struct SearchArgs {
 
 impl SearchArgs {
     pub async fn run(&self) -> Result<()> {
-        let shared_deps = init_deps(&self.shared_opts).await?;
+        let shared_deps = init_deps(self.shared_opts.rpc_url.as_deref()).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
 

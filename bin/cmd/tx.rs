@@ -53,7 +53,7 @@ impl TxArgs {
             eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
         }
 
-        let shared_deps = init_deps(&self.shared_opts).await?;
+        let shared_deps = init_deps(self.shared_opts.rpc_url.as_deref()).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
         let tx = provider.get_transaction_by_hash(self.tx_hash).await?;

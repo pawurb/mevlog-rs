@@ -1,7 +1,6 @@
 use eyre::Result;
 use sqlx::Row;
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct DBEvent {
     pub signature_hash: String,

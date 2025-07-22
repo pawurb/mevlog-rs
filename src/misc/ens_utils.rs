@@ -5,7 +5,7 @@ use eyre::Result;
 use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
-use super::shared_init::{init_provider, SharedOpts};
+use super::shared_init::init_provider;
 use crate::{models::evm_chain::EVMChain, GenericProvider};
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
@@ -142,12 +142,12 @@ async fn write_ens_cache(target: Address, name: Option<String>) -> Result<()> {
     Ok(())
 }
 
-pub fn start_ens_lookup_worker(shared_opts: &SharedOpts) -> mpsc::UnboundedSender<Address> {
+pub fn start_ens_lookup_worker(rpc_url: &str) -> mpsc::UnboundedSender<Address> {
     let (tx, mut rx) = mpsc::unbounded_channel::<Address>();
 
-    let shared_opts = shared_opts.clone();
+    let rpc_url = rpc_url.to_string();
     tokio::spawn(async move {
-        let provider = init_provider(&shared_opts).await.unwrap();
+        let provider = init_provider(&rpc_url).await.unwrap();
         let provider = Arc::new(provider);
 
         while let Some(target) = rx.recv().await {
