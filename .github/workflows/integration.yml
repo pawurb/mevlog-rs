@@ -1,0 +1,49 @@
+name: Integration 
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: test ${{ matrix.rust }} 
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust
+        run: | 
+          rustup update stable
+          rustup default stable
+          rustup component add rustfmt
+          rustup component add clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: true
+          cache-bin: true 
+      - name: Download cryo binary from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.cargo/bin
+          gh release download cryo-release -p cryo -D ~/.cargo/bin
+          chmod +x ~/.cargo/bin/cryo
+      - name: Download SQLite DB from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.mevlog
+          gh release download sqlite-db-release -p mevlog-sqlite-v4.db -D ~/.mevlog
+      - name: Check 
+        run: | 
+          cargo check 
+      - name: Run tests
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+        run: | 
+          cargo test --test cli_tests -- --nocapture
+          
