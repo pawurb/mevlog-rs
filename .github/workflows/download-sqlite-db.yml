@@ -1,0 +1,22 @@
+name: Store SQLite file
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download-db:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create download directory
+        run: mkdir -p db
+
+      - name: Download SQLite DB 
+        run: |
+          curl -L "${{ secrets.SQLITE_DB_URL }}" -o db/mevlog-sqlite-v4.db
+
+      - name: Upload DB as artifact 
+        uses: actions/upload-artifact@v4
+        with:
+          name: sqlite-db
+          path: db/mevlog-sqlite-v4.db
