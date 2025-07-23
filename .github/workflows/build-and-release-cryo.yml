@@ -1,0 +1,38 @@
+name: Build and Release cryo Binary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write  # required to create/upload releases
+
+jobs:
+  build-cryo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cryo_cli
+        run: |
+          cargo install cryo_cli
+
+      - name: Upload cryo binary to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=cryo-release
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Uploading to existing release..."
+            gh release upload "$TAG" ~/.cargo/bin/cryo --clobber
+          else
+            echo "Creating new release..."
+            gh release create "$TAG" ~/.cargo/bin/cryo \
+              --title "Cryo Binary" \
+              --notes "Prebuilt cryo CLI binary"
+          fi
