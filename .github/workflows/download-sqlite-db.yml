@@ -1,22 +1,39 @@
-name: Store SQLite file
+name: Store SQLite file 
 
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  download-db:
+  download-and-release:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Create download directory
         run: mkdir -p db
 
-      - name: Download SQLite DB 
+      - name: Download SQLite DB
         run: |
           curl -L "${{ secrets.SQLITE_DB_URL }}" -o db/mevlog-sqlite-v4.db
 
-      - name: Upload DB as artifact 
-        uses: actions/upload-artifact@v4
-        with:
-          name: sqlite-db
-          path: db/mevlog-sqlite-v4.db
+      - name: Create or update GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME=sqlite-db-release
+
+          # Check if release already exists
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release exists, uploading asset..."
+            gh release upload "$TAG_NAME" db/mevlog-sqlite-v4.db --clobber
+          else
+            echo "Creating release..."
+            gh release create "$TAG_NAME" db/mevlog-sqlite-v4.db \
+              --title "SQLite DB Release" \
+              --notes "Latest version of the SQLite database used in testing"
+          fi

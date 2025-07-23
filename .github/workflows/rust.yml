@@ -37,6 +37,14 @@ jobs:
       - name: Lint 
         run: |
           cargo clippy --all --all-features -- -D warnings
-      - name: Run tests 
+      - name: Download SQLite DB from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.mevlog
+          gh release download sqlite-db-release -p mevlog-sqlite-v4.db -D ~/.mevlog
+      - name: Run tests
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: | 
-          cargo test --lib -- --nocapture
+          cargo test -- --nocapture
