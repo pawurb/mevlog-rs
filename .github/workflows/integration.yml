@@ -1,4 +1,4 @@
-name: Rust CI
+name: Integration 
 
 on:
   push:
@@ -25,18 +25,17 @@ jobs:
       - name: Check 
         run: | 
           cargo check 
-      - name: Check tokio-console feature flag
-        run: | 
-          cargo check --features tokio-console
-      - name: Check seed-db feature flag
-        run: | 
-          cargo check --features seed-db
-      - name: Fmt 
+      - name: Download SQLite DB from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cargo fmt --all --check
-      - name: Lint 
-        run: |
-          cargo clippy --all --all-features -- -D warnings
+          mkdir -p ~/.mevlog
+          gh release download sqlite-db-release -p mevlog-sqlite-v4.db -D ~/.mevlog
       - name: Run tests
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: | 
-          cargo test --lib -- --nocapture
+          cargo install cryo_cli
+          cargo build --bin mevlog
+          cargo test --test cli_tests -- --nocapture
+          
