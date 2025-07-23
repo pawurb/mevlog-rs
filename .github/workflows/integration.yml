@@ -22,6 +22,16 @@ jobs:
           rustup component add rustfmt
           rustup component add clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: true
+          cache-bin: true 
+      - name: Install cryo_cli if not cached
+        run: |
+          if ! command -v cryo &>/dev/null; then
+            cargo install cryo_cli
+          else
+            echo "cryo already installed"
+          fi
       - name: Check 
         run: | 
           cargo check 
@@ -35,7 +45,5 @@ jobs:
         env:
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: | 
-          cargo install cryo_cli
-          cargo build --bin mevlog
           cargo test --test cli_tests -- --nocapture
           
