@@ -41,6 +41,9 @@ jobs:
       - name: Check 
         run: | 
           cargo check 
+      - name: Build mevlog
+        run: |
+          cargo build --release --bin mevlog
       - name: Run tests
         env:
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}

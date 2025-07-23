@@ -33,6 +33,7 @@ pub mod tests {
     fn test_cli_search_revm() -> Result<()> {
         let cmd = Command::new("cargo")
             .arg("run")
+            .arg("--release")
             .arg("--bin")
             .arg("mevlog")
             .arg("search")
@@ -80,6 +81,7 @@ pub mod tests {
     fn test_cli_tx_revm() -> Result<()> {
         let cmd = Command::new("cargo")
             .arg("run")
+            .arg("--release")
             .arg("--bin")
             .arg("mevlog")
             .arg("tx")
