@@ -44,7 +44,6 @@ jobs:
       - name: Run tests
         env:
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
-          RUST_BACKTRACE: 1
         run: | 
           cargo test --test cli_tests -- --nocapture
           

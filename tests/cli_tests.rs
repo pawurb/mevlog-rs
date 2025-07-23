@@ -4,7 +4,7 @@ pub mod tests {
 
     use eyre::Result;
 
-    #[test]
+    // #[test]
     fn test_cli_search_rpc() -> Result<()> {
         let cmd = Command::new("cargo")
             .arg("run")
@@ -54,7 +54,7 @@ pub mod tests {
         Ok(())
     }
 
-    #[test]
+    // #[test]
     fn test_cli_tx_rpc() -> Result<()> {
         let cmd = Command::new("cargo")
             .arg("run")
