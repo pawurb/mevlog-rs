@@ -62,4 +62,25 @@ pub mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn test_sig_overwrite() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("33410345")
+            .arg("-p")
+            .arg("0")
+            .arg("--rpc-url")
+            .arg(std::env::var("BASE_RPC_URL").expect("BASE_RPC_URL must be set"))
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains("setL1BlockValuesIsthmus"));
+    }
 }

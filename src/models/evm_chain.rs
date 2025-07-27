@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::OnceLock};
-
 use alloy_chains::NamedChain;
 use eyre::Result;
 use revm::primitives::Address;
@@ -73,36 +71,5 @@ impl EVMChain {
 
     pub fn is_mainnet(&self) -> bool {
         self.chain_id == 1
-    }
-
-    // Common signatures, that are duplicate and mismatched in the database
-    // (signature_hash, tx_index) -> name_override
-    pub fn signature_overrides(&self) -> &HashMap<(String, u64), String> {
-        // For now, Base is the only chain that has mismatched signatures in the database
-        if self.chain_id != 8453 {
-            return EMPTY_MAP.get_or_init(HashMap::new);
-        }
-
-        type SignatureMap = HashMap<(String, u64), String>;
-        type ChainOverrides = HashMap<u64, SignatureMap>;
-
-        static SIGNATURE_OVERRIDES: OnceLock<ChainOverrides> = OnceLock::new();
-        static EMPTY_MAP: OnceLock<SignatureMap> = OnceLock::new();
-
-        let overrides = SIGNATURE_OVERRIDES.get_or_init(|| {
-            let mut map = HashMap::new();
-            map.insert(
-                8453, // Base
-                HashMap::from([(
-                    ("0x098999be".to_string(), 0),
-                    "setL1BlockValuesIsthmus()".to_string(),
-                )]),
-            );
-            map
-        });
-
-        overrides
-            .get(&self.chain_id)
-            .unwrap_or_else(|| EMPTY_MAP.get_or_init(HashMap::new))
     }
 }

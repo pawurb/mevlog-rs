@@ -155,7 +155,7 @@ impl MEVTransaction {
         show_calls: bool,
     ) -> Result<Self> {
         let (signature_hash, signature) =
-            extract_signature(&chain, tx_req.input.input.as_ref(), index, sqlite).await?;
+            extract_signature(tx_req.input.input.as_ref(), index, sqlite).await?;
 
         let mev_address =
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
@@ -257,7 +257,6 @@ impl MEVTransaction {
 }
 
 pub async fn extract_signature(
-    chain: &EVMChain,
     input: Option<&Bytes>,
     index: u64,
     sqlite: &sqlx::Pool<sqlx::Sqlite>,
@@ -276,8 +275,8 @@ pub async fn extract_signature(
     };
     let signature = match signature_hash.clone() {
         Some(sig) => {
-            if let Some(override_sig) = chain.signature_overrides().get(&(sig.clone(), index)) {
-                override_sig.clone()
+            if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {
+                sig_overwrite.clone()
             } else {
                 let sig_str = DBMethod::find_by_hash(&sig, sqlite).await?;
                 sig_str.unwrap_or(UNKNOWN.to_string())
@@ -536,4 +535,12 @@ fn display_token_and_usd(value: U256, token_price: Option<f64>, currency_symbol:
             display_usd(usd_value)
         )
     }
+}
+
+// Common signatures, that are duplicate and mismatched in the database
+pub fn find_sig_overwrite(signature: &str, tx_index: u64) -> Option<String> {
+    if signature == "0x098999be" && tx_index == 0 {
+        return Some("setL1BlockValuesIsthmus()".to_string());
+    }
+    None
 }

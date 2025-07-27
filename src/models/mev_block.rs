@@ -387,7 +387,7 @@ impl MEVBlock {
             for call in calls.clone() {
                 if let Some(to) = call.to {
                     let (signature_hash, signature) =
-                        extract_signature(&self.chain, Some(&call.input), tx_index, sqlite).await?;
+                        extract_signature(Some(&call.input), tx_index, sqlite).await?;
                     call_extracts.push(CallExtract {
                         from: call.from,
                         to,
@@ -508,8 +508,7 @@ impl MEVBlock {
             for call in calls.clone() {
                 if let Action::Call(call_action) = call.action {
                     let (signature_hash, signature) =
-                        extract_signature(&self.chain, Some(&call_action.input), tx_index, sqlite)
-                            .await?;
+                        extract_signature(Some(&call_action.input), tx_index, sqlite).await?;
 
                     call_extracts.push(CallExtract {
                         from: call_action.from,
