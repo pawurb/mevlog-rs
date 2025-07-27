@@ -232,6 +232,36 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 
 
 You can reverse the display order by adding the `--reverse` flag.
 
+## Getting RPC URLs for chains
+
+```bash
+mevlog rpc-urls 1    # Ethereum mainnet
+mevlog rpc-urls 56   # BSC mainnet
+mevlog rpc-urls 137  # Polygon mainnet
+```
+
+Sample output: 
+
+```text
+Chain: Ethereum Mainnet (ETH)
+Chain ID: 1
+
+RPC URLs (responding under 1000ms):
+  1. https://0xrpc.io/eth (378ms)
+  2. https://gateway.tenderly.co/public/mainnet (395ms)
+  3. https://ethereum-mainnet.gateway.tatum.io (397ms)
+  4. https://mainnet.gateway.tenderly.co (401ms)
+  5. https://rpc.payload.de (406ms)
+```
+
+This command checks the latest chain data from [ChainList](https://chainlist.org/) and displays available RPC URLs for the specified chain ID, sorted by response time. 
+
+By default only RPC endpoints responding under 1 sec are included. If you're using a network with a worse connection quality you can increase this value:
+
+```bash
+mevlog rpc-urls 1 --rpc-timeout-sec 5
+```
+
 ## Supported EVM chains
 
 The project currently supports over 2k EVM chains by reading the metadata from [ethereum-list/chains](https://github.com/ethereum-lists/chains). But only a few chains display $USD txs prices from integrated [ChainLink oracles](https://docs.chain.link/data-feeds/price-feeds/addresses). I'm planning to work on improving the coverage.

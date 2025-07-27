@@ -1,3 +1,4 @@
+pub mod rpc_urls;
 pub mod search;
 pub mod tx;
 pub mod update_db;
