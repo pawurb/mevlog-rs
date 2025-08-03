@@ -42,15 +42,12 @@ pub struct RevmUtils {
 pub async fn init_revm_db(
     block_number: u64,
     shared_opts: &SharedOpts,
+    rpc_url: &str,
     chain: &EVMChain,
 ) -> Result<Option<RevmUtils>> {
     match shared_opts.trace {
         Some(TraceMode::Revm) => {}
         _ => return Ok(None),
-    };
-
-    let Some(rpc_url) = &shared_opts.rpc_url else {
-        eyre::bail!("--tracing revm works only with HTTP provider");
     };
 
     let anvil = Anvil::new()

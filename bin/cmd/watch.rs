@@ -24,7 +24,7 @@ pub struct WatchArgs {
 
 impl WatchArgs {
     pub async fn run(&self) -> Result<()> {
-        let shared_deps = init_deps(self.shared_opts.rpc_url.as_deref()).await?;
+        let shared_deps = init_deps(&self.shared_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
 
@@ -50,6 +50,7 @@ impl WatchArgs {
             &mev_filter,
             &self.shared_opts,
             &shared_deps.chain,
+            &shared_deps.rpc_url,
             native_token_price,
         )
         .await?;
@@ -73,6 +74,7 @@ impl WatchArgs {
                 &mev_filter,
                 &self.shared_opts,
                 &shared_deps.chain,
+                &shared_deps.rpc_url,
                 native_token_price,
             )
             .await?;

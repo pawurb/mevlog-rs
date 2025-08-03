@@ -53,7 +53,7 @@ impl TxArgs {
             eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
         }
 
-        let shared_deps = init_deps(self.shared_opts.rpc_url.as_deref()).await?;
+        let shared_deps = init_deps(&self.shared_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
         let tx = provider.get_transaction_by_hash(self.tx_hash).await?;
@@ -64,8 +64,13 @@ impl TxArgs {
             eyre::bail!("tx index must be present");
         };
 
-        let revm_utils =
-            init_revm_db(block_number - 1, &self.shared_opts, &shared_deps.chain).await?;
+        let revm_utils = init_revm_db(
+            block_number - 1,
+            &self.shared_opts,
+            &shared_deps.rpc_url,
+            &shared_deps.chain,
+        )
+        .await?;
         let (mut revm_db, _anvil) = match self.shared_opts.trace {
             Some(TraceMode::Revm) => {
                 let utils = revm_utils.expect("Revm must be present");

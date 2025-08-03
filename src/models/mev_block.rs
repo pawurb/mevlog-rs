@@ -73,9 +73,10 @@ pub async fn process_block(
     txs_filter: &TxsFilter,
     shared_opts: &SharedOpts,
     chain: &EVMChain,
+    rpc_url: &str,
     native_token_price: Option<f64>,
 ) -> Result<()> {
-    let revm_utils = init_revm_db(block_number - 1, shared_opts, chain).await?;
+    let revm_utils = init_revm_db(block_number - 1, shared_opts, rpc_url, chain).await?;
 
     let (mut revm_db, _anvil) = match shared_opts.trace {
         Some(TraceMode::Revm) => {

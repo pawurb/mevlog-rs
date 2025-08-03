@@ -17,6 +17,7 @@ When working on an MEV bot, I could not find a simple way to search for specific
 - detect validator bribes
 - filter by the amount of a specific ERC20 token sent
 - filter txs by value and real (including bribe) gas prices and cost
+- [ChainList](https://chainlist.org/) integration to automatically find public RPC endpoints
 
 All while working on public RPC endpoints thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
@@ -47,6 +48,24 @@ cargo install mevlog
 mevlog watch --rpc-url https://eth.merkle.io 
 ```
 
+### Connection options
+
+You can connect to chains using either a direct RPC URL or by specifying a chain ID:
+
+**Using RPC URL:**
+```bash
+mevlog watch --rpc-url https://eth.merkle.io
+```
+
+**Using Chain ID:**
+```bash
+mevlog watch --chain-id 1        # Ethereum mainnet  
+mevlog watch --chain-id 137      # Polygon
+mevlog watch --chain-id 56       # BSC
+```
+
+When using `--chain-id`, mevlog automatically fetches available RPC URLs from [ChainList](https://chainlist.org/), benchmarks them, and selects the fastest responding endpoint. Please remember that `--trace rpc` will likely not work with public RPC endpoints. And `--trace revm` could be throttled.
+
 On initial run `mevlog` downloads ~80mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
 
 To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
@@ -65,19 +84,19 @@ A few examples of currently supported queries:
 - find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
 
 ```bash
-mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth
+mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth --chain-id 1
 ```
 
 - unknown method signature contract call in a top position (likely an MEV bot):
 
 ```bash
-mevlog search -b 10:latest --method "<Unknown>" -p 0
+mevlog search -b 10:latest --method "<Unknown>" -p 0 --chain-id 1
 ```
 
 - query the last 50 blocks for transaction in the top 20 slots that transferred [PEPE](https://etherscan.io/token/0x6982508145454ce325ddbe47a25d4ec3d2311933) token:
 
 ```bash
-mevlog search -b 50:latest -p 0:20 --event "Transfer(address,address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933"
+mevlog search -b 50:latest -p 0:20 --event "Transfer(address,address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933" --chain-id 1
 ```
 
 - blocks between 22034300 and 22034320, position 0 transaction that did not emit any `Swap` events:
@@ -176,6 +195,10 @@ Options:
           Filter by tx target address or ENS name, or CREATE transactions
   -t, --touching <TOUCHING>
           Filter by contracts with storage changed by the transaction
+      --rpc-url <RPC_URL>
+          The URL of the HTTP provider [env: ETH_RPC_URL]
+      --chain-id <CHAIN_ID>
+          Chain ID to automatically select best RPC URL (mutually exclusive with --rpc-url)
       --event <EVENT>
           Include txs by event names matching the provided regex or signature and optionally an address
       --not-event <NOT_EVENT>
@@ -221,13 +244,13 @@ Subsequent `revm` simulations for the same block and transaction range use cache
 ## Analyzing a single transaction data
 
 ```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1
 ```
 
 This command displays info for a single target transaction. By adding `--before` `--after` arguments you can include surrounding transactions:
 
 ```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 1 -a 1
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 1 -a 1 --chain-id 1
 ```
 
 You can reverse the display order by adding the `--reverse` flag.

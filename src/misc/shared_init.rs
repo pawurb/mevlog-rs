@@ -5,7 +5,7 @@ use alloy::{
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
-use eyre::Result;
+use eyre::{bail, Result};
 use revm::primitives::Address;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
@@ -15,6 +15,7 @@ use super::{
     database::sqlite_conn,
     db_actions::{check_and_create_indexes, db_file_exists},
     ens_utils::start_ens_lookup_worker,
+    rpc_urls::get_chain_info,
     symbol_utils::{start_symbols_lookup_worker, SymbolLookupWorker},
 };
 use crate::{
@@ -29,16 +30,23 @@ pub struct SharedDeps {
     pub symbols_lookup_worker: SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub chain: EVMChain,
+    pub rpc_url: String,
 }
 
-pub async fn init_deps(rpc_url: Option<&str>) -> Result<SharedDeps> {
-    if rpc_url.is_none() {
-        return Err(eyre::eyre!(
-            "Missing provider URL, use --rpc-url or set ETH_RPC_URL env var"
-        ));
-    }
-
-    let rpc_url = rpc_url.unwrap();
+pub async fn init_deps(shared_opts: &SharedOpts) -> Result<SharedDeps> {
+    let rpc_url = match (&shared_opts.rpc_url, shared_opts.chain_id) {
+        (Some(url), None) => url.clone(),
+        (None, Some(chain_id)) => {
+            let chain_info = get_chain_info(chain_id, 10).await?;
+            if chain_info.benchmarked_rpc_urls.is_empty() {
+                bail!("No working RPC URLs found for chain ID {}", chain_id)
+            }
+            chain_info.benchmarked_rpc_urls[0].0.clone()
+        }
+        _ => {
+            bail!("Either --rpc-url or --chain-id must be specified")
+        }
+    };
 
     if !db_file_exists() {
         let _ = std::fs::create_dir_all(config_path());
@@ -49,16 +57,16 @@ pub async fn init_deps(rpc_url: Option<&str>) -> Result<SharedDeps> {
     }
 
     let sqlite_conn = sqlite_conn(None).await?;
-    let ens_lookup_worker = start_ens_lookup_worker(rpc_url);
-    let symbols_lookup_worker = start_symbols_lookup_worker(rpc_url);
-    let provider = init_provider(rpc_url).await?;
+    let ens_lookup_worker = start_ens_lookup_worker(&rpc_url);
+    let symbols_lookup_worker = start_symbols_lookup_worker(&rpc_url);
+    let provider = init_provider(&rpc_url).await?;
     let provider = Arc::new(provider);
 
     let chain_id = provider.get_chain_id().await?;
     let db_chain = DBChain::find(chain_id as i64, &sqlite_conn)
         .await?
         .unwrap_or(DBChain::unknown(chain_id as i64));
-    let chain = EVMChain::new(db_chain, rpc_url.to_string())?;
+    let chain = EVMChain::new(db_chain, rpc_url.clone())?;
 
     Ok(SharedDeps {
         sqlite: sqlite_conn,
@@ -66,6 +74,7 @@ pub async fn init_deps(rpc_url: Option<&str>) -> Result<SharedDeps> {
         symbols_lookup_worker,
         provider,
         chain,
+        rpc_url,
     })
 }
 
@@ -89,8 +98,20 @@ pub fn config_path() -> PathBuf {
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct SharedOpts {
-    #[arg(long, help = "The URL of the HTTP provider", env = "ETH_RPC_URL")]
+    #[arg(
+        long,
+        help = "The URL of the HTTP provider",
+        env = "ETH_RPC_URL",
+        conflicts_with = "chain_id"
+    )]
     pub rpc_url: Option<String>,
+
+    #[arg(
+        long,
+        help = "Chain ID to automatically select RPC URL from ChainList",
+        conflicts_with = "rpc_url"
+    )]
+    pub chain_id: Option<u64>,
 
     #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
     pub trace: Option<TraceMode>,
