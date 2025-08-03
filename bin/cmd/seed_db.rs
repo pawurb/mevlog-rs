@@ -7,40 +7,16 @@ use std::{
 use clap::Parser;
 use eyre::Result;
 use mevlog::{
-    misc::database::{init_sqlite_db, sqlite_conn, sqlite_truncate_wal},
+    misc::{
+        database::{init_sqlite_db, sqlite_conn, sqlite_truncate_wal},
+        rpc_urls::get_all_chains,
+    },
     models::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
 };
-use serde::{Deserialize, Serialize};
 use tracing::info;
 
 #[derive(Debug, Parser)]
 pub struct SeedDBArgs {}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct ChainData {
-    name: String,
-    #[serde(rename = "chainId")]
-    chain_id: u64,
-    #[serde(rename = "nativeCurrency")]
-    native_currency: NativeCurrency,
-    #[serde(default)]
-    explorers: Vec<Explorer>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct NativeCurrency {
-    name: String,
-    symbol: String,
-    decimals: u32,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct Explorer {
-    name: String,
-    url: String,
-    #[serde(default)]
-    standard: Option<String>,
-}
 
 impl SeedDBArgs {
     #[allow(dead_code)]
@@ -68,44 +44,42 @@ impl SeedDBArgs {
     }
 
     async fn seed_chains(&self, conn: &sqlx::SqlitePool) -> Result<()> {
-        tracing::info!("Seeding chains");
+        tracing::info!("Seeding chains from ChainList.org");
 
-        // Local copy of https://github.com/ethereum-lists/chains
-        let chains_dir = "../chains/_data/chains";
-        if !Path::new(chains_dir).exists() {
-            tracing::warn!("Chains directory not found: {}", chains_dir);
-            return Ok(());
-        }
-
-        let pattern = format!("{chains_dir}/*.json");
-        let paths = glob::glob(&pattern)?;
+        let chains = get_all_chains().await?;
+        let price_oracles = get_price_oracles();
 
         let mut total_processed = 0;
         let mut total_success = 0;
 
-        let price_oracles = get_price_oracles();
+        for chain in chains {
+            total_processed += 1;
 
-        for entry in paths {
-            match entry {
-                Ok(path) => {
-                    total_processed += 1;
+            if total_processed % 500 == 0 {
+                tracing::info!("Processed {} chains", total_processed);
+            }
 
-                    if total_processed % 500 == 0 {
-                        tracing::info!("Processed {} chain files", total_processed);
-                    }
+            // Skip if chain already exists
+            if DBChain::exists(chain.chain_id as i64, conn).await? {
+                continue;
+            }
 
-                    match self.process_chain_file(&path, &price_oracles, conn).await {
-                        Ok(true) => total_success += 1,
-                        Ok(false) => {
-                            tracing::debug!("Skipped chain file: {}", path.display());
-                        }
-                        Err(e) => {
-                            tracing::warn!("Error processing chain file {}: {}", path.display(), e);
-                        }
-                    }
-                }
+            let explorer_url = chain.explorers.first().map(|e| e.url.clone());
+            let currency_symbol = chain.native_currency.symbol;
+
+            let db_chain = DBChain {
+                id: chain.chain_id as i64,
+                name: chain.name,
+                explorer_url,
+                currency_symbol,
+                chainlink_oracle: price_oracles.get(&chain.chain_id).cloned(),
+                uniswap_v2_pool: None,
+            };
+
+            match db_chain.save(conn).await {
+                Ok(_) => total_success += 1,
                 Err(e) => {
-                    tracing::warn!("Error reading chain file path: {}", e);
+                    tracing::warn!("Error saving chain {}: {}", chain.chain_id, e);
                 }
             }
         }
@@ -116,34 +90,6 @@ impl SeedDBArgs {
             total_success
         );
         Ok(())
-    }
-
-    async fn process_chain_file(
-        &self,
-        path: &Path,
-        price_oracles: &HashMap<u64, String>,
-        conn: &sqlx::SqlitePool,
-    ) -> Result<bool> {
-        let file_content = std::fs::read_to_string(path)?;
-        let chain_data: ChainData = serde_json::from_str(&file_content)?;
-
-        if DBChain::exists(chain_data.chain_id as i64, conn).await? {
-            return Ok(false);
-        }
-
-        let explorer_url = chain_data.explorers.first().map(|e| e.url.clone());
-
-        let db_chain = DBChain {
-            id: chain_data.chain_id as i64,
-            name: chain_data.name,
-            explorer_url,
-            currency_symbol: chain_data.native_currency.symbol,
-            chainlink_oracle: price_oracles.get(&chain_data.chain_id).cloned(),
-            uniswap_v2_pool: None,
-        };
-
-        db_chain.save(conn).await?;
-        Ok(true)
     }
 
     async fn seed_signatures(&self, conn: &sqlx::SqlitePool) -> Result<()> {

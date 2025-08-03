@@ -12,6 +12,18 @@ pub struct RpcEndpoint {
     pub url: String,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct NativeCurrency {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u32,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Explorer {
+    pub url: String,
+}
+
 const CHAINLIST_URL: &str = "https://chainlist.org/rpcs.json";
 
 #[derive(Debug, Deserialize, Clone)]
@@ -22,6 +34,10 @@ pub struct ChainInfo {
     pub chain: String,
     #[serde(rename = "rpc")]
     pub rpc_endpoints: Vec<RpcEndpoint>,
+    #[serde(rename = "nativeCurrency")]
+    pub native_currency: NativeCurrency,
+    #[serde(default)]
+    pub explorers: Vec<Explorer>,
     #[serde(skip)]
     pub benchmarked_rpc_urls: Vec<(String, u64)>,
 }
