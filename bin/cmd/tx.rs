@@ -6,11 +6,10 @@ use mevlog::{
     misc::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
-        revm_tracing::init_revm_db,
-        shared_init::{init_deps, ConnOpts, SharedOpts, TraceMode},
+        shared_init::{init_deps, ConnOpts, SharedOpts},
         utils::{get_native_token_price, SEPARATORER},
     },
-    models::{mev_block::MEVBlock, txs_filter::TxsFilter},
+    models::{mev_block::generate_block, txs_filter::TxsFilter},
 };
 use revm::primitives::FixedBytes;
 
@@ -67,21 +66,6 @@ impl TxArgs {
             eyre::bail!("tx index must be present");
         };
 
-        let revm_utils = init_revm_db(
-            block_number - 1,
-            &self.shared_opts,
-            &shared_deps.rpc_url,
-            &shared_deps.chain,
-        )
-        .await?;
-        let (mut revm_db, _anvil) = match self.shared_opts.trace {
-            Some(TraceMode::Revm) => {
-                let utils = revm_utils.expect("Revm must be present");
-                (Some(utils.cache_db), Some(utils.anvil))
-            }
-            _ => (None, None),
-        };
-
         let tx_indexes = get_matching_indexes(tx_index, self.before, self.after);
 
         let max_index = tx_indexes
@@ -97,24 +81,12 @@ impl TxArgs {
 
         let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
 
-        let mut mev_block = MEVBlock::new(
-            block_number,
-            position_range.as_ref(),
-            self.reverse,
-            &provider,
-            self.shared_opts.trace.as_ref(),
-            self.top_metadata,
-            &shared_deps.chain,
-            native_token_price,
-        )
-        .await?;
-
         let txs_filter = TxsFilter {
             tx_indexes: Some(tx_indexes),
             tx_from: None,
             tx_to: None,
             touching: None,
-            tx_position: None,
+            tx_position: position_range,
             events: vec![],
             not_events: vec![],
             match_method: None,
@@ -138,17 +110,19 @@ impl TxArgs {
             ENSLookup::Disabled
         };
 
-        mev_block
-            .populate_txs(
-                &txs_filter,
-                &sqlite,
-                &ens_lookup_mode,
-                &shared_deps.symbols_lookup_worker,
-                &provider,
-                revm_db.as_mut(),
-                &self.shared_opts,
-            )
-            .await?;
+        let mev_block = generate_block(
+            &provider,
+            &sqlite,
+            block_number,
+            &ens_lookup_mode,
+            &shared_deps.symbols_lookup_worker,
+            &txs_filter,
+            &self.shared_opts,
+            &shared_deps.chain,
+            &shared_deps.rpc_url,
+            native_token_price,
+        )
+        .await?;
 
         if !txs_filter.top_metadata {
             println!("{SEPARATORER}");

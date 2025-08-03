@@ -14,7 +14,7 @@ use crate::misc::{
 };
 
 #[derive(Clone, Debug, clap::Parser)]
-pub struct SharedFilterOpts {
+pub struct TxsFilterOpts {
     #[arg(short = 'f', long, help = "Filter by tx source address or ENS name")]
     pub from: Option<String>,
 
@@ -262,7 +262,7 @@ pub struct TxsFilter {
 
 impl TxsFilter {
     pub fn new(
-        filter_opts: &SharedFilterOpts,
+        filter_opts: &TxsFilterOpts,
         tx_indexes: Option<HashSet<u64>>,
         shared_opts: &SharedOpts,
         watch_mode: bool,

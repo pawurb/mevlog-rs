@@ -31,7 +31,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 use tracing::debug;
 
-use super::shared_init::{SharedOpts, TraceMode};
+use super::shared_init::TraceMode;
 use crate::models::evm_chain::EVMChain;
 
 pub struct RevmUtils {
@@ -41,11 +41,11 @@ pub struct RevmUtils {
 
 pub async fn init_revm_db(
     block_number: u64,
-    shared_opts: &SharedOpts,
+    trace_mode: &Option<TraceMode>,
     rpc_url: &str,
     chain: &EVMChain,
 ) -> Result<Option<RevmUtils>> {
-    match shared_opts.trace {
+    match trace_mode {
         Some(TraceMode::Revm) => {}
         _ => return Ok(None),
     };

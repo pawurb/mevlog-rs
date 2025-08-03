@@ -64,7 +64,7 @@ pub struct MEVBlock {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn process_block(
+pub async fn generate_block(
     provider: &Arc<GenericProvider>,
     conn: &SqlitePool,
     block_number: u64,
@@ -75,8 +75,8 @@ pub async fn process_block(
     chain: &EVMChain,
     rpc_url: &str,
     native_token_price: Option<f64>,
-) -> Result<()> {
-    let revm_utils = init_revm_db(block_number - 1, shared_opts, rpc_url, chain).await?;
+) -> Result<MEVBlock> {
+    let revm_utils = init_revm_db(block_number - 1, &shared_opts.trace, rpc_url, chain).await?;
 
     let (mut revm_db, _anvil) = match shared_opts.trace {
         Some(TraceMode::Revm) => {
@@ -110,9 +110,7 @@ pub async fn process_block(
         )
         .await?;
 
-    mev_block.print();
-
-    Ok(())
+    Ok(mev_block)
 }
 
 impl MEVBlock {

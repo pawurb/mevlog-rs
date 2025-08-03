@@ -8,15 +8,15 @@ use mevlog::{
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{
-        mev_block::process_block,
-        txs_filter::{SharedFilterOpts, TxsFilter},
+        mev_block::generate_block,
+        txs_filter::{TxsFilter, TxsFilterOpts},
     },
 };
 
 #[derive(Debug, Parser)]
 pub struct WatchArgs {
     #[command(flatten)]
-    filter: SharedFilterOpts,
+    filter: TxsFilterOpts,
 
     #[command(flatten)]
     shared_opts: SharedOpts,
@@ -43,22 +43,7 @@ impl WatchArgs {
 
         let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
 
-        let block_number = provider.get_block_number().await?;
-        process_block(
-            &provider,
-            &sqlite,
-            block_number,
-            &ens_lookup,
-            &shared_deps.symbols_lookup_worker,
-            &mev_filter,
-            &self.shared_opts,
-            &shared_deps.chain,
-            &shared_deps.rpc_url,
-            native_token_price,
-        )
-        .await?;
-
-        let mut current_block_number = provider.get_block_number().await?;
+        let mut current_block_number = provider.get_block_number().await? - 1;
 
         loop {
             let new_block_number = provider.get_block_number().await?;
@@ -68,7 +53,7 @@ impl WatchArgs {
                 continue;
             }
             current_block_number = new_block_number;
-            process_block(
+            let mev_block = generate_block(
                 &provider,
                 &sqlite,
                 current_block_number,
@@ -81,6 +66,8 @@ impl WatchArgs {
                 native_token_price,
             )
             .await?;
+
+            mev_block.print();
         }
 
         #[allow(unreachable_code)]

@@ -8,8 +8,8 @@ use mevlog::{
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{
-        mev_block::process_block,
-        txs_filter::{SharedFilterOpts, TxsFilter},
+        mev_block::generate_block,
+        txs_filter::{TxsFilter, TxsFilterOpts},
     },
 };
 
@@ -19,7 +19,7 @@ pub struct SearchArgs {
     blocks: String,
 
     #[command(flatten)]
-    filter: SharedFilterOpts,
+    filter: TxsFilterOpts,
 
     #[command(flatten)]
     shared_opts: SharedOpts,
@@ -52,7 +52,7 @@ impl SearchArgs {
             println!("{SEPARATORER}");
         }
         for block_number in block_range.from..=block_range.to {
-            process_block(
+            let mev_block = generate_block(
                 &provider,
                 &sqlite,
                 block_number,
@@ -65,6 +65,8 @@ impl SearchArgs {
                 native_token_price,
             )
             .await?;
+
+            mev_block.print();
         }
 
         if mev_filter.top_metadata {
