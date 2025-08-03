@@ -33,8 +33,8 @@ pub struct SharedDeps {
     pub rpc_url: String,
 }
 
-pub async fn init_deps(shared_opts: &SharedOpts) -> Result<SharedDeps> {
-    let rpc_url = match (&shared_opts.rpc_url, shared_opts.chain_id) {
+pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
+    let rpc_url = match (&conn_opts.rpc_url, conn_opts.chain_id) {
         (Some(url), None) => url.clone(),
         (None, Some(chain_id)) => {
             let chain_info = get_chain_info(chain_id, 10).await?;
@@ -98,6 +98,18 @@ pub fn config_path() -> PathBuf {
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct SharedOpts {
+    #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
+    pub trace: Option<TraceMode>,
+
+    #[arg(long, help = "Show detailed tx calls info")]
+    pub show_calls: bool,
+
+    #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
+    pub erc20_transfer_amount: bool,
+}
+
+#[derive(Clone, Debug, clap::Parser)]
+pub struct ConnOpts {
     #[arg(
         long,
         help = "The URL of the HTTP provider",
@@ -112,15 +124,6 @@ pub struct SharedOpts {
         conflicts_with = "rpc_url"
     )]
     pub chain_id: Option<u64>,
-
-    #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
-    pub trace: Option<TraceMode>,
-
-    #[arg(long, help = "Show detailed tx calls info")]
-    pub show_calls: bool,
-
-    #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
-    pub erc20_transfer_amount: bool,
 }
 
 #[derive(Debug, Clone, clap::Parser)]

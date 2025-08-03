@@ -7,7 +7,7 @@ use mevlog::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
         revm_tracing::init_revm_db,
-        shared_init::{init_deps, SharedOpts, TraceMode},
+        shared_init::{init_deps, ConnOpts, SharedOpts, TraceMode},
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{mev_block::MEVBlock, txs_filter::TxsFilter},
@@ -42,6 +42,9 @@ pub struct TxArgs {
 
     #[command(flatten)]
     shared_opts: SharedOpts,
+
+    #[command(flatten)]
+    conn_opts: ConnOpts,
 }
 
 impl TxArgs {
@@ -53,7 +56,7 @@ impl TxArgs {
             eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
         }
 
-        let shared_deps = init_deps(&self.shared_opts).await?;
+        let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
         let tx = provider.get_transaction_by_hash(self.tx_hash).await?;

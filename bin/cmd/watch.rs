@@ -4,7 +4,7 @@ use eyre::Result;
 use mevlog::{
     misc::{
         ens_utils::ENSLookup,
-        shared_init::{init_deps, SharedOpts},
+        shared_init::{init_deps, ConnOpts, SharedOpts},
         utils::{get_native_token_price, SEPARATORER},
     },
     models::{
@@ -20,11 +20,14 @@ pub struct WatchArgs {
 
     #[command(flatten)]
     shared_opts: SharedOpts,
+
+    #[command(flatten)]
+    conn_opts: ConnOpts,
 }
 
 impl WatchArgs {
     pub async fn run(&self) -> Result<()> {
-        let shared_deps = init_deps(&self.shared_opts).await?;
+        let shared_deps = init_deps(&self.conn_opts).await?;
         let sqlite = shared_deps.sqlite;
         let provider = shared_deps.provider;
 
