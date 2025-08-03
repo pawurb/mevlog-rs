@@ -12,6 +12,8 @@ pub struct RpcEndpoint {
     pub url: String,
 }
 
+const CHAINLIST_URL: &str = "https://chainlist.org/rpcs.json";
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct ChainInfo {
     #[serde(rename = "chainId")]
@@ -25,18 +27,13 @@ pub struct ChainInfo {
 }
 
 pub async fn get_chain_info(chain_id: u64, timeout_sec: u64) -> Result<ChainInfo> {
-    let client = reqwest::Client::new();
-
-    let response = client.get("https://chainlist.org/rpcs.json").send().await?;
-
-    let chains: Vec<ChainInfo> = response.json().await?;
+    let chains = get_all_chains().await?;
 
     let mut chain = chains
         .into_iter()
         .find(|c| c.chain_id == chain_id)
         .ok_or_else(|| eyre::eyre!("Chain ID {} not found", chain_id))?;
 
-    // Benchmark RPC URLs
     let benchmark_futures = chain
         .rpc_endpoints
         .iter()
@@ -63,6 +60,13 @@ pub async fn get_chain_info(chain_id: u64, timeout_sec: u64) -> Result<ChainInfo
     chain.benchmarked_rpc_urls = benchmarked_rpc_urls;
 
     Ok(chain)
+}
+
+pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
+    let client = reqwest::Client::new();
+    let response = client.get(CHAINLIST_URL).send().await?;
+    let chains: Vec<ChainInfo> = response.json().await?;
+    Ok(chains)
 }
 
 pub async fn benchmark_url(url: String, timeout_sec: u64) -> Result<u64> {

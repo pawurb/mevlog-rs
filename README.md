@@ -66,6 +66,12 @@ mevlog watch --chain-id 56       # BSC
 
 When using `--chain-id`, mevlog automatically fetches available RPC URLs from [ChainList](https://chainlist.org/), benchmarks them, and selects the fastest responding endpoint. Please remember that `--trace rpc` will likely not work with public RPC endpoints. And `--trace revm` could be throttled.
 
+To discover available chain IDs, use the `chains` command:
+```bash
+mevlog chains --filter arbitrum  # Find Arbitrum-related chains
+mevlog chains --filter base      # Find Base-related chains
+```
+
 On initial run `mevlog` downloads ~80mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [chains data](https://github.com/ethereum-lists/chains) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
 
 To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
@@ -255,12 +261,34 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 
 
 You can reverse the display order by adding the `--reverse` flag.
 
+## Listing available chains
+
+```bash
+mevlog chains                    # List all available chains
+mevlog chains --filter ethereum # Filter chains containing "ethereum" 
+mevlog chains --filter polygon  # Filter chains containing "polygon"
+```
+
+Sample output:
+```text
+Available chains (7 total):
+#    Chain ID Name
+------------------------------------------------------------
+1    1        Ethereum Mainnet
+2    61       Ethereum Classic
+3    1617     Ethereum Inscription Mainnet
+4    52226    Cytonic Ethereum Testnet
+5    513100   EthereumFair
+6    560048   Ethereum Hoodi
+7    11155111 Ethereum Sepolia
+```
+
 ## Getting RPC URLs for chains
 
 ```bash
-mevlog rpc-urls 1    # Ethereum mainnet
-mevlog rpc-urls 56   # BSC mainnet
-mevlog rpc-urls 137  # Polygon mainnet
+mevlog rpc-urls --chain-id 1    # Ethereum mainnet
+mevlog rpc-urls --chain-id  56  # BSC mainnet
+mevlog rpc-urls --chain-id 137  # Polygon mainnet
 ```
 
 Sample output: 
@@ -282,7 +310,7 @@ This command checks the latest chain data from [ChainList](https://chainlist.org
 By default only RPC endpoints responding under 1 sec are included. If you're using a network with a worse connection quality you can increase this value:
 
 ```bash
-mevlog rpc-urls 1 --rpc-timeout-sec 5
+mevlog rpc-urls --chain-id 1 --rpc-timeout-sec 5
 ```
 
 ## Supported EVM chains

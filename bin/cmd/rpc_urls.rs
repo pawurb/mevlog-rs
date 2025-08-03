@@ -3,7 +3,7 @@ use mevlog::misc::rpc_urls::get_chain_info;
 
 #[derive(Debug, clap::Parser)]
 pub struct RpcUrlsArgs {
-    #[arg(help = "Chain ID to get RPC URLs for")]
+    #[arg(help = "Chain ID to get RPC URLs for", long)]
     pub chain_id: u64,
     #[arg(
         help = "Timeout in seconds for a healthy RPC URL",

@@ -1,3 +1,4 @@
+pub mod chains;
 pub mod rpc_urls;
 pub mod search;
 pub mod tx;
