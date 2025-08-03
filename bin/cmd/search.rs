@@ -19,7 +19,7 @@ pub struct SearchArgs {
     blocks: String,
 
     #[command(flatten)]
-    filter: TxsFilterOpts,
+    filter_opts: TxsFilterOpts,
 
     #[command(flatten)]
     shared_opts: SharedOpts,
@@ -30,38 +30,33 @@ pub struct SearchArgs {
 
 impl SearchArgs {
     pub async fn run(&self) -> Result<()> {
-        let shared_deps = init_deps(&self.conn_opts).await?;
-        let sqlite = shared_deps.sqlite;
-        let provider = shared_deps.provider;
+        let deps = init_deps(&self.conn_opts).await?;
 
-        let mev_filter = TxsFilter::new(&self.filter, None, &self.shared_opts, false)?;
+        let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, false)?;
 
-        let ens_lookup = ENSLookup::lookup_mode(
-            mev_filter.ens_query(),
-            shared_deps.ens_lookup_worker,
-            &shared_deps.chain,
-        )
-        .await;
+        let ens_lookup =
+            ENSLookup::lookup_mode(txs_filter.ens_query(), deps.ens_lookup_worker, &deps.chain)
+                .await;
 
-        let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
+        let native_token_price = get_native_token_price(&deps.chain, &deps.provider).await?;
 
-        let latest_block = provider.get_block_number().await?;
+        let latest_block = deps.provider.get_block_number().await?;
         let block_range = BlocksRange::from_str(&self.blocks, latest_block)?;
 
-        if !mev_filter.top_metadata {
+        if !txs_filter.top_metadata {
             println!("{SEPARATORER}");
         }
         for block_number in block_range.from..=block_range.to {
             let mev_block = generate_block(
-                &provider,
-                &sqlite,
+                &deps.provider,
+                &deps.sqlite,
                 block_number,
                 &ens_lookup,
-                &shared_deps.symbols_lookup_worker,
-                &mev_filter,
+                &deps.symbols_lookup_worker,
+                &txs_filter,
                 &self.shared_opts,
-                &shared_deps.chain,
-                &shared_deps.rpc_url,
+                &deps.chain,
+                &deps.rpc_url,
                 native_token_price,
             )
             .await?;
@@ -69,7 +64,7 @@ impl SearchArgs {
             mev_block.print();
         }
 
-        if mev_filter.top_metadata {
+        if txs_filter.top_metadata {
             println!("{SEPARATORER}");
         }
         // Allow async ENS and symbols lookups to finish

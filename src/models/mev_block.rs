@@ -66,7 +66,7 @@ pub struct MEVBlock {
 #[allow(clippy::too_many_arguments)]
 pub async fn generate_block(
     provider: &Arc<GenericProvider>,
-    conn: &SqlitePool,
+    sqlite: &SqlitePool,
     block_number: u64,
     ens_lookup: &ENSLookup,
     symbols_lookup: &SymbolLookupWorker,
@@ -101,7 +101,7 @@ pub async fn generate_block(
     mev_block
         .populate_txs(
             txs_filter,
-            conn,
+            sqlite,
             ens_lookup,
             symbols_lookup,
             provider,

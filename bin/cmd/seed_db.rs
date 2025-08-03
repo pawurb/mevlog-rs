@@ -23,27 +23,27 @@ impl SeedDBArgs {
     pub async fn run(&self) -> Result<()> {
         println!("Seeding db");
         init_sqlite_db(None).await?;
-        let conn = sqlite_conn(None).await?;
+        let sqlite = sqlite_conn(None).await?;
 
         tracing::info!("Seeding database");
 
-        self.seed_chains(&conn).await?;
+        self.seed_chains(&sqlite).await?;
 
         if std::env::var("SEED_SIGNATURES").unwrap_or_default() == "true" {
-            self.seed_signatures(&conn).await?;
+            self.seed_signatures(&sqlite).await?;
         } else {
             tracing::info!("SEED_SIGNATURES not set to true, skipping signature seeding");
         }
 
         info!("Truncating WAL");
-        sqlite_truncate_wal(&conn).await?;
+        sqlite_truncate_wal(&sqlite).await?;
 
         info!("Finished seeding database");
 
         Ok(())
     }
 
-    async fn seed_chains(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+    async fn seed_chains(&self, sqlite: &sqlx::SqlitePool) -> Result<()> {
         tracing::info!("Seeding chains from ChainList.org");
 
         let chains = get_all_chains().await?;
@@ -60,7 +60,7 @@ impl SeedDBArgs {
             }
 
             // Skip if chain already exists
-            if DBChain::exists(chain.chain_id as i64, conn).await? {
+            if DBChain::exists(chain.chain_id as i64, sqlite).await? {
                 continue;
             }
 
@@ -76,7 +76,7 @@ impl SeedDBArgs {
                 uniswap_v2_pool: None,
             };
 
-            match db_chain.save(conn).await {
+            match db_chain.save(sqlite).await {
                 Ok(_) => total_success += 1,
                 Err(e) => {
                     tracing::warn!("Error saving chain {}: {}", chain.chain_id, e);
@@ -92,7 +92,7 @@ impl SeedDBArgs {
         Ok(())
     }
 
-    async fn seed_signatures(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+    async fn seed_signatures(&self, sqlite: &sqlx::SqlitePool) -> Result<()> {
         tracing::info!("Seeding signatures from OpenChain API");
 
         let signatures_file = self.get_or_download_signatures_file().await?;
@@ -114,7 +114,7 @@ impl SeedDBArgs {
         let batch_size = 1000;
 
         // Start first transaction
-        let mut tx = conn.begin().await?;
+        let mut tx = sqlite.begin().await?;
 
         for (i, line) in reader.lines().enumerate() {
             let line = line?;
@@ -149,7 +149,7 @@ impl SeedDBArgs {
             // Commit transaction every batch_size inserts
             if batch_count >= batch_size {
                 tx.commit().await?;
-                tx = conn.begin().await?;
+                tx = sqlite.begin().await?;
                 batch_count = 0;
             }
 

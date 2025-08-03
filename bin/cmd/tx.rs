@@ -55,10 +55,8 @@ impl TxArgs {
             eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
         }
 
-        let shared_deps = init_deps(&self.conn_opts).await?;
-        let sqlite = shared_deps.sqlite;
-        let provider = shared_deps.provider;
-        let tx = provider.get_transaction_by_hash(self.tx_hash).await?;
+        let deps = init_deps(&self.conn_opts).await?;
+        let tx = deps.provider.get_transaction_by_hash(self.tx_hash).await?;
         let tx = tx.ok_or_else(|| eyre!("tx {} not found", self.tx_hash))?;
 
         let block_number = tx.block_number.expect("commited tx must have block number");
@@ -79,7 +77,7 @@ impl TxArgs {
             to: max_index,
         });
 
-        let native_token_price = get_native_token_price(&shared_deps.chain, &provider).await?;
+        let native_token_price = get_native_token_price(&deps.chain, &deps.provider).await?;
 
         let txs_filter = TxsFilter {
             tx_indexes: Some(tx_indexes),
@@ -104,22 +102,22 @@ impl TxArgs {
             show_erc20_transfer_amount: self.shared_opts.erc20_transfer_amount,
         };
 
-        let ens_lookup_mode = if shared_deps.chain.is_mainnet() {
+        let ens_lookup_mode = if deps.chain.is_mainnet() {
             ENSLookup::Sync
         } else {
             ENSLookup::Disabled
         };
 
         let mev_block = generate_block(
-            &provider,
-            &sqlite,
+            &deps.provider,
+            &deps.sqlite,
             block_number,
             &ens_lookup_mode,
-            &shared_deps.symbols_lookup_worker,
+            &deps.symbols_lookup_worker,
             &txs_filter,
             &self.shared_opts,
-            &shared_deps.chain,
-            &shared_deps.rpc_url,
+            &deps.chain,
+            &deps.rpc_url,
             native_token_price,
         )
         .await?;

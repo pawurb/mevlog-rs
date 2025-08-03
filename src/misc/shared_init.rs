@@ -56,20 +56,20 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         check_and_create_indexes().await?;
     }
 
-    let sqlite_conn = sqlite_conn(None).await?;
+    let sqlite = sqlite_conn(None).await?;
     let ens_lookup_worker = start_ens_lookup_worker(&rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&rpc_url);
     let provider = init_provider(&rpc_url).await?;
     let provider = Arc::new(provider);
 
     let chain_id = provider.get_chain_id().await?;
-    let db_chain = DBChain::find(chain_id as i64, &sqlite_conn)
+    let db_chain = DBChain::find(chain_id as i64, &sqlite)
         .await?
         .unwrap_or(DBChain::unknown(chain_id as i64));
     let chain = EVMChain::new(db_chain, rpc_url.clone())?;
 
     Ok(SharedDeps {
-        sqlite: sqlite_conn,
+        sqlite,
         ens_lookup_worker,
         symbols_lookup_worker,
         provider,

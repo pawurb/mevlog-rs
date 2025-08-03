@@ -45,7 +45,7 @@ pub async fn sqlite_conn(db_url: Option<String>) -> Result<SqlitePool> {
     let db_url = db_url.unwrap_or(default_db_path().to_string_lossy().into_owned());
 
     match SqlitePool::connect(&db_url).await {
-        Ok(conn) => Ok(conn),
+        Ok(sqlite) => Ok(sqlite),
         Err(error) => eyre::bail!("Error connecting to db: {}", error),
     }
 }
