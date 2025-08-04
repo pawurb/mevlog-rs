@@ -231,9 +231,37 @@ Options:
           Display transfer amounts in ERC20 Transfer event logs
       --failed 
           Show only txs which failed to execute
+      --format <FORMAT>
+          Output format ('default', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
 ```
 
 Both `search` and `watch` support the same filtering options.
+
+## Output formats
+
+Mevlog supports different output formats via the `--format` option:
+
+- `default` (default): Human-readable colored output, displays results block by block as they are processed
+- `json`: Compact, oneline JSON output, displays all results at once after processing all blocks
+- `json-pretty`: Pretty-printed JSON output, displays all results at once after processing all blocks  
+- `json-stream`: Compact, oneline JSON output, displays results block by block as they are processed
+- `json-pretty-stream`: Pretty-printed JSON output, displays results block by block as they are processed
+
+**Streaming vs Batch behavior:**
+- **Streaming formats** (`default`, `json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
+- **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks, useful for piping to other tools or when you need all results in a single JSON array
+
+Examples:
+```bash
+# Default human-readable output (streaming)
+mevlog search -b 10:latest --format default
+
+# Compact JSON, all results at once
+mevlog search -b 10:latest --format json
+
+# Pretty JSON, streaming block by block
+mevlog search -b 10:latest --format json-pretty-stream
+```
 
 ## EVM tracing modes
 

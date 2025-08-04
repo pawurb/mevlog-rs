@@ -13,6 +13,7 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{keccak256, Address, Bytes, FixedBytes, TxKind, U256};
+use serde::Serialize;
 use sqlx::SqlitePool;
 
 use super::{
@@ -37,7 +38,7 @@ pub struct ReceiptData {
     pub gas_used: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CallExtract {
     pub from: Address,
     pub to: Address,
@@ -227,6 +228,10 @@ impl MEVTransaction {
         }
 
         logs
+    }
+
+    pub fn log_groups(&self) -> &Vec<MEVLogGroup> {
+        &self.log_groups
     }
 
     pub fn gas_tx_cost(&self) -> u128 {

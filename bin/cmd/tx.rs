@@ -7,7 +7,7 @@ use mevlog::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts, SharedOpts},
-        utils::{get_native_token_price, SEPARATORER},
+        utils::get_native_token_price,
     },
     models::{mev_block::generate_block, txs_filter::TxsFilter},
 };
@@ -122,11 +122,7 @@ impl TxArgs {
         )
         .await?;
 
-        if !txs_filter.top_metadata {
-            println!("{SEPARATORER}");
-        }
-
-        mev_block.print();
+        mev_block.print_with_format(&self.shared_opts.format);
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

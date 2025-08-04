@@ -11,10 +11,10 @@ use crate::misc::symbol_utils::SymbolLookupWorker;
 
 #[derive(Debug)]
 pub struct MEVLog {
-    source: Address,
+    pub source: Address,
     pub signature: MEVLogSignature,
-    topics: Vec<FixedBytes<32>>,
-    data: Vec<u8>,
+    pub topics: Vec<FixedBytes<32>>,
+    pub data: Vec<u8>,
 }
 
 impl MEVLog {
