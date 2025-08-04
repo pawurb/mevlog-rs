@@ -11,7 +11,7 @@ use crate::misc::{
 #[derive(Debug, Clone)]
 pub struct MEVLogSignature {
     pub signature: String,
-    symbol: Option<String>,
+    pub symbol: Option<String>,
     pub amount: Option<U256>,
     show_amount: bool,
 }

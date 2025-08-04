@@ -106,6 +106,13 @@ pub struct SharedOpts {
 
     #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
     pub erc20_transfer_amount: bool,
+
+    #[arg(
+        long,
+        help = "Output format ('default', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
+        default_value = "default"
+    )]
+    pub format: OutputFormat,
 }
 
 #[derive(Clone, Debug, clap::Parser)]
@@ -140,6 +147,36 @@ impl FromStr for TraceMode {
             "revm" => Ok(Self::Revm),
             "rpc" => Ok(Self::RPC),
             _ => Err(eyre::eyre!("Invalid tracing mode")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
+pub enum OutputFormat {
+    Default,
+    Json,
+    JsonPretty,
+    JsonStream,
+    JsonPrettyStream,
+}
+
+impl OutputFormat {
+    pub fn is_stream(&self) -> bool {
+        self == &Self::JsonStream || self == &Self::JsonPrettyStream || self == &Self::Default
+    }
+}
+
+impl FromStr for OutputFormat {
+    type Err = eyre::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "default" => Ok(Self::Default),
+            "json" => Ok(Self::Json),
+            "json-pretty" => Ok(Self::JsonPretty),
+            "json-stream" => Ok(Self::JsonStream),
+            "json-pretty-stream" => Ok(Self::JsonPrettyStream),
+            _ => Err(eyre::eyre!("Invalid output format")),
         }
     }
 }

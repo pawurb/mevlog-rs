@@ -32,12 +32,13 @@ use crate::{
             RevmBlockContext,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
-        shared_init::{SharedOpts, TraceMode},
+        shared_init::{OutputFormat, SharedOpts, TraceMode},
         symbol_utils::SymbolLookupWorker,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
     models::{
         evm_chain::EVMChain,
+        json::mev_block_json::MEVBlockJson,
         mev_transaction::{extract_signature, CallExtract},
     },
     GenericProvider,
@@ -51,16 +52,16 @@ pub struct TxData {
 }
 
 pub struct MEVBlock {
-    native_token_price: Option<f64>,
-    block_number: u64,
-    mev_transactions: HashMap<u64, MEVTransaction>,
-    revm_transactions: HashMap<u64, TxData>,
-    txs_data: Vec<TxData>,
-    revm_context: RevmBlockContext,
-    txs_count: u64,
-    reversed_order: bool,
-    top_metadata: bool,
-    chain: EVMChain,
+    pub native_token_price: Option<f64>,
+    pub block_number: u64,
+    pub mev_transactions: HashMap<u64, MEVTransaction>,
+    pub revm_transactions: HashMap<u64, TxData>,
+    pub txs_data: Vec<TxData>,
+    pub revm_context: RevmBlockContext,
+    pub txs_count: u64,
+    pub reversed_order: bool,
+    pub top_metadata: bool,
+    pub chain: EVMChain,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -678,6 +679,30 @@ impl MEVBlock {
         let mev_block_str = format!("{self}");
         print!("{}", escape_html(&mev_block_str));
     }
+
+    pub fn print_with_format(&self, format: &OutputFormat) {
+        match format {
+            OutputFormat::Default => self.print(),
+            OutputFormat::Json | OutputFormat::JsonStream => self.print_json(),
+            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => self.print_json_pretty(),
+        }
+    }
+
+    pub fn print_json(&self) {
+        let block_json = MEVBlockJson::from(self);
+        match serde_json::to_string(&block_json) {
+            Ok(json) => println!("{json}"),
+            Err(e) => eprintln!("Error serializing to JSON: {e}"),
+        }
+    }
+
+    pub fn print_json_pretty(&self) {
+        let block_json = MEVBlockJson::from(self);
+        match serde_json::to_string_pretty(&block_json) {
+            Ok(json) => println!("{json}"),
+            Err(e) => eprintln!("Error serializing to JSON: {e}"),
+        }
+    }
 }
 
 fn escape_html(input: &str) -> String {
@@ -693,6 +718,8 @@ impl fmt::Display for MEVBlock {
         if std::env::var("QUIET").unwrap_or_default() == "1" {
             return Ok(());
         }
+
+        writeln!(f, "{SEPARATORER}")?;
 
         let mut indexes = self.mev_transactions.keys().collect::<Vec<_>>();
         indexes.sort();
@@ -728,8 +755,8 @@ impl fmt::Display for MEVBlock {
 
         if !self.top_metadata {
             writeln!(f, "{}", block_metadata(self).blue().bold())?;
-            writeln!(f, "{SEPARATORER}")?;
         }
+        writeln!(f, "{SEPARATORER}")?;
 
         Ok(())
     }

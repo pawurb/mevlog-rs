@@ -4,10 +4,11 @@ use mevlog::{
     misc::{
         args_parsing::BlocksRange,
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts, SharedOpts},
-        utils::{get_native_token_price, SEPARATORER},
+        shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        utils::get_native_token_price,
     },
     models::{
+        json::mev_block_json::MEVBlockJson,
         mev_block::generate_block,
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
@@ -43,9 +44,8 @@ impl SearchArgs {
         let latest_block = deps.provider.get_block_number().await?;
         let block_range = BlocksRange::from_str(&self.blocks, latest_block)?;
 
-        if !txs_filter.top_metadata {
-            println!("{SEPARATORER}");
-        }
+        let mut mev_blocks = vec![];
+
         for block_number in block_range.from..=block_range.to {
             let mev_block = generate_block(
                 &deps.provider,
@@ -61,12 +61,27 @@ impl SearchArgs {
             )
             .await?;
 
-            mev_block.print();
+            if self.shared_opts.format.is_stream() {
+                mev_block.print_with_format(&self.shared_opts.format);
+            } else {
+                mev_blocks.push(MEVBlockJson::from(&mev_block));
+            }
         }
 
-        if txs_filter.top_metadata {
-            println!("{SEPARATORER}");
+        if !self.shared_opts.format.is_stream() {
+            match self.shared_opts.format {
+                OutputFormat::Json => {
+                    println!("{}", serde_json::to_string(&mev_blocks).unwrap());
+                }
+                OutputFormat::JsonPretty => {
+                    println!("{}", serde_json::to_string_pretty(&mev_blocks).unwrap());
+                }
+                _ => {
+                    unreachable!()
+                }
+            }
         }
+
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())

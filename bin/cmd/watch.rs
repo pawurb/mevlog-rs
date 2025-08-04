@@ -5,7 +5,7 @@ use mevlog::{
     misc::{
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts, SharedOpts},
-        utils::{get_native_token_price, SEPARATORER},
+        utils::get_native_token_price,
     },
     models::{
         mev_block::generate_block,
@@ -29,7 +29,6 @@ impl WatchArgs {
     pub async fn run(&self) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
-        println!("{SEPARATORER}");
         let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, true)?;
 
         let ens_lookup =
@@ -62,7 +61,7 @@ impl WatchArgs {
             )
             .await?;
 
-            mev_block.print();
+            mev_block.print_with_format(&self.shared_opts.format);
         }
 
         #[allow(unreachable_code)]
