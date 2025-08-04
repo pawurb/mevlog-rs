@@ -364,19 +364,18 @@ impl MEVBlock {
     ) -> Result<()> {
         let tx_indices: Vec<u64> = self.mev_transactions.keys().cloned().collect();
 
-        let mut to_remove = vec![];
-
         for tx_index in tx_indices {
             let mev_tx = self
                 .mev_transactions
                 .get_mut(&tx_index)
                 .expect("Tx not found");
             let tx_hash = mev_tx.tx_hash;
-            let touching = rpc_touching_accounts(tx_hash, provider).await?;
 
             if let Some(touched) = &filter.touching {
+                let touching = rpc_touching_accounts(tx_hash, provider).await?;
+
                 if !touching.contains(touched) {
-                    to_remove.push(tx_index);
+                    self.mev_transactions.remove(&tx_index);
                     continue;
                 }
             }
@@ -406,12 +405,8 @@ impl MEVBlock {
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
 
             if filter.tracing_should_exclude(mev_tx) {
-                to_remove.push(tx_index);
+                self.mev_transactions.remove(&tx_index);
             }
-        }
-
-        for index in to_remove {
-            self.mev_transactions.remove(&index);
         }
 
         Ok(())
