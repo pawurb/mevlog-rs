@@ -64,7 +64,7 @@ impl fmt::Display for CallExtract {
 
 #[derive(Debug)]
 pub struct MEVTransaction {
-    native_token_price: Option<f64>,
+    pub native_token_price: Option<f64>,
     pub chain: EVMChain,
     pub signature: String,
     pub signature_hash: Option<String>,
@@ -239,9 +239,11 @@ impl MEVTransaction {
         self.receipt.gas_used as u128 * self.receipt.effective_gas_price
     }
 
-    pub fn full_tx_cost(&self) -> U256 {
-        U256::from(self.receipt.gas_used as u128 * self.receipt.effective_gas_price)
-            .add(self.coinbase_transfer.expect("must be traced"))
+    pub fn full_tx_cost(&self) -> Option<U256> {
+        self.coinbase_transfer.map(|coinbase_transfer| {
+            U256::from(self.receipt.gas_used as u128 * self.receipt.effective_gas_price)
+                .add(coinbase_transfer)
+        })
     }
 
     pub fn effective_gas_price(&self) -> U256 {
@@ -252,7 +254,9 @@ impl MEVTransaction {
         if self.receipt.gas_used == 0 {
             U256::from(0)
         } else {
-            self.full_tx_cost().div(U256::from(self.receipt.gas_used))
+            self.full_tx_cost()
+                .expect("must be traced")
+                .div(U256::from(self.receipt.gas_used))
         }
     }
 
@@ -392,7 +396,7 @@ impl fmt::Display for MEVTransaction {
                     "{:width$} {}",
                     "Real Tx Cost:".green().bold(),
                     display_token_and_usd(
-                        self.full_tx_cost(),
+                        self.full_tx_cost().expect("must be traced"),
                         self.native_token_price,
                         &self.chain.currency_symbol
                     ),
@@ -480,7 +484,7 @@ fn display_target(tx: &MEVTransaction) -> String {
     }
 }
 
-fn eth_to_usd(value: U256, token_price: f64) -> f64 {
+pub fn eth_to_usd(value: U256, token_price: f64) -> f64 {
     let decimals = 18;
     let value_dec = BigDecimal::from_str(&value.to_string()).unwrap();
     let one_eth_dec = BigDecimal::from_str(&format!("1e{decimals}")).unwrap();
@@ -512,7 +516,11 @@ fn display_usd(value: f64) -> String {
     format!("${result}.{decimal_part}")
 }
 
-fn display_token_and_usd(value: U256, token_price: Option<f64>, currency_symbol: &str) -> String {
+pub fn display_token_and_usd(
+    value: U256,
+    token_price: Option<f64>,
+    currency_symbol: &str,
+) -> String {
     if token_price.is_none() {
         return format!("{}", wei_to_eth(value));
     }

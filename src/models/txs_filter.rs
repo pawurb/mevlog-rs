@@ -367,7 +367,7 @@ impl TxsFilter {
 
     pub fn tracing_should_exclude(&self, mev_tx: &MEVTransaction) -> bool {
         if let Some(full_tx_cost) = &self.real_tx_cost {
-            if !full_tx_cost.matches(mev_tx.full_tx_cost()) {
+            if !full_tx_cost.matches(mev_tx.full_tx_cost().expect("must be traced")) {
                 return true;
             }
         }
