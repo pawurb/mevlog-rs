@@ -7,7 +7,8 @@ pub struct MEVBlockJson {
     pub block_number: u64,
     pub native_token_price: Option<f64>,
     pub transactions: Vec<MEVTransactionJson>,
-    pub txs_count: u64,
+    pub matching_txs_count: u64,
+    pub all_txs_count: u64,
 }
 
 impl From<&MEVBlock> for MEVBlockJson {
@@ -28,7 +29,8 @@ impl From<&MEVBlock> for MEVBlockJson {
                 .native_token_price
                 .map(|price| (price * 100.0).round() / 100.0),
             transactions: mev_transactions,
-            txs_count: block.mev_transactions.len() as u64,
+            matching_txs_count: block.mev_transactions.len() as u64,
+            all_txs_count: block.txs_count,
         }
     }
 }
