@@ -46,7 +46,7 @@ impl SearchArgs {
 
         let mut mev_blocks = vec![];
 
-        for block_number in block_range.from..=block_range.to {
+        for block_number in (block_range.from..=block_range.to).rev() {
             let mev_block = generate_block(
                 &deps.provider,
                 &deps.sqlite,
