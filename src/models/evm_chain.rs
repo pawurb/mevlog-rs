@@ -8,7 +8,7 @@ use crate::models::db_chain::DBChain;
 pub struct EVMChain {
     pub chain_id: u64,
     pub name: String,
-    pub explorer_url: String,
+    pub explorer_url: Option<String>,
     pub currency_symbol: String,
     pub chainlink_oracle: Option<Address>,
     pub uniswap_v2_pool: Option<Address>,
@@ -20,7 +20,7 @@ impl EVMChain {
         Ok(Self {
             chain_id: db_chain.id as u64,
             name: db_chain.name,
-            explorer_url: db_chain.explorer_url.unwrap_or("".to_string()),
+            explorer_url: db_chain.explorer_url,
             currency_symbol: db_chain.currency_symbol,
             chainlink_oracle: db_chain.chainlink_oracle.map(|s| {
                 s.parse()

@@ -765,7 +765,7 @@ fn block_metadata(block: &MEVBlock) -> String {
     format!(
         "{} | Age {:age_width$} | Base {:base_width$.2} gwei | Txs {}/{} | {} [{}]",
         block.block_number,
-        format_age(age),
+        format_block_age(age),
         base_fee_gwei,
         block.mev_transactions.len(),
         block.txs_count,
@@ -776,7 +776,7 @@ fn block_metadata(block: &MEVBlock) -> String {
     )
 }
 
-fn format_age(seconds: i64) -> String {
+pub fn format_block_age(seconds: i64) -> String {
     if seconds < 60 {
         format!("{seconds}s")
     } else if seconds < 3600 {

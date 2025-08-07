@@ -5,7 +5,9 @@ use crate::{
     misc::utils::ToU128,
     models::{
         json::mev_log_group_json::MEVLogGroupJson,
-        mev_transaction::{display_token_and_usd, CallExtract, MEVTransaction},
+        mev_transaction::{
+            display_token_and_usd, display_usd, eth_to_usd, CallExtract, MEVTransaction,
+        },
     },
 };
 
@@ -27,8 +29,10 @@ pub struct MEVTransactionJson {
     pub gas_used: u64,
     pub tx_cost: u128,
     pub display_tx_cost: String,
+    pub display_tx_cost_usd: Option<String>,
     pub full_tx_cost: Option<u128>,
     pub display_full_tx_cost: Option<String>,
+    pub display_full_tx_cost_usd: Option<String>,
     pub calls: Option<Vec<CallExtract>>,
     pub log_groups: Vec<MEVLogGroupJson>,
 }
@@ -61,6 +65,9 @@ impl From<&MEVTransaction> for MEVTransactionJson {
                 tx.native_token_price,
                 &tx.chain.currency_symbol,
             ),
+            display_tx_cost_usd: tx
+                .native_token_price
+                .map(|price| display_usd(eth_to_usd(U256::from(gas_tx_cost), price))),
             display_value: display_token_and_usd(
                 tx.value(),
                 tx.native_token_price,
@@ -73,6 +80,10 @@ impl From<&MEVTransaction> for MEVTransactionJson {
                     tx.native_token_price,
                     &tx.chain.currency_symbol,
                 )
+            }),
+            display_full_tx_cost_usd: full_tx_cost.and_then(|amt| {
+                tx.native_token_price
+                    .map(|price| display_usd(eth_to_usd(U256::from(amt), price)))
             }),
             gas_used: tx.receipt.gas_used,
             calls: tx.calls.clone(),

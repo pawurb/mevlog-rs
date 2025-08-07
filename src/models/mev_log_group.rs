@@ -36,7 +36,12 @@ impl fmt::Display for MEVLogGroup {
         writeln!(
             f,
             "  {}",
-            format!("{}/address/{}", self.chain.explorer_url, self.source).green()
+            format!(
+                "{}/address/{}",
+                self.chain.explorer_url.clone().unwrap_or_default(),
+                self.source
+            )
+            .green()
         )?;
         for log in &self.logs {
             writeln!(f, "    {log}")?;

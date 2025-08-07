@@ -304,13 +304,15 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
+        let explorer_url = self.chain.explorer_url.clone().unwrap_or_default();
+
         if self.top_metadata {
             writeln!(f, "{SEPARATOR}")?;
             writeln!(
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", self.chain.explorer_url, self.tx_hash).yellow(),
+                &format!("{}/tx/{}", explorer_url, self.tx_hash).yellow(),
             )?;
 
             writeln!(f)?;
@@ -324,7 +326,7 @@ impl fmt::Display for MEVTransaction {
                 f,
                 "[{}] {}",
                 self.index,
-                &format!("{}/tx/{}", self.chain.explorer_url, self.tx_hash).yellow(),
+                &format!("{}/tx/{}", explorer_url, self.tx_hash).yellow(),
             )?;
         }
 
@@ -496,7 +498,7 @@ pub fn eth_to_usd(value: U256, token_price: f64) -> f64 {
     result_rounded.to_f64().unwrap_or(0.0)
 }
 
-fn display_usd(value: f64) -> String {
+pub fn display_usd(value: f64) -> String {
     let rounded = (value * 100.0).round() / 100.0;
     let formatted = format!("{rounded:.2}");
     let parts: Vec<&str> = formatted.split('.').collect();
@@ -516,38 +518,43 @@ fn display_usd(value: f64) -> String {
     format!("${result}.{decimal_part}")
 }
 
+pub fn display_token(value: U256, currency_symbol: &str, approx: bool) -> String {
+    if value == U256::ZERO {
+        return format!("0 {currency_symbol}");
+    }
+    let prefix = if approx { "~" } else { "" };
+    format!("{}{:.5} {}", prefix, wei_to_eth(value), currency_symbol)
+}
+
 pub fn display_token_and_usd(
     value: U256,
     token_price: Option<f64>,
     currency_symbol: &str,
 ) -> String {
     if token_price.is_none() {
-        return format!("{}", wei_to_eth(value));
+        return display_token(value, currency_symbol, false);
     }
 
     let token_price = token_price.unwrap();
-
     let usd_value = eth_to_usd(value, token_price);
 
     if value == U256::ZERO {
-        return format!("0 {currency_symbol}");
+        return display_token(value, currency_symbol, false);
     }
 
-    if usd_value < 0.01 {
-        format!(
-            "~{:.5} {} | ~{}",
-            wei_to_eth(value),
-            currency_symbol,
-            display_usd(usd_value)
-        )
+    let token_display = if usd_value < 0.01 {
+        display_token(value, currency_symbol, true)
     } else {
-        format!(
-            "{:.5} {} | {}",
-            wei_to_eth(value),
-            currency_symbol,
-            display_usd(usd_value)
-        )
-    }
+        display_token(value, currency_symbol, false)
+    };
+
+    let usd_display = if usd_value < 0.01 {
+        format!("~{}", display_usd(usd_value))
+    } else {
+        display_usd(usd_value)
+    };
+
+    format!("{token_display} | {usd_display}")
 }
 
 // Common signatures, that are duplicate and mismatched in the database
