@@ -27,6 +27,10 @@ There's also [a beta web version](https://mevlog.rs/) available.
 
 ## Getting started
 
+> **⚠️ Note**  
+> This README reflects the latest development on the `main` branch.
+> For documentation matching the current release, see [crates.io](https://crates.io/crates/mevlog) — it stays in sync with the published crate.
+
 Mevlog uses [cryo CLI](https://github.com/paradigmxyz/cryo) for fetching data. Please install it first by running:
 
 ```bash
