@@ -8,7 +8,6 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
-        json::mev_block_json::MEVBlockJson,
         mev_block::generate_block,
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
@@ -64,17 +63,24 @@ impl SearchArgs {
             if self.shared_opts.format.is_stream() {
                 mev_block.print_with_format(&self.shared_opts.format);
             } else {
-                mev_blocks.push(MEVBlockJson::from(&mev_block));
+                mev_blocks.push(mev_block);
             }
         }
 
         if !self.shared_opts.format.is_stream() {
+            let transactions_json = mev_blocks
+                .iter()
+                .map(|block| block.transactions_json())
+                .collect::<Vec<_>>();
             match self.shared_opts.format {
                 OutputFormat::Json => {
-                    println!("{}", serde_json::to_string(&mev_blocks).unwrap());
+                    println!("{}", serde_json::to_string(&transactions_json).unwrap());
                 }
                 OutputFormat::JsonPretty => {
-                    println!("{}", serde_json::to_string_pretty(&mev_blocks).unwrap());
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&transactions_json).unwrap()
+                    );
                 }
                 _ => {
                     unreachable!()

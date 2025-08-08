@@ -38,7 +38,7 @@ use crate::{
     },
     models::{
         evm_chain::EVMChain,
-        json::mev_block_json::MEVBlockJson,
+        json::mev_transaction_json::MEVTransactionJson,
         mev_transaction::{extract_signature, CallExtract},
     },
     GenericProvider,
@@ -275,6 +275,7 @@ impl MEVBlock {
                 self.native_token_price,
                 self.chain.clone(),
                 tx.req.clone(),
+                self.block_number,
                 tx.receipt.clone(),
                 tx_hash,
                 tx_index,
@@ -684,16 +685,21 @@ impl MEVBlock {
     }
 
     pub fn print_json(&self) {
-        let block_json = MEVBlockJson::from(self);
-        match serde_json::to_string(&block_json) {
+        match serde_json::to_string(&self.transactions_json()) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }
     }
 
+    pub fn transactions_json(&self) -> Vec<MEVTransactionJson> {
+        self.mev_transactions
+            .values()
+            .map(MEVTransactionJson::from)
+            .collect::<Vec<_>>()
+    }
+
     pub fn print_json_pretty(&self) {
-        let block_json = MEVBlockJson::from(self);
-        match serde_json::to_string_pretty(&block_json) {
+        match serde_json::to_string_pretty(&self.transactions_json()) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }

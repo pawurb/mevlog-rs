@@ -64,6 +64,7 @@ impl fmt::Display for CallExtract {
 
 #[derive(Debug)]
 pub struct MEVTransaction {
+    pub block_number: u64,
     pub native_token_price: Option<f64>,
     pub chain: EVMChain,
     pub signature: String,
@@ -146,6 +147,7 @@ impl MEVTransaction {
         native_token_price: Option<f64>,
         chain: EVMChain,
         tx_req: TransactionRequest,
+        block_number: u64,
         receipt_data: ReceiptData,
         tx_hash: FixedBytes<32>,
         index: u64,
@@ -162,6 +164,7 @@ impl MEVTransaction {
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
 
         Ok(Self {
+            block_number,
             native_token_price,
             chain,
             nonce: tx_req.nonce.unwrap_or(0),

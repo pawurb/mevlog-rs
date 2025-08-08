@@ -13,6 +13,7 @@ use crate::{
 
 #[derive(Serialize)]
 pub struct MEVTransactionJson {
+    pub block_number: u64,
     pub signature: String,
     pub signature_hash: Option<String>,
     pub tx_hash: FixedBytes<32>,
@@ -45,6 +46,7 @@ impl From<&MEVTransaction> for MEVTransactionJson {
         let full_tx_cost = tx.full_tx_cost().map(|amt| amt.to_u128());
 
         Self {
+            block_number: tx.block_number,
             signature: tx.signature.clone(),
             signature_hash: tx.signature_hash.clone(),
             tx_hash: tx.tx_hash,
