@@ -21,7 +21,7 @@ revm = { version = "27.0.2", features = ["std", "alloydb"] }
 foundry-fork-db = "0.16.0"
 reqwest = { version = "0.11", features = ["json", "stream"] }
 futures-util = "0.3.31"
-tracing-subscriber = { version = "0.3.18", features = ["time"] }
+tracing-subscriber = { version = "0.3.18", features = ["time", "env-filter"] }
 time = "0.3.36"
 tracing = "0.1.41"
 sqlx = { version = "0.8.3", features = [

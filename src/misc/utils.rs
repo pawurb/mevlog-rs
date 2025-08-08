@@ -43,7 +43,10 @@ pub fn init_logs() {
                 .unwrap();
         let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, time_format);
 
-        tracing_subscriber::fmt().with_timer(timer).init();
+        tracing_subscriber::fmt()
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .with_timer(timer)
+            .init();
     }
 
     #[cfg(feature = "tokio-console")]
