@@ -678,7 +678,7 @@ impl MEVBlock {
 
     pub fn print_with_format(&self, format: &OutputFormat) {
         match format {
-            OutputFormat::Default => self.print(),
+            OutputFormat::Text => self.print(),
             OutputFormat::Json | OutputFormat::JsonStream => self.print_json(),
             OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => self.print_json_pretty(),
         }

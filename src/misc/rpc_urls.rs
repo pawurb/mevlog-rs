@@ -42,7 +42,18 @@ pub struct ChainInfo {
     pub benchmarked_rpc_urls: Vec<(String, u64)>,
 }
 
-pub async fn get_chain_info(chain_id: u64, timeout_sec: u64) -> Result<ChainInfo> {
+pub async fn get_chain_info_no_benchmark(chain_id: u64) -> Result<ChainInfo> {
+    let chains = get_all_chains().await?;
+
+    let chain = chains
+        .into_iter()
+        .find(|c| c.chain_id == chain_id)
+        .ok_or_else(|| eyre::eyre!("Chain ID {} not found", chain_id))?;
+
+    Ok(chain)
+}
+
+pub async fn get_chain_info(chain_id: u64, timeout_ms: u64) -> Result<ChainInfo> {
     let chains = get_all_chains().await?;
 
     let mut chain = chains
@@ -56,7 +67,7 @@ pub async fn get_chain_info(chain_id: u64, timeout_sec: u64) -> Result<ChainInfo
         .filter(|endpoint| endpoint.url.starts_with("https://"))
         .filter(|endpoint| !endpoint.url.contains("${"))
         .map(|endpoint| async move {
-            match benchmark_url(endpoint.url.clone(), timeout_sec).await {
+            match benchmark_url(endpoint.url.clone(), timeout_ms).await {
                 Ok(duration) => Some((endpoint.url.clone(), duration)),
                 Err(_) => None,
             }
@@ -85,7 +96,7 @@ pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
     Ok(chains)
 }
 
-pub async fn benchmark_url(url: String, timeout_sec: u64) -> Result<u64> {
+pub async fn benchmark_url(url: String, timeout_ms: u64) -> Result<u64> {
     let provider = init_provider(&url).await?;
     let start = Instant::now();
     tokio::select! {
@@ -96,7 +107,7 @@ pub async fn benchmark_url(url: String, timeout_sec: u64) -> Result<u64> {
                 Ok(start.elapsed().as_millis() as u64)
             }
         }
-        _ = sleep(Duration::from_secs(timeout_sec)) => {
+        _ = sleep(Duration::from_millis(timeout_ms)) => {
             bail!("RPC URL timed out");
         }
     }

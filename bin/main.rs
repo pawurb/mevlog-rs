@@ -3,7 +3,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[cfg(feature = "seed-db")]
 use cmd::seed_db::SeedDBArgs;
 use cmd::{
-    chains::ChainsArgs, rpc_urls::RpcUrlsArgs, search::SearchArgs, tx::TxArgs,
+    chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tx::TxArgs,
     update_db::UpdateDBArgs, watch::WatchArgs,
 };
 use eyre::Result;
@@ -42,10 +42,10 @@ pub enum MLSubcommand {
     Tx(TxArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
-    #[command(about = "List RPC URLs for a chain ID")]
-    RpcUrls(RpcUrlsArgs),
     #[command(about = "List all available chains from ChainList")]
     Chains(ChainsArgs),
+    #[command(about = "Show detailed chain information")]
+    ChainInfo(ChainInfoArgs),
     #[cfg(feature = "seed-db")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
@@ -91,10 +91,10 @@ async fn execute() -> Result<()> {
         ML::UpdateDB(args) => {
             args.run().await?;
         }
-        ML::RpcUrls(args) => {
+        ML::Chains(args) => {
             args.run().await?;
         }
-        ML::Chains(args) => {
+        ML::ChainInfo(args) => {
             args.run().await?;
         }
         #[cfg(feature = "seed-db")]

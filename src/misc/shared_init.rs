@@ -35,9 +35,10 @@ pub struct SharedDeps {
 
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let rpc_url = match (&conn_opts.rpc_url, conn_opts.chain_id) {
+        (Some(url), Some(_)) => url.clone(),
         (Some(url), None) => url.clone(),
         (None, Some(chain_id)) => {
-            let chain_info = get_chain_info(chain_id, 10).await?;
+            let chain_info = get_chain_info(chain_id, conn_opts.rpc_timeout_ms).await?;
             if chain_info.benchmarked_rpc_urls.is_empty() {
                 bail!("No working RPC URLs found for chain ID {}", chain_id)
             }
@@ -109,28 +110,26 @@ pub struct SharedOpts {
 
     #[arg(
         long,
-        help = "Output format ('default', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
-        default_value = "default"
+        help = "Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
+        default_value = "text"
     )]
     pub format: OutputFormat,
 }
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct ConnOpts {
-    #[arg(
-        long,
-        help = "The URL of the HTTP provider",
-        env = "ETH_RPC_URL",
-        conflicts_with = "chain_id"
-    )]
+    #[arg(long, help = "The URL of the HTTP provider", env = "ETH_RPC_URL")]
     pub rpc_url: Option<String>,
+
+    #[arg(long, help = "Chain ID to automatically select RPC URL from ChainList")]
+    pub chain_id: Option<u64>,
 
     #[arg(
         long,
-        help = "Chain ID to automatically select RPC URL from ChainList",
-        conflicts_with = "rpc_url"
+        help = "Timeout in milliseconds for filtering RPC URLs",
+        default_value = "1000"
     )]
-    pub chain_id: Option<u64>,
+    pub rpc_timeout_ms: u64,
 }
 
 #[derive(Debug, Clone, clap::Parser)]
@@ -153,7 +152,7 @@ impl FromStr for TraceMode {
 
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum OutputFormat {
-    Default,
+    Text,
     Json,
     JsonPretty,
     JsonStream,
@@ -162,7 +161,7 @@ pub enum OutputFormat {
 
 impl OutputFormat {
     pub fn is_stream(&self) -> bool {
-        self == &Self::JsonStream || self == &Self::JsonPrettyStream || self == &Self::Default
+        self == &Self::JsonStream || self == &Self::JsonPrettyStream || self == &Self::Text
     }
 }
 
@@ -171,7 +170,7 @@ impl FromStr for OutputFormat {
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
-            "default" => Ok(Self::Default),
+            "text" => Ok(Self::Text),
             "json" => Ok(Self::Json),
             "json-pretty" => Ok(Self::JsonPretty),
             "json-stream" => Ok(Self::JsonStream),

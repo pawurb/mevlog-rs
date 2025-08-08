@@ -1,5 +1,5 @@
+pub mod chain_info;
 pub mod chains;
-pub mod rpc_urls;
 pub mod search;
 pub mod tx;
 pub mod update_db;

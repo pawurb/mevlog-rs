@@ -236,7 +236,7 @@ Options:
       --failed 
           Show only txs which failed to execute
       --format <FORMAT>
-          Output format ('default', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
+          Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
 ```
 
 Both `search` and `watch` support the same filtering options.
@@ -315,34 +315,56 @@ Available chains (7 total):
 7    11155111 Ethereum Sepolia
 ```
 
-## Getting RPC URLs for chains
+## Getting chain information
 
 ```bash
-mevlog rpc-urls --chain-id 1    # Ethereum mainnet
-mevlog rpc-urls --chain-id  56  # BSC mainnet
-mevlog rpc-urls --chain-id 137  # Polygon mainnet
+mevlog chain-info --chain-id 1    # Ethereum mainnet
+mevlog chain-info --chain-id 56   # BSC mainnet  
+mevlog chain-info --chain-id 137  # Polygon mainnet
 ```
 
-Sample output: 
+Sample output:
 
 ```text
-Chain: Ethereum Mainnet (ETH)
+Chain Information
+================
 Chain ID: 1
-
-RPC URLs (responding under 1000ms):
-  1. https://0xrpc.io/eth (378ms)
-  2. https://gateway.tenderly.co/public/mainnet (395ms)
-  3. https://ethereum-mainnet.gateway.tatum.io (397ms)
-  4. https://mainnet.gateway.tenderly.co (401ms)
-  5. https://rpc.payload.de (406ms)
+Name: Ethereum Mainnet
+Currency: ETH
+Explorer URL: https://etherscan.io
+Current Token Price: $3245.67
+RPC Timeout: 1s
 ```
 
-This command checks the latest chain data from [ChainList](https://chainlist.org/) and displays available RPC URLs for the specified chain ID, sorted by response time. 
-
-By default only RPC endpoints responding under 1 sec are included. If you're using a network with a worse connection quality you can increase this value:
+This command displays detailed information about a specific chain, including current token price and RPC endpoint benchmarks. You can also get JSON output:
 
 ```bash
-mevlog rpc-urls --chain-id 1 --rpc-timeout-sec 5
+mevlog chain-info --chain-id 1 --format json        # Compact JSON
+mevlog chain-info --chain-id 1 --format json-pretty # Pretty JSON
+```
+
+By default, the command filters RPC endpoints responding under 1000ms (1 second). You can adjust this timeout for networks with slower connections:
+
+```bash
+mevlog chain-info --chain-id 1 --rpc-timeout-ms 5000  # 5 seconds
+```
+
+If you only need basic chain information without RPC URL benchmarking (which is faster), use the `--skip-urls` flag:
+
+```bash
+mevlog chain-info --chain-id 1 --skip-urls
+```
+
+This will display only the core chain information:
+
+```text
+Chain Information
+================
+Chain ID: 1
+Name: Ethereum Mainnet
+Currency: ETH
+Explorer URL: https://etherscan.io
+Current Token Price: $3895.62
 ```
 
 ## Supported EVM chains
