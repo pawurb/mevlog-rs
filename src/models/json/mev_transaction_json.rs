@@ -6,7 +6,8 @@ use crate::{
     models::{
         json::mev_log_group_json::MEVLogGroupJson,
         mev_transaction::{
-            display_token_and_usd, display_usd, eth_to_usd, CallExtract, MEVTransaction,
+            display_token, display_token_and_usd, display_usd, eth_to_usd, CallExtract,
+            MEVTransaction,
         },
     },
 };
@@ -25,6 +26,7 @@ pub struct MEVTransactionJson {
     pub display_value: String,
     pub coinbase_transfer: Option<String>,
     pub display_coinbase_transfer: Option<String>,
+    pub display_coinbase_transfer_usd: Option<String>,
     pub success: bool,
     pub gas_price: u128,
     pub gas_used: u64,
@@ -56,16 +58,20 @@ impl From<&MEVTransaction> for MEVTransactionJson {
             nonce: tx.nonce,
             value: tx.value().to_string(),
             coinbase_transfer: tx.coinbase_transfer.map(|amt| amt.to_string()),
-            display_coinbase_transfer: tx.coinbase_transfer.map(|amt| {
-                display_token_and_usd(amt, tx.native_token_price, &tx.chain.currency_symbol)
+            display_coinbase_transfer: tx
+                .coinbase_transfer
+                .map(|amt| display_token(amt, &tx.chain.currency_symbol, false)),
+            display_coinbase_transfer_usd: tx.coinbase_transfer.and_then(|amt| {
+                tx.native_token_price
+                    .map(|price| display_usd(eth_to_usd(amt, price)))
             }),
             success: tx.receipt.success,
             gas_price: tx.receipt.effective_gas_price,
             tx_cost: gas_tx_cost,
-            display_tx_cost: display_token_and_usd(
+            display_tx_cost: display_token(
                 U256::from(gas_tx_cost),
-                tx.native_token_price,
                 &tx.chain.currency_symbol,
+                false,
             ),
             display_tx_cost_usd: tx
                 .native_token_price
@@ -76,13 +82,8 @@ impl From<&MEVTransaction> for MEVTransactionJson {
                 &tx.chain.currency_symbol,
             ),
             full_tx_cost,
-            display_full_tx_cost: full_tx_cost.map(|amt| {
-                display_token_and_usd(
-                    U256::from(amt),
-                    tx.native_token_price,
-                    &tx.chain.currency_symbol,
-                )
-            }),
+            display_full_tx_cost: full_tx_cost
+                .map(|amt| display_token(U256::from(amt), &tx.chain.currency_symbol, false)),
             display_full_tx_cost_usd: full_tx_cost.and_then(|amt| {
                 tx.native_token_price
                     .map(|price| display_usd(eth_to_usd(U256::from(amt), price)))

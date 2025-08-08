@@ -356,7 +356,6 @@ Chain ID: 1
 Name: Ethereum Mainnet
 Currency: ETH
 Explorer URL: https://etherscan.io
-Current Token Price: $3245.67
 RPC Timeout: 1s
 ```
 
@@ -388,7 +387,6 @@ Chain ID: 1
 Name: Ethereum Mainnet
 Currency: ETH
 Explorer URL: https://etherscan.io
-Current Token Price: $3895.62
 ```
 
 ## Supported EVM chains
