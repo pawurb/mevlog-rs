@@ -145,6 +145,24 @@ mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3
 mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" --erc20-transfer-amount
 ```
 
+- find the top 10 transactions from the last 20 blocks sorted by gas price:
+
+```bash
+mevlog search -b 20:latest --sort gas-price --limit 10
+```
+
+- find the 5 most expensive transactions by total cost from recent blocks:
+
+```bash
+mevlog search -b 10:latest --sort full-tx-cost --limit 5 --trace rpc
+```
+
+- find the 10 cheapest transactions by gas price (ascending order):
+
+```bash
+mevlog search -b 10:latest --sort gas-price --sort-dir asc --limit 10
+```
+
 ### Event filters
 
 The `--event` and `--not-event` options allow filtering transactions based on emitted events. The filter criteria can be:
@@ -199,6 +217,12 @@ All the filter conditions can be combined. Here's a complete list of currently s
 
 ```
 Options:
+      --limit <LIMIT>
+          Limit the number of transactions returned
+      --sort <SORT>
+          Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost)
+      --sort-dir <SORT_DIR>
+          Sort direction (desc, asc) [default: desc]
   -f, --from <FROM>
           Filter by tx source address or ENS name
       --to <TO>

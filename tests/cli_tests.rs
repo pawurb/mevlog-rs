@@ -136,4 +136,64 @@ pub mod tests {
             "\"tx_hash\": \"0x71e7d6bb2fc19848cbedbda49f4c49c1ac32bafae0ee0dacd5540b84ca0b7937\""
         ));
     }
+
+    #[test]
+    fn test_cli_search_sort_limit() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("22045570")
+            .arg("-p")
+            .arg("0:50")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json-pretty")
+            .arg("--sort")
+            .arg("gas-price")
+            .arg("--limit")
+            .arg("1")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains(
+            "\"tx_hash\": \"0x3e8e989819cfc004f7fe58283bf4cc7b39d2ecea5b30e92dc891e06a653371f6\""
+        ));
+    }
+
+    #[test]
+    fn test_cli_search_sort_limit_asc() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("22045570")
+            .arg("-p")
+            .arg("0:50")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json-pretty")
+            .arg("--sort")
+            .arg("gas-price")
+            .arg("--sort-dir")
+            .arg("asc")
+            .arg("--limit")
+            .arg("1")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains(
+            "\"tx_hash\": \"0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660\""
+        ));
+    }
 }
