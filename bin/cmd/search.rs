@@ -122,24 +122,24 @@ impl SearchArgs {
                         SortDirection::Desc => transactions_json.sort_by(|a, b| {
                             b.gas_price
                                 .cmp(&a.gas_price)
-                                .then_with(|| a.index.cmp(&b.index))
+                                .then_with(|| a.tx_hash.cmp(&b.tx_hash))
                         }),
                         SortDirection::Asc => transactions_json.sort_by(|a, b| {
                             a.gas_price
                                 .cmp(&b.gas_price)
-                                .then_with(|| a.index.cmp(&b.index))
+                                .then_with(|| a.tx_hash.cmp(&b.tx_hash))
                         }),
                     },
                     SortField::GasUsed => match self.sort_dir {
                         SortDirection::Desc => transactions_json.sort_by(|a, b| {
                             b.gas_used
                                 .cmp(&a.gas_used)
-                                .then_with(|| a.index.cmp(&b.index))
+                                .then_with(|| a.tx_hash.cmp(&b.tx_hash))
                         }),
                         SortDirection::Asc => transactions_json.sort_by(|a, b| {
                             a.gas_used
                                 .cmp(&b.gas_used)
-                                .then_with(|| a.index.cmp(&b.index))
+                                .then_with(|| a.tx_hash.cmp(&b.tx_hash))
                         }),
                     },
                     SortField::TxCost => {
@@ -149,10 +149,10 @@ impl SearchArgs {
                             match self.sort_dir {
                                 SortDirection::Desc => b_tx_cost
                                     .cmp(&a_tx_cost)
-                                    .then_with(|| a.index.cmp(&b.index)),
+                                    .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
                                 SortDirection::Asc => a_tx_cost
                                     .cmp(&b_tx_cost)
-                                    .then_with(|| a.index.cmp(&b.index)),
+                                    .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
                             }
                         });
                     }
@@ -162,10 +162,10 @@ impl SearchArgs {
                             let b_cost = b.full_tx_cost.expect("must be traced");
                             match self.sort_dir {
                                 SortDirection::Desc => {
-                                    b_cost.cmp(&a_cost).then_with(|| a.index.cmp(&b.index))
+                                    b_cost.cmp(&a_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
                                 }
                                 SortDirection::Asc => {
-                                    a_cost.cmp(&b_cost).then_with(|| a.index.cmp(&b.index))
+                                    a_cost.cmp(&b_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
                                 }
                             }
                         });
