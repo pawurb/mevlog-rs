@@ -8,6 +8,7 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
+        json::mev_transaction_json::MEVTransactionJson,
         mev_block::generate_block,
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
@@ -117,60 +118,7 @@ impl SearchArgs {
                 .collect();
 
             if let Some(sort_field) = &self.sort {
-                match sort_field {
-                    SortField::GasPrice => match self.sort_dir {
-                        SortDirection::Desc => transactions_json.sort_by(|a, b| {
-                            b.gas_price
-                                .cmp(&a.gas_price)
-                                .then_with(|| a.index.cmp(&b.index))
-                        }),
-                        SortDirection::Asc => transactions_json.sort_by(|a, b| {
-                            a.gas_price
-                                .cmp(&b.gas_price)
-                                .then_with(|| a.index.cmp(&b.index))
-                        }),
-                    },
-                    SortField::GasUsed => match self.sort_dir {
-                        SortDirection::Desc => transactions_json.sort_by(|a, b| {
-                            b.gas_used
-                                .cmp(&a.gas_used)
-                                .then_with(|| a.index.cmp(&b.index))
-                        }),
-                        SortDirection::Asc => transactions_json.sort_by(|a, b| {
-                            a.gas_used
-                                .cmp(&b.gas_used)
-                                .then_with(|| a.index.cmp(&b.index))
-                        }),
-                    },
-                    SortField::TxCost => {
-                        transactions_json.sort_by(|a, b| {
-                            let a_tx_cost = a.gas_used as u128 * a.gas_price;
-                            let b_tx_cost = b.gas_used as u128 * b.gas_price;
-                            match self.sort_dir {
-                                SortDirection::Desc => b_tx_cost
-                                    .cmp(&a_tx_cost)
-                                    .then_with(|| a.index.cmp(&b.index)),
-                                SortDirection::Asc => a_tx_cost
-                                    .cmp(&b_tx_cost)
-                                    .then_with(|| a.index.cmp(&b.index)),
-                            }
-                        });
-                    }
-                    SortField::FullTxCost => {
-                        transactions_json.sort_by(|a, b| {
-                            let a_cost = a.full_tx_cost.expect("must be traced");
-                            let b_cost = b.full_tx_cost.expect("must be traced");
-                            match self.sort_dir {
-                                SortDirection::Desc => {
-                                    b_cost.cmp(&a_cost).then_with(|| a.index.cmp(&b.index))
-                                }
-                                SortDirection::Asc => {
-                                    a_cost.cmp(&b_cost).then_with(|| a.index.cmp(&b.index))
-                                }
-                            }
-                        });
-                    }
-                }
+                sort_transactions(&mut transactions_json, sort_field, &self.sort_dir);
             }
 
             if let Some(limit) = self.limit {
@@ -196,5 +144,66 @@ impl SearchArgs {
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;
         Ok(())
+    }
+}
+
+fn sort_transactions(
+    transactions_json: &mut [MEVTransactionJson],
+    sort_field: &SortField,
+    sort_dir: &SortDirection,
+) {
+    match sort_field {
+        SortField::GasPrice => match sort_dir {
+            SortDirection::Desc => transactions_json.sort_by(|a, b| {
+                b.gas_price
+                    .cmp(&a.gas_price)
+                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
+            }),
+            SortDirection::Asc => transactions_json.sort_by(|a, b| {
+                a.gas_price
+                    .cmp(&b.gas_price)
+                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
+            }),
+        },
+        SortField::GasUsed => match sort_dir {
+            SortDirection::Desc => transactions_json.sort_by(|a, b| {
+                b.gas_used
+                    .cmp(&a.gas_used)
+                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
+            }),
+            SortDirection::Asc => transactions_json.sort_by(|a, b| {
+                a.gas_used
+                    .cmp(&b.gas_used)
+                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
+            }),
+        },
+        SortField::TxCost => {
+            transactions_json.sort_by(|a, b| {
+                let a_tx_cost = a.gas_used as u128 * a.gas_price;
+                let b_tx_cost = b.gas_used as u128 * b.gas_price;
+                match sort_dir {
+                    SortDirection::Desc => b_tx_cost
+                        .cmp(&a_tx_cost)
+                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
+                    SortDirection::Asc => a_tx_cost
+                        .cmp(&b_tx_cost)
+                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
+                }
+            });
+        }
+        SortField::FullTxCost => {
+            transactions_json.sort_by(|a, b| {
+                let a_cost = a.full_tx_cost.expect("must be traced");
+                let b_cost = b.full_tx_cost.expect("must be traced");
+                match sort_dir {
+                    SortDirection::Desc => {
+                        b_cost.cmp(&a_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
+                    }
+                    SortDirection::Asc => {
+                        a_cost.cmp(&b_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
+                    }
+                }
+            });
+        }
     }
 }
