@@ -7,7 +7,7 @@ use cmd::{
     update_db::UpdateDBArgs, watch::WatchArgs,
 };
 use eyre::Result;
-use mevlog::misc::utils::init_logs;
+use mevlog::misc::{shared_init::OutputFormat, utils::init_logs};
 
 #[derive(Clone, Debug, ValueEnum)]
 pub enum ColorMode {
@@ -30,6 +30,14 @@ pub struct MLArgs {
 
     #[arg(long, value_enum, default_value = "auto", global = true)]
     pub color: ColorMode,
+
+    #[arg(
+        long,
+        help = "Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
+        default_value = "text",
+        global = true
+    )]
+    pub format: OutputFormat,
 }
 
 #[derive(Subcommand, Debug)]
@@ -54,39 +62,73 @@ pub enum MLSubcommand {
 #[tokio::main]
 async fn main() {
     init_logs();
-    match execute().await {
+    let root_args = MLArgs::parse();
+    let format = root_args.format.clone();
+
+    match execute(root_args).await {
         Ok(_) => {}
         Err(e) => {
+            print_error(&e, &format);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn print_error(e: &eyre::Error, format: &OutputFormat) {
+    match format {
+        OutputFormat::Text => {
             if std::env::var("RUST_BACKTRACE").is_ok() {
                 eprintln!("Error: {e:#?}");
             } else {
                 eprintln!("Error: {e}");
             }
-            std::process::exit(1);
+        }
+        OutputFormat::Json
+        | OutputFormat::JsonStream
+        | OutputFormat::JsonPretty
+        | OutputFormat::JsonPrettyStream => {
+            let error_json = if std::env::var("RUST_BACKTRACE").is_ok() {
+                serde_json::json!({
+                    "error": e.to_string(),
+                    "backtrace": format!("{e:#?}")
+                })
+            } else {
+                serde_json::json!({
+                    "error": e.to_string()
+                })
+            };
+
+            match format {
+                OutputFormat::Json | OutputFormat::JsonStream => {
+                    eprintln!("{}", serde_json::to_string(&error_json).unwrap());
+                }
+                OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+                    eprintln!("{}", serde_json::to_string_pretty(&error_json).unwrap());
+                }
+                _ => unreachable!(),
+            }
         }
     }
 }
 
 type ML = MLSubcommand;
 
-async fn execute() -> Result<()> {
-    let args = MLArgs::parse();
-
-    match args.color {
+async fn execute(root_args: MLArgs) -> Result<()> {
+    match root_args.color {
         ColorMode::Always => colored::control::set_override(true),
         ColorMode::Never => colored::control::set_override(false),
         ColorMode::Auto => {}
     }
 
-    match args.cmd {
+    match root_args.cmd {
         ML::Watch(args) => {
-            args.run().await?;
+            args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
-            args.run().await?;
+            args.run(root_args.format).await?;
         }
         ML::Search(args) => {
-            args.run().await?;
+            args.run(root_args.format).await?;
         }
         ML::UpdateDB(args) => {
             args.run().await?;
@@ -95,7 +137,7 @@ async fn execute() -> Result<()> {
             args.run().await?;
         }
         ML::ChainInfo(args) => {
-            args.run().await?;
+            args.run(root_args.format).await?;
         }
         #[cfg(feature = "seed-db")]
         ML::SeedDB(args) => {

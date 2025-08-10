@@ -56,16 +56,14 @@ pub struct SearchArgs {
 }
 
 impl SearchArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
-        if (self.limit.is_some() || self.sort.is_some())
-            && !self.shared_opts.format.non_stream_json()
-        {
+        if (self.limit.is_some() || self.sort.is_some()) && !format.non_stream_json() {
             {
                 bail!(
                     "--limit and --sort are not available in --format {:?}",
-                    self.shared_opts.format
+                    format
                 );
             }
         }
@@ -104,14 +102,14 @@ impl SearchArgs {
             )
             .await?;
 
-            if self.shared_opts.format.is_stream() {
-                mev_block.print_with_format(&self.shared_opts.format);
+            if format.is_stream() {
+                mev_block.print_with_format(&format);
             } else {
                 mev_blocks.push(mev_block);
             }
         }
 
-        if !self.shared_opts.format.is_stream() {
+        if !format.is_stream() {
             let mut transactions_json: Vec<_> = mev_blocks
                 .iter()
                 .flat_map(|block| block.transactions_json())
@@ -125,7 +123,7 @@ impl SearchArgs {
                 transactions_json.truncate(limit);
             }
 
-            match self.shared_opts.format {
+            match format {
                 OutputFormat::Json => {
                     println!("{}", serde_json::to_string(&transactions_json).unwrap());
                 }

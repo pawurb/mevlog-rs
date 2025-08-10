@@ -77,6 +77,10 @@ pub async fn generate_block(
     rpc_url: &str,
     native_token_price: Option<f64>,
 ) -> Result<MEVBlock> {
+    if block_number == 0 {
+        eyre::bail!("Invalid block number: 0");
+    }
+
     let revm_utils = init_revm_db(block_number - 1, &shared_opts.trace, rpc_url, chain).await?;
 
     let (mut revm_db, _anvil) = match shared_opts.trace {

@@ -6,7 +6,7 @@ use mevlog::{
     misc::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts, SharedOpts},
+        shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
         utils::get_native_token_price,
     },
     models::{mev_block::generate_block, txs_filter::TxsFilter},
@@ -47,7 +47,7 @@ pub struct TxArgs {
 }
 
 impl TxArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, format: OutputFormat) -> Result<()> {
         check_range(self.before, "--before")?;
         check_range(self.after, "--after")?;
 
@@ -122,7 +122,7 @@ impl TxArgs {
         )
         .await?;
 
-        mev_block.print_with_format(&self.shared_opts.format);
+        mev_block.print_with_format(&format);
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

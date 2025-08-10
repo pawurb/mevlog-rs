@@ -196,4 +196,44 @@ pub mod tests {
             "\"tx_hash\": \"0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660\""
         ));
     }
+
+    #[test]
+    fn test_cli_format_chain_info() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("chain-info")
+            .arg("--chain-id")
+            .arg("0")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .expect("failed to execute CLI");
+
+        let err = String::from_utf8(cmd.stderr).unwrap();
+        println!("err: {err}");
+        assert!(err.contains("\"error\":\"Chain ID 0 not found\""));
+    }
+
+    #[test]
+    fn test_cli_format_search() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("0")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json")
+            .output()
+            .expect("failed to execute CLI");
+
+        let err = String::from_utf8(cmd.stderr).unwrap();
+        println!("err: {err}");
+        assert!(err.contains("\"error\":\"Invalid block number: 0\""));
+    }
 }

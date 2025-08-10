@@ -1,16 +1,12 @@
 use eyre::Result;
-use mevlog::misc::rpc_urls::{get_chain_info, get_chain_info_no_benchmark};
+use mevlog::misc::{
+    rpc_urls::{get_chain_info, get_chain_info_no_benchmark},
+    shared_init::OutputFormat,
+};
 use serde_json::json;
 
 #[derive(Debug, clap::Parser)]
 pub struct ChainInfoArgs {
-    #[arg(
-        long,
-        help = "Output format ('text' or 'json')",
-        default_value = "text"
-    )]
-    pub format: ChainInfoFormat,
-
     #[arg(
         long,
         help = "Skip RPC URL benchmarking and only show chain information"
@@ -24,15 +20,8 @@ pub struct ChainInfoArgs {
     pub rpc_timeout_ms: u64,
 }
 
-#[derive(Debug, Clone, clap::ValueEnum)]
-pub enum ChainInfoFormat {
-    Text,
-    Json,
-    JsonPretty,
-}
-
 impl ChainInfoArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let chain_info = if self.skip_urls {
             get_chain_info_no_benchmark(self.chain_id).await?
         } else {
@@ -46,8 +35,8 @@ impl ChainInfoArgs {
             info
         };
 
-        match self.format {
-            ChainInfoFormat::Text => {
+        match format {
+            OutputFormat::Text => {
                 println!("Chain Information");
                 println!("================");
                 println!("Chain ID: {}", self.chain_id);
@@ -73,7 +62,10 @@ impl ChainInfoArgs {
                     }
                 }
             }
-            ChainInfoFormat::Json | ChainInfoFormat::JsonPretty => {
+            OutputFormat::Json
+            | OutputFormat::JsonPretty
+            | OutputFormat::JsonStream
+            | OutputFormat::JsonPrettyStream => {
                 let mut info = json!({
                     "chain_id": self.chain_id,
                     "name": chain_info.name,
@@ -97,14 +89,14 @@ impl ChainInfoArgs {
                     info["rpc_urls"] = json!(rpc_urls);
                 }
 
-                match self.format {
-                    ChainInfoFormat::Json => {
+                match format {
+                    OutputFormat::Json | OutputFormat::JsonStream => {
                         println!("{}", serde_json::to_string(&info)?);
                     }
-                    ChainInfoFormat::JsonPretty => {
+                    OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
                         println!("{}", serde_json::to_string_pretty(&info)?);
                     }
-                    ChainInfoFormat::Text => unreachable!(),
+                    OutputFormat::Text => unreachable!(),
                 }
             }
         }

@@ -4,7 +4,7 @@ use eyre::Result;
 use mevlog::{
     misc::{
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts, SharedOpts},
+        shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
         utils::get_native_token_price,
     },
     models::{
@@ -26,7 +26,7 @@ pub struct WatchArgs {
 }
 
 impl WatchArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
         let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, true)?;
@@ -61,7 +61,7 @@ impl WatchArgs {
             )
             .await?;
 
-            mev_block.print_with_format(&self.shared_opts.format);
+            mev_block.print_with_format(&format);
         }
 
         #[allow(unreachable_code)]

@@ -107,13 +107,6 @@ pub struct SharedOpts {
 
     #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
     pub erc20_transfer_amount: bool,
-
-    #[arg(
-        long,
-        help = "Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
-        default_value = "text"
-    )]
-    pub format: OutputFormat,
 }
 
 #[derive(Clone, Debug, clap::Parser)]
