@@ -130,7 +130,7 @@ impl MEVBlock {
 
         let block_number_int = block_number_tag.as_number().unwrap();
 
-        let _cmd = Command::new("cryo")
+        let cmd = Command::new("cryo")
             .args([
                 "txs",
                 "-b",
@@ -144,6 +144,10 @@ impl MEVBlock {
                 cryo_cache_dir().display().to_string().as_str(),
             ])
             .output();
+
+        if cmd.is_err() {
+            eyre::bail!("cryo command failed: {}", cmd.err().unwrap());
+        }
 
         let file_path = format!(
             "{}/{}__transactions__{block_number_int}_to_{block_number_int}.csv",
