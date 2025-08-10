@@ -1,20 +1,21 @@
-use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc};
+use std::{collections::HashMap, fmt, fs, path::PathBuf, process::Command, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
     providers::Provider,
-    rpc::types::{trace::parity::Action, Filter, TransactionRequest},
+    rpc::types::{trace::parity::Action, TransactionRequest},
 };
 use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
+use regex::Regex;
 use revm::{
     database::CacheDB,
     primitives::{FixedBytes, U256},
 };
 use sqlx::SqlitePool;
-use tracing::{debug, error};
+use tracing::error;
 
 use super::{
     mev_log::MEVLog,
@@ -132,77 +133,11 @@ impl MEVBlock {
     ) -> Result<Self> {
         let block_number_tag = BlockNumberOrTag::Number(block_number);
 
-        let block_number_int = block_number_tag.as_number().unwrap();
-
-        let cmd = Command::new("cryo")
-            .args([
-                "txs",
-                "-b",
-                &block_number_int.to_string(),
-                "--rpc",
-                &chain.rpc_url,
-                "--n-chunks",
-                "1",
-                "--csv",
-                "--output-dir",
-                cryo_cache_dir().display().to_string().as_str(),
-            ])
-            .output();
-
-        if cmd.is_err() {
-            eyre::bail!("cryo command failed: {}", cmd.err().unwrap());
-        }
-
-        let file_path = format!(
-            "{}/{}__transactions__{block_number_int}_to_{block_number_int}.csv",
-            cryo_cache_dir().display(),
-            chain.cryo_cache_dir_name()
-        );
-
         if which::which("cryo").is_err() {
             eyre::bail!("'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo");
         };
 
-        let file = match std::fs::File::open(file_path.clone()) {
-            Ok(file) => file,
-            Err(e) => {
-                if e.kind() != std::io::ErrorKind::NotFound {
-                    eyre::bail!("Error opening CSV file: {e}");
-                }
-
-                let backup_file_path = format!(
-                    "{}/{}__transactions__0{block_number_int}_to_0{block_number_int}.csv",
-                    cryo_cache_dir().display(),
-                    chain.cryo_cache_dir_name()
-                );
-
-                match std::fs::File::open(backup_file_path) {
-                    Ok(file) => file,
-                    Err(e) => {
-                        if e.kind() == std::io::ErrorKind::NotFound {
-                            eyre::bail!("CSV file {file_path} not found. Make sure that 'cryo' command is working and that you have a valid RPC connection.");
-                        } else {
-                            eyre::bail!("Error opening CSV file: {e}");
-                        }
-                    }
-                }
-            }
-        };
-        let reader = std::io::BufReader::new(file);
-        let mut csv_reader = csv::Reader::from_reader(reader);
-
-        let mut txs_data = vec![];
-
-        for result in csv_reader.records() {
-            let record = result?;
-            let tx_req = match MEVTransaction::req_from_csv(record).await {
-                Ok(tx) => tx,
-                Err(e) => {
-                    eyre::bail!("Error parsing tx req from csv: {}", e);
-                }
-            };
-            txs_data.push(tx_req);
-        }
+        let txs_data = get_txs_data(block_number, chain).await?;
 
         let block = provider.get_block_by_number(block_number_tag).await?;
 
@@ -347,8 +282,7 @@ impl MEVBlock {
             self.mev_transactions.insert(tx_index, mev_tx);
         }
 
-        self.ingest_logs(filter, sqlite, symbols_lookup, provider)
-            .await?;
+        self.ingest_logs(filter, sqlite, symbols_lookup).await?;
 
         // first exclude txs based non-tracing filters
         self.non_trace_filter_txs(filter).await?;
@@ -556,34 +490,24 @@ impl MEVBlock {
         filter: &TxsFilter,
         sqlite: &SqlitePool,
         symbols_lookup: &SymbolLookupWorker,
-        provider: &Arc<GenericProvider>,
     ) -> Result<()> {
-        let block_number = BlockNumberOrTag::Number(self.block_number);
-        let log_filter = Filter::new()
-            .from_block(block_number)
-            .to_block(block_number);
-        let logs = provider.get_logs(&log_filter).await?;
+        let logs_data = get_logs_data(self.block_number, &self.chain).await?;
 
-        for log in logs {
-            let topics = log.topics();
-            let Some(first_topic) = topics.first() else {
-                continue;
+        for record in logs_data {
+            let mev_log = match MEVLog::from_csv_row(
+                &record,
+                symbols_lookup,
+                sqlite,
+                filter.show_erc20_transfer_amount,
+            )
+            .await
+            {
+                Ok(log) => log,
+                Err(e) => {
+                    eyre::bail!("Error: {}", e);
+                }
             };
-
-            let Some(_tx_hash) = log.transaction_hash else {
-                debug!("Log without transaction_hash");
-                continue;
-            };
-
-            let Some(_) = log.log_index else {
-                debug!("Log without log_index");
-                continue;
-            };
-
-            let Some(tx_index) = log.transaction_index else {
-                debug!("Log without transaction_index");
-                continue;
-            };
+            let tx_index = mev_log.tx_index;
 
             if let Some(position_range) = &filter.tx_position {
                 if tx_index < position_range.from || tx_index > position_range.to {
@@ -596,22 +520,6 @@ impl MEVBlock {
                     continue;
                 }
             }
-
-            let mev_log = match MEVLog::new(
-                first_topic,
-                &log,
-                symbols_lookup,
-                sqlite,
-                filter.show_erc20_transfer_amount,
-            )
-            .await
-            {
-                Ok(log) => log,
-                Err(e) => {
-                    error!("Error: {}", e);
-                    continue;
-                }
-            };
 
             if let Some(tx) = self.mev_transactions.get_mut(&tx_index) {
                 tx.add_log(mev_log);
@@ -802,6 +710,171 @@ pub fn format_block_age(seconds: i64) -> String {
     }
 }
 
-fn cryo_cache_dir() -> PathBuf {
-    home::home_dir().unwrap().join(".mevlog/.cryo-cache")
+fn find_matching_csv_file(
+    chain: &EVMChain,
+    data_type: &str,
+    block_number: u64,
+) -> Result<Option<PathBuf>> {
+    let cache_dir = cryo_cache_dir(chain);
+
+    // Pattern: {chain_prefix}__{data_type}__0*{block_number}_to_0*{block_number}.csv
+    // This matches files with zero or more leading zeros before block numbers
+    let pattern = format!(
+        r"^{}__{}__0*{}_to_0*{}\.csv$",
+        regex::escape(&chain.cryo_cache_dir_name()),
+        regex::escape(data_type),
+        block_number,
+        block_number
+    );
+
+    let regex = Regex::new(&pattern)?;
+
+    if let Ok(entries) = fs::read_dir(&cache_dir) {
+        for entry in entries.flatten() {
+            let file_name = entry.file_name();
+            if let Some(name_str) = file_name.to_str() {
+                if regex.is_match(name_str) {
+                    return Ok(Some(entry.path()));
+                }
+            }
+        }
+    }
+
+    Ok(None)
+}
+
+fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
+    home::home_dir().unwrap().join(format!(
+        ".mevlog/.cryo-cache/{}",
+        chain.cryo_cache_dir_name()
+    ))
+}
+
+async fn get_txs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>> {
+    let txs_data = match try_parse_txs_file(block_number, chain).await {
+        Ok(txs_data) => txs_data,
+        Err(_e) => {
+            let cmd = Command::new("cryo")
+                .args([
+                    "txs",
+                    "-b",
+                    &block_number.to_string(),
+                    "--rpc",
+                    &chain.rpc_url,
+                    "--n-chunks",
+                    "1",
+                    "--csv",
+                    "--output-dir",
+                    cryo_cache_dir(chain).display().to_string().as_str(),
+                ])
+                .output();
+
+            if cmd.is_err() {
+                eyre::bail!("cryo command failed: {}", cmd.err().unwrap());
+            }
+
+            try_parse_txs_file(block_number, chain).await?
+        }
+    };
+
+    Ok(txs_data)
+}
+
+async fn try_parse_txs_file(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>> {
+    let file = match find_matching_csv_file(chain, "transactions", block_number)? {
+        Some(matching_path) => match std::fs::File::open(matching_path) {
+            Ok(file) => file,
+            Err(e) => eyre::bail!("Error opening matching CSV file: {e}"),
+        },
+        None => {
+            let expected_pattern = format!(
+                "{}/{}__transactions__*{block_number}_to_*{block_number}.csv",
+                cryo_cache_dir(chain).display(),
+                chain.cryo_cache_dir_name()
+            );
+            eyre::bail!("No matching transactions CSV file found (pattern: {expected_pattern}). Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+        }
+    };
+
+    let reader = std::io::BufReader::new(file);
+    let mut csv_reader = csv::Reader::from_reader(reader);
+
+    let mut txs_data = vec![];
+
+    for result in csv_reader.records() {
+        let record = result?;
+        let tx_req = match MEVTransaction::tx_data_from_csv(record).await {
+            Ok(tx) => tx,
+            Err(e) => {
+                eyre::bail!("Error parsing tx req from csv: {}", e);
+            }
+        };
+        txs_data.push(tx_req);
+    }
+
+    Ok(txs_data)
+}
+
+async fn get_logs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<csv::StringRecord>> {
+    let logs_data = match try_parse_logs_file(block_number, chain).await {
+        Ok(logs_data) => logs_data,
+        Err(_e) => {
+            let cmd = Command::new("cryo")
+                .args([
+                    "logs",
+                    "-b",
+                    &block_number.to_string(),
+                    "--rpc",
+                    &chain.rpc_url,
+                    "--n-chunks",
+                    "1",
+                    "--csv",
+                    "--output-dir",
+                    cryo_cache_dir(chain).display().to_string().as_str(),
+                ])
+                .output();
+
+            if cmd.is_err() {
+                eyre::bail!("cryo logs command failed: {}", cmd.err().unwrap());
+            }
+
+            try_parse_logs_file(block_number, chain).await?
+        }
+    };
+
+    Ok(logs_data)
+}
+
+async fn try_parse_logs_file(
+    block_number: u64,
+    chain: &EVMChain,
+) -> Result<Vec<csv::StringRecord>> {
+    let mut logs_data = vec![];
+
+    match find_matching_csv_file(chain, "logs", block_number)? {
+        Some(matching_path) => match std::fs::File::open(matching_path) {
+            Ok(logs_file) => {
+                let logs_reader = std::io::BufReader::new(logs_file);
+                let mut logs_csv_reader = csv::Reader::from_reader(logs_reader);
+
+                for result in logs_csv_reader.records() {
+                    let record = result?;
+                    logs_data.push(record);
+                }
+            }
+            Err(e) => {
+                eyre::bail!("Error opening matching logs CSV file: {}", e);
+            }
+        },
+        None => {
+            let expected_pattern = format!(
+                "{}/{}__logs__*{block_number}_to_*{block_number}.csv",
+                cryo_cache_dir(chain).display(),
+                chain.cryo_cache_dir_name()
+            );
+            eyre::bail!("No matching logs CSV file found (pattern: {expected_pattern}), continuing without logs processing");
+        }
+    }
+
+    Ok(logs_data)
 }

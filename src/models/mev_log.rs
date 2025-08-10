@@ -1,6 +1,5 @@
 use std::fmt;
 
-use alloy::rpc::types::Log as AlloyLog;
 use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
@@ -15,32 +14,66 @@ pub struct MEVLog {
     pub signature: MEVLogSignature,
     pub topics: Vec<FixedBytes<32>>,
     pub data: Vec<u8>,
+    pub tx_index: u64,
 }
 
 impl MEVLog {
-    pub async fn new(
-        first_topic: &FixedBytes<32>,
-        inner_log: &AlloyLog,
+    // CSV row:
+    // block_number 0
+    // transaction_index 1
+    // log_index 2
+    // transaction_hash 3
+    // address 4
+    // topic0 5
+    // topic1 6
+    // topic2 7
+    // topic3 8
+    // data 9
+    // chain_id 10
+    pub async fn from_csv_row(
+        record: &csv::StringRecord,
         symbols_lookup_worker: &SymbolLookupWorker,
         sqlite: &SqlitePool,
         show_erc20_transfer_amount: bool,
     ) -> Result<Self> {
-        let signature_str = DBEvent::find_by_hash(&format!("{first_topic}"), sqlite).await?;
-        let data = inner_log.inner.data.data.to_vec();
+        let first_topic = record[5].to_string();
+        let data = record[9].to_string();
 
+        let signature_str = DBEvent::find_by_hash(&first_topic, sqlite).await?;
+        let data = hex::decode(data.strip_prefix("0x").unwrap_or(&data))?;
+        let source: Address = record[4].parse()?;
         let signature = MEVLogSignature::new(
-            inner_log.inner.address,
+            source,
             signature_str.clone(),
             symbols_lookup_worker,
             show_erc20_transfer_amount,
         )
         .await?;
 
+        let topics = [
+            record[5].to_string(),
+            record[6].to_string(),
+            record[7].to_string(),
+            record[8].to_string(),
+        ]
+        .iter()
+        .filter_map(|s| {
+            if s.is_empty() {
+                None
+            } else {
+                Some(FixedBytes::from_slice(
+                    &hex::decode(s.strip_prefix("0x").unwrap_or(s)).unwrap(),
+                ))
+            }
+        })
+        .collect::<Vec<_>>();
+        let tx_index = record[1].parse()?;
         let log = Self {
-            source: inner_log.inner.address,
+            source,
             signature,
-            topics: inner_log.topics().to_vec(),
+            topics: topics.clone(),
             data: data.clone(),
+            tx_index,
         };
 
         if log.is_erc20_transfer() {
@@ -54,10 +87,11 @@ impl MEVLog {
             let signature = log.signature.with_amount(amount);
 
             return Ok(Self {
-                source: log.source,
+                source,
                 signature,
-                topics: log.topics,
-                data: log.data,
+                topics,
+                data,
+                tx_index,
             });
         }
 

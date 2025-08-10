@@ -236,4 +236,27 @@ pub mod tests {
         println!("err: {err}");
         assert!(err.contains("\"error\":\"Invalid block number: 0\""));
     }
+
+    #[test]
+    fn test_cli_format_search_position_range() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("22045570")
+            .arg("-p")
+            .arg("0:3")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        let json: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap();
+        assert_eq!(json.len(), 4);
+    }
 }
