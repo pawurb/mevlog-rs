@@ -3,8 +3,9 @@ use std::{collections::HashMap, fmt, fs, path::PathBuf, process::Command, sync::
 use alloy::{
     eips::BlockNumberOrTag,
     providers::Provider,
-    rpc::types::{trace::parity::Action, TransactionRequest},
+    rpc::types::{trace::parity::Action, Block, TransactionRequest},
 };
+use cacache;
 use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
@@ -131,15 +132,13 @@ impl MEVBlock {
         chain: &EVMChain,
         native_token_price: Option<f64>,
     ) -> Result<Self> {
-        let block_number_tag = BlockNumberOrTag::Number(block_number);
-
         if which::which("cryo").is_err() {
             eyre::bail!("'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo");
         };
 
         let txs_data = get_txs_data(block_number, chain).await?;
 
-        let block = provider.get_block_by_number(block_number_tag).await?;
+        let block = get_cached_block(provider, chain, block_number).await?;
 
         let Some(block) = block else {
             eyre::bail!("Block {} not found", block_number);
@@ -877,4 +876,63 @@ async fn try_parse_logs_file(
     }
 
     Ok(logs_data)
+}
+
+fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {
+    format!("{}-{}", chain.name, block_number)
+}
+
+fn block_cache_dir() -> PathBuf {
+    home::home_dir().unwrap().join(".mevlog/.blocks-cache")
+}
+
+async fn get_cached_block(
+    provider: &Arc<GenericProvider>,
+    chain: &EVMChain,
+    block_number: u64,
+) -> Result<Option<Block>> {
+    let cache_key = block_cache_key(chain, block_number);
+    let cache_dir = block_cache_dir();
+    let block_number_tag = BlockNumberOrTag::Number(block_number);
+
+    if let Err(e) = fs::create_dir_all(&cache_dir) {
+        tracing::warn!("Failed to create cache directory: {}", e);
+        return provider
+            .get_block_by_number(block_number_tag)
+            .await
+            .map_err(Into::into);
+    }
+
+    if let Ok(cached_data) = cacache::read(&cache_dir, &cache_key).await {
+        match serde_json::from_slice::<Block>(&cached_data) {
+            Ok(block) => {
+                tracing::debug!("Block {} loaded from cache", block_number);
+                return Ok(Some(block));
+            }
+            Err(e) => {
+                tracing::warn!("Failed to deserialize cached block {}: {}", block_number, e);
+            }
+        }
+    }
+
+    let block = provider.get_block_by_number(block_number_tag).await?;
+
+    if let Some(ref block_data) = block {
+        match serde_json::to_vec(block_data) {
+            Ok(serialized_block) => {
+                if let Err(e) = cacache::write(&cache_dir, &cache_key, &serialized_block).await {
+                    tracing::warn!("Failed to cache block {}: {}", block_number, e);
+                }
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to serialize block {} for caching: {}",
+                    block_number,
+                    e
+                );
+            }
+        }
+    }
+
+    Ok(block)
 }
