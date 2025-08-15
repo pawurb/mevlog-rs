@@ -1,8 +1,4 @@
-use std::{
-    collections::HashSet,
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use alloy::{
     consensus::BlockHeader,
@@ -84,23 +80,10 @@ pub async fn init_revm_db(
 }
 
 pub fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {
-    let foundry_revm_cache = home::home_dir().unwrap().join(format!(
-        ".foundry/cache/rpc/{}",
+    Ok(home::home_dir().unwrap().join(format!(
+        ".mevlog/.revm-cache/{}/{block_number}.json",
         chain.revm_cache_dir_name()
-    ));
-
-    if Path::new(&foundry_revm_cache).exists() {
-        if foundry_revm_cache.is_dir() {
-            Ok(foundry_revm_cache.join(format!("{block_number}/storage.json")))
-        } else {
-            Ok(foundry_revm_cache.join(format!("{block_number}")))
-        }
-    } else {
-        Ok(home::home_dir().unwrap().join(format!(
-            ".mevlog/.revm-cache/{}/{block_number}.json",
-            chain.revm_cache_dir_name()
-        )))
-    }
+    )))
 }
 
 pub struct RevmBlockContext {
