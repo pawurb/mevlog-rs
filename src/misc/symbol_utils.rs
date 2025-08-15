@@ -23,15 +23,33 @@ sol! {
 
 const MISSING_SYMBOL: &str = "E";
 
-enum SymbolEntry {
+pub enum CachedEntry {
     Known(String),
     KnownEmpty,
     Unknown,
 }
 
-pub type SymbolLookupWorker = UnboundedSender<(Address, MEVLogSignatureType)>;
+pub enum ERC20SymbolsLookup {
+    Async(ERC20SymbolLookupWorker),
+    OnlyCached,
+}
 
-pub fn start_symbols_lookup_worker(rpc_url: &str) -> SymbolLookupWorker {
+impl ERC20SymbolsLookup {
+    pub fn lookup_mode(
+        erc20_symbold_lookup_worker: ERC20SymbolLookupWorker,
+        erc20_symbols_enabled: bool,
+    ) -> ERC20SymbolsLookup {
+        if erc20_symbols_enabled {
+            ERC20SymbolsLookup::Async(erc20_symbold_lookup_worker)
+        } else {
+            ERC20SymbolsLookup::OnlyCached
+        }
+    }
+}
+
+pub type ERC20SymbolLookupWorker = UnboundedSender<(Address, MEVLogSignatureType)>;
+
+pub fn start_symbols_lookup_worker(rpc_url: &str) -> ERC20SymbolLookupWorker {
     let (tx, mut rx) = mpsc::unbounded_channel::<(Address, MEVLogSignatureType)>();
 
     let rpc_url = rpc_url.to_string();
@@ -108,34 +126,42 @@ async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> R
     Ok(())
 }
 
-async fn read_symbols_cache(target: Address) -> Result<SymbolEntry> {
+async fn read_symbols_cache(target: Address) -> Result<CachedEntry> {
     match cacache::read(&symbols_cache_dir(), target.to_string()).await {
         Ok(bytes) => {
             let name = String::from_utf8(bytes)
                 .map_err(|e| eyre::eyre!("Invalid UTF-8 in cache: {}", e))?;
             if name.len() == 1 {
-                Ok(SymbolEntry::KnownEmpty)
+                Ok(CachedEntry::KnownEmpty)
             } else {
-                Ok(SymbolEntry::Known(name))
+                Ok(CachedEntry::Known(name))
             }
         }
-        Err(_) => Ok(SymbolEntry::Unknown),
+        Err(_) => Ok(CachedEntry::Unknown),
     }
 }
 
-pub async fn symbol_lookup_cached_async(
+pub async fn symbol_lookup_only_cached(target: Address) -> Result<Option<String>> {
+    match read_symbols_cache(target).await? {
+        CachedEntry::Known(name) => Ok(Some(name)),
+        CachedEntry::KnownEmpty => Ok(None),
+        CachedEntry::Unknown => Ok(None),
+    }
+}
+
+pub async fn symbol_lookup_async(
     target: Address,
     signature_type: Option<MEVLogSignatureType>,
-    symbols_lookup: &SymbolLookupWorker,
+    symbols_lookup: &ERC20SymbolLookupWorker,
 ) -> Result<Option<String>> {
     let Some(signature_type) = signature_type else {
         return Ok(None);
     };
 
     match read_symbols_cache(target).await? {
-        SymbolEntry::Known(name) => Ok(Some(name)),
-        SymbolEntry::KnownEmpty => Ok(None),
-        SymbolEntry::Unknown => {
+        CachedEntry::Known(name) => Ok(Some(name)),
+        CachedEntry::KnownEmpty => Ok(None),
+        CachedEntry::Unknown => {
             symbols_lookup.send((target, signature_type))?;
             Ok(None)
         }

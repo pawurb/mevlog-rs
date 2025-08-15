@@ -4,7 +4,7 @@ use eyre::Result;
 use revm::primitives::{Address, U256};
 
 use crate::misc::{
-    symbol_utils::{symbol_lookup_cached_async, SymbolLookupWorker},
+    symbol_utils::{symbol_lookup_async, symbol_lookup_only_cached, ERC20SymbolsLookup},
     utils::UNKNOWN,
 };
 
@@ -16,7 +16,7 @@ pub struct MEVLogSignature {
     show_amount: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MEVLogSignatureType {
     ERC20,
     UNIV2,
@@ -27,13 +27,18 @@ impl MEVLogSignature {
     pub async fn new(
         address: Address,
         signature_str: Option<String>,
-        symbols_lookup: &SymbolLookupWorker,
+        symbols_lookup: &ERC20SymbolsLookup,
         show_amount: bool,
     ) -> Result<Self> {
         let signature_str = signature_str.unwrap_or(UNKNOWN.to_string());
         let signature_type = get_signature_type(&signature_str);
 
-        let symbol = symbol_lookup_cached_async(address, signature_type, symbols_lookup).await?;
+        let symbol = match symbols_lookup {
+            ERC20SymbolsLookup::Async(symbols_lookup) => {
+                symbol_lookup_async(address, signature_type, symbols_lookup).await?
+            }
+            ERC20SymbolsLookup::OnlyCached => symbol_lookup_only_cached(address).await?,
+        };
 
         Ok(Self {
             signature: signature_str,

@@ -6,7 +6,7 @@ use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::SqlitePool;
 
 use super::{db_event::DBEvent, mev_log_signature::MEVLogSignature};
-use crate::misc::symbol_utils::SymbolLookupWorker;
+use crate::misc::symbol_utils::ERC20SymbolsLookup;
 
 #[derive(Debug)]
 pub struct MEVLog {
@@ -32,7 +32,7 @@ impl MEVLog {
     // chain_id 10
     pub async fn from_csv_row(
         record: &csv::StringRecord,
-        symbols_lookup_worker: &SymbolLookupWorker,
+        symbols_lookup: &ERC20SymbolsLookup,
         sqlite: &SqlitePool,
         show_erc20_transfer_amount: bool,
     ) -> Result<Self> {
@@ -45,7 +45,7 @@ impl MEVLog {
         let signature = MEVLogSignature::new(
             source,
             signature_str.clone(),
-            symbols_lookup_worker,
+            symbols_lookup,
             show_erc20_transfer_amount,
         )
         .await?;

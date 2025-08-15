@@ -187,6 +187,42 @@ You can supply multiple `--erc20-transfer` flags to match transfers from differe
 
 By default, transfer amounts are not displayed in the logs. Use the `--erc20-transfer-amount` flag to show transfer amounts alongside the Transfer events.
 
+### ENS and ERC20 token symbols resolution
+
+You can enable ENS name resolution and ERC20 token symbol lookup for transfers and Uniswap swaps using the `--ens` and `--erc20-symbols` flags:
+
+```bash
+# Enable ENS name display for addresses
+mevlog search -b 10:latest --ens --chain-id 1
+
+# Enable ERC20 token symbols display 
+mevlog search -b 10:latest --erc20-symbols --chain-id 1
+
+# Enable both ENS and token symbols
+mevlog search -b 10:latest --ens --erc20-symbols --chain-id 1
+```
+
+**Performance considerations:**
+
+⚠️ **Warning**: Enabling these flags increases RPC calls and may cause throttling on public endpoints.
+
+**Recommended usage pattern:**
+1. **Initial cache population**: Enable flags for a small range of recent blocks to cache popular ENS names and ERC20 symbols:
+
+```bash
+# Cache popular symbols and ENS names from recent blocks
+mevlog search -b 10:latest --ens --erc20-symbols --chain-id 1
+```
+
+2. **Regular usage**: Disable flags to use only cached values, reducing RPC calls:
+
+```bash
+# Use cached ENS/symbol data only (no additional RPC calls)
+mevlog search -b 100:latest --chain-id 1
+```
+
+The tool maintains persistent caches in `~/.mevlog/.ens-cache` and `~/.mevlog/.symbols-cache`. Once populated, cached values are used automatically even when the flags are disabled.
+
 ### EVM tracing filters
 
 All the above queries use only standard block and logs input. By enabling `--trace [rpc|revm]` flag you can query by more conditions:
@@ -257,6 +293,10 @@ Options:
           Filter by Transfer events with specific address and optionally amount (e.g., '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' or '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei')
       --erc20-transfer-amount
           Display transfer amounts in ERC20 Transfer event logs
+      --ens
+          Enable ENS name resolution for addresses (increases RPC calls)
+      --erc20-symbols
+          Enable ERC20 token symbol resolution (increases RPC calls)
       --failed 
           Show only txs which failed to execute
       --format <FORMAT>

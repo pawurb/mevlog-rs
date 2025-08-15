@@ -7,6 +7,7 @@ use mevlog::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
     models::{mev_block::generate_block, txs_filter::TxsFilter},
@@ -102,18 +103,25 @@ impl TxArgs {
             show_erc20_transfer_amount: self.shared_opts.erc20_transfer_amount,
         };
 
-        let ens_lookup_mode = if deps.chain.is_mainnet() {
+        let ens_lookup_mode = if deps.chain.is_mainnet() && self.shared_opts.ens {
             ENSLookup::Sync
+        } else if deps.chain.is_mainnet() {
+            ENSLookup::OnlyCached
         } else {
             ENSLookup::Disabled
         };
+
+        let symbols_lookup = ERC20SymbolsLookup::lookup_mode(
+            deps.symbols_lookup_worker,
+            self.shared_opts.erc20_symbols,
+        );
 
         let mev_block = generate_block(
             &deps.provider,
             &deps.sqlite,
             block_number,
             &ens_lookup_mode,
-            &deps.symbols_lookup_worker,
+            &symbols_lookup,
             &txs_filter,
             &self.shared_opts,
             &deps.chain,

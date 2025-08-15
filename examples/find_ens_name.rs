@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use alloy::{providers::ProviderBuilder, rpc::client::RpcClient};
 use eyre::Result;
-use mevlog::misc::ens_utils::{ens_reverse_lookup_cached_sync, namehash, reverse_address};
+use mevlog::misc::ens_utils::{ens_lookup_sync, namehash, reverse_address};
 use revm::primitives::address;
 
 #[tokio::main]
@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     let node = namehash(&name);
     println!("node: {node}");
 
-    let name = ens_reverse_lookup_cached_sync(addr, &provider).await?;
+    let name = ens_lookup_sync(addr, &provider).await?;
     println!("name: {name:?}");
     Ok(())
 }

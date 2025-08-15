@@ -127,6 +127,7 @@ pub mod tests {
             .arg("jaredfromsubway.eth")
             .arg("--format")
             .arg("json-pretty")
+            .arg("--ens")
             .output()
             .expect("failed to execute CLI");
 
@@ -140,7 +141,26 @@ pub mod tests {
     }
 
     #[test]
-    fn test_cli_search_symbols() {
+    fn test_cli_search_symbols_cache() {
+        // Populate symbols cache
+        let _ = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("23070298")
+            .arg("-p")
+            .arg("2")
+            .arg("--from")
+            .arg("jaredfromsubway.eth")
+            .arg("--format")
+            .arg("json-pretty")
+            .arg("--ens")
+            .arg("--erc20-symbols")
+            .output()
+            .expect("failed to execute CLI");
+
         let cmd = Command::new("cargo")
             .arg("run")
             .arg("--bin")
@@ -149,17 +169,17 @@ pub mod tests {
             .arg("-b")
             .arg("23070298")
             .arg("-p")
-            .arg("0:8")
+            .arg("2")
             .arg("--from")
             .arg("jaredfromsubway.eth")
             .arg("--format")
             .arg("json-pretty")
+            .arg("--ens")
             .output()
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         println!("output: {output}");
-        assert!(output.contains("\"symbol\": \"WETH|MARIE\""));
         assert!(output.contains("\"symbol\": \"WETH\""));
     }
 

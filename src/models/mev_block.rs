@@ -35,7 +35,7 @@ use crate::{
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
-        symbol_utils::SymbolLookupWorker,
+        symbol_utils::ERC20SymbolsLookup,
         utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
     },
     models::{
@@ -72,7 +72,7 @@ pub async fn generate_block(
     sqlite: &SqlitePool,
     block_number: u64,
     ens_lookup: &ENSLookup,
-    symbols_lookup: &SymbolLookupWorker,
+    symbols_lookup: &ERC20SymbolsLookup,
     txs_filter: &TxsFilter,
     shared_opts: &SharedOpts,
     chain: &EVMChain,
@@ -192,7 +192,7 @@ impl MEVBlock {
         filter: &TxsFilter,
         sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
-        symbols_lookup: &SymbolLookupWorker,
+        symbols_lookup: &ERC20SymbolsLookup,
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         shared_opts: &SharedOpts,
@@ -488,7 +488,7 @@ impl MEVBlock {
         &mut self,
         filter: &TxsFilter,
         sqlite: &SqlitePool,
-        symbols_lookup: &SymbolLookupWorker,
+        symbols_lookup: &ERC20SymbolsLookup,
     ) -> Result<()> {
         let logs_data = get_logs_data(self.block_number, &self.chain).await?;
 

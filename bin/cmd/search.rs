@@ -5,6 +5,7 @@ use mevlog::{
         args_parsing::BlocksRange,
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
     models::{
@@ -76,9 +77,18 @@ impl SearchArgs {
 
         let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, false)?;
 
-        let ens_lookup =
-            ENSLookup::lookup_mode(txs_filter.ens_query(), deps.ens_lookup_worker, &deps.chain)
-                .await;
+        let ens_lookup = ENSLookup::lookup_mode(
+            txs_filter.ens_query(),
+            deps.ens_lookup_worker,
+            &deps.chain,
+            self.shared_opts.ens,
+        )
+        .await?;
+
+        let symbols_lookup = ERC20SymbolsLookup::lookup_mode(
+            deps.symbols_lookup_worker,
+            self.shared_opts.erc20_symbols,
+        );
 
         let native_token_price = get_native_token_price(&deps.chain, &deps.provider).await?;
 
@@ -93,7 +103,7 @@ impl SearchArgs {
                 &deps.sqlite,
                 block_number,
                 &ens_lookup,
-                &deps.symbols_lookup_worker,
+                &symbols_lookup,
                 &txs_filter,
                 &self.shared_opts,
                 &deps.chain,
@@ -139,8 +149,11 @@ impl SearchArgs {
             }
         }
 
-        // Allow async ENS and symbols lookups to finish
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        // Allow async ENS and erc20 symbols lookups to catch up
+        if self.shared_opts.erc20_symbols || self.shared_opts.ens {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+
         Ok(())
     }
 }

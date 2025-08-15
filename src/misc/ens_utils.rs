@@ -6,7 +6,7 @@ use revm::primitives::{address, Address, B256};
 use tokio::sync::mpsc::{self, UnboundedSender};
 
 use super::shared_init::init_provider;
-use crate::{models::evm_chain::EVMChain, GenericProvider};
+use crate::{misc::symbol_utils::CachedEntry, models::evm_chain::EVMChain, GenericProvider};
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
@@ -24,6 +24,7 @@ const MISSING_NAME: &str = "N";
 pub enum ENSLookup {
     Sync,
     Async(UnboundedSender<Address>),
+    OnlyCached,
     Disabled,
 }
 
@@ -32,40 +33,51 @@ impl ENSLookup {
         ens_query: Option<String>,
         ens_lookup_worker: UnboundedSender<Address>,
         chain: &EVMChain,
-    ) -> ENSLookup {
+        ens_enabled: bool,
+    ) -> Result<ENSLookup> {
         if chain.chain_id != 1 {
-            return ENSLookup::Disabled;
+            return Ok(ENSLookup::Disabled);
+        }
+
+        if !ens_enabled && ens_query.is_some() {
+            eyre::bail!("Please enable ENS lookup with --ens flag, to search by ENS name");
+        }
+
+        if !ens_enabled {
+            return Ok(ENSLookup::OnlyCached);
         }
 
         if ens_query.is_none() {
-            return ENSLookup::Async(ens_lookup_worker);
+            return Ok(ENSLookup::Async(ens_lookup_worker));
         }
 
         if known_ens_name(&ens_query.unwrap()).await {
-            ENSLookup::Async(ens_lookup_worker)
+            Ok(ENSLookup::Async(ens_lookup_worker))
         } else {
-            ENSLookup::Sync
+            Ok(ENSLookup::Sync)
         }
     }
 }
 
-enum ENSEntry {
-    Known(String),
-    KnownEmpty,
-    Unknown,
-}
-
-pub async fn ens_reverse_lookup_cached_async(
+pub async fn ens_lookup_async(
     target: Address,
     ens_sender: &UnboundedSender<Address>,
 ) -> Result<Option<String>> {
     match read_ens_cache(target).await? {
-        ENSEntry::Known(name) => Ok(Some(name)),
-        ENSEntry::KnownEmpty => Ok(None),
-        ENSEntry::Unknown => {
+        CachedEntry::Known(name) => Ok(Some(name)),
+        CachedEntry::KnownEmpty => Ok(None),
+        CachedEntry::Unknown => {
             ens_sender.send(target)?;
             Ok(None)
         }
+    }
+}
+
+pub async fn ens_lookup_only_cached(target: Address) -> Result<Option<String>> {
+    match read_ens_cache(target).await? {
+        CachedEntry::Known(name) => Ok(Some(name)),
+        CachedEntry::KnownEmpty => Ok(None),
+        CachedEntry::Unknown => Ok(None),
     }
 }
 
@@ -73,14 +85,14 @@ pub async fn known_ens_name(name: &str) -> bool {
     cacache::read(&ens_cache_dir(), name).await.is_ok()
 }
 
-pub async fn ens_reverse_lookup_cached_sync(
+pub async fn ens_lookup_sync(
     target: Address,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<String>> {
     match read_ens_cache(target).await? {
-        ENSEntry::Known(name) => Ok(Some(name)),
-        ENSEntry::KnownEmpty => Ok(None),
-        ENSEntry::Unknown => {
+        CachedEntry::Known(name) => Ok(Some(name)),
+        CachedEntry::KnownEmpty => Ok(None),
+        CachedEntry::Unknown => {
             let name = ens_reverse_lookup(target, provider).await?;
             write_ens_cache(target, name.clone()).await?;
             Ok(name)
@@ -108,18 +120,18 @@ async fn ens_reverse_lookup(
     Ok(name)
 }
 
-async fn read_ens_cache(target: Address) -> Result<ENSEntry> {
+async fn read_ens_cache(target: Address) -> Result<CachedEntry> {
     match cacache::read(&ens_cache_dir(), target.to_string()).await {
         Ok(bytes) => {
             let name = String::from_utf8(bytes)
                 .map_err(|e| eyre::eyre!("Invalid UTF-8 in cache: {}", e))?;
             if name.len() == 1 {
-                Ok(ENSEntry::KnownEmpty)
+                Ok(CachedEntry::KnownEmpty)
             } else {
-                Ok(ENSEntry::Known(name))
+                Ok(CachedEntry::Known(name))
             }
         }
-        Err(_) => Ok(ENSEntry::Unknown),
+        Err(_) => Ok(CachedEntry::Unknown),
     }
 }
 

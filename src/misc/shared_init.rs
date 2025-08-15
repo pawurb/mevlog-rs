@@ -16,7 +16,7 @@ use super::{
     db_actions::{check_and_create_indexes, db_file_exists},
     ens_utils::start_ens_lookup_worker,
     rpc_urls::get_chain_info,
-    symbol_utils::{start_symbols_lookup_worker, SymbolLookupWorker},
+    symbol_utils::{start_symbols_lookup_worker, ERC20SymbolLookupWorker},
 };
 use crate::{
     misc::db_actions::download_db_file,
@@ -27,7 +27,7 @@ use crate::{
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub ens_lookup_worker: UnboundedSender<Address>,
-    pub symbols_lookup_worker: SymbolLookupWorker,
+    pub symbols_lookup_worker: ERC20SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub chain: EVMChain,
     pub rpc_url: String,
@@ -107,6 +107,12 @@ pub struct SharedOpts {
 
     #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
     pub erc20_transfer_amount: bool,
+
+    #[arg(long, help = "Enable ENS domains lookup")]
+    pub ens: bool,
+
+    #[arg(long, help = "Enable ERC20 symbols lookup")]
+    pub erc20_symbols: bool,
 }
 
 #[derive(Clone, Debug, clap::Parser)]

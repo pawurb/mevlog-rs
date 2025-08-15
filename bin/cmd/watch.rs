@@ -5,6 +5,7 @@ use mevlog::{
     misc::{
         ens_utils::ENSLookup,
         shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
     models::{
@@ -31,9 +32,18 @@ impl WatchArgs {
 
         let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, true)?;
 
-        let ens_lookup =
-            ENSLookup::lookup_mode(txs_filter.ens_query(), deps.ens_lookup_worker, &deps.chain)
-                .await;
+        let ens_lookup = ENSLookup::lookup_mode(
+            txs_filter.ens_query(),
+            deps.ens_lookup_worker,
+            &deps.chain,
+            self.shared_opts.ens,
+        )
+        .await?;
+
+        let symbols_lookup = ERC20SymbolsLookup::lookup_mode(
+            deps.symbols_lookup_worker,
+            self.shared_opts.erc20_symbols,
+        );
 
         let native_token_price = get_native_token_price(&deps.chain, &deps.provider).await?;
 
@@ -52,7 +62,7 @@ impl WatchArgs {
                 &deps.sqlite,
                 current_block_number,
                 &ens_lookup,
-                &deps.symbols_lookup_worker,
+                &symbols_lookup,
                 &txs_filter,
                 &self.shared_opts,
                 &deps.chain,
