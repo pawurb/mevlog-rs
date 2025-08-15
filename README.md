@@ -89,12 +89,68 @@ mevlog watch -p 0:19
 
 ## Filtering options
 
+Here's a complete list of currently supported filters:
+
+```
+Options:
+      --limit <LIMIT>
+          Limit the number of transactions returned
+      --sort <SORT>
+          Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost)
+      --sort-dir <SORT_DIR>
+          Sort direction (desc, asc) [default: desc]
+  -f, --from <FROM>
+          Filter by tx source address or ENS name
+      --to <TO>
+          Filter by tx target address or ENS name, or CREATE transactions
+  -t, --touching <TOUCHING>
+          Filter by contracts with storage changed by the transaction
+      --rpc-url <RPC_URL>
+          The URL of the HTTP provider [env: ETH_RPC_URL]
+      --chain-id <CHAIN_ID>
+          Chain ID to automatically select best RPC URL (mutually exclusive with --rpc-url)
+      --event <EVENT>
+          Include txs by event names matching the provided regex or signature and optionally an address
+      --not-event <NOT_EVENT>
+          Exclude txs by event names matching the provided regex or signature and optionally an address
+      --method <METHOD>
+          Include txs with root method names matching the provided regex, signature or signature hash
+      --calls <CALLS>
+          Include txs by subcalls method names matching the provided regex, signature or signature hash
+      --show-calls
+          Show detailed tx calls info
+      --tx-cost <TX_COST>
+          Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')
+      --real-tx-cost <REAL_TX_COST>
+          Filter by real (including coinbase bribe) tx cost (e.g., 'le0.001ether', 'ge0.01ether')
+      --gas-price <GAS_PRICE>
+          Filter by effective gas price (e.g., 'ge2gwei', 'le1gwei')
+      --real-gas-price <REAL_GAS_PRICE>
+          Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')
+      --value <VALUE>
+          Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')
+      --erc20-transfer <TRANSFER>
+          Filter by Transfer events with specific address and optionally amount (e.g., '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' or '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei')
+      --erc20-transfer-amount
+          Display transfer amounts in ERC20 Transfer event logs
+      --ens
+          Enable ENS name resolution for addresses (increases RPC calls)
+      --erc20-symbols
+          Enable ERC20 token symbol resolution (increases RPC calls)
+      --failed 
+          Show only txs which failed to execute
+      --format <FORMAT>
+          Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
+```
+
+Both `search` and `watch` support the same filtering options.
+
 A few examples of currently supported queries:
 
 - find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
 
 ```bash
-mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth --chain-id 1
+mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth --chain-id 1 --ens
 ```
 
 - unknown method signature contract call in a top position (likely an MEV bot):
@@ -249,61 +305,6 @@ It's possible to search txs by their sub method calls:
 mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --trace rpc
 ```
 
-All the filter conditions can be combined. Here's a complete list of currently supported filters:
-
-```
-Options:
-      --limit <LIMIT>
-          Limit the number of transactions returned
-      --sort <SORT>
-          Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost)
-      --sort-dir <SORT_DIR>
-          Sort direction (desc, asc) [default: desc]
-  -f, --from <FROM>
-          Filter by tx source address or ENS name
-      --to <TO>
-          Filter by tx target address or ENS name, or CREATE transactions
-  -t, --touching <TOUCHING>
-          Filter by contracts with storage changed by the transaction
-      --rpc-url <RPC_URL>
-          The URL of the HTTP provider [env: ETH_RPC_URL]
-      --chain-id <CHAIN_ID>
-          Chain ID to automatically select best RPC URL (mutually exclusive with --rpc-url)
-      --event <EVENT>
-          Include txs by event names matching the provided regex or signature and optionally an address
-      --not-event <NOT_EVENT>
-          Exclude txs by event names matching the provided regex or signature and optionally an address
-      --method <METHOD>
-          Include txs with root method names matching the provided regex, signature or signature hash
-      --calls <CALLS>
-          Include txs by subcalls method names matching the provided regex, signature or signature hash
-      --show-calls
-          Show detailed tx calls info
-      --tx-cost <TX_COST>
-          Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')
-      --real-tx-cost <REAL_TX_COST>
-          Filter by real (including coinbase bribe) tx cost (e.g., 'le0.001ether', 'ge0.01ether')
-      --gas-price <GAS_PRICE>
-          Filter by effective gas price (e.g., 'ge2gwei', 'le1gwei')
-      --real-gas-price <REAL_GAS_PRICE>
-          Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')
-      --value <VALUE>
-          Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')
-      --erc20-transfer <TRANSFER>
-          Filter by Transfer events with specific address and optionally amount (e.g., '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' or '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei')
-      --erc20-transfer-amount
-          Display transfer amounts in ERC20 Transfer event logs
-      --ens
-          Enable ENS name resolution for addresses (increases RPC calls)
-      --erc20-symbols
-          Enable ERC20 token symbol resolution (increases RPC calls)
-      --failed 
-          Show only txs which failed to execute
-      --format <FORMAT>
-          Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
-```
-
-Both `search` and `watch` support the same filtering options.
 
 ## Output formats
 
@@ -431,7 +432,7 @@ Explorer URL: https://etherscan.io
 
 ## Supported EVM chains
 
-The project currently supports over 2k EVM chains by reading the metadata from [ethereum-list/chains](https://github.com/ethereum-lists/chains). But only a few chains display $USD txs prices from integrated [ChainLink oracles](https://docs.chain.link/data-feeds/price-feeds/addresses). I'm planning to work on improving the coverage.
+The project currently supports over 2k EVM chains by reading the metadata from [ChainList](https://chainlist.org/). But only a few chains display $USD txs prices from integrated [ChainLink oracles](https://docs.chain.link/data-feeds/price-feeds/addresses). I'm planning to work on improving the coverage.
 
 If you use it with an unsupported chain, explorer URL and currency symbol is not displayed.
 
