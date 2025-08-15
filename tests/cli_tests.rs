@@ -135,6 +135,32 @@ pub mod tests {
         assert!(output.contains(
             "\"tx_hash\": \"0x71e7d6bb2fc19848cbedbda49f4c49c1ac32bafae0ee0dacd5540b84ca0b7937\""
         ));
+
+        assert!(output.contains("\"from_ens\": \"jaredfromsubway.eth\""));
+    }
+
+    #[test]
+    fn test_cli_search_symbols() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("23070298")
+            .arg("-p")
+            .arg("0:8")
+            .arg("--from")
+            .arg("jaredfromsubway.eth")
+            .arg("--format")
+            .arg("json-pretty")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains("\"symbol\": \"WETH|MARIE\""));
+        assert!(output.contains("\"symbol\": \"WETH\""));
     }
 
     #[test]
