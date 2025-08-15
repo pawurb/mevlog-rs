@@ -3,7 +3,7 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 use alloy::{
     consensus::BlockHeader,
     eips::{calc_blob_gasprice, eip2930::AccessList, BlockId, BlockNumberOrTag},
-    network::AnyNetwork,
+    network::{AnyNetwork, AnyRpcBlock},
     primitives::Bytes,
     providers::{Provider, ProviderBuilder},
     rpc::types::{
@@ -26,7 +26,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 
 use super::shared_init::TraceMode;
-use crate::models::evm_chain::EVMChain;
+use crate::models::{evm_chain::EVMChain, mev_block::block_cache_key};
 
 pub async fn init_revm_db(
     block_number: u64,
@@ -43,10 +43,7 @@ pub async fn init_revm_db(
         .network::<AnyNetwork>()
         .connect_http(rpc_url.parse()?);
 
-    let block = provider
-        .get_block_by_number(BlockNumberOrTag::Number(block_number))
-        .await?
-        .expect("block not found");
+    let block = get_cached_revm_block(&provider, chain, block_number).await?;
 
     let meta = BlockchainDbMeta::default()
         .set_chain(chain.chain_id.into())
@@ -295,4 +292,52 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
     if let Some(blob_hashes) = tx_req.blob_versioned_hashes {
         tx_env.blob_hashes = blob_hashes;
     }
+}
+
+async fn get_cached_revm_block(
+    provider: &impl Provider<AnyNetwork>,
+    chain: &EVMChain,
+    block_number: u64,
+) -> Result<AnyRpcBlock> {
+    let cache_key = block_cache_key(chain, block_number);
+    let cache_dir = block_cache_dir();
+    let block_number_tag = BlockNumberOrTag::Number(block_number);
+
+    if let Ok(cached_data) = cacache::read(&cache_dir, &cache_key).await {
+        match serde_json::from_slice::<AnyRpcBlock>(&cached_data) {
+            Ok(block) => {
+                tracing::debug!("Block {} loaded from cache", block_number);
+                return Ok(block);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to deserialize cached block {}: {}", block_number, e);
+            }
+        }
+    }
+
+    let block = provider
+        .get_block_by_number(block_number_tag)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Block {} not found", block_number))?;
+
+    match serde_json::to_vec(&block) {
+        Ok(serialized_block) => {
+            if let Err(e) = cacache::write(&cache_dir, &cache_key, &serialized_block).await {
+                tracing::warn!("Failed to cache block {}: {}", block_number, e);
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "Failed to serialize block {} for caching: {}",
+                block_number,
+                e
+            );
+        }
+    }
+
+    Ok(block)
+}
+
+fn block_cache_dir() -> PathBuf {
+    home::home_dir().unwrap().join(".mevlog/.revm-blocks-cache")
 }
