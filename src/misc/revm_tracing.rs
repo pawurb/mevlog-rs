@@ -4,7 +4,6 @@ use alloy::{
     consensus::BlockHeader,
     eips::{calc_blob_gasprice, eip2930::AccessList, BlockId, BlockNumberOrTag},
     network::AnyNetwork,
-    node_bindings::{Anvil, AnvilInstance},
     primitives::Bytes,
     providers::{Provider, ProviderBuilder},
     rpc::types::{
@@ -25,36 +24,24 @@ use revm::{
     Context, ExecuteCommitEvm, ExecuteEvm, InspectEvm, MainBuilder, MainContext,
 };
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
-use tracing::debug;
 
 use super::shared_init::TraceMode;
 use crate::models::evm_chain::EVMChain;
-
-pub struct RevmUtils {
-    pub anvil: AnvilInstance,
-    pub cache_db: CacheDB<SharedBackend>,
-}
 
 pub async fn init_revm_db(
     block_number: u64,
     trace_mode: &Option<TraceMode>,
     rpc_url: &str,
     chain: &EVMChain,
-) -> Result<Option<RevmUtils>> {
+) -> Result<Option<CacheDB<SharedBackend>>> {
     match trace_mode {
         Some(TraceMode::Revm) => {}
         _ => return Ok(None),
     };
 
-    let anvil = Anvil::new()
-        .fork(rpc_url)
-        .fork_block_number(block_number)
-        .spawn();
-    debug!("Initializing HTTP Revm provider");
-
     let provider = ProviderBuilder::new()
         .network::<AnyNetwork>()
-        .connect_http(anvil.endpoint().parse()?);
+        .connect_http(rpc_url.parse()?);
 
     let block = provider
         .get_block_by_number(BlockNumberOrTag::Number(block_number))
@@ -69,14 +56,14 @@ pub async fn init_revm_db(
 
     let db = BlockchainDb::new(meta, Some(cache_path));
     let shared = SharedBackend::spawn_backend(
-        Arc::new(provider.clone()),
+        Arc::new(provider),
         db,
         Some(BlockId::Number(BlockNumberOrTag::Number(block_number))),
     )
     .await;
     let cache_db = CacheDB::new(shared);
 
-    Ok(Some(RevmUtils { anvil, cache_db }))
+    Ok(Some(cache_db))
 }
 
 pub fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {

@@ -11,7 +11,7 @@ categories = ["command-line-utilities"]
 [dependencies]
 tokio = { version = "1.44.0", features = ["rt-multi-thread", "macros", "net", "fs", "time", "sync", "io-util"] }
 
-alloy = { version = "1.0", features = ["full", "node-bindings"] }
+alloy = { version = "1.0", features = ["full"] }
 revm-inspectors = "0.26.5"
 eyre = "0.6.12"
 serde_json = "1.0"

@@ -83,15 +83,7 @@ pub async fn generate_block(
         eyre::bail!("Invalid block number: 0");
     }
 
-    let revm_utils = init_revm_db(block_number - 1, &shared_opts.trace, rpc_url, chain).await?;
-
-    let (mut revm_db, _anvil) = match shared_opts.trace {
-        Some(TraceMode::Revm) => {
-            let utils = revm_utils.expect("Revm must be present");
-            (Some(utils.cache_db), Some(utils.anvil))
-        }
-        _ => (None, None),
-    };
+    let mut revm_db = init_revm_db(block_number - 1, &shared_opts.trace, rpc_url, chain).await?;
 
     let mut mev_block = MEVBlock::new(
         block_number,
