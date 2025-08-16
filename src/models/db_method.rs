@@ -1,5 +1,8 @@
+use std::{collections::HashMap, sync::OnceLock};
+
 use eyre::Result;
 use sqlx::Row;
+use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub struct DBMethod {
@@ -8,6 +11,12 @@ pub struct DBMethod {
 }
 
 impl DBMethod {
+    fn cache() -> &'static RwLock<HashMap<String, Option<String>>> {
+        static METHOD_SIG_CACHE: OnceLock<RwLock<HashMap<String, Option<String>>>> =
+            OnceLock::new();
+        METHOD_SIG_CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+    }
+
     pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
         let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM methods WHERE signature = ?)")
             .bind(signature)
@@ -31,8 +40,13 @@ impl DBMethod {
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {
-        let signature_hash = signature_hash.trim_start_matches("0x");
-        let signature_hash_bytes = hex::decode(signature_hash).expect("Invalid hex");
+        let key = normalize_key(signature_hash);
+
+        if let Some(cached) = Self::cache().read().await.get(&key).cloned() {
+            return Ok(cached);
+        }
+
+        let signature_hash_bytes = hex::decode(&key).expect("Invalid hex");
 
         let result = sqlx::query(
             r#"
@@ -43,18 +57,19 @@ impl DBMethod {
         .fetch_optional(conn)
         .await?;
 
-        match result {
-            Some(row) => Ok(Some(row.get(0))),
-            None => Ok(None),
-        }
+        let found: Option<String> = result.map(|row| row.get(0));
+
+        Self::cache().write().await.insert(key, found.clone());
+
+        Ok(found)
     }
 
     pub async fn save<'c, E>(&self, executor: E) -> Result<()>
     where
         E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
     {
-        let signature_hash = self.signature_hash.trim_start_matches("0x");
-        let signature_hash_bytes = hex::decode(signature_hash).expect("Invalid hex");
+        let key = normalize_key(&self.signature_hash);
+        let signature_hash_bytes = hex::decode(&key).expect("Invalid hex");
 
         sqlx::query(
             r#"
@@ -69,6 +84,10 @@ impl DBMethod {
 
         Ok(())
     }
+}
+
+fn normalize_key(signature_hash: &str) -> String {
+    signature_hash.trim_start_matches("0x").to_ascii_lowercase()
 }
 
 #[cfg(test)]
