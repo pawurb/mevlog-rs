@@ -74,6 +74,8 @@ To discover available chain IDs, use the `chains` command:
 ```bash
 mevlog chains --filter arbitrum  # Find Arbitrum-related chains
 mevlog chains --filter base      # Find Base-related chains
+mevlog chains --chain-id 1 --chain-id 137  # Show specific chains by ID
+mevlog chains --limit 10         # Show only first 10 chains
 ```
 
 On initial run `mevlog` downloads ~80mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [ChainList data](https://chainlist.org/) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
@@ -361,12 +363,16 @@ You can reverse the display order by adding the `--reverse` flag.
 ## Listing available chains
 
 ```bash
-mevlog chains                    # List all available chains
-mevlog chains --filter ethereum # Filter chains containing "ethereum" 
-mevlog chains --filter polygon  # Filter chains containing "polygon"
+mevlog chains                          # List all available chains
+mevlog chains --filter ethereum        # Filter chains containing "ethereum" 
+mevlog chains --filter polygon         # Filter chains containing "polygon"
+mevlog chains --chain-id 1 --chain-id 137  # Show specific chains by ID
+mevlog chains --limit 5                # Show only first 5 chains
+mevlog chains --format json            # Output as JSON
+mevlog chains --format json-pretty     # Output as pretty JSON
 ```
 
-Sample output:
+Sample text output:
 ```text
 Available chains (7 total):
 #    Chain ID Name
@@ -379,6 +385,28 @@ Available chains (7 total):
 6    560048   Ethereum Hoodi
 7    11155111 Ethereum Sepolia
 ```
+
+Sample JSON output:
+```json
+[
+  {
+    "chain_id": 1,
+    "name": "Ethereum Mainnet",
+    "chain": "ETH"
+  },
+  {
+    "chain_id": 137,
+    "name": "Polygon Mainnet",
+    "chain": "Polygon"
+  }
+]
+```
+
+**Options:**
+- `--filter <TEXT>`: Filter chains by name (case-insensitive substring match)
+- `--chain-id <ID>`: Filter by specific chain IDs (can be used multiple times)
+- `--limit <NUMBER>`: Limit the number of chains returned
+- `--format <FORMAT>`: Output format ('text', 'json', 'json-pretty')
 
 ## Getting chain information
 

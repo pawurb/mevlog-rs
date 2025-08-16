@@ -284,6 +284,25 @@ pub mod tests {
     }
 
     #[test]
+    fn test_cli_chains_filter_json() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("chains")
+            .arg("--filter")
+            .arg("arbitrum")
+            .arg("--format")
+            .arg("json")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains("\"name\":\"Arbitrum One\""));
+    }
+
+    #[test]
     fn test_cli_format_search() {
         let cmd = Command::new("cargo")
             .arg("run")

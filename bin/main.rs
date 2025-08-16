@@ -134,7 +134,7 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run().await?;
         }
         ML::Chains(args) => {
-            args.run().await?;
+            args.run(root_args.format).await?;
         }
         ML::ChainInfo(args) => {
             args.run(root_args.format).await?;
