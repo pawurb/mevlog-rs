@@ -23,6 +23,7 @@ use super::{
 use crate::{
     misc::{
         ens_utils::ENSLookup,
+        parquet_utils::get_parquet_string_value,
         utils::{wei_to_eth, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
     },
     models::evm_chain::EVMChain,
@@ -83,7 +84,7 @@ pub struct MEVTransaction {
     pub show_calls: bool,
 }
 
-// CSV row:
+// Parquet row:
 // block_number 0
 // transaction_index 1
 // transaction_hash 2
@@ -106,26 +107,33 @@ pub struct MEVTransaction {
 // n_input_nonzero_bytes 19
 // chain_id 20
 impl MEVTransaction {
-    pub async fn tx_data_from_csv(record: csv::StringRecord) -> Result<TxData> {
-        let to = if record[5].to_string() == "0x" || record[5].is_empty() {
+    pub async fn tx_data_from_parquet_row(
+        batch: &arrow::record_batch::RecordBatch,
+        row_idx: usize,
+    ) -> Result<TxData> {
+        let get_string_value =
+            |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+        let to_address_str = get_string_value(5);
+        let to_address = if to_address_str == "0x" || to_address_str.is_empty() {
             TxKind::Create
         } else {
-            TxKind::Call(Address::from_str(&record[5]).unwrap())
+            TxKind::Call(Address::from_str(&to_address_str).unwrap())
         };
 
-        let tx_hash = FixedBytes::from_str(&record[2]).unwrap();
+        let tx_hash_str = get_string_value(2);
+        let tx_hash = FixedBytes::from_str(&tx_hash_str).unwrap();
 
         let inner = TransactionRequest {
-            from: Some(Address::from_str(&record[4]).unwrap()),
-            to: Some(to),
-            input: TransactionInput::new(Bytes::from_str(&record[9]).unwrap()),
-            gas_price: Some(record[12].to_string().parse::<u128>().unwrap()),
-            gas: Some(record[10].to_string().parse::<u64>().unwrap()),
-            value: Some(U256::from_str(&record[7]).unwrap()),
-            nonce: Some(record[3].to_string().parse::<u64>().unwrap()),
-            chain_id: Some(record[12].to_string().parse::<u64>().unwrap()),
-            max_fee_per_gas: Some(record[15].to_string().parse::<u128>().unwrap_or(0)),
-            max_priority_fee_per_gas: Some(record[14].to_string().parse::<u128>().unwrap_or(0)),
+            from: Some(Address::from_str(&get_string_value(4)).unwrap()),
+            to: Some(to_address),
+            input: TransactionInput::new(Bytes::from_str(&get_string_value(9)).unwrap()),
+            gas_price: Some(get_string_value(12).parse::<u128>().unwrap()),
+            gas: Some(get_string_value(10).parse::<u64>().unwrap()),
+            value: Some(U256::from_str(&get_string_value(7)).unwrap()),
+            nonce: Some(get_string_value(3).parse::<u64>().unwrap()),
+            chain_id: Some(get_string_value(20).parse::<u64>().unwrap()),
+            max_fee_per_gas: Some(get_string_value(15).parse::<u128>().unwrap_or(0)),
+            max_priority_fee_per_gas: Some(get_string_value(14).parse::<u128>().unwrap_or(0)),
             access_list: Some(AccessList::from(vec![])),
             ..Default::default()
         };
@@ -134,9 +142,9 @@ impl MEVTransaction {
             req: inner,
             tx_hash,
             receipt: ReceiptData {
-                success: record[16].to_string().parse::<bool>().unwrap(),
-                effective_gas_price: record[12].to_string().parse::<u128>().unwrap(),
-                gas_used: record[11].to_string().parse::<u64>().unwrap(),
+                success: get_string_value(16).parse::<bool>().unwrap(),
+                effective_gas_price: get_string_value(12).parse::<u128>().unwrap(),
+                gas_used: get_string_value(11).parse::<u64>().unwrap(),
             },
         })
     }

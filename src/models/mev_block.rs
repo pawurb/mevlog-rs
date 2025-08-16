@@ -482,22 +482,23 @@ impl MEVBlock {
         sqlite: &SqlitePool,
         symbols_lookup: &ERC20SymbolsLookup,
     ) -> Result<()> {
-        let logs_data = get_logs_data(self.block_number, &self.chain).await?;
+        let logs_data = match get_logs_data(
+            self.block_number,
+            &self.chain,
+            symbols_lookup,
+            sqlite,
+            filter.show_erc20_transfer_amount,
+        )
+        .await
+        {
+            Ok(logs) => logs,
+            Err(_e) => {
+                // No logs found or failed to parse, continue without logs processing
+                return Ok(());
+            }
+        };
 
-        for record in logs_data {
-            let mev_log = match MEVLog::from_csv_row(
-                &record,
-                symbols_lookup,
-                sqlite,
-                filter.show_erc20_transfer_amount,
-            )
-            .await
-            {
-                Ok(log) => log,
-                Err(e) => {
-                    eyre::bail!("Error: {}", e);
-                }
-            };
+        for mev_log in logs_data {
             let tx_index = mev_log.tx_index;
 
             if let Some(position_range) = &filter.tx_position {
@@ -701,17 +702,17 @@ pub fn format_block_age(seconds: i64) -> String {
     }
 }
 
-fn find_matching_csv_file(
+fn find_matching_parquet_file(
     chain: &EVMChain,
     data_type: &str,
     block_number: u64,
 ) -> Result<Option<PathBuf>> {
     let cache_dir = cryo_cache_dir(chain);
 
-    // Pattern: {chain_prefix}__{data_type}__0*{block_number}_to_0*{block_number}.csv
+    // Pattern: {chain_prefix}__{data_type}__0*{block_number}_to_0*{block_number}.parquet
     // This matches files with zero or more leading zeros before block numbers
     let pattern = format!(
-        r"^{}__{}__0*{}_to_0*{}\.csv$",
+        r"^{}__{}__0*{}_to_0*{}\.parquet$",
         regex::escape(&chain.cryo_cache_dir_name()),
         regex::escape(data_type),
         block_number,
@@ -754,7 +755,6 @@ async fn get_txs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>
                     &chain.rpc_url,
                     "--n-chunks",
                     "1",
-                    "--csv",
                     "--output-dir",
                     cryo_cache_dir(chain).display().to_string().as_str(),
                 ])
@@ -772,42 +772,57 @@ async fn get_txs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>
 }
 
 async fn try_parse_txs_file(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>> {
-    let file = match find_matching_csv_file(chain, "transactions", block_number)? {
-        Some(matching_path) => match std::fs::File::open(matching_path) {
-            Ok(file) => file,
-            Err(e) => eyre::bail!("Error opening matching CSV file: {e}"),
-        },
+    let file_path = match find_matching_parquet_file(chain, "transactions", block_number)? {
+        Some(matching_path) => matching_path,
         None => {
             let expected_pattern = format!(
-                "{}/{}__transactions__*{block_number}_to_*{block_number}.csv",
+                "{}/{}__transactions__*{block_number}_to_*{block_number}.parquet",
                 cryo_cache_dir(chain).display(),
                 chain.cryo_cache_dir_name()
             );
-            eyre::bail!("No matching transactions CSV file found (pattern: {expected_pattern}). Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+            eyre::bail!("No matching transactions Parquet file found (pattern: {expected_pattern}). Make sure that 'cryo' command is working and that you have a valid RPC connection.");
         }
     };
 
-    let reader = std::io::BufReader::new(file);
-    let mut csv_reader = csv::Reader::from_reader(reader);
+    let file = std::fs::File::open(file_path)?;
+    let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
+    let reader = builder.build()?;
 
     let mut txs_data = vec![];
 
-    for result in csv_reader.records() {
-        let record = result?;
-        let tx_req = match MEVTransaction::tx_data_from_csv(record).await {
-            Ok(tx) => tx,
-            Err(e) => {
-                eyre::bail!("Error parsing tx req from csv: {}", e);
-            }
-        };
-        txs_data.push(tx_req);
+    for batch_result in reader {
+        let batch = batch_result?;
+
+        for row_idx in 0..batch.num_rows() {
+            let tx_req = match MEVTransaction::tx_data_from_parquet_row(&batch, row_idx).await {
+                Ok(tx) => tx,
+                Err(e) => {
+                    eyre::bail!("Error parsing tx req from parquet: {}", e);
+                }
+            };
+            txs_data.push(tx_req);
+        }
     }
 
     Ok(txs_data)
 }
 
-async fn get_logs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<csv::StringRecord>> {
-    let logs_data = match try_parse_logs_file(block_number, chain).await {
+async fn get_logs_data(
+    block_number: u64,
+    chain: &EVMChain,
+    symbols_lookup: &ERC20SymbolsLookup,
+    sqlite: &SqlitePool,
+    show_erc20_transfer_amount: bool,
+) -> Result<Vec<MEVLog>> {
+    let logs_data = match try_parse_logs_file(
+        block_number,
+        chain,
+        symbols_lookup,
+        sqlite,
+        show_erc20_transfer_amount,
+    )
+    .await
+    {
         Ok(logs_data) => logs_data,
         Err(_e) => {
             let cmd = Command::new("cryo")
@@ -819,7 +834,6 @@ async fn get_logs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<csv::S
                     &chain.rpc_url,
                     "--n-chunks",
                     "1",
-                    "--csv",
                     "--output-dir",
                     cryo_cache_dir(chain).display().to_string().as_str(),
                 ])
@@ -829,7 +843,14 @@ async fn get_logs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<csv::S
                 eyre::bail!("cryo logs command failed: {}", cmd.err().unwrap());
             }
 
-            try_parse_logs_file(block_number, chain).await?
+            try_parse_logs_file(
+                block_number,
+                chain,
+                symbols_lookup,
+                sqlite,
+                show_erc20_transfer_amount,
+            )
+            .await?
         }
     };
 
@@ -839,31 +860,47 @@ async fn get_logs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<csv::S
 async fn try_parse_logs_file(
     block_number: u64,
     chain: &EVMChain,
-) -> Result<Vec<csv::StringRecord>> {
-    let mut logs_data = vec![];
-
-    match find_matching_csv_file(chain, "logs", block_number)? {
-        Some(matching_path) => match std::fs::File::open(matching_path) {
-            Ok(logs_file) => {
-                let logs_reader = std::io::BufReader::new(logs_file);
-                let mut logs_csv_reader = csv::Reader::from_reader(logs_reader);
-
-                for result in logs_csv_reader.records() {
-                    let record = result?;
-                    logs_data.push(record);
-                }
-            }
-            Err(e) => {
-                eyre::bail!("Error opening matching logs CSV file: {}", e);
-            }
-        },
+    symbols_lookup: &ERC20SymbolsLookup,
+    sqlite: &SqlitePool,
+    show_erc20_transfer_amount: bool,
+) -> Result<Vec<MEVLog>> {
+    let file_path = match find_matching_parquet_file(chain, "logs", block_number)? {
+        Some(matching_path) => matching_path,
         None => {
             let expected_pattern = format!(
-                "{}/{}__logs__*{block_number}_to_*{block_number}.csv",
+                "{}/{}__logs__*{block_number}_to_*{block_number}.parquet",
                 cryo_cache_dir(chain).display(),
                 chain.cryo_cache_dir_name()
             );
-            eyre::bail!("No matching logs CSV file found (pattern: {expected_pattern}), continuing without logs processing");
+            eyre::bail!("No matching logs Parquet file found (pattern: {expected_pattern}), continuing without logs processing");
+        }
+    };
+
+    let file = std::fs::File::open(file_path)?;
+    let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
+    let reader = builder.build()?;
+
+    let mut logs_data = vec![];
+
+    for batch_result in reader {
+        let batch = batch_result?;
+
+        for row_idx in 0..batch.num_rows() {
+            let mev_log = match MEVLog::from_parquet_row(
+                &batch,
+                row_idx,
+                symbols_lookup,
+                sqlite,
+                show_erc20_transfer_amount,
+            )
+            .await
+            {
+                Ok(log) => log,
+                Err(e) => {
+                    eyre::bail!("Error parsing log from parquet: {}", e);
+                }
+            };
+            logs_data.push(mev_log);
         }
     }
 

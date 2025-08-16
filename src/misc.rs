@@ -4,6 +4,7 @@ pub mod database;
 pub mod db_actions;
 pub mod ens_utils;
 pub mod eth_unit_parser;
+pub mod parquet_utils;
 pub mod revm_tracing;
 pub mod rpc_tracing;
 pub mod rpc_urls;

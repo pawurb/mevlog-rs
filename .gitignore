@@ -5,5 +5,5 @@ out/
 backup.sh
 deploy.sh
 .cryo/
-*.csv
+*.parquet
 

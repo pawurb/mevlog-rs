@@ -1,12 +1,13 @@
 use std::fmt;
 
+use arrow::record_batch::RecordBatch;
 use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::SqlitePool;
 
 use super::{db_event::DBEvent, mev_log_signature::MEVLogSignature};
-use crate::misc::symbol_utils::ERC20SymbolsLookup;
+use crate::misc::{parquet_utils::get_parquet_string_value, symbol_utils::ERC20SymbolsLookup};
 
 #[derive(Debug)]
 pub struct MEVLog {
@@ -18,7 +19,7 @@ pub struct MEVLog {
 }
 
 impl MEVLog {
-    // CSV row:
+    // Parquet row:
     // block_number 0
     // transaction_index 1
     // log_index 2
@@ -30,18 +31,22 @@ impl MEVLog {
     // topic3 8
     // data 9
     // chain_id 10
-    pub async fn from_csv_row(
-        record: &csv::StringRecord,
+    pub async fn from_parquet_row(
+        batch: &RecordBatch,
+        row_idx: usize,
         symbols_lookup: &ERC20SymbolsLookup,
         sqlite: &SqlitePool,
         show_erc20_transfer_amount: bool,
     ) -> Result<Self> {
-        let first_topic = record[5].to_string();
-        let data = record[9].to_string();
+        let get_string_value =
+            |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+
+        let first_topic = get_string_value(5);
+        let data = get_string_value(9);
 
         let signature_str = DBEvent::find_by_hash(&first_topic, sqlite).await?;
         let data = hex::decode(data.strip_prefix("0x").unwrap_or(&data))?;
-        let source: Address = record[4].parse()?;
+        let source: Address = get_string_value(4).parse()?;
         let signature = MEVLogSignature::new(
             source,
             signature_str.clone(),
@@ -51,10 +56,10 @@ impl MEVLog {
         .await?;
 
         let topics = [
-            record[5].to_string(),
-            record[6].to_string(),
-            record[7].to_string(),
-            record[8].to_string(),
+            get_string_value(5),
+            get_string_value(6),
+            get_string_value(7),
+            get_string_value(8),
         ]
         .iter()
         .filter_map(|s| {
@@ -67,7 +72,7 @@ impl MEVLog {
             }
         })
         .collect::<Vec<_>>();
-        let tx_index = record[1].parse()?;
+        let tx_index = get_string_value(1).parse()?;
         let log = Self {
             source,
             signature,
