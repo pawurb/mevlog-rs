@@ -251,6 +251,27 @@ pub mod tests {
             .arg("mevlog")
             .arg("chain-info")
             .arg("--chain-id")
+            .arg("1")
+            .arg("--format")
+            .arg("json")
+            .arg("--skip-urls")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains("\"chain_id\":1"));
+        assert!(output.contains("\"name\":\"Ethereum Mainnet\""));
+    }
+
+    #[test]
+    fn test_cli_format_chain_info_error() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("chain-info")
+            .arg("--chain-id")
             .arg("0")
             .arg("--format")
             .arg("json")

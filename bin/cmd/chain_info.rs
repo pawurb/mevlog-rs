@@ -1,9 +1,11 @@
 use eyre::Result;
-use mevlog::misc::{
-    rpc_urls::{get_chain_info, get_chain_info_no_benchmark},
-    shared_init::OutputFormat,
+use mevlog::{
+    misc::{
+        rpc_urls::{get_chain_info, get_chain_info_no_benchmark},
+        shared_init::OutputFormat,
+    },
+    ChainInfoJson, ChainInfoNoRpcsJson, RpcUrlInfo,
 };
-use serde_json::json;
 
 #[derive(Debug, clap::Parser)]
 pub struct ChainInfoArgs {
@@ -22,7 +24,7 @@ pub struct ChainInfoArgs {
 
 impl ChainInfoArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
-        let chain_info = if self.skip_urls {
+        let chain_info_raw = if self.skip_urls {
             get_chain_info_no_benchmark(self.chain_id).await?
         } else {
             let info = get_chain_info(self.chain_id, self.rpc_timeout_ms).await?;
@@ -35,72 +37,99 @@ impl ChainInfoArgs {
             info
         };
 
+        if self.skip_urls {
+            let no_rpcs = ChainInfoNoRpcsJson {
+                chain_id: self.chain_id,
+                name: chain_info_raw.name.clone(),
+                currency: chain_info_raw.native_currency.symbol.clone(),
+                explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
+            };
+            self.output_no_rpcs(no_rpcs, format).await?;
+        } else {
+            let rpc_urls = chain_info_raw
+                .benchmarked_rpc_urls
+                .iter()
+                .map(|(url, response_time)| RpcUrlInfo {
+                    url: url.clone(),
+                    response_time_ms: *response_time,
+                })
+                .collect();
+
+            let response = ChainInfoJson {
+                chain_id: self.chain_id,
+                name: chain_info_raw.name.clone(),
+                currency: chain_info_raw.native_currency.symbol.clone(),
+                explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
+                rpc_timeout_ms: self.rpc_timeout_ms,
+                rpc_urls,
+            };
+            self.output_with_rpcs(response, format).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn output_no_rpcs(&self, info: ChainInfoNoRpcsJson, format: OutputFormat) -> Result<()> {
         match format {
             OutputFormat::Text => {
                 println!("Chain Information");
                 println!("================");
-                println!("Chain ID: {}", self.chain_id);
-                println!("Name: {}", chain_info.name);
-                println!("Currency: {}", chain_info.native_currency.symbol);
+                println!("Chain ID: {}", info.chain_id);
+                println!("Name: {}", info.name);
+                println!("Currency: {}", info.currency);
 
-                if let Some(explorer) = chain_info.explorers.first() {
-                    println!("Explorer URL: {}", explorer.url);
+                if let Some(explorer_url) = &info.explorer_url {
+                    println!("Explorer URL: {explorer_url}");
+                } else {
+                    println!("Explorer URL: N/A");
+                }
+            }
+            OutputFormat::Json | OutputFormat::JsonStream => {
+                println!("{}", serde_json::to_string(&info)?);
+            }
+            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+                println!("{}", serde_json::to_string_pretty(&info)?);
+            }
+        }
+        Ok(())
+    }
+
+    async fn output_with_rpcs(&self, info: ChainInfoJson, format: OutputFormat) -> Result<()> {
+        match format {
+            OutputFormat::Text => {
+                println!("Chain Information");
+                println!("================");
+                println!("Chain ID: {}", info.chain_id);
+                println!("Name: {}", info.name);
+                println!("Currency: {}", info.currency);
+
+                if let Some(explorer_url) = &info.explorer_url {
+                    println!("Explorer URL: {explorer_url}");
                 } else {
                     println!("Explorer URL: N/A");
                 }
 
-                if !self.skip_urls {
-                    if chain_info.benchmarked_rpc_urls.is_empty() {
-                        println!("No healthy RPC URLs available");
-                    } else {
-                        println!("\nRPC URLs (responding under {}ms):", self.rpc_timeout_ms);
-                        for (i, (url, response_time)) in
-                            chain_info.benchmarked_rpc_urls.iter().enumerate()
-                        {
-                            println!("  {}. {} ({}ms)", i + 1, url, response_time);
-                        }
+                if info.rpc_urls.is_empty() {
+                    println!("No healthy RPC URLs available");
+                } else {
+                    println!("\nRPC URLs (responding under {}ms):", info.rpc_timeout_ms);
+                    for (i, rpc_info) in info.rpc_urls.iter().enumerate() {
+                        println!(
+                            "  {}. {} ({}ms)",
+                            i + 1,
+                            rpc_info.url,
+                            rpc_info.response_time_ms
+                        );
                     }
                 }
             }
-            OutputFormat::Json
-            | OutputFormat::JsonPretty
-            | OutputFormat::JsonStream
-            | OutputFormat::JsonPrettyStream => {
-                let mut info = json!({
-                    "chain_id": self.chain_id,
-                    "name": chain_info.name,
-                    "currency": chain_info.native_currency.symbol,
-                    "explorer_url": chain_info.explorers.first().map(|e| e.url.clone()),
-                });
-
-                if !self.skip_urls {
-                    let rpc_urls: Vec<serde_json::Value> = chain_info
-                        .benchmarked_rpc_urls
-                        .iter()
-                        .map(|(url, response_time)| {
-                            json!({
-                                "url": url,
-                                "response_time_ms": response_time
-                            })
-                        })
-                        .collect();
-
-                    info["rpc_timeout_ms"] = json!(self.rpc_timeout_ms);
-                    info["rpc_urls"] = json!(rpc_urls);
-                }
-
-                match format {
-                    OutputFormat::Json | OutputFormat::JsonStream => {
-                        println!("{}", serde_json::to_string(&info)?);
-                    }
-                    OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
-                        println!("{}", serde_json::to_string_pretty(&info)?);
-                    }
-                    OutputFormat::Text => unreachable!(),
-                }
+            OutputFormat::Json | OutputFormat::JsonStream => {
+                println!("{}", serde_json::to_string(&info)?);
+            }
+            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+                println!("{}", serde_json::to_string_pretty(&info)?);
             }
         }
-
         Ok(())
     }
 }
