@@ -64,6 +64,15 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let provider = Arc::new(provider);
 
     let chain_id = provider.get_chain_id().await?;
+
+    if let Some(opts_chain_id) = conn_opts.chain_id {
+        if chain_id != opts_chain_id {
+            bail!(
+                "Chain ID mismatch --chain-id {opts_chain_id} != --chain-id from --rpc-url {chain_id}",
+            );
+        }
+    }
+
     let db_chain = DBChain::find(chain_id as i64, &sqlite)
         .await?
         .unwrap_or(DBChain::unknown(chain_id as i64));
