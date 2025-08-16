@@ -1,9 +1,12 @@
-use std::{path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use alloy::{providers::Provider, sol};
 use eyre::Result;
 use revm::primitives::Address;
-use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::{
+    mpsc::{self, UnboundedSender},
+    RwLock,
+};
 
 use super::shared_init::init_provider;
 use crate::{models::mev_log_signature::MEVLogSignatureType, GenericProvider};
@@ -23,6 +26,10 @@ sol! {
 
 const MISSING_SYMBOL: &str = "E";
 
+static SYMBOLS_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<Address, CachedEntry>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+
+#[derive(Clone)]
 pub enum CachedEntry {
     Known(String),
     KnownEmpty,
@@ -127,17 +134,37 @@ async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> R
 }
 
 async fn read_symbols_cache(target: Address) -> Result<CachedEntry> {
+    {
+        let cache = SYMBOLS_MEMORY_CACHE.read().await;
+        if let Some(entry) = cache.get(&target) {
+            return Ok(entry.clone());
+        }
+    }
+
     match cacache::read(&symbols_cache_dir(), target.to_string()).await {
         Ok(bytes) => {
             let name = String::from_utf8(bytes)
                 .map_err(|e| eyre::eyre!("Invalid UTF-8 in cache: {}", e))?;
-            if name.len() == 1 {
-                Ok(CachedEntry::KnownEmpty)
+            let entry = if name.len() == 1 {
+                CachedEntry::KnownEmpty
             } else {
-                Ok(CachedEntry::Known(name))
+                CachedEntry::Known(name)
+            };
+
+            {
+                let mut cache = SYMBOLS_MEMORY_CACHE.write().await;
+                cache.insert(target, entry.clone());
             }
+
+            Ok(entry)
         }
-        Err(_) => Ok(CachedEntry::Unknown),
+        Err(_) => {
+            {
+                let mut cache = SYMBOLS_MEMORY_CACHE.write().await;
+                cache.insert(target, CachedEntry::Unknown);
+            }
+            Ok(CachedEntry::Unknown)
+        }
     }
 }
 
@@ -173,6 +200,16 @@ async fn write_symbol_cache(target: Address, name: Option<String>) -> Result<()>
         Some(name) => name.as_str(),
         None => MISSING_SYMBOL,
     };
+
+    let entry = match &name {
+        Some(name) => CachedEntry::Known(name.clone()),
+        None => CachedEntry::KnownEmpty,
+    };
+
+    {
+        let mut cache = SYMBOLS_MEMORY_CACHE.write().await;
+        cache.insert(target, entry);
+    }
 
     match cacache::write(
         &symbols_cache_dir(),

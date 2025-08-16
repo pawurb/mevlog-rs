@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::OnceLock};
+use std::collections::HashMap;
 
 use eyre::Result;
 use sqlx::Row;
@@ -10,13 +10,10 @@ pub struct DBMethod {
     pub signature: String,
 }
 
-impl DBMethod {
-    fn cache() -> &'static RwLock<HashMap<String, Option<String>>> {
-        static METHOD_SIG_CACHE: OnceLock<RwLock<HashMap<String, Option<String>>>> =
-            OnceLock::new();
-        METHOD_SIG_CACHE.get_or_init(|| RwLock::new(HashMap::new()))
-    }
+static METHOD_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Option<String>>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
+impl DBMethod {
     pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
         let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM methods WHERE signature = ?)")
             .bind(signature)
@@ -42,7 +39,7 @@ impl DBMethod {
     ) -> Result<Option<String>> {
         let key = normalize_key(signature_hash);
 
-        if let Some(cached) = Self::cache().read().await.get(&key).cloned() {
+        if let Some(cached) = METHOD_SIG_MEMORY_CACHE.read().await.get(&key).cloned() {
             return Ok(cached);
         }
 
@@ -59,7 +56,10 @@ impl DBMethod {
 
         let found: Option<String> = result.map(|row| row.get(0));
 
-        Self::cache().write().await.insert(key, found.clone());
+        METHOD_SIG_MEMORY_CACHE
+            .write()
+            .await
+            .insert(key, found.clone());
 
         Ok(found)
     }

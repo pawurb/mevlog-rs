@@ -1,9 +1,12 @@
-use std::{borrow::Cow, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, path::PathBuf, sync::Arc};
 
 use alloy::{primitives::Keccak256, sol};
 use eyre::Result;
 use revm::primitives::{address, Address, B256};
-use tokio::sync::mpsc::{self, UnboundedSender};
+use tokio::sync::{
+    mpsc::{self, UnboundedSender},
+    RwLock,
+};
 
 use super::shared_init::init_provider;
 use crate::{misc::symbol_utils::CachedEntry, models::evm_chain::EVMChain, GenericProvider};
@@ -19,6 +22,9 @@ sol! {
 
 const ENS_LOOKUP: Address = address!("0xc69c0eb9ec6e71e97c1ed25212d203ad5010d8b2");
 const MISSING_NAME: &str = "N";
+
+static ENS_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<Address, CachedEntry>>> =
+    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
 #[derive(Debug)]
 pub enum ENSLookup {
@@ -121,17 +127,37 @@ async fn ens_reverse_lookup(
 }
 
 async fn read_ens_cache(target: Address) -> Result<CachedEntry> {
+    {
+        let cache = ENS_MEMORY_CACHE.read().await;
+        if let Some(entry) = cache.get(&target) {
+            return Ok(entry.clone());
+        }
+    }
+
     match cacache::read(&ens_cache_dir(), target.to_string()).await {
         Ok(bytes) => {
             let name = String::from_utf8(bytes)
                 .map_err(|e| eyre::eyre!("Invalid UTF-8 in cache: {}", e))?;
-            if name.len() == 1 {
-                Ok(CachedEntry::KnownEmpty)
+            let entry = if name.len() == 1 {
+                CachedEntry::KnownEmpty
             } else {
-                Ok(CachedEntry::Known(name))
+                CachedEntry::Known(name)
+            };
+
+            {
+                let mut cache = ENS_MEMORY_CACHE.write().await;
+                cache.insert(target, entry.clone());
             }
+
+            Ok(entry)
         }
-        Err(_) => Ok(CachedEntry::Unknown),
+        Err(_) => {
+            {
+                let mut cache = ENS_MEMORY_CACHE.write().await;
+                cache.insert(target, CachedEntry::Unknown);
+            }
+            Ok(CachedEntry::Unknown)
+        }
     }
 }
 
@@ -144,6 +170,16 @@ async fn write_ens_cache(target: Address, name: Option<String>) -> Result<()> {
         Some(name) => name.as_str(),
         None => MISSING_NAME,
     };
+
+    let entry = match &name {
+        Some(name) => CachedEntry::Known(name.clone()),
+        None => CachedEntry::KnownEmpty,
+    };
+
+    {
+        let mut cache = ENS_MEMORY_CACHE.write().await;
+        cache.insert(target, entry);
+    }
 
     match cacache::write(&ens_cache_dir(), target.to_string(), name_record.as_bytes()).await {
         Ok(_) => (),
