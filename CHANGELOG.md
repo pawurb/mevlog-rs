@@ -2,6 +2,62 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0] - 2025-08-18
+
+### 🚀 Features
+
+- Add rpc-urls cmd
+- Chain-id integration with ChainList
+- Add cmd listing known chains
+- Add json format
+- Include all txs count in json
+- Search from the newest block
+- Add data to tx json
+- Adjust json format for web UI
+- Flatten json structure
+- Add --sort and --limit
+- Print json errors
+- Add from_ens json field
+- Add --ens and --erc20-symbols flags
+- Json output for chains cmd
+
+### 🐛 Bug Fixes
+
+- Unify chains data sources
+- Respect RUST_LOG config [#26]
+- Adjust json data output
+- Deterministic --sort
+- Report cryo errors
+- Use custom revm cache dir
+- Fix revm forking and drop Anvil dependency
+- Detect chain-id mismatch
+
+### 🚜 Refactor
+
+- Refactor init_deps
+- Simplify signature overwrites
+- Extract ConnOpts
+- Unify generate_block method calling
+- Rename vars
+- Change modules config
+- Use structs for chain-info json
+
+### ⚡ Performance
+
+- Use cryo for logs
+- Cache block metadata
+- Improve revm caching
+- In-memory signatures cache
+- Cache ChainList response
+- Use cryo parquet instead of csv
+- Memory cache for ens and symbols
+
+### ⚙️ Miscellaneous Tasks
+
+- Enable CI integration tests and cache dependencies
+- More cli tests
+- Rename rpc-urls to chain-info
+
 ## [0.6.0] - 2025-07-17
 
 ### 🚀 Features
