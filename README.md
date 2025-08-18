@@ -17,6 +17,7 @@ When working on an MEV bot, I could not find a simple way to search for specific
 - detect validator bribes
 - filter by the amount of a specific ERC20 token sent
 - filter txs by value and real (including bribe) gas prices and cost
+- colored human-readable, and JSON output formats
 - [ChainList](https://chainlist.org/) integration to automatically select RPC endpoints
 
 It works on public RPCs thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
