@@ -313,14 +313,14 @@ mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --trace rpc
 
 Mevlog supports different output formats via the `--format` option:
 
-- `default` (default): Human-readable colored output, displays results block by block as they are processed
+- `text` (default): Human-readable colored output, displays results block by block as they are processed
 - `json`: Compact, oneline JSON output, displays all results at once after processing all blocks
 - `json-pretty`: Pretty-printed JSON output, displays all results at once after processing all blocks  
 - `json-stream`: Compact, oneline JSON output, displays results block by block as they are processed
 - `json-pretty-stream`: Pretty-printed JSON output, displays results block by block as they are processed
 
 **Streaming vs Batch behavior:**
-- **Streaming formats** (`default`, `json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
+- **Streaming formats** (`text`, `json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
 - **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks, useful for piping to other tools or when you need all results in a single JSON array
 
 Examples:
