@@ -479,12 +479,6 @@ RUSTFLAGS="--cfg tokio_unstable" cargo run --features=tokio-console --bin mevlog
 cargo run --features=seed-db --bin mevlog seed-db
 ```
 
-`revm-integration` enables revm tracing mode integration tests. For some reason they keep failing on CI. Run full integration suit: 
-
-```bash
-cargo test --features=revm-integration --test cli_tests -- --nocapture
-```
-
 ## Project status
 
 WIP, feedback appreciated. I'm currently seeking a sponsor to help cover archive node costs for [mevlog.rs](https://mevlog.rs/). My goal is to make a hosted search web UI publicly available.

@@ -64,4 +64,3 @@ path = "examples/find_ens_name.rs"
 [features]
 seed-db = []
 tokio-console = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
-revm-integration = []

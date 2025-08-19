@@ -5,11 +5,7 @@ pub mod tests {
     use eyre::Result;
 
     fn tracing_modes() -> Vec<String> {
-        vec![
-            "rpc".to_string(),
-            #[cfg(feature = "revm-integration")]
-            "revm".to_string(),
-        ]
+        vec!["rpc".to_string(), "revm".to_string()]
     }
 
     #[test]
