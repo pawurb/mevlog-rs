@@ -159,13 +159,13 @@ mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth --chain-id 1 --ens
 - unknown method signature contract call in a top position (likely an MEV bot):
 
 ```bash
-mevlog search -b 10:latest --method "<Unknown>" -p 0 --chain-id 1
+mevlog search -b --method "<Unknown>" -p 0 --chain-id 1
 ```
 
-- query the last 50 blocks for transaction in the top 20 slots that transferred [PEPE](https://etherscan.io/token/0x6982508145454ce325ddbe47a25d4ec3d2311933) token:
+- query the last 50 blocks for transaction that transferred [PEPE](https://etherscan.io/token/0x6982508145454ce325ddbe47a25d4ec3d2311933) token:
 
 ```bash
-mevlog search -b 50:latest -p 0:20 --event "Transfer(address,address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933" --chain-id 1
+mevlog search -b 50:latest --event "Transfer(address,address,uint256)|0x6982508145454ce325ddbe47a25d4ec3d2311933" --chain-id 1
 ```
 
 - blocks between 22034300 and 22034320, position 0 transaction that did not emit any `Swap` events:
@@ -192,10 +192,10 @@ mevlog search -b 22045400:22045420 --to CREATE
 mevlog search -b 10:latest --value ge1ether
 ```
 
-- find transactions that transferred over 1 million USDC
+- find transactions that transferred over 100k USDC
 
 ```bash
-mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge1000gwei"
+mevlog search -b 10:latest --erc20-transfer "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48|ge100gwei"
 ```
 
 - find transactions that emitted any Transfer events for USDC and display amounts:
