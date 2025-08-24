@@ -153,7 +153,7 @@ A few examples of currently supported queries:
 - find `jaredfromsubway.eth` transactions from the last 20 blocks that landed in positions 0-5:
 
 ```bash
-mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth --chain-id 1 --ens
+mevlog search -b 10:latest -p 0:5 --from jaredfromsubway.eth --chain-id 1 
 ```
 
 - unknown method signature contract call in a top position (likely an MEV bot):
