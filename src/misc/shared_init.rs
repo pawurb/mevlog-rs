@@ -149,7 +149,7 @@ pub struct ConnOpts {
     )]
     pub rpc_timeout_ms: u64,
 
-    #[arg(long, help = "Skip verifying --chain-id from with --rpc-url")]
+    #[arg(long, help = "Skip verifying --chain-id with data from --rpc-url")]
     pub skip_verify_chain_id: bool,
 }
 
