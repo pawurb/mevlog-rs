@@ -54,6 +54,9 @@ pub struct SearchArgs {
 
     #[command(flatten)]
     conn_opts: ConnOpts,
+
+    #[arg(long, help = "Get N-offset latest block")]
+    latest_offset: Option<u64>,
 }
 
 impl SearchArgs {
@@ -90,7 +93,7 @@ impl SearchArgs {
             self.shared_opts.erc20_symbols,
         );
 
-        let (native_token_price, latest_block) =
+        let (native_token_price, mut latest_block) =
             match tokio::try_join!(get_native_token_price(&deps.chain, &deps.provider), async {
                 deps.provider
                     .get_block_number()
@@ -100,6 +103,10 @@ impl SearchArgs {
                 Ok((native_token_price, latest_block)) => (native_token_price, latest_block),
                 Err(e) => bail!("Error getting native token price or latest block: {:?}", e),
             };
+
+        if let Some(latest_offset) = self.latest_offset {
+            latest_block = latest_block.saturating_sub(latest_offset);
+        }
 
         let block_range = BlocksRange::from_str(&self.blocks, latest_block)?;
 
