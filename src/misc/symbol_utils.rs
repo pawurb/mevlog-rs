@@ -29,7 +29,7 @@ const MISSING_SYMBOL: &str = "E";
 static SYMBOLS_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<Address, CachedEntry>>> =
     std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum CachedEntry {
     Known(String),
     KnownEmpty,

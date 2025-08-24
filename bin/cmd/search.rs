@@ -85,6 +85,7 @@ impl SearchArgs {
             deps.ens_lookup_worker,
             &deps.chain,
             self.shared_opts.ens,
+            &deps.provider,
         )
         .await?;
 

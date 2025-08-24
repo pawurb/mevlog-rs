@@ -1,7 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, path::PathBuf, sync::Arc};
 
 use alloy::{primitives::Keccak256, sol};
-use eyre::Result;
+use eyre::{bail, Result};
 use revm::primitives::{address, Address, B256};
 use tokio::sync::{
     mpsc::{self, UnboundedSender},
@@ -17,10 +17,11 @@ sol! {
     #[sol(rpc)]
     contract ENSLookupOracle {
         function getNameForNode(bytes32 node) public view returns (string memory);
+        function getAddressForNode(bytes32 node) public view returns (address);
     }
 }
 
-const ENS_LOOKUP: Address = address!("0xc69c0eb9ec6e71e97c1ed25212d203ad5010d8b2");
+const ENS_LOOKUP: Address = address!("0x80800fB4e3c77a25638aF8607f5274541831CF07");
 const MISSING_NAME: &str = "N";
 
 static ENS_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<Address, CachedEntry>>> =
@@ -40,28 +41,28 @@ impl ENSLookup {
         ens_lookup_worker: UnboundedSender<Address>,
         chain: &EVMChain,
         ens_enabled: bool,
+        provider: &Arc<GenericProvider>,
     ) -> Result<ENSLookup> {
         if chain.chain_id != 1 {
             return Ok(ENSLookup::Disabled);
         }
 
-        if !ens_enabled && ens_query.is_some() {
-            eyre::bail!("Please enable ENS lookup with --ens flag, to search by ENS name");
-        }
+        if let Some(ens_query) = ens_query {
+            if !known_ens_name(&ens_query).await {
+                let addr = ens_addr_lookup(ens_query.clone(), provider).await?;
+                let Some(addr) = addr else {
+                    bail!("{ens_query} is not a registered ENS name");
+                };
+
+                write_ens_cache(addr, Some(ens_query)).await?;
+            }
+        };
 
         if !ens_enabled {
             return Ok(ENSLookup::OnlyCached);
         }
 
-        if ens_query.is_none() {
-            return Ok(ENSLookup::Async(ens_lookup_worker));
-        }
-
-        if known_ens_name(&ens_query.unwrap()).await {
-            Ok(ENSLookup::Async(ens_lookup_worker))
-        } else {
-            Ok(ENSLookup::Sync)
-        }
+        Ok(ENSLookup::Async(ens_lookup_worker))
     }
 }
 
@@ -99,14 +100,29 @@ pub async fn ens_lookup_sync(
         CachedEntry::Known(name) => Ok(Some(name)),
         CachedEntry::KnownEmpty => Ok(None),
         CachedEntry::Unknown => {
-            let name = ens_reverse_lookup(target, provider).await?;
+            let name = ens_name_lookup(target, provider).await?;
             write_ens_cache(target, name.clone()).await?;
             Ok(name)
         }
     }
 }
 
-async fn ens_reverse_lookup(
+async fn ens_addr_lookup(
+    target: String,
+    provider: &Arc<GenericProvider>,
+) -> Result<Option<Address>> {
+    let bytes = namehash(&target);
+    let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
+    let addr = ens_lookup.getAddressForNode(bytes).call().await?;
+
+    if addr.is_zero() {
+        Ok(None)
+    } else {
+        Ok(Some(addr))
+    }
+}
+
+async fn ens_name_lookup(
     target: Address,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<String>> {
@@ -199,7 +215,7 @@ pub fn start_ens_lookup_worker(rpc_url: &str) -> mpsc::UnboundedSender<Address> 
         let provider = Arc::new(provider);
 
         while let Some(target) = rx.recv().await {
-            let name = match ens_reverse_lookup(target, &provider).await {
+            let name = match ens_name_lookup(target, &provider).await {
                 Ok(name) => name,
                 Err(e) => {
                     tracing::error!("Error looking up ENS name: {}", e);
