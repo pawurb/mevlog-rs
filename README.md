@@ -442,6 +442,13 @@ By default, the command filters RPC endpoints responding under 1000ms (1 second)
 mevlog chain-info --chain-id 1 --rpc-timeout-ms 5000  # 5 seconds
 ```
 
+You can limit the number of RPC URLs returned (default is 5):
+
+```bash
+mevlog chain-info --chain-id 1 --rpcs-limit 3  # Return only first 3 responding URLs
+mevlog chain-info --chain-id 1 --rpcs-limit 10 # Return up to 10 responding URLs
+```
+
 If you only need basic chain information without RPC URL benchmarking (which is faster), use the `--skip-urls` flag:
 
 ```bash

@@ -38,7 +38,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         (Some(url), Some(_)) => url.clone(),
         (Some(url), None) => url.clone(),
         (None, Some(chain_id)) => {
-            let chain_info = get_chain_info(chain_id, conn_opts.rpc_timeout_ms).await?;
+            let chain_info = get_chain_info(chain_id, conn_opts.rpc_timeout_ms, 1).await?;
             if chain_info.benchmarked_rpc_urls.is_empty() {
                 bail!("No working RPC URLs found for chain ID {}", chain_id)
             }

@@ -2,6 +2,7 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use alloy::providers::Provider;
 use eyre::{bail, Result};
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 
@@ -55,7 +56,7 @@ pub async fn get_chain_info_no_benchmark(chain_id: u64) -> Result<ChainInfo> {
     Ok(chain)
 }
 
-pub async fn get_chain_info(chain_id: u64, timeout_ms: u64) -> Result<ChainInfo> {
+pub async fn get_chain_info(chain_id: u64, timeout_ms: u64, limit: usize) -> Result<ChainInfo> {
     let chains = get_all_chains().await?;
 
     let mut chain = chains
@@ -77,11 +78,12 @@ pub async fn get_chain_info(chain_id: u64, timeout_ms: u64) -> Result<ChainInfo>
         .collect::<Vec<_>>();
 
     let mut benchmarked_rpc_urls: Vec<(String, u64)> =
-        futures_util::future::join_all(benchmark_futures)
-            .await
-            .into_iter()
-            .flatten()
-            .collect();
+        futures_util::stream::iter(benchmark_futures)
+            .buffer_unordered(10)
+            .filter_map(|result| async move { result })
+            .take(limit)
+            .collect()
+            .await;
 
     // Sort by duration (fastest first)
     benchmarked_rpc_urls.sort_by_key(|(_, duration)| *duration);

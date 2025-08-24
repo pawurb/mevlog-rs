@@ -20,6 +20,9 @@ pub struct ChainInfoArgs {
 
     #[arg(long, help = "RPC timeout in milliseconds", default_value = "1000")]
     pub rpc_timeout_ms: u64,
+
+    #[arg(long, help = "Number of RPC URLs to return", default_value = "5")]
+    pub rpcs_limit: usize,
 }
 
 impl ChainInfoArgs {
@@ -27,7 +30,7 @@ impl ChainInfoArgs {
         let chain_info_raw = if self.skip_urls {
             get_chain_info_no_benchmark(self.chain_id).await?
         } else {
-            let info = get_chain_info(self.chain_id, self.rpc_timeout_ms).await?;
+            let info = get_chain_info(self.chain_id, self.rpc_timeout_ms, self.rpcs_limit).await?;
             if info.benchmarked_rpc_urls.is_empty() {
                 return Err(eyre::eyre!(
                     "No working RPC URLs found for chain ID {}",
