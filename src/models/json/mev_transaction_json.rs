@@ -1,4 +1,4 @@
-use revm::primitives::{Address, FixedBytes, U256};
+use revm::primitives::{Address, FixedBytes, TxKind, U256};
 use serde::Serialize;
 
 use crate::{
@@ -6,8 +6,8 @@ use crate::{
     models::{
         json::mev_log_group_json::MEVLogGroupJson,
         mev_transaction::{
-            display_token, display_token_and_usd, display_usd, eth_to_usd, CallExtract,
-            MEVTransaction,
+            calculate_create_address, display_token, display_token_and_usd, display_usd,
+            eth_to_usd, CallExtract, MEVTransaction,
         },
     },
 };
@@ -48,6 +48,11 @@ impl From<&MEVTransaction> for MEVTransactionJson {
         let gas_tx_cost = tx.receipt.gas_used as u128 * tx.receipt.effective_gas_price;
         let full_tx_cost = tx.full_tx_cost().map(|amt| amt.to_u128());
 
+        let to = match tx.to {
+            TxKind::Create => Some(calculate_create_address(tx.nonce, tx.from())),
+            TxKind::Call(address) => Some(address),
+        };
+
         Self {
             block_number: tx.block_number,
             signature: tx.signature.clone(),
@@ -56,7 +61,7 @@ impl From<&MEVTransaction> for MEVTransactionJson {
             index: tx.index,
             from: tx.from(),
             from_ens: tx.ens_name().map(|s| s.to_string()),
-            to: tx.to(),
+            to,
             nonce: tx.nonce,
             value: tx.value().to_string(),
             coinbase_transfer: tx.coinbase_transfer.map(|amt| amt.to_string()),

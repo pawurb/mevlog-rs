@@ -249,15 +249,15 @@ pub mod tests {
             .arg("--chain-id")
             .arg("1")
             .arg("--format")
-            .arg("json")
+            .arg("json-pretty")
             .arg("--skip-urls")
             .output()
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         println!("output: {output}");
-        assert!(output.contains("\"chain_id\":1"));
-        assert!(output.contains("\"name\":\"Ethereum Mainnet\""));
+        assert!(output.contains("\"chain_id\": 1"));
+        assert!(output.contains("\"name\": \"Ethereum Mainnet\""));
     }
 
     #[test]
@@ -270,13 +270,13 @@ pub mod tests {
             .arg("--chain-id")
             .arg("0")
             .arg("--format")
-            .arg("json")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
         let err = String::from_utf8(cmd.stderr).unwrap();
         println!("err: {err}");
-        assert!(err.contains("\"error\":\"Chain ID 0 not found\""));
+        assert!(err.contains("\"error\": \"Chain ID 0 not found\""));
     }
 
     #[test]
@@ -289,13 +289,13 @@ pub mod tests {
             .arg("--filter")
             .arg("arbitrum")
             .arg("--format")
-            .arg("json")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         println!("output: {output}");
-        assert!(output.contains("\"name\":\"Arbitrum One\""));
+        assert!(output.contains("\"name\": \"Arbitrum One\""));
     }
 
     #[test]
@@ -310,13 +310,13 @@ pub mod tests {
             .arg("--rpc-url")
             .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .arg("--format")
-            .arg("json")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
         let err = String::from_utf8(cmd.stderr).unwrap();
         println!("err: {err}");
-        assert!(err.contains("\"error\":\"Invalid block number: 0\""));
+        assert!(err.contains("\"error\": \"Invalid block number: 0\""));
     }
 
     #[test]
@@ -333,12 +333,33 @@ pub mod tests {
             .arg("--rpc-url")
             .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .arg("--format")
-            .arg("json")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap();
         assert_eq!(json.len(), 4);
+    }
+
+    #[test]
+    fn test_cli_format_tx_create_addr() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("tx")
+            .arg("0x7138e07de04d486f99f0117de27026272f33786a5aeeffc0913aef7951dfb1c8")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json-pretty")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains("\"to\": \"0x7290f841536a3f73835ffad72d27b8c905e1b497\""));
+        assert!(output.contains("\"signature\": \"CREATE()\""));
     }
 }

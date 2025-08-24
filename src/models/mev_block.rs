@@ -13,7 +13,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
 use revm::{
     database::CacheDB,
-    primitives::{FixedBytes, U256},
+    primitives::{FixedBytes, TxKind, U256},
 };
 use sqlx::SqlitePool;
 use tracing::error;
@@ -319,8 +319,13 @@ impl MEVBlock {
             let mut call_extracts = Vec::new();
             for call in calls.clone() {
                 if let Some(to) = call.to {
-                    let (signature_hash, signature) =
-                        extract_signature(Some(&call.input), tx_index, sqlite).await?;
+                    let (signature_hash, signature) = extract_signature(
+                        Some(&call.input),
+                        tx_index,
+                        Some(TxKind::Call(to)),
+                        sqlite,
+                    )
+                    .await?;
                     call_extracts.push(CallExtract {
                         from: call.from,
                         to,
@@ -436,8 +441,13 @@ impl MEVBlock {
             let mut call_extracts = Vec::new();
             for call in calls.clone() {
                 if let Action::Call(call_action) = call.action {
-                    let (signature_hash, signature) =
-                        extract_signature(Some(&call_action.input), tx_index, sqlite).await?;
+                    let (signature_hash, signature) = extract_signature(
+                        Some(&call_action.input),
+                        tx_index,
+                        Some(TxKind::Call(call_action.to)),
+                        sqlite,
+                    )
+                    .await?;
 
                     call_extracts.push(CallExtract {
                         from: call_action.from,

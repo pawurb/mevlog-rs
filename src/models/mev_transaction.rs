@@ -75,7 +75,7 @@ pub struct MEVTransaction {
     pub inner: TransactionRequest,
     log_groups: Vec<MEVLogGroup>,
     source: MEVAddress,
-    to: TxKind,
+    pub to: TxKind,
     pub nonce: u64,
     pub coinbase_transfer: Option<U256>,
     pub receipt: ReceiptData,
@@ -165,7 +165,7 @@ impl MEVTransaction {
         show_calls: bool,
     ) -> Result<Self> {
         let (signature_hash, signature) =
-            extract_signature(tx_req.input.input.as_ref(), index, sqlite).await?;
+            extract_signature(tx_req.input.input.as_ref(), index, tx_req.to, sqlite).await?;
 
         let mev_address =
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
@@ -278,8 +278,13 @@ impl MEVTransaction {
 pub async fn extract_signature(
     input: Option<&Bytes>,
     index: u64,
+    to: Option<TxKind>,
     sqlite: &sqlx::Pool<sqlx::Sqlite>,
 ) -> Result<(Option<String>, String), eyre::Error> {
+    if to == Some(TxKind::Create) {
+        return Ok((None, "CREATE()".to_string()));
+    }
+
     let signature_hash = {
         if let Some(input) = input {
             if input.len() >= 4 {
@@ -475,14 +480,7 @@ fn display_target(tx: &MEVTransaction) -> String {
     match tx.to {
         TxKind::Create => {
             if let Some(from) = tx.inner.from {
-                let mut out = Vec::new();
-
-                let list: [&dyn Encodable; 2] = [&from, &U256::from(tx.nonce)];
-
-                alloy::rlp::encode_list::<_, dyn Encodable>(&list, &mut out);
-
-                let keccak = keccak256(&out);
-                let contract_address = &keccak[12..];
+                let contract_address = calculate_create_address(tx.nonce, from);
                 let contract_address_str = format!("0x{}", hex::encode(contract_address));
 
                 format!("{}{}", "CREATE::".green(), contract_address_str.red(),)
@@ -494,6 +492,14 @@ fn display_target(tx: &MEVTransaction) -> String {
             format!("{}::{}", address.to_string().green(), tx.signature.purple())
         }
     }
+}
+
+pub fn calculate_create_address(nonce: u64, from: Address) -> Address {
+    let mut out = Vec::new();
+    let list: [&dyn Encodable; 2] = [&from, &U256::from(nonce)];
+    alloy::rlp::encode_list::<_, dyn Encodable>(&list, &mut out);
+    let keccak = keccak256(&out);
+    Address::from_slice(&keccak[12..])
 }
 
 pub fn eth_to_usd(value: U256, token_price: f64) -> f64 {
