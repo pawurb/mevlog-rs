@@ -63,15 +63,25 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let provider = init_provider(&rpc_url).await?;
     let provider = Arc::new(provider);
 
-    let chain_id = provider.get_chain_id().await?;
+    let chain_id = if conn_opts.rpc_url.is_some() && conn_opts.chain_id.is_some() {
+        if conn_opts.skip_verify_chain_id {
+            conn_opts.chain_id.unwrap()
+        } else {
+            let chain_id = provider.get_chain_id().await?;
 
-    if let Some(opts_chain_id) = conn_opts.chain_id {
-        if chain_id != opts_chain_id {
-            bail!(
-                "Chain ID mismatch --chain-id {opts_chain_id} != --chain-id from --rpc-url {chain_id}",
-            );
+            if chain_id != conn_opts.chain_id.unwrap() {
+                bail!(
+                    "Chain ID mismatch --chain-id {} != --chain-id from --rpc-url {chain_id}",
+                    conn_opts.chain_id.unwrap(),
+                );
+            }
+            chain_id
         }
-    }
+    } else if conn_opts.chain_id.is_some() {
+        conn_opts.chain_id.unwrap()
+    } else {
+        provider.get_chain_id().await?
+    };
 
     let db_chain = DBChain::find(chain_id as i64, &sqlite)
         .await?
@@ -138,6 +148,9 @@ pub struct ConnOpts {
         default_value = "1000"
     )]
     pub rpc_timeout_ms: u64,
+
+    #[arg(long, help = "Skip verifying --chain-id from with --rpc-url")]
+    pub skip_verify_chain_id: bool,
 }
 
 #[derive(Debug, Clone, clap::Parser)]

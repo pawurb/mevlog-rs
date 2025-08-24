@@ -111,7 +111,7 @@ Options:
       --rpc-url <RPC_URL>
           The URL of the HTTP provider [env: ETH_RPC_URL]
       --chain-id <CHAIN_ID>
-          Chain ID to automatically select best RPC URL (mutually exclusive with --rpc-url)
+          Chain ID to automatically select best RPC URL
       --event <EVENT>
           Include txs by event names matching the provided regex or signature and optionally an address
       --not-event <NOT_EVENT>
