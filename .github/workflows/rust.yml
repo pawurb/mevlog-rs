@@ -15,13 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Set up Rust
         run: | 
           rustup update stable
           rustup default stable
           rustup component add rustfmt
           rustup component add clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@cargo-audit
       - name: Check 
         run: | 
           cargo check 
@@ -37,6 +38,9 @@ jobs:
       - name: Lint 
         run: |
           cargo clippy --all --all-features -- -D warnings
+      - name: Audit
+        run: |
+          cargo audit --ignore RUSTSEC-2023-0071
       - name: Run tests
         run: | 
           cargo test --lib -- --nocapture
