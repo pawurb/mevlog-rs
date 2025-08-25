@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, fs, path::PathBuf, process::Command, sync::Arc};
+use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
@@ -10,7 +10,6 @@ use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use indicatif::{ProgressBar, ProgressStyle};
-use regex::Regex;
 use revm::{
     database::CacheDB,
     primitives::{FixedBytes, TxKind, U256},
@@ -719,27 +718,22 @@ fn find_matching_parquet_file(
 ) -> Result<Option<PathBuf>> {
     let cache_dir = cryo_cache_dir(chain);
 
-    // Pattern: {chain_prefix}__{data_type}__0*{block_number}_to_0*{block_number}.parquet
-    // This matches files with zero or more leading zeros before block numbers
-    let pattern = format!(
-        r"^{}__{}__0*{}_to_0*{}\.parquet$",
-        regex::escape(&chain.cryo_cache_dir_name()),
-        regex::escape(data_type),
-        block_number,
-        block_number
+    // Format block number with leading zeros (8 digits)
+    let formatted_block = format!("{block_number:0>8}");
+
+    // Pattern: {chain_prefix}__{data_type}__{formatted_block}_to_{formatted_block}.parquet
+    let expected_filename = format!(
+        "{}__{}__{}_to_{}.parquet",
+        chain.cryo_cache_dir_name(),
+        data_type,
+        formatted_block,
+        formatted_block
     );
 
-    let regex = Regex::new(&pattern)?;
+    let expected_path = cache_dir.join(&expected_filename);
 
-    if let Ok(entries) = fs::read_dir(&cache_dir) {
-        for entry in entries.flatten() {
-            let file_name = entry.file_name();
-            if let Some(name_str) = file_name.to_str() {
-                if regex.is_match(name_str) {
-                    return Ok(Some(entry.path()));
-                }
-            }
-        }
+    if expected_path.exists() {
+        return Ok(Some(expected_path));
     }
 
     Ok(None)
