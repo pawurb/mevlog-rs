@@ -78,7 +78,12 @@ impl TxArgs {
             to: max_index,
         });
 
-        let native_token_price = get_native_token_price(&deps.chain, &deps.provider).await?;
+        let native_token_price = get_native_token_price(
+            &deps.chain,
+            &deps.provider,
+            self.shared_opts.native_token_price,
+        )
+        .await?;
 
         let txs_filter = TxsFilter {
             tx_indexes: Some(tx_indexes),

@@ -96,7 +96,12 @@ pub fn wei_to_eth(wei: U256) -> f64 {
 pub async fn get_native_token_price(
     chain: &EVMChain,
     provider: &Arc<GenericProvider>,
+    native_token_price: Option<f64>,
 ) -> Result<Option<f64>> {
+    if let Some(native_token_price) = native_token_price {
+        return Ok(Some(native_token_price));
+    }
+
     if chain.chainlink_oracle.is_none() {
         return Ok(None);
     }

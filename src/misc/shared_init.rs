@@ -132,6 +132,12 @@ pub struct SharedOpts {
 
     #[arg(long, help = "Enable ERC20 symbols lookup")]
     pub erc20_symbols: bool,
+
+    #[arg(
+        long,
+        help = "Provide native token price in USD instead of reading it from price oracle"
+    )]
+    pub native_token_price: Option<f64>,
 }
 
 #[derive(Clone, Debug, clap::Parser)]

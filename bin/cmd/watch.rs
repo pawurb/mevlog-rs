@@ -46,7 +46,12 @@ impl WatchArgs {
             self.shared_opts.erc20_symbols,
         );
 
-        let native_token_price = get_native_token_price(&deps.chain, &deps.provider).await?;
+        let native_token_price = get_native_token_price(
+            &deps.chain,
+            &deps.provider,
+            self.shared_opts.native_token_price,
+        )
+        .await?;
 
         let mut current_block_number = deps.provider.get_block_number().await? - 1;
 
