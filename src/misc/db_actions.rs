@@ -9,9 +9,9 @@ use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use ruzstd::decoding::StreamingDecoder;
-use sqlx::{Connection, SqliteConnection};
+use sqlx::SqlitePool;
 
-use crate::misc::database::{db_file_name, default_db_path, DB_SCHEMA_VERSION};
+use crate::misc::database::{db_file_name, default_db_path, sqlite_conn, DB_SCHEMA_VERSION};
 
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 
@@ -125,19 +125,13 @@ pub async fn download_db_file() -> Result<()> {
 
     fs::remove_file(&zst_path).map_err(|e| eyre!("Failed to remove .zst file: {}", e))?;
 
-    ensure_database_indexes().await?;
+    let sqlite = sqlite_conn(None).await?;
+    ensure_database_indexes(&sqlite).await?;
 
     Ok(())
 }
 
-async fn ensure_database_indexes() -> Result<()> {
-    let db_path = default_db_path();
-    let database_url = format!("sqlite:{}", db_path.to_string_lossy());
-
-    let mut conn = SqliteConnection::connect(&database_url)
-        .await
-        .map_err(|e| eyre!("Failed to connect to database: {}", e))?;
-
+async fn ensure_database_indexes(sqlite: &SqlitePool) -> Result<()> {
     let indexes_to_check = [
         ("events_signature_hash_index", "events", "signature_hash"),
         ("methods_signature_hash_index", "methods", "signature_hash"),
@@ -148,7 +142,7 @@ async fn ensure_database_indexes() -> Result<()> {
             "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name=?",
         )
         .bind(index_name)
-        .fetch_one(&mut conn)
+        .fetch_one(sqlite)
         .await
         .map_err(|e| eyre!("Failed to check index existence: {}", e))?;
 
@@ -159,7 +153,7 @@ async fn ensure_database_indexes() -> Result<()> {
             println!("Creating index: {create_index_sql}");
 
             sqlx::query(&create_index_sql)
-                .execute(&mut conn)
+                .execute(sqlite)
                 .await
                 .map_err(|e| eyre!("Failed to create index {}: {}", index_name, e))?;
 
@@ -167,19 +161,15 @@ async fn ensure_database_indexes() -> Result<()> {
         }
     }
 
-    conn.close()
-        .await
-        .map_err(|e| eyre!("Failed to close database connection: {}", e))?;
-
     Ok(())
 }
 
-pub async fn check_and_create_indexes() -> Result<()> {
+pub async fn check_and_create_indexes(sqlite: &SqlitePool) -> Result<()> {
     if !db_file_exists() {
         eyre::bail!("Database file does not exist")
     }
 
-    ensure_database_indexes().await
+    ensure_database_indexes(sqlite).await
 }
 
 fn db_file_url() -> String {

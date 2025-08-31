@@ -611,7 +611,7 @@ impl MEVBlock {
     pub fn transactions_json(&self) -> Vec<MEVTransactionJson> {
         let mut indices: Vec<_> = self.mev_transactions.keys().collect();
         indices.sort();
-        
+
         indices
             .into_iter()
             .map(|&index| MEVTransactionJson::from(&self.mev_transactions[&index]))

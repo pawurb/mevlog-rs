@@ -53,11 +53,10 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         let _ = std::fs::create_dir_all(config_path());
         println!("Database file missing");
         download_db_file().await?;
-    } else {
-        check_and_create_indexes().await?;
     }
 
     let sqlite = sqlite_conn(None).await?;
+    check_and_create_indexes(&sqlite).await?;
     let ens_lookup_worker = start_ens_lookup_worker(&rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&rpc_url);
     let provider = init_provider(&rpc_url).await?;
