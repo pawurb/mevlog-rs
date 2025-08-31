@@ -1,4 +1,3 @@
-use alloy::providers::Provider;
 use eyre::{bail, Result};
 use mevlog::{
     misc::{
@@ -94,28 +93,15 @@ impl SearchArgs {
             self.shared_opts.erc20_symbols,
         );
 
-        let (native_token_price, mut latest_block) = match tokio::try_join!(
-            get_native_token_price(
-                &deps.chain,
-                &deps.provider,
-                self.shared_opts.native_token_price
-            ),
-            async {
-                deps.provider
-                    .get_block_number()
-                    .await
-                    .map_err(eyre::Report::from)
-            }
-        ) {
-            Ok((native_token_price, latest_block)) => (native_token_price, latest_block),
-            Err(e) => bail!("Error getting native token price or latest block: {:?}", e),
-        };
+        let native_token_price = get_native_token_price(
+            &deps.chain,
+            &deps.provider,
+            self.shared_opts.native_token_price,
+        )
+        .await?;
 
-        if let Some(latest_offset) = self.latest_offset {
-            latest_block = latest_block.saturating_sub(latest_offset);
-        }
-
-        let block_range = BlocksRange::from_str(&self.blocks, latest_block)?;
+        let block_range =
+            BlocksRange::from_str(&self.blocks, &deps.provider, self.latest_offset).await?;
 
         let mut mev_blocks = vec![];
 

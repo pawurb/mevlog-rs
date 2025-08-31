@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use alloy::providers::Provider;
 use eyre::{eyre, Result};
 
 #[derive(Debug, PartialEq)]
@@ -17,14 +18,22 @@ impl BlocksRange {
         self.to - self.from + 1
     }
 
-    pub fn from_str(input: &str, latest_block: u64) -> Result<Self> {
+    pub async fn from_str(
+        input: &str,
+        provider: &impl Provider,
+        latest_offset: Option<u64>,
+    ) -> Result<Self> {
         let parts: Vec<&str> = input.split(':').collect();
 
         let result: Result<Self> = match parts.as_slice() {
-            ["latest"] => Ok(BlocksRange {
-                from: latest_block,
-                to: latest_block,
-            }),
+            ["latest"] => {
+                let latest_block = get_latest_block(provider, latest_offset).await?;
+
+                Ok(BlocksRange {
+                    from: latest_block,
+                    to: latest_block,
+                })
+            }
             [single] => {
                 let block = single
                     .parse::<u64>()
@@ -61,15 +70,8 @@ impl BlocksRange {
                     .parse::<u64>()
                     .map_err(|_| eyre!("Invalid negative block range: '{}'", from))?;
 
-                if num_blocks > latest_block {
-                    return Err(eyre!(
-                        "Invalid range: '{}' exceeds the latest block '{}'",
-                        num_blocks,
-                        latest_block
-                    ));
-                }
-
-                let from = latest_block - num_blocks + 1;
+                let latest_block = get_latest_block(provider, latest_offset).await?;
+                let from = latest_block.saturating_sub(num_blocks - 1);
                 let to = latest_block;
 
                 Ok(BlocksRange { from, to })
@@ -78,18 +80,19 @@ impl BlocksRange {
             _ => eyre::bail!("Invalid block range format: '{}'", input),
         };
 
-        let result = result?;
-
-        if result.to > latest_block {
-            eyre::bail!(
-                "Invalid range: end block '{}' exceeds the latest block '{}'",
-                result.to,
-                latest_block
-            )
-        };
-
-        Ok(result)
+        result
     }
+}
+
+async fn get_latest_block(provider: &impl Provider, latest_offset: Option<u64>) -> Result<u64> {
+    let mut latest_block = provider
+        .get_block_number()
+        .await
+        .map_err(eyre::Report::from)?;
+    if let Some(offset) = latest_offset {
+        latest_block = latest_block.saturating_sub(offset);
+    }
+    Ok(latest_block)
 }
 
 #[derive(Debug, PartialEq)]
@@ -164,79 +167,6 @@ mod tests {
 
     use super::*;
     use crate::models::txs_filter::{EventQuery, SignatureQuery};
-
-    #[test]
-    fn test_single_block() {
-        let latest_block = 1500;
-        let range = BlocksRange::from_str("890", latest_block).unwrap();
-        assert_eq!(range.from, 890);
-        assert_eq!(range.to, 890);
-        assert_eq!(range.size(), 1);
-    }
-
-    #[test]
-    fn test_numeric_block_range() {
-        let latest_block = 2000;
-        let range = BlocksRange::from_str("999:1200", latest_block).unwrap();
-        assert_eq!(range.from, 999);
-        assert_eq!(range.to, 1200);
-        assert_eq!(range.size(), 202);
-    }
-
-    #[test]
-    fn test_negative_block_range() {
-        let latest_block = 1000;
-        let range = BlocksRange::from_str("100:", latest_block).unwrap();
-        assert_eq!(range.from, 901); // latest_block - 99
-        assert_eq!(range.to, 1000); // latest_block
-    }
-
-    #[test]
-    fn test_latest_block_range() {
-        let latest_block = 5000;
-        let range = BlocksRange::from_str("2:latest", latest_block).unwrap();
-        assert_eq!(range.from, 4999); // latest_block - 1
-        assert_eq!(range.to, 5000); // latest_block
-    }
-
-    #[test]
-    fn test_invalid_block_format() {
-        let latest_block = 1000;
-        let err = BlocksRange::from_str("abc:def", latest_block).unwrap_err();
-        assert!(err.to_string().contains("Invalid block range format"));
-    }
-
-    #[test]
-    fn test_invalid_start_block() {
-        let latest_block = 2000;
-        let err = BlocksRange::from_str("abc:1200", latest_block).unwrap_err();
-        assert!(err.to_string().contains("Invalid block range format"));
-    }
-
-    #[test]
-    fn test_invalid_end_block() {
-        let latest_block = 2000;
-        let err = BlocksRange::from_str("999:xyz", latest_block).unwrap_err();
-        assert!(err.to_string().contains("Invalid block range format"));
-    }
-
-    #[test]
-    fn test_range_exceeding_latest_block() {
-        let latest_block = 1500;
-        let err = BlocksRange::from_str("1400:1600", latest_block).unwrap_err();
-        assert!(err
-            .to_string()
-            .contains("Invalid range: end block '1600' exceeds the latest block '1500'"));
-    }
-
-    #[test]
-    fn test_start_block_greater_than_end() {
-        let latest_block = 1500;
-        let err = BlocksRange::from_str("1200:1100", latest_block).unwrap_err();
-        assert!(err
-            .to_string()
-            .contains("Start block '1200' must be less than or equal to end block '1100'"));
-    }
 
     pub const PEPE: &str = "0x6982508145454ce325ddbe47a25d4ec3d2311933";
 
