@@ -32,6 +32,9 @@ jobs:
       - name: Check seed-db feature flag
         run: | 
           cargo check --features seed-db
+      - name: Check hotpath feature flag
+        run: | 
+          cargo check --features hotpath
       - name: Fmt 
         run: |
           cargo fmt --all --check

@@ -122,6 +122,7 @@ pub struct PriceQuery {
 }
 
 impl PriceQuery {
+    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub fn matches(&self, gas_price: U256) -> bool {
         match self.operator {
             DiffOperator::GreaterOrEq => gas_price >= self.gas_price,

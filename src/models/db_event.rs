@@ -33,6 +33,7 @@ impl DBEvent {
         Ok(count)
     }
 
+    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub async fn find_by_hash(
         signature_hash: &str,
         conn: &sqlx::SqlitePool,

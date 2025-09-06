@@ -107,6 +107,7 @@ pub struct MEVTransaction {
 // n_input_nonzero_bytes 19
 // chain_id 20
 impl MEVTransaction {
+    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub async fn tx_data_from_parquet_row(
         batch: &arrow::record_batch::RecordBatch,
         row_idx: usize,
@@ -149,7 +150,7 @@ impl MEVTransaction {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub async fn new(
         native_token_price: Option<f64>,
         chain: EVMChain,
@@ -275,6 +276,7 @@ impl MEVTransaction {
     }
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure)]
 pub async fn extract_signature(
     input: Option<&Bytes>,
     index: u64,

@@ -486,6 +486,19 @@ RUSTFLAGS="--cfg tokio_unstable" cargo run --features=tokio-console --bin mevlog
 cargo run --features=seed-db --bin mevlog seed-db
 ```
 
+### Benchmark
+
+Benchmark using [hotpath](https://github.com/pawurb/hotpath) lib:
+
+```
+cargo build --release --features=hotpath
+QUIET=1 ./target/release/mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
+```
+
+Run once to cache all relevant data. Subsequent invocations won't trigger any RPC calls, so you can profile performance without network overhead. Annotate more methods with `[cfg_attr(feature = "hotpath", hotpath::measure)]` if needed.
+
+![Report](hotpath-report.png)
+
 ## Project status
 
 WIP, feedback appreciated. I'm currently seeking a sponsor to help cover archive node costs for [mevlog.rs](https://mevlog.rs/). My goal is to make a hosted search web UI publicly available.

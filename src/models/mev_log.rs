@@ -31,6 +31,7 @@ impl MEVLog {
     // topic3 8
     // data 9
     // chain_id 10
+    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub async fn from_parquet_row(
         batch: &RecordBatch,
         row_idx: usize,

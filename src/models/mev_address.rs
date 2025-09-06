@@ -16,6 +16,7 @@ pub struct MEVAddress {
 }
 
 impl MEVAddress {
+    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub async fn new(
         address: Address,
         ens_lookup: &ENSLookup,

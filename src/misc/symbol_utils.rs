@@ -133,6 +133,7 @@ async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> R
     Ok(())
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure)]
 async fn read_symbols_cache(target: Address) -> Result<CachedEntry> {
     {
         let cache = SYMBOLS_MEMORY_CACHE.read().await;

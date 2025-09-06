@@ -142,6 +142,7 @@ async fn ens_name_lookup(
     Ok(name)
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure)]
 async fn read_ens_cache(target: Address) -> Result<CachedEntry> {
     {
         let cache = ENS_MEMORY_CACHE.read().await;

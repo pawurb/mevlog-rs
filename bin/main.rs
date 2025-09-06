@@ -61,7 +61,10 @@ pub enum MLSubcommand {
 
 #[tokio::main]
 async fn main() {
+    #[cfg(feature = "hotpath")]
+    let _hotpath = hotpath::init!();
     init_logs();
+
     let root_args = MLArgs::parse();
     let format = root_args.format.clone();
 
