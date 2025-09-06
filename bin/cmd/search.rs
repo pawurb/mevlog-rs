@@ -13,13 +13,59 @@ use mevlog::{
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
 };
+use revm::primitives::{Address, U256};
 
-#[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SortField {
     GasPrice,
     GasUsed,
     FullTxCost,
     TxCost,
+    Erc20Transfer(Address), // Token contract address
+}
+
+impl std::str::FromStr for SortField {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "gas-price" => Ok(SortField::GasPrice),
+            "gas-used" => Ok(SortField::GasUsed),
+            "full-tx-cost" => Ok(SortField::FullTxCost),
+            "tx-cost" => Ok(SortField::TxCost),
+            _ => {
+                if s.starts_with("erc20Transfer|") {
+                    let token_address = s
+                        .strip_prefix("erc20Transfer|")
+                        .ok_or("Token address required after 'erc20Transfer|'")?;
+
+                    match token_address.parse::<Address>() {
+                        Ok(address) => Ok(SortField::Erc20Transfer(address)),
+                        Err(_) => Err(
+                            "Invalid token address format. Expected valid Ethereum address"
+                                .to_string(),
+                        ),
+                    }
+                } else {
+                    Err(format!("Invalid sort field: '{}'. Expected one of: gas-price, gas-used, tx-cost, full-tx-cost, or erc20Transfer|<token_address>", s))
+                }
+            }
+        }
+    }
+}
+
+fn extract_erc20_transfer_amount(
+    transaction: &MEVTransactionJson,
+    token_address: &Address,
+) -> U256 {
+    transaction
+        .log_groups
+        .iter()
+        .filter(|group| group.source == *token_address)
+        .flat_map(|group| &group.logs)
+        .filter(|log| log.signature == "Transfer(address,address,uint256)")
+        .filter_map(|log| log.amount.as_ref().and_then(|amt| amt.parse::<U256>().ok()))
+        .sum()
 }
 
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
@@ -38,7 +84,7 @@ pub struct SearchArgs {
 
     #[arg(
         long,
-        help = "Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost)"
+        help = "Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost, erc20Transfer|<token_address>)"
     )]
     sort: Option<SortField>,
 
@@ -221,6 +267,20 @@ fn sort_transactions(
                     SortDirection::Asc => {
                         a_cost.cmp(&b_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
                     }
+                }
+            });
+        }
+        SortField::Erc20Transfer(token_address) => {
+            transactions_json.sort_by(|a, b| {
+                let a_amount = extract_erc20_transfer_amount(a, token_address);
+                let b_amount = extract_erc20_transfer_amount(b, token_address);
+                match sort_dir {
+                    SortDirection::Desc => b_amount
+                        .cmp(&a_amount)
+                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
+                    SortDirection::Asc => a_amount
+                        .cmp(&b_amount)
+                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
                 }
             });
         }

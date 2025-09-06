@@ -362,4 +362,29 @@ pub mod tests {
         assert!(output.contains("\"to\": \"0x7290f841536a3f73835ffad72d27b8c905e1b497\""));
         assert!(output.contains("\"signature\": \"CREATE()\""));
     }
+
+    #[test]
+    fn test_cli_format_search_erc20_transfer() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("23305021:23305023")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json-pretty")
+            .arg("--sort")
+            .arg("erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        println!("output: {output}");
+        assert!(output.contains(
+            "\"tx_hash\": \"0xc09b81a9817686083b401b33c8c2df6b09ae4263b15395636bf53e212a0756f4\""
+        ));
+    }
 }

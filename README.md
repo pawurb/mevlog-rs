@@ -99,7 +99,7 @@ Options:
       --limit <LIMIT>
           Limit the number of transactions returned
       --sort <SORT>
-          Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost)
+          Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost, erc20Transfer|<token_address>)
       --sort-dir <SORT_DIR>
           Sort direction (desc, asc) [default: desc]
   -f, --from <FROM>
@@ -220,6 +220,12 @@ mevlog search -b 10:latest --sort full-tx-cost --limit 5 --trace rpc
 
 ```bash
 mevlog search -b 10:latest --sort gas-price --sort-dir asc --limit 10
+```
+
+- find transaction that transferred the most USDC in the last 50 blocks:
+
+```bash
+mevlog search -b 50:latest --sort "erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" --limit 1 --chain-id 1
 ```
 
 ### Event filters
