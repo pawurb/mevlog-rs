@@ -60,9 +60,8 @@ pub enum MLSubcommand {
 }
 
 #[tokio::main]
+#[cfg_attr(feature = "hotpath", hotpath::main(percentiles = [95]))]
 async fn main() {
-    #[cfg(feature = "hotpath")]
-    let _hotpath = hotpath::init!();
     init_logs();
 
     let root_args = MLArgs::parse();

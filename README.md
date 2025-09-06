@@ -503,7 +503,7 @@ QUIET=1 ./target/release/mevlog search -b 23263469:23263489 --chain-id 1 --skip-
 
 Run once to cache all relevant data. Subsequent invocations won't trigger any RPC calls, so you can profile performance without network overhead. Annotate more methods with `[cfg_attr(feature = "hotpath", hotpath::measure)]` if needed.
 
-![Report](hotpath-report.png)
+![Report](hotpath-report2.png)
 
 ## Project status
 
