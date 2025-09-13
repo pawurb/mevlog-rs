@@ -1879,7 +1879,7 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
 dependencies = [
- "windows-sys 0.48.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2984,25 +2984,29 @@ dependencies = [
 
 [[package]]
 name = "hotpath"
-version = "0.2.2"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1f4d40684c9bbcc0ccd4c51c4b59222f59366527bc25b9a0c4555642b402711c"
+checksum = "23cb03ae58969c30a1818ba2b8412953b63334db87c00adaec80a5028d2b6b32"
 dependencies = [
+ "cfg-if",
  "colored",
  "crossbeam-channel",
+ "hdrhistogram",
  "hotpath-macros",
  "prettytable-rs",
 ]
 
 [[package]]
 name = "hotpath-macros"
-version = "0.2.2"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2651b239d37e572e227f67d806d7b083013a9cbb927a69df7d54b43dbbdf9047"
+checksum = "bc67a8f52eaa00fbbb53dabc9645cd6a8e190922a2dbad31d41b27d55a03894c"
 dependencies = [
+ "cfg-if",
  "proc-macro2",
  "quote",
  "syn 2.0.106",
+ "tokio",
 ]
 
 [[package]]
@@ -3455,7 +3459,7 @@ checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4494,7 +4498,6 @@ version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eea25e07510aa6ab6547308ebe3c036016d162b8da920dbb079e3ba8acf3d95a"
 dependencies = [
- "csv",
  "encode_unicode",
  "is-terminal",
  "lazy_static",

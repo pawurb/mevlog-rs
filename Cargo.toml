@@ -49,7 +49,7 @@ html-escape = "0.2.13"
 which = "7.0.3"
 alloy-chains = "0.2.5"
 console-subscriber = { version = "0.4.1", optional = true }
-hotpath = { version = "0.2", optional = true }
+hotpath = { version = "0.2.4", optional = true }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "js"] }
@@ -65,7 +65,12 @@ path = "examples/find_ens_name.rs"
 [features]
 seed-db = []
 tokio-console = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
-hotpath = ["dep:hotpath"]
+
+hotpath = ["dep:hotpath", "hotpath/hotpath"]
+hotpath-alloc-bytes-total = ["hotpath/hotpath-alloc-bytes-total"]
+hotpath-alloc-bytes-max = ["hotpath/hotpath-alloc-bytes-max"]
+hotpath-alloc-count-total= ["hotpath/hotpath-alloc-count-total"]
+hotpath-alloc-count-max= ["hotpath/hotpath-alloc-count-max"]
 
 [profile.maxperf]
 inherits = "release"

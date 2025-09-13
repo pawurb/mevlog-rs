@@ -59,9 +59,30 @@ pub enum MLSubcommand {
     SeedDB(SeedDBArgs),
 }
 
-#[tokio::main]
-#[cfg_attr(feature = "hotpath", hotpath::main(percentiles = [95]))]
+#[cfg(any(
+    feature = "hotpath-alloc-bytes-total",
+    feature = "hotpath-alloc-bytes-max",
+    feature = "hotpath-alloc-count-total",
+    feature = "hotpath-alloc-count-max",
+))]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
+    _ = inner_main().await;
+}
+
+#[cfg(not(any(
+    feature = "hotpath-alloc-bytes-total",
+    feature = "hotpath-alloc-bytes-max",
+    feature = "hotpath-alloc-count-total",
+    feature = "hotpath-alloc-count-max",
+)))]
+#[tokio::main]
+async fn main() {
+    _ = inner_main().await;
+}
+
+#[cfg_attr(feature = "hotpath", hotpath::main(percentiles = [95]))]
+async fn inner_main() {
     init_logs();
 
     let root_args = MLArgs::parse();

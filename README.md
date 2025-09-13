@@ -496,6 +496,7 @@ cargo run --features=seed-db --bin mevlog seed-db
 
 Benchmark using [hotpath](https://github.com/pawurb/hotpath) lib:
 
+Time:
 ```
 cargo build --release --features=hotpath
 QUIET=1 ./target/release/mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
@@ -504,6 +505,12 @@ QUIET=1 ./target/release/mevlog search -b 23263469:23263489 --chain-id 1 --skip-
 Run once to cache all relevant data. Subsequent invocations won't trigger any RPC calls, so you can profile performance without network overhead. Annotate more methods with `[cfg_attr(feature = "hotpath", hotpath::measure)]` if needed.
 
 ![Report](hotpath-report2.png)
+
+Allocations:
+```
+cargo build --features 'hotpath,hotpath-alloc-bytes-max' --release
+QUIET=1 ./target/release/mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
+```
 
 ## Project status
 
