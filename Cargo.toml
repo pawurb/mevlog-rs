@@ -15,11 +15,12 @@ alloy = { version = "1.0", features = ["full"] }
 revm-inspectors = "0.29.1"
 eyre = "0.6.12"
 serde_json = "1.0"
+serde = "=1.0.219"
 hex = "0.4.3"
 url = "2.5.0"
 revm = { version = "29.0.0", features = ["std", "alloydb"] }
 foundry-fork-db = "0.18.1"
-reqwest = { version = "0.11", features = ["json", "stream"] }
+reqwest = { version = "0.12", features = ["json", "stream"] }
 futures-util = "0.3.31"
 tracing-subscriber = { version = "0.3.20", features = ["time", "env-filter"] }
 time = "0.3.36"
@@ -30,7 +31,6 @@ sqlx = { version = "0.8.3", features = [
   "macros",
 ] }
 home = "0.5.11"
-serde = "1.0.218"
 glob = "0.3.2"
 clap = { version = "4.5.31", features = ["derive", "env"] }
 colored = "3.0.0"
