@@ -89,7 +89,7 @@ impl RevmBlockContext {
             coinbase: block.header.beneficiary,
             difficulty: block.header.difficulty,
             gas_limit: U256::from(block.header.gas_limit),
-            basefee: U256::from(block.header.base_fee_per_gas.expect("Base fee missing")),
+            basefee: U256::from(block.header.base_fee_per_gas.unwrap_or(0)),
             excess_blob_gas: block.header.excess_blob_gas,
             blob_gasprice: block.header.excess_blob_gas.map(calc_blob_gasprice),
         }
