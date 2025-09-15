@@ -15,7 +15,7 @@ alloy = { version = "1.0", features = ["full"] }
 revm-inspectors = "0.29.1"
 eyre = "0.6.12"
 serde_json = "1.0"
-serde = "=1.0.219"
+serde = "1.0"
 hex = "0.4.3"
 url = "2.5.0"
 revm = { version = "29.0.0", features = ["std", "alloydb"] }
