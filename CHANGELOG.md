@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.1] - 2025-09-15
+
+### 🚀 Features
+
+- Add latest_offset config
+- Display CREATE tx contract addr
+- Add --native-token-price
+- Add --sort by erc20Transfer amounts
+- Add --max-range option
+
+### 🐛 Bug Fixes
+
+- Improve ENS filtering
+- Correct json txs order
+- Reuse sqlite connection
+- Support chains without base fee
+- Fix dependencies conflict
+- Fix serde version
+
+### 🚜 Refactor
+
+- Simplify cryo files find
+
+### ⚡ Performance
+
+- Paraller metadata rpc calls
+- Take best responding rpc urls
+- Get_chain_id only if necessary
+- Get latest block only if needed
+- Setup hotpath benchmark
+
+### ⚙️ Miscellaneous Tasks
+
+- Enable revm integration CI
+- Add maxperf and instrument profiles
+- Add cargo audit to CI
+- Use edition 2024
+
 ## [0.7.0] - 2025-08-18
 
 ### 🚀 Features
@@ -57,6 +95,7 @@ All notable changes to this project will be documented in this file.
 - Enable CI integration tests and cache dependencies
 - More cli tests
 - Rename rpc-urls to chain-info
+- Release mevlog version 0.7.0
 
 ## [0.6.0] - 2025-07-17
 
