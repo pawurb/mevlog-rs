@@ -47,7 +47,10 @@ impl std::str::FromStr for SortField {
                         ),
                     }
                 } else {
-                    Err(format!("Invalid sort field: '{}'. Expected one of: gas-price, gas-used, tx-cost, full-tx-cost, or erc20Transfer|<token_address>", s))
+                    Err(format!(
+                        "Invalid sort field: '{}'. Expected one of: gas-price, gas-used, tx-cost, full-tx-cost, or erc20Transfer|<token_address>",
+                        s
+                    ))
                 }
             }
         }
@@ -102,6 +105,9 @@ pub struct SearchArgs {
 
     #[arg(long, help = "Get N-offset latest block")]
     latest_offset: Option<u64>,
+
+    #[arg(long, help = "Maximum allowed block range size")]
+    max_range: Option<u64>,
 }
 
 impl SearchArgs {
@@ -148,6 +154,17 @@ impl SearchArgs {
 
         let block_range =
             BlocksRange::from_str(&self.blocks, &deps.provider, self.latest_offset).await?;
+
+        if let Some(max_range) = self.max_range {
+            let range_size = block_range.size();
+            if range_size > max_range {
+                bail!(
+                    "Block range size {} exceeds maximum allowed range of {}",
+                    range_size,
+                    max_range
+                );
+            }
+        }
 
         let mut mev_blocks = vec![];
 
