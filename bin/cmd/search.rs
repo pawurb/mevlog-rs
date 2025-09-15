@@ -1,9 +1,9 @@
-use eyre::{bail, Result};
+use eyre::{Result, bail};
 use mevlog::{
     misc::{
         args_parsing::BlocksRange,
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
@@ -123,10 +123,11 @@ impl SearchArgs {
             }
         }
 
-        if let Some(sort) = &self.sort {
-            if sort == &SortField::FullTxCost && self.shared_opts.trace.is_none() {
-                bail!("--sort full-tx-cost is only available with --trace enabled")
-            }
+        if let Some(sort) = &self.sort
+            && sort == &SortField::FullTxCost
+            && self.shared_opts.trace.is_none()
+        {
+            bail!("--sort full-tx-cost is only available with --trace enabled")
         }
 
         let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, false)?;

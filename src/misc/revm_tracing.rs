@@ -2,26 +2,26 @@ use std::{collections::HashSet, path::PathBuf, sync::Arc};
 
 use alloy::{
     consensus::BlockHeader,
-    eips::{calc_blob_gasprice, eip2930::AccessList, BlockId, BlockNumberOrTag},
+    eips::{BlockId, BlockNumberOrTag, calc_blob_gasprice, eip2930::AccessList},
     network::{AnyNetwork, AnyRpcBlock},
     primitives::Bytes,
     providers::{Provider, ProviderBuilder},
     rpc::types::{
-        trace::parity::{TraceType, TransactionTrace},
         AccessList as AlloyAccessList, Block, TransactionRequest,
+        trace::parity::{TraceType, TransactionTrace},
     },
 };
 use eyre::Result;
-use foundry_fork_db::{cache::BlockchainDbMeta, BlockchainDb, SharedBackend};
+use foundry_fork_db::{BlockchainDb, SharedBackend, cache::BlockchainDbMeta};
 use revm::{
+    Context, ExecuteCommitEvm, ExecuteEvm, InspectEvm, MainBuilder, MainContext,
     context::{
-        result::{ExecutionResult, Output},
         BlockEnv, TransactTo, TxEnv,
+        result::{ExecutionResult, Output},
     },
     context_interface::block::BlobExcessGasAndPrice,
     database::CacheDB,
     primitives::{Address, FixedBytes, TxKind, U256},
-    Context, ExecuteCommitEvm, ExecuteEvm, InspectEvm, MainBuilder, MainContext,
 };
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 

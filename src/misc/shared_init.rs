@@ -5,7 +5,7 @@ use alloy::{
     rpc::client::RpcClient,
     transports::layers::RetryBackoffLayer,
 };
-use eyre::{bail, Result};
+use eyre::{Result, bail};
 use revm::primitives::Address;
 use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
@@ -16,12 +16,12 @@ use super::{
     db_actions::{check_and_create_indexes, db_file_exists},
     ens_utils::start_ens_lookup_worker,
     rpc_urls::get_chain_info,
-    symbol_utils::{start_symbols_lookup_worker, ERC20SymbolLookupWorker},
+    symbol_utils::{ERC20SymbolLookupWorker, start_symbols_lookup_worker},
 };
 use crate::{
+    GenericProvider,
     misc::db_actions::download_db_file,
     models::{db_chain::DBChain, evm_chain::EVMChain},
-    GenericProvider,
 };
 
 pub struct SharedDeps {

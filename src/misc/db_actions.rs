@@ -4,14 +4,14 @@ use std::{
     io::{Read, Write},
 };
 
-use eyre::{eyre, OptionExt, Result};
+use eyre::{OptionExt, Result, eyre};
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use ruzstd::decoding::StreamingDecoder;
 use sqlx::SqlitePool;
 
-use crate::misc::database::{db_file_name, default_db_path, sqlite_conn, DB_SCHEMA_VERSION};
+use crate::misc::database::{DB_SCHEMA_VERSION, db_file_name, default_db_path, sqlite_conn};
 
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 

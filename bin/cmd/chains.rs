@@ -1,7 +1,7 @@
 use eyre::Result;
 use mevlog::{
-    misc::{rpc_urls::get_all_chains, shared_init::OutputFormat},
     ChainEntryJson,
+    misc::{rpc_urls::get_all_chains, shared_init::OutputFormat},
 };
 
 #[derive(Debug, clap::Parser)]

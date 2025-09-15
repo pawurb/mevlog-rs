@@ -4,7 +4,7 @@ use std::{
     str::FromStr,
 };
 
-use eyre::{bail, eyre, Result};
+use eyre::{Result, bail, eyre};
 use regex::Regex;
 use revm::primitives::{Address, U256};
 
@@ -193,7 +193,9 @@ impl FromStr for ERC20TransferQuery {
                 operator: Some(operator),
             })
         } else {
-            bail!("Invalid transfer query format. Expected 'address' or 'address|amount_filter' (e.g., '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' or '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether')");
+            bail!(
+                "Invalid transfer query format. Expected 'address' or 'address|amount_filter' (e.g., '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913' or '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913|ge3ether')"
+            );
         }
     }
 }
@@ -367,16 +369,16 @@ impl TxsFilter {
     }
 
     pub fn tracing_should_exclude(&self, mev_tx: &MEVTransaction) -> bool {
-        if let Some(full_tx_cost) = &self.real_tx_cost {
-            if !full_tx_cost.matches(mev_tx.full_tx_cost().expect("must be traced")) {
-                return true;
-            }
+        if let Some(full_tx_cost) = &self.real_tx_cost
+            && !full_tx_cost.matches(mev_tx.full_tx_cost().expect("must be traced"))
+        {
+            return true;
         }
 
-        if let Some(full_effective_gas_price) = &self.real_gas_price {
-            if !full_effective_gas_price.matches(mev_tx.full_effective_gas_price()) {
-                return true;
-            }
+        if let Some(full_effective_gas_price) = &self.real_gas_price
+            && !full_effective_gas_price.matches(mev_tx.full_effective_gas_price())
+        {
+            return true;
         }
 
         if !self.match_calls.is_empty() {

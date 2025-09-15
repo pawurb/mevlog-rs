@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use alloy::providers::Provider;
-use eyre::{eyre, Result};
+use eyre::{Result, eyre};
 
 #[derive(Debug, PartialEq)]
 pub struct BlocksRange {

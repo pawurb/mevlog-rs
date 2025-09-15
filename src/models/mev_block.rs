@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc}
 use alloy::{
     eips::BlockNumberOrTag,
     providers::Provider,
-    rpc::types::{trace::parity::Action, Block, TransactionRequest},
+    rpc::types::{Block, TransactionRequest, trace::parity::Action},
 };
 use cacache;
 use colored::Colorize;
@@ -23,26 +23,26 @@ use super::{
     txs_filter::{AddressFilter, TxsFilter},
 };
 use crate::{
+    GenericProvider,
     misc::{
         args_parsing::PositionRange,
-        coinbase_bribe::{find_coinbase_transfer, TraceData},
+        coinbase_bribe::{TraceData, find_coinbase_transfer},
         db_actions::PROGRESS_CHARS,
         ens_utils::ENSLookup,
         revm_tracing::{
-            init_revm_db, revm_cache_path, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
-            RevmBlockContext,
+            RevmBlockContext, init_revm_db, revm_cache_path, revm_commit_tx,
+            revm_touching_accounts, revm_tx_calls,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
         symbol_utils::ERC20SymbolsLookup,
-        utils::{ToU64, ETH_TRANSFER, SEPARATORER, UNKNOWN},
+        utils::{ETH_TRANSFER, SEPARATORER, ToU64, UNKNOWN},
     },
     models::{
         evm_chain::EVMChain,
         json::mev_transaction_json::MEVTransactionJson,
-        mev_transaction::{extract_signature, CallExtract},
+        mev_transaction::{CallExtract, extract_signature},
     },
-    GenericProvider,
 };
 
 #[derive(Clone, Debug)]
@@ -124,7 +124,9 @@ impl MEVBlock {
         native_token_price: Option<f64>,
     ) -> Result<Self> {
         if which::which("cryo").is_err() {
-            eyre::bail!("'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo");
+            eyre::bail!(
+                "'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo"
+            );
         };
 
         let txs_data = get_txs_data(block_number, chain).await?;
@@ -192,16 +194,16 @@ impl MEVBlock {
             let tx_index = tx_index as u64;
             let tx_hash = tx.tx_hash;
 
-            if let Some(indexes) = &filter.tx_indexes {
-                if !indexes.contains(&(tx_index)) {
-                    continue;
-                }
+            if let Some(indexes) = &filter.tx_indexes
+                && !indexes.contains(&(tx_index))
+            {
+                continue;
             }
 
-            if let Some(position_range) = &filter.tx_position {
-                if tx_index < position_range.from || tx_index > position_range.to {
-                    continue;
-                }
+            if let Some(position_range) = &filter.tx_position
+                && (tx_index < position_range.from || tx_index > position_range.to)
+            {
+                continue;
             }
 
             let mev_tx = match MEVTransaction::new(
@@ -263,10 +265,10 @@ impl MEVBlock {
                 None => {}
             }
 
-            if let Some(value_filter) = &filter.value {
-                if !value_filter.matches(mev_tx.value()) {
-                    continue;
-                }
+            if let Some(value_filter) = &filter.value
+                && !value_filter.matches(mev_tx.value())
+            {
+                continue;
             }
 
             self.mev_transactions.insert(tx_index, mev_tx);
@@ -510,16 +512,16 @@ impl MEVBlock {
         for mev_log in logs_data {
             let tx_index = mev_log.tx_index;
 
-            if let Some(position_range) = &filter.tx_position {
-                if tx_index < position_range.from || tx_index > position_range.to {
-                    continue;
-                }
+            if let Some(position_range) = &filter.tx_position
+                && (tx_index < position_range.from || tx_index > position_range.to)
+            {
+                continue;
             }
 
-            if let Some(indexes) = &filter.tx_indexes {
-                if !indexes.contains(&tx_index) {
-                    continue;
-                }
+            if let Some(indexes) = &filter.tx_indexes
+                && !indexes.contains(&tx_index)
+            {
+                continue;
             }
 
             if let Some(tx) = self.mev_transactions.get_mut(&tx_index) {
@@ -787,7 +789,9 @@ async fn try_parse_txs_file(block_number: u64, chain: &EVMChain) -> Result<Vec<T
                 cryo_cache_dir(chain).display(),
                 chain.cryo_cache_dir_name()
             );
-            eyre::bail!("No matching transactions Parquet file found (pattern: {expected_pattern}). Make sure that 'cryo' command is working and that you have a valid RPC connection.");
+            eyre::bail!(
+                "No matching transactions Parquet file found (pattern: {expected_pattern}). Make sure that 'cryo' command is working and that you have a valid RPC connection."
+            );
         }
     };
 
@@ -879,7 +883,9 @@ async fn try_parse_logs_file(
                 cryo_cache_dir(chain).display(),
                 chain.cryo_cache_dir_name()
             );
-            eyre::bail!("No matching logs Parquet file found (pattern: {expected_pattern}), continuing without logs processing");
+            eyre::bail!(
+                "No matching logs Parquet file found (pattern: {expected_pattern}), continuing without logs processing"
+            );
         }
     };
 

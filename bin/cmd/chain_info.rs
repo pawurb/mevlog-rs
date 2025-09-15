@@ -1,10 +1,10 @@
 use eyre::Result;
 use mevlog::{
+    ChainInfoJson, ChainInfoNoRpcsJson, RpcUrlInfo,
     misc::{
         rpc_urls::{get_chain_info, get_chain_info_no_benchmark},
         shared_init::OutputFormat,
     },
-    ChainInfoJson, ChainInfoNoRpcsJson, RpcUrlInfo,
 };
 
 #[derive(Debug, clap::Parser)]

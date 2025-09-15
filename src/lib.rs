@@ -1,6 +1,6 @@
 use alloy::providers::{
-    fillers::{BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller},
     Identity, RootProvider,
+    fillers::{BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller},
 };
 
 pub mod misc;

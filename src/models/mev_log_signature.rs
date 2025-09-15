@@ -4,7 +4,7 @@ use eyre::Result;
 use revm::primitives::{Address, U256};
 
 use crate::misc::{
-    symbol_utils::{symbol_lookup_async, symbol_lookup_only_cached, ERC20SymbolsLookup},
+    symbol_utils::{ERC20SymbolsLookup, symbol_lookup_async, symbol_lookup_only_cached},
     utils::UNKNOWN,
 };
 

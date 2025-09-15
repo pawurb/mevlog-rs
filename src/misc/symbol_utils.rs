@@ -4,12 +4,12 @@ use alloy::{providers::Provider, sol};
 use eyre::Result;
 use revm::primitives::Address;
 use tokio::sync::{
-    mpsc::{self, UnboundedSender},
     RwLock,
+    mpsc::{self, UnboundedSender},
 };
 
 use super::shared_init::init_provider;
-use crate::{models::mev_log_signature::MEVLogSignatureType, GenericProvider};
+use crate::{GenericProvider, models::mev_log_signature::MEVLogSignatureType};
 
 sol! {
   #[sol(rpc)]

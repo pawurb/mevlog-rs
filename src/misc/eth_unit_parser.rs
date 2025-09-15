@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use eyre::{bail, Result};
+use eyre::{Result, bail};
 use revm::primitives::U256;
 
 #[derive(Debug, Clone, Copy)]

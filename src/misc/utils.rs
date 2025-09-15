@@ -7,7 +7,7 @@ use alloy::{sol, uint};
 use eyre::Result;
 use revm::primitives::U256;
 
-use crate::{models::evm_chain::EVMChain, GenericProvider};
+use crate::{GenericProvider, models::evm_chain::EVMChain};
 
 pub const SEPARATORER: &str = "===============================================================================================";
 pub const SEPARATOR: &str = "-----------------------------------------------------------------------------------------------";

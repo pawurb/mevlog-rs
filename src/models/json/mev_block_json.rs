@@ -2,7 +2,7 @@ use serde::Serialize;
 
 use crate::{
     misc::utils::ToU64,
-    models::mev_block::{format_block_age, MEVBlock},
+    models::mev_block::{MEVBlock, format_block_age},
 };
 
 #[derive(Serialize)]

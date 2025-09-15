@@ -1,15 +1,15 @@
 use std::{borrow::Cow, collections::HashMap, path::PathBuf, sync::Arc};
 
 use alloy::{primitives::Keccak256, sol};
-use eyre::{bail, Result};
-use revm::primitives::{address, Address, B256};
+use eyre::{Result, bail};
+use revm::primitives::{Address, B256, address};
 use tokio::sync::{
-    mpsc::{self, UnboundedSender},
     RwLock,
+    mpsc::{self, UnboundedSender},
 };
 
 use super::shared_init::init_provider;
-use crate::{misc::symbol_utils::CachedEntry, models::evm_chain::EVMChain, GenericProvider};
+use crate::{GenericProvider, misc::symbol_utils::CachedEntry, models::evm_chain::EVMChain};
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
@@ -47,15 +47,15 @@ impl ENSLookup {
             return Ok(ENSLookup::Disabled);
         }
 
-        if let Some(ens_query) = ens_query {
-            if !known_ens_name(&ens_query).await {
-                let addr = ens_addr_lookup(ens_query.clone(), provider).await?;
-                let Some(addr) = addr else {
-                    bail!("{ens_query} is not a registered ENS name");
-                };
+        if let Some(ens_query) = ens_query
+            && !known_ens_name(&ens_query).await
+        {
+            let addr = ens_addr_lookup(ens_query.clone(), provider).await?;
+            let Some(addr) = addr else {
+                bail!("{ens_query} is not a registered ENS name");
+            };
 
-                write_ens_cache(addr, Some(ens_query)).await?;
-            }
+            write_ens_cache(addr, Some(ens_query)).await?;
         };
 
         if !ens_enabled {
@@ -133,11 +133,7 @@ async fn ens_name_lookup(
     let result = ens_lookup.getNameForNode(node).call().await?;
     let name = {
         let name = result;
-        if name.is_empty() {
-            None
-        } else {
-            Some(name)
-        }
+        if name.is_empty() { None } else { Some(name) }
     };
     Ok(name)
 }

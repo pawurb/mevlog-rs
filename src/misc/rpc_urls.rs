@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use alloy::providers::Provider;
-use eyre::{bail, Result};
+use eyre::{Result, bail};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tokio::time::sleep;

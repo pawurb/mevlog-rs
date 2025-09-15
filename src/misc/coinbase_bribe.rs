@@ -11,12 +11,11 @@ pub struct TraceData {
 
 pub fn find_coinbase_transfer(coinbase: Address, traces: Vec<TraceData>) -> U256 {
     for trace in traces {
-        if let Some(to) = trace.to {
-            if to == coinbase {
-                if let Some(value) = trace.value {
-                    return value;
-                }
-            }
+        if let Some(to) = trace.to
+            && to == coinbase
+            && let Some(value) = trace.value
+        {
+            return value;
         }
     }
 

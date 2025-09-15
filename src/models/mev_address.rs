@@ -5,8 +5,8 @@ use eyre::Result;
 use revm::primitives::Address;
 
 use crate::{
-    misc::ens_utils::{ens_lookup_async, ens_lookup_only_cached, ens_lookup_sync, ENSLookup},
     GenericProvider,
+    misc::ens_utils::{ENSLookup, ens_lookup_async, ens_lookup_only_cached, ens_lookup_sync},
 };
 
 #[derive(Debug, Clone, PartialEq)]

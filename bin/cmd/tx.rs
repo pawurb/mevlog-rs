@@ -1,12 +1,12 @@
 use std::collections::HashSet;
 
 use alloy::providers::Provider;
-use eyre::{eyre, Result};
+use eyre::{Result, eyre};
 use mevlog::{
     misc::{
         args_parsing::PositionRange,
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
@@ -151,20 +151,20 @@ fn get_matching_indexes(
     let mut result = HashSet::new();
     result.insert(source_tx_index);
 
-    if let Some(count) = after {
-        if count > 0 {
-            for i in 1..=count as u64 {
-                result.insert(source_tx_index + i);
-            }
+    if let Some(count) = after
+        && count > 0
+    {
+        for i in 1..=count as u64 {
+            result.insert(source_tx_index + i);
         }
     }
 
-    if let Some(count) = before {
-        if count > 0 {
-            for i in 1..=count as u64 {
-                if source_tx_index >= i {
-                    result.insert(source_tx_index - i);
-                }
+    if let Some(count) = before
+        && count > 0
+    {
+        for i in 1..=count as u64 {
+            if source_tx_index >= i {
+                result.insert(source_tx_index - i);
             }
         }
     }
@@ -173,10 +173,10 @@ fn get_matching_indexes(
 }
 
 fn check_range(value: Option<u8>, label: &str) -> Result<()> {
-    if let Some(value) = value {
-        if value > 5 {
-            eyre::bail!("{} must be less than or equal 5", label);
-        }
+    if let Some(value) = value
+        && value > 5
+    {
+        eyre::bail!("{} must be less than or equal 5", label);
     }
 
     Ok(())

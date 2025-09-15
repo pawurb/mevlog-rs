@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use eyre::Result;
 use sqlx::{
-    migrate::{MigrateDatabase, Migrator},
     Sqlite, SqlitePool,
+    migrate::{MigrateDatabase, Migrator},
 };
 use tracing::info;
 

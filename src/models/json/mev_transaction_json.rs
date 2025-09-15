@@ -6,8 +6,8 @@ use crate::{
     models::{
         json::mev_log_group_json::MEVLogGroupJson,
         mev_transaction::{
-            calculate_create_address, display_token, display_token_and_usd, display_usd,
-            eth_to_usd, CallExtract, MEVTransaction,
+            CallExtract, MEVTransaction, calculate_create_address, display_token,
+            display_token_and_usd, display_usd, eth_to_usd,
         },
     },
 };

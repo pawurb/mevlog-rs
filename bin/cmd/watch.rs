@@ -4,7 +4,7 @@ use eyre::Result;
 use mevlog::{
     misc::{
         ens_utils::ENSLookup,
-        shared_init::{init_deps, ConnOpts, OutputFormat, SharedOpts},
+        shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },

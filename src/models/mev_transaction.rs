@@ -12,7 +12,7 @@ use alloy::{
 use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::Colorize;
 use eyre::Result;
-use revm::primitives::{keccak256, Address, Bytes, FixedBytes, TxKind, U256};
+use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
 use serde::Serialize;
 use sqlx::SqlitePool;
 
@@ -21,13 +21,13 @@ use super::{
     mev_log_group::MEVLogGroup,
 };
 use crate::{
+    GenericProvider,
     misc::{
         ens_utils::ENSLookup,
         parquet_utils::get_parquet_string_value,
-        utils::{wei_to_eth, ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN},
+        utils::{ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN, wei_to_eth},
     },
     models::evm_chain::EVMChain,
-    GenericProvider,
 };
 
 const LABEL_WIDTH: usize = 18;
@@ -353,15 +353,15 @@ impl fmt::Display for MEVTransaction {
             writeln!(f, "{}", "Tx reverted!".red().bold())?;
         }
 
-        if self.show_calls {
-            if let Some(calls) = &self.calls {
-                writeln!(f, "{SEPARATOR}")?;
-                writeln!(f, "Calls:")?;
-                for call in calls {
-                    writeln!(f, "{call}")?;
-                }
-                writeln!(f, "{SEPARATOR}")?;
+        if self.show_calls
+            && let Some(calls) = &self.calls
+        {
+            writeln!(f, "{SEPARATOR}")?;
+            writeln!(f, "Calls:")?;
+            for call in calls {
+                writeln!(f, "{call}")?;
             }
+            writeln!(f, "{SEPARATOR}")?;
         }
 
         writeln!(
