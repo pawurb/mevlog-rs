@@ -895,6 +895,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
 
 [[package]]
+name = "arc-swap"
+version = "1.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69f7f8c3906b62b754cd5326047894316021dcfe5a194c8ea52bdd94934a3457"
+
+[[package]]
 name = "ark-bls12-381"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1873,7 +1879,7 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -2959,29 +2965,31 @@ dependencies = [
 
 [[package]]
 name = "hotpath"
-version = "0.2.4"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23cb03ae58969c30a1818ba2b8412953b63334db87c00adaec80a5028d2b6b32"
+checksum = "6eb9a79488a5d14d92bf9c8f3377babebe9dc046a6fe57ce6264472bc289ca7d"
 dependencies = [
+ "arc-swap",
  "cfg-if",
  "colored",
  "crossbeam-channel",
  "hdrhistogram",
  "hotpath-macros",
  "prettytable-rs",
+ "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
 name = "hotpath-macros"
-version = "0.2.4"
+version = "0.2.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc67a8f52eaa00fbbb53dabc9645cd6a8e190922a2dbad31d41b27d55a03894c"
+checksum = "cd15f83b3012c5345b7d25836205fb9c80b18ec46c9b8ee008b3eba6317f7fa4"
 dependencies = [
- "cfg-if",
  "proc-macro2",
  "quote",
  "syn 2.0.106",
- "tokio",
 ]
 
 [[package]]
@@ -3131,7 +3139,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.0",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -3393,7 +3401,7 @@ checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
