@@ -43,9 +43,9 @@ pub struct MLArgs {
 #[derive(Subcommand, Debug)]
 pub enum MLSubcommand {
     #[command(about = "Monitor Ethereum transactions", alias = "w")]
+    Watch(WatchArgs),
     #[command(about = "Find txs matching filter conditions", alias = "s")]
     Search(SearchArgs),
-    Watch(WatchArgs),
     #[command(about = "Print transaction info", alias = "t")]
     Tx(TxArgs),
     #[command(about = "Update signatures database")]
