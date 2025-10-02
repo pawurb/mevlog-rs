@@ -49,7 +49,7 @@ html-escape = "0.2.13"
 which = "7.0.3"
 alloy-chains = "0.2.5"
 console-subscriber = { version = "0.4.1", optional = true }
-hotpath = { version = "0.2", optional = true }
+hotpath = { version = "0.3", optional = true }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "js"] }
@@ -71,6 +71,8 @@ hotpath-alloc-bytes-total = ["hotpath/hotpath-alloc-bytes-total"]
 hotpath-alloc-bytes-max = ["hotpath/hotpath-alloc-bytes-max"]
 hotpath-alloc-count-total= ["hotpath/hotpath-alloc-count-total"]
 hotpath-alloc-count-max= ["hotpath/hotpath-alloc-count-max"]
+hotpath-off = ["hotpath/hotpath-off"]
+hotpath-ci = ["hotpath/hotpath-ci"]
 
 [profile.maxperf]
 inherits = "release"
