@@ -1,0 +1,95 @@
+name: profile-on-pr
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  profile-on-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-targets: true
+          cache-bin: true 
+      - name: Download cryo binary from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.cargo/bin
+          gh release download cryo-release -p cryo -D ~/.cargo/bin
+          chmod +x ~/.cargo/bin/cryo
+      - name: Download SQLite DB from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ~/.mevlog
+          gh release download sqlite-db-release -p mevlog-sqlite-v4.db -D ~/.mevlog
+      - name: Install hotpath CLI
+        run: cargo install --git https://github.com/pawurb/hotpath 
+      - id: head_timing_metrics
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+        run: |
+          # Extract timing metrics from head branch
+          # 1. Build up file cache
+          QUIET=1 cargo run --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 
+          {
+            echo 'metrics<<EOF'
+            # 2. Generate metrics
+            QUIET=1 cargo run --features 'hotpath,hotpath-ci' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+      - id: base_timing_metrics
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+        run: |
+          # Extract timing metrics from base branch
+          git checkout ${{ github.event.pull_request.base.ref }}
+          # 1. Build up filecache
+          QUIET=1 cargo run --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
+          {
+            echo 'metrics<<EOF'
+            # 2. Generate metrics
+            QUIET=1 cargo run --features 'hotpath,hotpath-ci' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io | grep '^{"hotpath_profiling_mode"'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          git checkout ${{ github.event.pull_request.head.ref }}
+      - id: head_alloc_metrics
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+        run: |
+          # Extract alloc metrics from head branch
+          # 1. Build up cache
+          QUIET=1 cargo run --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 
+          {
+            echo 'metrics<<EOF'
+            # 2. Generate metrics
+            QUIET=1 cargo run --features 'hotpath,hotpath-ci,hotpath-alloc-count-max' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+      - id: base_alloc_metrics
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+        run: |
+          # Extract alloc metrics from base branch
+          git checkout ${{ github.event.pull_request.base.ref }}
+          # 1. Build up cache
+          QUIET=1 cargo run --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 
+          {
+            echo 'metrics<<EOF'
+            # 2. Generate metrics
+            QUIET=1 cargo run --features 'hotpath,hotpath-ci,hotpath-alloc-count-max' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io | grep '^{"hotpath_profiling_mode"'
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          git checkout ${{ github.event.pull_request.head.ref }}
+      - name: Run hotpath CLI - timing mode
+        run: hotpath profile-pr --head-metrics '${{ steps.head_timing_metrics.outputs.metrics }}' --base-metrics '${{ steps.base_timing_metrics.outputs.metrics }}' --github-token '${{ github.token }}' --pr-number '${{ github.event.pull_request.number }}'
+      - name: Run hotpath CLI - alloc mode
+        run: hotpath profile-pr --head-metrics '${{ steps.head_alloc_metrics.outputs.metrics }}' --base-metrics '${{ steps.base_alloc_metrics.outputs.metrics }}' --github-token '${{ github.token }}' --pr-number '${{ github.event.pull_request.number }}'
