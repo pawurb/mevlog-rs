@@ -32,7 +32,7 @@ jobs:
           mkdir -p ~/.mevlog
           gh release download sqlite-db-release -p mevlog-sqlite-v4.db -D ~/.mevlog
       - name: Install hotpath CLI
-        run: cargo install hotpath@^0.3.x
+        run: cargo install --git https://github.com/pawurb/hotpath --path crates/hotpath
       - id: head_timing_metrics
         env:
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
