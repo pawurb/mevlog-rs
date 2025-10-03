@@ -120,6 +120,7 @@ async fn get_uniswap_symbol_core(target: Address, provider: &Arc<GenericProvider
     Ok(())
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure)]
 async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> Result<()> {
     match IERC20::new(target, provider.clone()).symbol().call().await {
         Ok(symbol) => {
@@ -133,7 +134,6 @@ async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> R
     Ok(())
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
 async fn read_symbols_cache(target: Address) -> Result<CachedEntry> {
     {
         let cache = SYMBOLS_MEMORY_CACHE.read().await;
