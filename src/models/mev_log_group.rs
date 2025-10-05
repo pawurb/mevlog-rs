@@ -38,7 +38,7 @@ impl fmt::Display for MEVLogGroup {
             "  {}",
             format!(
                 "{}/address/{}",
-                self.chain.explorer_url.clone().unwrap_or_default(),
+                self.chain.explorer_url.as_deref().unwrap_or(""),
                 self.source
             )
             .green()

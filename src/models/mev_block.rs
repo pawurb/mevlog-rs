@@ -318,7 +318,7 @@ impl MEVBlock {
             let calls = rpc_tx_calls(mev_tx.tx_hash, provider).await?;
 
             let mut call_extracts = Vec::new();
-            for call in calls.clone() {
+            for call in &calls {
                 if let Some(to) = call.to {
                     let (signature_hash, signature) = extract_signature(
                         Some(&call.input),
@@ -339,7 +339,7 @@ impl MEVBlock {
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
-                calls.into_iter().map(TraceData::from).collect(),
+                calls.iter().map(|c| TraceData::from(c.clone())).collect(),
             );
 
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
@@ -375,7 +375,7 @@ impl MEVBlock {
         .unwrap()
         .progress_chars(PROGRESS_CHARS));
 
-            pb.set_message(format!("Revm: executing transactions 0-{total_txs},").to_string());
+            pb.set_message(format!("Revm: executing transactions 0-{total_txs},"));
             Some(pb)
         } else {
             None
@@ -440,8 +440,8 @@ impl MEVBlock {
             )?;
 
             let mut call_extracts = Vec::new();
-            for call in calls.clone() {
-                if let Action::Call(call_action) = call.action {
+            for call in &calls {
+                if let Action::Call(call_action) = &call.action {
                     let (signature_hash, signature) = extract_signature(
                         Some(&call_action.input),
                         tx_index,
@@ -463,7 +463,7 @@ impl MEVBlock {
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
-                calls.into_iter().map(TraceData::from).collect(),
+                calls.iter().map(|c| TraceData::from(c.clone())).collect(),
             );
 
             mev_tx.coinbase_transfer = Some(coinbase_transfer);

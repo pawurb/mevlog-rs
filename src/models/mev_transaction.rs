@@ -56,8 +56,8 @@ impl fmt::Display for CallExtract {
             format!("{}", self.to).green(),
             self.signature.purple(),
             self.signature_hash
-                .as_ref()
-                .unwrap_or(&"no signature found".to_string())
+                .as_deref()
+                .unwrap_or("no signature found")
         )?;
         Ok(())
     }
@@ -284,7 +284,7 @@ pub async fn extract_signature(
     sqlite: &sqlx::Pool<sqlx::Sqlite>,
 ) -> Result<(Option<String>, String), eyre::Error> {
     if to == Some(TxKind::Create) {
-        return Ok((None, "CREATE()".to_string()));
+        return Ok((None, "CREATE()".to_owned()));
     }
 
     let signature_hash = {
@@ -299,16 +299,16 @@ pub async fn extract_signature(
             None
         }
     };
-    let signature = match signature_hash.clone() {
+    let signature = match signature_hash.as_ref() {
         Some(sig) => {
-            if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {
-                sig_overwrite.clone()
+            if let Some(sig_overwrite) = find_sig_overwrite(sig, index) {
+                sig_overwrite
             } else {
-                let sig_str = DBMethod::find_by_hash(&sig, sqlite).await?;
-                sig_str.unwrap_or(UNKNOWN.to_string())
+                let sig_str = DBMethod::find_by_hash(sig, sqlite).await?;
+                sig_str.unwrap_or_else(|| UNKNOWN.to_owned())
             }
         }
-        None => ETH_TRANSFER.to_string(),
+        None => ETH_TRANSFER.to_owned(),
     };
     Ok((signature_hash, signature))
 }
@@ -321,7 +321,7 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
-        let explorer_url = self.chain.explorer_url.clone().unwrap_or_default();
+        let explorer_url = self.chain.explorer_url.as_deref().unwrap_or("");
 
         if self.top_metadata {
             writeln!(f, "{SEPARATOR}")?;
@@ -491,7 +491,11 @@ fn display_target(tx: &MEVTransaction) -> String {
             }
         }
         TxKind::Call(address) => {
-            format!("{}::{}", address.to_string().green(), tx.signature.purple())
+            format!(
+                "{}::{}",
+                format!("{}", address).green(),
+                tx.signature.purple()
+            )
         }
     }
 }
@@ -578,7 +582,7 @@ pub fn display_token_and_usd(
 // Common signatures, that are duplicate and mismatched in the database
 pub fn find_sig_overwrite(signature: &str, tx_index: u64) -> Option<String> {
     if signature == "0x098999be" && tx_index == 0 {
-        return Some("setL1BlockValuesIsthmus()".to_string());
+        return Some("setL1BlockValuesIsthmus()".to_owned());
     }
     None
 }

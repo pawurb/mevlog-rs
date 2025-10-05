@@ -30,7 +30,7 @@ impl MEVLogSignature {
         symbols_lookup: &ERC20SymbolsLookup,
         show_amount: bool,
     ) -> Result<Self> {
-        let signature_str = signature_str.unwrap_or(UNKNOWN.to_string());
+        let signature_str = signature_str.unwrap_or_else(|| UNKNOWN.to_owned());
         let signature_type = get_signature_type(&signature_str);
 
         let symbol = match symbols_lookup {
