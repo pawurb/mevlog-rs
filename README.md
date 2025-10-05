@@ -507,7 +507,7 @@ Run once to cache all relevant data. Subsequent invocations won't trigger any RP
 
 Allocations:
 ```
-QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-max' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
+QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 3000 --rpc-url https://eth.merkle.io
 ```
 
 ## Project status

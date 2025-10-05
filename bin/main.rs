@@ -61,9 +61,7 @@ pub enum MLSubcommand {
 
 #[cfg(any(
     feature = "hotpath-alloc-bytes-total",
-    feature = "hotpath-alloc-bytes-max",
     feature = "hotpath-alloc-count-total",
-    feature = "hotpath-alloc-count-max",
 ))]
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -72,9 +70,7 @@ async fn main() {
 
 #[cfg(not(any(
     feature = "hotpath-alloc-bytes-total",
-    feature = "hotpath-alloc-bytes-max",
     feature = "hotpath-alloc-count-total",
-    feature = "hotpath-alloc-count-max",
 )))]
 #[tokio::main]
 async fn main() {
