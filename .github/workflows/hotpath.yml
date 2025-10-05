@@ -1,7 +1,6 @@
 name: profile-on-pr
 on:
   pull_request:
-    branches: [ main ]
 
 jobs:
   profile-on-pr:
