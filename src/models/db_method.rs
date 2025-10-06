@@ -40,9 +40,9 @@ impl DBMethod {
     ) -> Result<Option<String>> {
         let key = normalize_key(signature_hash);
 
-        if let Some(cached) = METHOD_SIG_MEMORY_CACHE.read().await.get(&key).cloned() {
-            return Ok(cached);
-        }
+        // if let Some(cached) = METHOD_SIG_MEMORY_CACHE.read().await.get(&key).cloned() {
+        //     return Ok(cached);
+        // }
 
         let signature_hash_bytes = hex::decode(&key).expect("Invalid hex");
 
