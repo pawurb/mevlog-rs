@@ -28,8 +28,13 @@ pub mod tests {
                 .expect("failed to execute CLI");
 
             let output = String::from_utf8(cmd.stdout).unwrap();
-            println!("output: {output}");
-            assert!(output.contains("Real Gas Price:    18253.30 GWEI"));
+            let expected_content = ["Real Gas Price:    18253.30 GWEI"];
+            for expected in expected_content {
+                assert!(
+                    output.contains(expected),
+                    "Expected:\n{expected}\n\nGot:\n{output}"
+                );
+            }
         }
 
         Ok(())
@@ -52,8 +57,13 @@ pub mod tests {
                 .expect("failed to execute CLI");
 
             let output = String::from_utf8(cmd.stdout).unwrap();
-            println!("output: {output}");
-            assert!(output.contains("Real Gas Price:    18253.30 GWEI"));
+            let expected_content = ["Real Gas Price:    18253.30 GWEI"];
+            for expected in expected_content {
+                assert!(
+                    output.contains(expected),
+                    "Expected:\n{expected}\n\nGot:\n{output}"
+                );
+            }
         }
 
         Ok(())
@@ -76,8 +86,13 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains("setL1BlockValuesIsthmus"));
+        let expected_content = ["setL1BlockValuesIsthmus"];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -103,13 +118,20 @@ pub mod tests {
                 .output()
                 .expect("failed to execute CLI");
             let output = String::from_utf8(cmd.stdout).unwrap();
-            println!("output: {output}");
-            assert!(output.contains("\"tx_hash\": \"0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660\""));
+            let expected_content = [
+                "\"tx_hash\": \"0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660\"",
+            ];
+            for expected in expected_content {
+                assert!(
+                    output.contains(expected),
+                    "Expected:\n{expected}\n\nGot:\n{output}"
+                );
+            }
         }
     }
 
     #[test]
-    fn test_cli_search_ens() {
+    fn test_cli_search_from_ens() {
         let cmd = Command::new("cargo")
             .arg("run")
             .arg("--bin")
@@ -128,12 +150,48 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains(
-            "\"tx_hash\": \"0x71e7d6bb2fc19848cbedbda49f4c49c1ac32bafae0ee0dacd5540b84ca0b7937\""
-        ));
+        let expected_content = [
+            "\"tx_hash\": \"0x71e7d6bb2fc19848cbedbda49f4c49c1ac32bafae0ee0dacd5540b84ca0b7937\"",
+            "\"from_ens\": \"jaredfromsubway.eth\"",
+            "\"to_ens\": null",
+        ];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
+    }
 
-        assert!(output.contains("\"from_ens\": \"jaredfromsubway.eth\""));
+    #[test]
+    fn test_cli_search_to_ens() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("-b")
+            .arg("16733027")
+            .arg("--to")
+            .arg("jaredfromsubway.eth")
+            .arg("--format")
+            .arg("json-pretty")
+            .arg("--ens")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        let expected_content = [
+            "\"tx_hash\": \"0x5b5d7168a89bf036b3e2a2b7ce130f5437fd6a60bb4da6f6c719813b3953e01c\"",
+            "\"to_ens\": \"jaredfromsubway.eth\"",
+            "\"from_ens\": null",
+        ];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -175,8 +233,13 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains("\"symbol\": \"WETH\""));
+        let expected_content = ["\"symbol\": \"WETH\""];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -202,10 +265,14 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains(
-            "\"tx_hash\": \"0x3e8e989819cfc004f7fe58283bf4cc7b39d2ecea5b30e92dc891e06a653371f6\""
-        ));
+        let expected_content =
+            ["\"tx_hash\": \"0x3e8e989819cfc004f7fe58283bf4cc7b39d2ecea5b30e92dc891e06a653371f6\""];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -233,10 +300,14 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains(
-            "\"tx_hash\": \"0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660\""
-        ));
+        let expected_content =
+            ["\"tx_hash\": \"0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660\""];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -255,9 +326,13 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains("\"chain_id\": 1"));
-        assert!(output.contains("\"name\": \"Ethereum Mainnet\""));
+        let expected_content = ["\"chain_id\": 1", "\"name\": \"Ethereum Mainnet\""];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -275,7 +350,6 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let err = String::from_utf8(cmd.stderr).unwrap();
-        println!("err: {err}");
         assert!(err.contains("\"error\": \"Chain ID 0 not found\""));
     }
 
@@ -294,8 +368,13 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains("\"name\": \"Arbitrum One\""));
+        let expected_content = ["\"name\": \"Arbitrum One\""];
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}"
+            );
+        }
     }
 
     #[test]
@@ -315,8 +394,13 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let err = String::from_utf8(cmd.stderr).unwrap();
-        println!("err: {err}");
-        assert!(err.contains("\"error\": \"Invalid block number: 0\""));
+        let expected_content = ["\"error\": \"Invalid block number: 0\""];
+        for expected in expected_content {
+            assert!(
+                err.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{err}"
+            );
+        }
     }
 
     #[test]
@@ -358,9 +442,18 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains("\"to\": \"0x7290f841536a3f73835ffad72d27b8c905e1b497\""));
-        assert!(output.contains("\"signature\": \"CREATE()\""));
+
+        let expected_content = [
+            "\"to\": \"0x7290f841536a3f73835ffad72d27b8c905e1b497\"",
+            "\"signature\": \"CREATE()\"",
+        ];
+
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}",
+            );
+        }
     }
 
     #[test]
@@ -381,10 +474,15 @@ pub mod tests {
             .output()
             .expect("failed to execute CLI");
 
+        let expected_content =
+            ["\"tx_hash\": \"0xc09b81a9817686083b401b33c8c2df6b09ae4263b15395636bf53e212a0756f4\""];
+
         let output = String::from_utf8(cmd.stdout).unwrap();
-        println!("output: {output}");
-        assert!(output.contains(
-            "\"tx_hash\": \"0xc09b81a9817686083b401b33c8c2df6b09ae4263b15395636bf53e212a0756f4\""
-        ));
+        for expected in expected_content {
+            assert!(
+                output.contains(expected),
+                "Expected:\n{expected}\n\nGot:\n{output}",
+            );
+        }
     }
 }

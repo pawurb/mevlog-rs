@@ -75,6 +75,7 @@ pub struct MEVTransaction {
     pub inner: TransactionRequest,
     log_groups: Vec<MEVLogGroup>,
     source: MEVAddress,
+    target: Option<MEVAddress>,
     pub to: TxKind,
     pub nonce: u64,
     pub coinbase_transfer: Option<U256>,
@@ -171,6 +172,12 @@ impl MEVTransaction {
         let mev_address =
             MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
 
+        let to_kind = tx_req.to.unwrap_or(TxKind::Create);
+        let target = match to_kind {
+            TxKind::Call(address) => Some(MEVAddress::new(address, ens_lookup, provider).await?),
+            TxKind::Create => None,
+        };
+
         Ok(Self {
             block_number,
             native_token_price,
@@ -182,7 +189,8 @@ impl MEVTransaction {
             signature,
             signature_hash,
             source: mev_address,
-            to: tx_req.to.unwrap_or(TxKind::Create),
+            target,
+            to: to_kind,
             inner: tx_req,
             coinbase_transfer: None,
             receipt: receipt_data,
@@ -215,8 +223,12 @@ impl MEVTransaction {
         }
     }
 
-    pub fn ens_name(&self) -> Option<&str> {
+    pub fn from_ens_name(&self) -> Option<&str> {
         self.source.ens_name()
+    }
+
+    pub fn to_ens_name(&self) -> Option<&str> {
+        self.target.as_ref().and_then(|t| t.ens_name())
     }
 
     pub fn from(&self) -> Address {
@@ -490,8 +502,13 @@ fn display_target(tx: &MEVTransaction) -> String {
                 format!("{}", "CREATE()".green())
             }
         }
-        TxKind::Call(address) => {
-            format!("{}::{}", address.to_string().green(), tx.signature.purple())
+        TxKind::Call(_) => {
+            let target_display = tx
+                .target
+                .as_ref()
+                .map(|t| t.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            format!("{}::{}", target_display.green(), tx.signature.purple())
         }
     }
 }

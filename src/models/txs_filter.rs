@@ -399,11 +399,22 @@ impl TxsFilter {
         false
     }
 
-    pub fn ens_query(&self) -> Option<String> {
-        self.tx_from.as_ref().and_then(|from| match from {
-            AddressFilter::ENSName(name) => Some(name.clone()),
-            _ => None,
-        })
+    pub fn from_ens_query(&self) -> Option<String> {
+        if let Some(from) = &self.tx_from
+            && let AddressFilter::ENSName(name) = from
+        {
+            return Some(name.clone());
+        }
+        None
+    }
+
+    pub fn to_ens_query(&self) -> Option<String> {
+        if let Some(to) = &self.tx_to
+            && let AddressFilter::ENSName(name) = to
+        {
+            return Some(name.clone());
+        }
+        None
     }
 }
 

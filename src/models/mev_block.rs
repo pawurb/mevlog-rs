@@ -236,7 +236,7 @@ impl MEVBlock {
                     }
                 }
                 Some(AddressFilter::ENSName(ens_name)) => {
-                    if mev_tx.ens_name() != Some(ens_name) {
+                    if mev_tx.from_ens_name() != Some(ens_name) {
                         continue;
                     }
                 }
@@ -253,7 +253,7 @@ impl MEVBlock {
                     }
                 }
                 Some(AddressFilter::ENSName(ens_name)) => {
-                    if mev_tx.ens_name() != Some(ens_name) {
+                    if mev_tx.to_ens_name() != Some(ens_name) {
                         continue;
                     }
                 }

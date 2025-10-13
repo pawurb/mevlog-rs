@@ -32,8 +32,12 @@ impl WatchArgs {
 
         let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, true)?;
 
+        let ens_query = txs_filter
+            .from_ens_query()
+            .or_else(|| txs_filter.to_ens_query());
+
         let ens_lookup = ENSLookup::lookup_mode(
-            txs_filter.ens_query(),
+            ens_query,
             deps.ens_lookup_worker,
             &deps.chain,
             self.shared_opts.ens,
