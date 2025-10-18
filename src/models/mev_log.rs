@@ -18,6 +18,7 @@ pub struct MEVLog {
     pub tx_index: u64,
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
 impl MEVLog {
     // Parquet row:
     // block_number 0
@@ -31,7 +32,6 @@ impl MEVLog {
     // topic3 8
     // data 9
     // chain_id 10
-    #[cfg_attr(feature = "hotpath", hotpath::measure)]
     pub async fn from_parquet_row(
         batch: &RecordBatch,
         row_idx: usize,

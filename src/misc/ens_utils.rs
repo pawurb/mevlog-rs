@@ -35,6 +35,7 @@ pub enum ENSLookup {
     Disabled,
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
 impl ENSLookup {
     pub async fn lookup_mode(
         ens_query: Option<String>,

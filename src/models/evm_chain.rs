@@ -15,6 +15,7 @@ pub struct EVMChain {
     pub rpc_url: String,
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
 impl EVMChain {
     pub fn new(db_chain: DBChain, rpc_url: String) -> Result<Self> {
         Ok(Self {

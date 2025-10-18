@@ -520,6 +520,7 @@ pub enum AddressFilter {
     CreateCall,
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
 impl AddressFilter {
     pub fn new(value: Option<&str>) -> Result<Option<Self>> {
         if value.is_none() {

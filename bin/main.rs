@@ -77,7 +77,7 @@ async fn main() {
     _ = inner_main().await;
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::main(percentiles = [95]))]
+#[cfg_attr(feature = "hotpath", hotpath::main(percentiles = [95], limit = 12))]
 async fn inner_main() {
     init_logs();
 

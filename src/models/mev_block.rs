@@ -111,8 +111,9 @@ pub async fn generate_block(
     Ok(mev_block)
 }
 
+#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[allow(clippy::too_many_arguments)]
 impl MEVBlock {
-    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         block_number: u64,
         position_range: Option<&PositionRange>,
