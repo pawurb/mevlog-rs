@@ -139,6 +139,8 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ColorMode::Auto => {}
     }
 
+    std::thread::sleep(std::time::Duration::from_secs(1));
+
     match root_args.cmd {
         ML::Watch(args) => {
             args.run(root_args.format).await?;
