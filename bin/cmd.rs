@@ -1,6 +1,7 @@
 pub mod chain_info;
 pub mod chains;
 pub mod search;
+pub mod tui;
 pub mod tx;
 pub mod update_db;
 pub mod watch;
