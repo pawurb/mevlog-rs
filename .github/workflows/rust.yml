@@ -37,6 +37,9 @@ jobs:
       - name: Check hotpath feature flag
         run: | 
           cargo check --features hotpath
+      - name: Check tui feature flag
+        run: | 
+          cargo check --features tui
       - name: Fmt
         if: matrix.rust == 'stable'
         run: |
@@ -44,7 +47,7 @@ jobs:
       - name: Lint
         if: matrix.rust == 'stable'
         run: |
-          cargo clippy --all -- -D warnings
+          cargo clippy --all --all-features -- -D warnings
       - name: Audit
         if: matrix.rust == 'stable'
         run: |

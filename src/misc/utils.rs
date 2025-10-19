@@ -34,23 +34,53 @@ sol! {
     }
 }
 
-pub fn init_logs() {
+pub fn init_std_logs() {
+    init_logs_inner(false);
+}
+
+pub fn init_file_logs() {
+    init_logs_inner(true);
+}
+
+fn init_logs_inner(to_file: bool) {
     #[cfg(not(feature = "tokio-console"))]
     {
+        use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
+
         let offset = ::time::UtcOffset::from_hms(1, 0, 0).expect("should get CET offset");
         let time_format =
             time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
                 .unwrap();
         let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, time_format);
+        let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("error"));
 
-        tracing_subscriber::fmt()
-            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .with_timer(timer)
-            .init();
+        if to_file {
+            std::fs::create_dir_all("tmp").expect("failed to create tmp directory");
+            let log_file =
+                std::fs::File::create("tmp/development.log").expect("failed to create log file");
+            let file_layer = fmt::layer()
+                .with_writer(log_file)
+                .with_ansi(false)
+                .with_timer(timer)
+                .with_target(false)
+                .with_thread_ids(false);
+
+            tracing_subscriber::registry()
+                .with(env_filter)
+                .with(file_layer)
+                .init();
+        } else {
+            tracing_subscriber::fmt()
+                .with_env_filter(env_filter)
+                .with_timer(timer)
+                .init();
+        }
     }
 
     #[cfg(feature = "tokio-console")]
     {
+        let _ = to_file; // suppress unused warning
         console_subscriber::init();
     }
 }

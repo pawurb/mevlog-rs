@@ -1,9 +1,9 @@
 use revm::primitives::{Address, FixedBytes};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::models::mev_log::MEVLog;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MEVLogJson {
     pub source: Address,
     pub signature: String,

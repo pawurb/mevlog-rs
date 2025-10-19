@@ -1,5 +1,5 @@
 use revm::primitives::{Address, FixedBytes, TxKind, U256};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     misc::utils::ToU128,
@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MEVTransactionJson {
     pub block_number: u64,
     pub signature: String,

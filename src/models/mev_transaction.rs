@@ -13,7 +13,7 @@ use bigdecimal::{BigDecimal, ToPrimitive};
 use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 use super::{
@@ -39,7 +39,7 @@ pub struct ReceiptData {
     pub gas_used: u64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CallExtract {
     pub from: Address,
     pub to: Address,

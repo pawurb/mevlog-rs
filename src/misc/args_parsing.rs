@@ -75,11 +75,7 @@ impl BlocksRange {
 
                 let latest_block = get_latest_block(provider, latest_offset).await?;
                 if to > latest_block {
-                    eyre::bail!(
-                        "End block '{}' exceeds latest block '{}'",
-                        to,
-                        latest_block
-                    )
+                    eyre::bail!("End block '{}' exceeds latest block '{}'", to, latest_block)
                 }
 
                 Ok(BlocksRange { from, to })
