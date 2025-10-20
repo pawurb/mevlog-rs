@@ -509,7 +509,3 @@ Allocations:
 ```
 QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 --rpc-url https://eth.merkle.io
 ```
-
-## Project status
-
-WIP, feedback appreciated. I'm currently seeking a sponsor to help cover archive node costs for [mevlog.rs](https://mevlog.rs/). My goal is to make a hosted search web UI publicly available.
