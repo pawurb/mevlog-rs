@@ -130,7 +130,18 @@ impl SearchArgs {
             bail!("--sort full-tx-cost is only available with --trace enabled")
         }
 
-        let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, false)?;
+        let erc20_sort_token = match &self.sort {
+            Some(SortField::Erc20Transfer(token_address)) => Some(*token_address),
+            _ => None,
+        };
+
+        let txs_filter = TxsFilter::new(
+            &self.filter_opts,
+            None,
+            &self.shared_opts,
+            false,
+            erc20_sort_token,
+        )?;
 
         let ens_query = txs_filter
             .from_ens_query()

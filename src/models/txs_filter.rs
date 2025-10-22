@@ -269,6 +269,7 @@ impl TxsFilter {
         tx_indexes: Option<HashSet<u64>>,
         shared_opts: &SharedOpts,
         watch_mode: bool,
+        erc20_sort_token: Option<Address>,
     ) -> Result<Self> {
         if shared_opts.trace.is_none() {
             if filter_opts.touching.is_some() {
@@ -292,6 +293,22 @@ impl TxsFilter {
             if shared_opts.show_calls {
                 eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
             }
+        }
+
+        let mut events: Vec<EventQuery> = filter_opts
+            .event
+            .iter()
+            .map(|query| query.parse())
+            .collect::<Result<Vec<_>>>()?;
+
+        // When sorting by erc20Transfer, only include txs with that token
+        if let Some(token_address) = erc20_sort_token {
+            events.push(EventQuery {
+                signature: Some(SignatureQuery::NameOrHash(
+                    "Transfer(address,address,uint256)".to_string(),
+                )),
+                address: Some(token_address),
+            });
         }
 
         Ok(Self {
@@ -329,11 +346,7 @@ impl TxsFilter {
                     }
                 }
             },
-            events: filter_opts
-                .event
-                .iter()
-                .map(|query| query.parse())
-                .collect::<Result<Vec<_>>>()?,
+            events,
             not_events: filter_opts
                 .not_event
                 .iter()

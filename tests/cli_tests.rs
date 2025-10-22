@@ -485,4 +485,32 @@ pub mod tests {
             );
         }
     }
+
+    #[test]
+    fn test_cli_erc20_transfer_filters() {
+        let cmd = Command::new("cargo")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("search")
+            .arg("--to")
+            .arg("0x9008D19f58AAbD9eD0D60971565AA8510560ab41")
+            .arg("-b")
+            .arg("23632775:23632875")
+            .arg("--sort")
+            .arg("erc20Transfer|0x6982508145454ce325ddbe47a25d4ec3d2311933")
+            .arg("--limit")
+            .arg("1")
+            .arg("--chain-id")
+            .arg("1")
+            .arg("--format")
+            .arg("json")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        assert!(output.trim() == "[]", "Expected:\n[]\n\nGot:\n{output}");
+    }
 }

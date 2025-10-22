@@ -30,7 +30,7 @@ impl WatchArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
-        let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, true)?;
+        let txs_filter = TxsFilter::new(&self.filter_opts, None, &self.shared_opts, true, None)?;
 
         let ens_query = txs_filter
             .from_ens_query()
@@ -62,7 +62,6 @@ impl WatchArgs {
         loop {
             let new_block_number = deps.provider.get_block_number().await?;
             if new_block_number == current_block_number {
-                // TODO config sleep delay
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 continue;
             }
