@@ -39,13 +39,27 @@ jobs:
             --github-token "$GH_TOKEN" \
             --pr-number "$PR_NUMBER"
 
-      - name: Post alloc PR comment
+      - name: Post alloc count PR comment
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          HEAD_METRICS=$(cat /tmp/metrics/head_alloc.json)
-          BASE_METRICS=$(cat /tmp/metrics/base_alloc.json)
+          HEAD_METRICS=$(cat /tmp/metrics/head_alloc_count.json)
+          BASE_METRICS=$(cat /tmp/metrics/base_alloc_count.json)
+          PR_NUMBER=$(cat /tmp/metrics/pr_number.txt)
+          hotpath profile-pr \
+            --head-metrics "$HEAD_METRICS" \
+            --base-metrics "$BASE_METRICS" \
+            --github-token "$GH_TOKEN" \
+            --pr-number "$PR_NUMBER"
+
+      - name: Post alloc bytes PR comment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          HEAD_METRICS=$(cat /tmp/metrics/head_alloc_bytes.json)
+          BASE_METRICS=$(cat /tmp/metrics/base_alloc_bytes.json)
           PR_NUMBER=$(cat /tmp/metrics/pr_number.txt)
           hotpath profile-pr \
             --head-metrics "$HEAD_METRICS" \
