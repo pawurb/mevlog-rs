@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, sync::Arc};
 
 use colored::Colorize;
 use revm::primitives::Address;
@@ -10,12 +10,12 @@ use crate::models::evm_chain::EVMChain;
 pub struct MEVLogGroup {
     source: Address,
     pub logs: Vec<MEVLog>,
-    pub chain: EVMChain,
+    pub chain: Arc<EVMChain>,
 }
 
 #[hotpath::measure_all]
 impl MEVLogGroup {
-    pub fn new(source: Address, logs: Vec<MEVLog>, chain: EVMChain) -> Self {
+    pub fn new(source: Address, logs: Vec<MEVLog>, chain: Arc<EVMChain>) -> Self {
         Self {
             source,
             logs,

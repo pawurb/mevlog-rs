@@ -98,7 +98,7 @@ impl RevmBlockContext {
 
 pub fn revm_touching_accounts(
     _tx_hash: FixedBytes<32>,
-    tx_req: TransactionRequest,
+    tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<HashSet<Address>> {
@@ -128,7 +128,7 @@ pub fn revm_touching_accounts(
 
 fn _revm_call_tx(
     tx_hash: FixedBytes<32>,
-    tx_req: TransactionRequest,
+    tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<Bytes> {
@@ -165,7 +165,7 @@ fn _revm_call_tx(
 
 pub fn revm_tx_calls(
     tx_hash: FixedBytes<32>,
-    tx_req: TransactionRequest,
+    tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<Vec<TransactionTrace>> {
@@ -175,7 +175,7 @@ pub fn revm_tx_calls(
         apply_block_env(block, block_context);
     });
     evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req.clone());
+        apply_tx_env(tx_env, tx_req);
     });
     let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
         TracingInspectorConfig::from_parity_config(&trace_types),
@@ -202,7 +202,7 @@ pub fn revm_tx_calls(
 
 pub fn revm_commit_tx(
     tx_hash: FixedBytes<32>,
-    tx_req: TransactionRequest,
+    tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
 ) -> Result<()> {
@@ -256,7 +256,7 @@ fn apply_block_env(block_env: &mut BlockEnv, block_context: &RevmBlockContext) {
     }
 }
 
-fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
+fn apply_tx_env(tx_env: &mut TxEnv, tx_req: &TransactionRequest) {
     tx_env.caller = tx_req.from.expect("from must be set");
     tx_env.kind = match tx_req.to {
         Some(to) => match to {
@@ -265,7 +265,7 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
         },
         None => TransactTo::Create,
     };
-    tx_env.data = tx_req.input.input.expect("data must be set");
+    tx_env.data = tx_req.input.input.clone().expect("data must be set");
     tx_env.value = tx_req.value.unwrap_or(U256::ZERO);
     tx_env.gas_limit = tx_req.gas.unwrap_or(21000);
     // For EIP-1559 transactions, gas_price should be set to max_fee_per_gas
@@ -285,12 +285,12 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: TransactionRequest) {
     tx_env.nonce = tx_req.nonce.unwrap_or(0);
     tx_env.gas_priority_fee = tx_req.max_priority_fee_per_gas;
     tx_env.max_fee_per_blob_gas = tx_req.max_fee_per_blob_gas.unwrap_or(0);
-    if let Some(AlloyAccessList(list)) = tx_req.access_list {
-        tx_env.access_list = AccessList::from(list);
+    if let Some(AlloyAccessList(ref list)) = tx_req.access_list {
+        tx_env.access_list = AccessList::from(list.clone());
     };
     tx_env.chain_id = Some(1_u64);
-    if let Some(blob_hashes) = tx_req.blob_versioned_hashes {
-        tx_env.blob_hashes = blob_hashes;
+    if let Some(ref blob_hashes) = tx_req.blob_versioned_hashes {
+        tx_env.blob_hashes = blob_hashes.clone();
     }
 }
 

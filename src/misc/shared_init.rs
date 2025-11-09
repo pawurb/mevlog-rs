@@ -29,7 +29,7 @@ pub struct SharedDeps {
     pub ens_lookup_worker: UnboundedSender<Address>,
     pub symbols_lookup_worker: ERC20SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
-    pub chain: EVMChain,
+    pub chain: Arc<EVMChain>,
     pub rpc_url: String,
 }
 
@@ -86,7 +86,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let db_chain = DBChain::find(chain_id as i64, &sqlite)
         .await?
         .unwrap_or(DBChain::unknown(chain_id as i64));
-    let chain = EVMChain::new(db_chain, rpc_url.clone())?;
+    let chain = Arc::new(EVMChain::new(db_chain, rpc_url.clone())?);
 
     Ok(SharedDeps {
         sqlite,
