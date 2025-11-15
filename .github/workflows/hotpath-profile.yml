@@ -37,6 +37,7 @@ jobs:
 
       - id: head_timing_metrics
         env:
+          HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
           # Extract timing metrics from head branch
@@ -45,12 +46,13 @@ jobs:
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-ci' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - id: base_timing_metrics
         env:
+          HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
           # Extract timing metrics from base branch
@@ -60,12 +62,13 @@ jobs:
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-ci' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - id: head_alloc_count_metrics
         env:
+          HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
           # Extract alloc count metrics from head branch
@@ -75,12 +78,13 @@ jobs:
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-ci,hotpath-alloc-count-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-count-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - id: base_alloc_count_metrics
         env:
+          HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
           # Extract alloc count metrics from base branch
@@ -90,12 +94,13 @@ jobs:
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-ci,hotpath-alloc-count-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-count-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - id: head_alloc_bytes_metrics
         env:
+          HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
           # Extract alloc bytes metrics from head branch
@@ -105,12 +110,13 @@ jobs:
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-ci,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
       - id: base_alloc_bytes_metrics
         env:
+          HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
           # Extract alloc bytes metrics from base branch
@@ -120,7 +126,7 @@ jobs:
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-ci,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
