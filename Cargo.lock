@@ -2964,9 +2964,9 @@ dependencies = [
 
 [[package]]
 name = "hotpath"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef44238d7007bbd3c41ce7dbf3d7a4fb224bbf70d6cf3162479138dda0cd6a9e"
+checksum = "b965b89bd67fdc71805a9b3e1b99f2a637dd8e46319e21731a2c00d612ab2253"
 dependencies = [
  "arc-swap",
  "base64 0.22.1",
@@ -2975,10 +2975,12 @@ dependencies = [
  "colored",
  "crossbeam-channel",
  "eyre",
+ "futures-util",
  "hdrhistogram",
  "hotpath-macros",
  "prettytable-rs",
  "quanta",
+ "regex",
  "serde",
  "serde_json",
  "tiny_http",
@@ -2988,9 +2990,9 @@ dependencies = [
 
 [[package]]
 name = "hotpath-macros"
-version = "0.6.0"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e7e3443c6f4e5cc69e6b701f7bfca8a5502f0080e94629413346e7b4518d730"
+checksum = "eee33dbed0cd1ae14deb99cd5316fb458aa98571689df7a01b2b891f95b0f453"
 dependencies = [
  "proc-macro2",
  "quote",

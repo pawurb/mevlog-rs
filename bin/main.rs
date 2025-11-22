@@ -59,19 +59,13 @@ pub enum MLSubcommand {
     SeedDB(SeedDBArgs),
 }
 
-#[cfg(any(
-    feature = "hotpath-alloc-bytes-total",
-    feature = "hotpath-alloc-count-total",
-))]
+#[cfg(feature = "hotpath-alloc")]
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     _ = inner_main().await;
 }
 
-#[cfg(not(any(
-    feature = "hotpath-alloc-bytes-total",
-    feature = "hotpath-alloc-count-total",
-)))]
+#[cfg(not(feature = "hotpath-alloc"))]
 #[tokio::main]
 async fn main() {
     _ = inner_main().await;

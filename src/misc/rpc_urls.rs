@@ -77,13 +77,15 @@ pub async fn get_chain_info(chain_id: u64, timeout_ms: u64, limit: usize) -> Res
         })
         .collect::<Vec<_>>();
 
-    let mut benchmarked_rpc_urls: Vec<(String, u64)> =
-        futures_util::stream::iter(benchmark_futures)
-            .buffer_unordered(10)
-            .filter_map(|result| async move { result })
-            .take(limit)
-            .collect()
-            .await;
+    let stream = futures_util::stream::iter(benchmark_futures)
+        .buffer_unordered(10)
+        .filter_map(|result| async move { result })
+        .take(limit);
+
+    #[cfg(feature = "hotpath")]
+    let stream = hotpath::stream!(stream, log = true);
+
+    let mut benchmarked_rpc_urls: Vec<(String, u64)> = stream.collect().await;
 
     // Sort by duration (fastest first)
     benchmarked_rpc_urls.sort_by_key(|(_, duration)| *duration);

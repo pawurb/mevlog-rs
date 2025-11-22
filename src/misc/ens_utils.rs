@@ -204,8 +204,11 @@ async fn write_ens_cache(target: Address, name: Option<String>) -> Result<()> {
     Ok(())
 }
 
+#[allow(unused_mut)]
 pub fn start_ens_lookup_worker(rpc_url: &str) -> mpsc::UnboundedSender<Address> {
     let (tx, mut rx) = mpsc::unbounded_channel::<Address>();
+    #[cfg(feature = "hotpath")]
+    let (tx, mut rx) = hotpath::channel!((tx, rx), log = true);
 
     let rpc_url = rpc_url.to_string();
     tokio::spawn(async move {
