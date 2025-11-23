@@ -67,7 +67,7 @@ impl fmt::Display for CallExtract {
 pub struct MEVTransaction {
     pub block_number: u64,
     pub native_token_price: Option<f64>,
-    pub chain: EVMChain,
+    pub chain: Arc<EVMChain>,
     pub signature: String,
     pub signature_hash: Option<String>,
     pub tx_hash: FixedBytes<32>,
@@ -153,8 +153,8 @@ impl MEVTransaction {
 
     pub async fn new(
         native_token_price: Option<f64>,
-        chain: EVMChain,
-        tx_req: TransactionRequest,
+        chain: Arc<EVMChain>,
+        tx_req: &TransactionRequest,
         block_number: u64,
         receipt_data: ReceiptData,
         tx_hash: FixedBytes<32>,
@@ -190,7 +190,7 @@ impl MEVTransaction {
             source: mev_address,
             target,
             to: to_kind,
-            inner: tx_req,
+            inner: tx_req.clone(),
             coinbase_transfer: None,
             receipt: receipt_data,
             top_metadata,
