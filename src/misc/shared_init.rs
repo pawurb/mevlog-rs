@@ -33,7 +33,7 @@ pub struct SharedDeps {
     pub rpc_url: String,
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
+#[hotpath::measure]
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let rpc_url = match (&conn_opts.rpc_url, conn_opts.chain_id) {
         (Some(url), Some(_)) => url.clone(),

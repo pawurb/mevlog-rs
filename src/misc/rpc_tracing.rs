@@ -13,7 +13,7 @@ use revm::primitives::Address;
 
 use crate::GenericProvider;
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
+#[hotpath::measure(log = true)]
 pub async fn rpc_tx_calls(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
@@ -43,7 +43,7 @@ pub async fn rpc_tx_calls(
     Ok(all_calls)
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
+#[hotpath::measure(log = true)]
 pub async fn rpc_touching_accounts(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,

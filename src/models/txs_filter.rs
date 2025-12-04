@@ -122,7 +122,7 @@ pub struct PriceQuery {
 }
 
 impl PriceQuery {
-    #[cfg_attr(feature = "hotpath", hotpath::measure)]
+    #[hotpath::measure(log = true)]
     pub fn matches(&self, gas_price: U256) -> bool {
         match self.operator {
             DiffOperator::GreaterOrEq => gas_price >= self.gas_price,
@@ -533,7 +533,7 @@ pub enum AddressFilter {
     CreateCall,
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 impl AddressFilter {
     pub fn new(value: Option<&str>) -> Result<Option<Self>> {
         if value.is_none() {

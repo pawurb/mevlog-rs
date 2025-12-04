@@ -18,7 +18,7 @@ pub struct MEVLog {
     pub tx_index: u64,
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 impl MEVLog {
     // Parquet row:
     // block_number 0

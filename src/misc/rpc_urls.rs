@@ -82,7 +82,6 @@ pub async fn get_chain_info(chain_id: u64, timeout_ms: u64, limit: usize) -> Res
         .filter_map(|result| async move { result })
         .take(limit);
 
-    #[cfg(feature = "hotpath")]
     let stream = hotpath::stream!(stream, log = true);
 
     let mut benchmarked_rpc_urls: Vec<(String, u64)> = stream.collect().await;

@@ -1867,7 +1867,7 @@ version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fde0e0ec90c9dfb3b4b1a0891a7dcd0e2bffde2f7efed5fe7c9bb00e5bfb915e"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -2964,9 +2964,7 @@ dependencies = [
 
 [[package]]
 name = "hotpath"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b965b89bd67fdc71805a9b3e1b99f2a637dd8e46319e21731a2c00d612ab2253"
+version = "0.8.0"
 dependencies = [
  "arc-swap",
  "base64 0.22.1",
@@ -2978,6 +2976,9 @@ dependencies = [
  "futures-util",
  "hdrhistogram",
  "hotpath-macros",
+ "libc",
+ "mach2",
+ "pin-project-lite",
  "prettytable-rs",
  "quanta",
  "regex",
@@ -2990,9 +2991,7 @@ dependencies = [
 
 [[package]]
 name = "hotpath-macros"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eee33dbed0cd1ae14deb99cd5316fb458aa98571689df7a01b2b891f95b0f453"
+version = "0.8.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3147,7 +3146,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -3720,6 +3719,12 @@ checksum = "08ab2867e3eeeca90e844d1940eab391c9dc5228783db2ed999acbc0a9ed375a"
 dependencies = [
  "twox-hash",
 ]
+
+[[package]]
+name = "mach2"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dae608c151f68243f2b000364e1f7b186d9c29845f7d2d85bd31b9ad77ad552b"
 
 [[package]]
 name = "macro-string"
@@ -4586,7 +4591,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
@@ -4623,7 +4628,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.1",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -7002,7 +7007,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]

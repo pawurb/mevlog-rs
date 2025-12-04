@@ -58,9 +58,10 @@ pub type ERC20SymbolLookupWorker = UnboundedSender<(Address, MEVLogSignatureType
 
 #[allow(unused_mut)]
 pub fn start_symbols_lookup_worker(rpc_url: &str) -> ERC20SymbolLookupWorker {
-    let (tx, mut rx) = mpsc::unbounded_channel::<(Address, MEVLogSignatureType)>();
-    #[cfg(feature = "hotpath")]
-    let (tx, mut rx) = hotpath::channel!((tx, rx), log = true);
+    let (tx, mut rx) = hotpath::channel!(
+        mpsc::unbounded_channel::<(Address, MEVLogSignatureType)>(),
+        log = true
+    );
 
     let rpc_url = rpc_url.to_string();
     tokio::spawn(async move {
@@ -136,7 +137,7 @@ async fn get_erc20_symbol(target: Address, provider: &Arc<GenericProvider>) -> R
     Ok(())
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
+#[hotpath::measure(log = true)]
 async fn read_symbols_cache(target: Address) -> Result<CachedEntry> {
     {
         let cache = SYMBOLS_MEMORY_CACHE.read().await;

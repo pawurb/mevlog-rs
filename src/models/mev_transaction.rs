@@ -107,7 +107,7 @@ pub struct MEVTransaction {
 // n_input_zero_bytes 18
 // n_input_nonzero_bytes 19
 // chain_id 20
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 impl MEVTransaction {
     pub async fn tx_data_from_parquet_row(
         batch: &arrow::record_batch::RecordBatch,
@@ -287,7 +287,7 @@ impl MEVTransaction {
     }
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
+#[hotpath::measure(log = true)]
 pub async fn extract_signature(
     input: Option<&Bytes>,
     index: u64,

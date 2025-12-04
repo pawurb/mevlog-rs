@@ -111,7 +111,7 @@ pub async fn generate_block(
     Ok(mev_block)
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 #[allow(clippy::too_many_arguments)]
 impl MEVBlock {
     pub async fn new(
@@ -207,7 +207,7 @@ impl MEVBlock {
                 continue;
             }
 
-            let mev_tx = match MEVTransaction::new(
+            let mev_tx = MEVTransaction::new(
                 self.native_token_price,
                 self.chain.clone(),
                 tx.req.clone(),
@@ -220,9 +220,11 @@ impl MEVBlock {
                 provider,
                 filter.top_metadata,
                 filter.show_calls,
-            )
-            .await
-            {
+            );
+
+            let mev_tx = hotpath::future!(mev_tx, log = true);
+
+            let mev_tx = match mev_tx.await {
                 Ok(tx) => tx,
                 Err(e) => {
                     error!("Error: {}", e);

@@ -35,7 +35,7 @@ pub enum ENSLookup {
     Disabled,
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 impl ENSLookup {
     pub async fn lookup_mode(
         ens_query: Option<String>,
@@ -139,7 +139,7 @@ async fn ens_name_lookup(
     Ok(name)
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure)]
+#[hotpath::measure(log = true)]
 async fn read_ens_cache(target: Address) -> Result<CachedEntry> {
     {
         let cache = ENS_MEMORY_CACHE.read().await;
@@ -206,9 +206,7 @@ async fn write_ens_cache(target: Address, name: Option<String>) -> Result<()> {
 
 #[allow(unused_mut)]
 pub fn start_ens_lookup_worker(rpc_url: &str) -> mpsc::UnboundedSender<Address> {
-    let (tx, mut rx) = mpsc::unbounded_channel::<Address>();
-    #[cfg(feature = "hotpath")]
-    let (tx, mut rx) = hotpath::channel!((tx, rx), log = true);
+    let (tx, mut rx) = hotpath::channel!(mpsc::unbounded_channel::<Address>(), log = true);
 
     let rpc_url = rpc_url.to_string();
     tokio::spawn(async move {

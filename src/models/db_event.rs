@@ -13,7 +13,7 @@ pub struct DBEvent {
 static EVENT_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Option<String>>>> =
     std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 impl DBEvent {
     pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
         let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM events WHERE signature = ?)")

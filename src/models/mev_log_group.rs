@@ -13,7 +13,7 @@ pub struct MEVLogGroup {
     pub chain: EVMChain,
 }
 
-#[cfg_attr(feature = "hotpath", hotpath::measure_all)]
+#[hotpath::measure_all]
 impl MEVLogGroup {
     pub fn new(source: Address, logs: Vec<MEVLog>, chain: EVMChain) -> Self {
         Self {
