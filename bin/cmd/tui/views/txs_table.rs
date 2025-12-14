@@ -76,13 +76,15 @@ impl<'a> TxsTable<'a> {
             Constraint::Min(15),
         ];
 
+        let title = self
+            .items
+            .first()
+            .map(|tx| format!(" Transactions (Block {}) ", tx.block_number))
+            .unwrap_or_else(|| " Transactions ".to_string());
+
         let table = Table::new(rows, widths)
             .header(header)
-            .block(
-                Block::bordered()
-                    .title(" Transactions ")
-                    .border_set(border::THICK),
-            )
+            .block(Block::bordered().title(title).border_set(border::THICK))
             .column_spacing(1)
             .row_highlight_style(SELECTED_ROW_STYLE)
             .highlight_symbol(">> ")

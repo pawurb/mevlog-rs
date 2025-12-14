@@ -21,10 +21,7 @@ impl TuiArgs {
     pub async fn run(&self) -> io::Result<()> {
         let fetcher = DataFetcher::new(self.conn_opts.rpc_url.clone(), self.conn_opts.chain_id);
 
-        let items = fetcher
-            .fetch("latest")
-            .await
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        let items = fetcher.fetch("latest").await.map_err(io::Error::other)?;
 
         let mut terminal = ratatui::init();
         let app_result = App::new(items).run(&mut terminal);
