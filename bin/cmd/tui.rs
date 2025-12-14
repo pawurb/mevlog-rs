@@ -1,3 +1,5 @@
+mod data;
+
 use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
@@ -9,6 +11,7 @@ use ratatui::{
     DefaultTerminal, Frame,
 };
 
+use data::{DataFetcher, TxRow};
 use mevlog::misc::shared_init::{ConnOpts, SharedOpts};
 
 // Styles identical to hotpath
@@ -28,19 +31,15 @@ pub struct TuiArgs {
 
 pub struct App {
     table_state: TableState,
-    items: Vec<(String, String, String)>,
+    items: Vec<TxRow>,
     exit: bool,
 }
 
-impl Default for App {
-    fn default() -> Self {
+impl App {
+    pub fn new(items: Vec<TxRow>) -> Self {
         Self {
-            items: vec![
-                ("A1".to_string(), "B1".to_string(), "C1".to_string()),
-                ("A2".to_string(), "B2".to_string(), "C2".to_string()),
-                ("A3".to_string(), "B3".to_string(), "C3".to_string()),
-            ],
-            table_state: TableState::default().with_selected(0),
+            table_state: TableState::default().with_selected(if items.is_empty() { None } else { Some(0) }),
+            items,
             exit: false,
         }
     }
@@ -48,8 +47,18 @@ impl Default for App {
 
 impl TuiArgs {
     pub async fn run(&self) -> io::Result<()> {
+        let fetcher = DataFetcher::new(
+            self.conn_opts.rpc_url.clone(),
+            self.conn_opts.chain_id,
+        );
+
+        let items = fetcher
+            .fetch("latest")
+            .await
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
         let mut terminal = ratatui::init();
-        let app_result = App::default().run(&mut terminal);
+        let app_result = App::new(items).run(&mut terminal);
         ratatui::restore();
         app_result
     }
@@ -70,33 +79,64 @@ impl App {
     }
 
     fn render_table(&mut self, area: Rect, frame: &mut Frame) {
-        let header = Row::new(vec![Cell::from("A"), Cell::from("B"), Cell::from("C")])
-            .style(HEADER_STYLE)
-            .height(1);
+        let header = Row::new(vec![
+            Cell::from("Block"),
+            Cell::from("Tx Hash"),
+            Cell::from("From"),
+            Cell::from("To"),
+            Cell::from("Value"),
+            Cell::from("Gas Price"),
+        ])
+        .style(HEADER_STYLE)
+        .height(1);
 
         let rows: Vec<Row> = self
             .items
             .iter()
-            .map(|(a, b, c)| {
+            .map(|tx| {
+                let tx_hash_short = if tx.tx_hash.len() > 10 {
+                    format!("{}...", &tx.tx_hash[..10])
+                } else {
+                    tx.tx_hash.clone()
+                };
+                let from_short = if tx.from.len() > 10 {
+                    format!("{}...", &tx.from[..10])
+                } else {
+                    tx.from.clone()
+                };
+                let to_short = tx.to.as_ref().map_or("-".to_string(), |t| {
+                    if t.len() > 10 {
+                        format!("{}...", &t[..10])
+                    } else {
+                        t.clone()
+                    }
+                });
+
                 Row::new(vec![
-                    Cell::from(a.as_str()),
-                    Cell::from(b.as_str()),
-                    Cell::from(c.as_str()),
+                    Cell::from(tx.block_number.to_string()),
+                    Cell::from(tx_hash_short),
+                    Cell::from(from_short),
+                    Cell::from(to_short),
+                    Cell::from(tx.display_value.clone()),
+                    Cell::from(format!("{}", tx.gas_price)),
                 ])
             })
             .collect();
 
         let widths = [
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-            Constraint::Percentage(34),
+            Constraint::Length(10),
+            Constraint::Length(13),
+            Constraint::Length(13),
+            Constraint::Length(13),
+            Constraint::Min(15),
+            Constraint::Min(15),
         ];
 
         let table = Table::new(rows, widths)
             .header(header)
             .block(
                 Block::bordered()
-                    .title(" Table ")
+                    .title(" Transactions ")
                     .border_set(border::THICK),
             )
             .column_spacing(1)

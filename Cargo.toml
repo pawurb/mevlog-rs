@@ -9,7 +9,7 @@ license = "MIT"
 categories = ["command-line-utilities"]
 
 [dependencies]
-tokio = { version = "1.44.0", features = ["rt-multi-thread", "macros", "net", "fs", "time", "sync", "io-util"] }
+tokio = { version = "1.44.0", features = ["rt-multi-thread", "macros", "net", "fs", "time", "sync", "io-util", "process"] }
 
 alloy = { version = "1.0", features = ["full"] }
 revm-inspectors = "0.29.1"
