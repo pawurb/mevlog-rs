@@ -10,6 +10,8 @@ impl App {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
             KeyCode::Char('j') | KeyCode::Down => self.select_next(),
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
+            KeyCode::Char('h') | KeyCode::Left => self.load_previous_block(),
+            KeyCode::Char('l') | KeyCode::Right => self.load_next_block(),
             _ => {}
         }
     }

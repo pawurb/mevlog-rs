@@ -24,7 +24,7 @@ impl TuiArgs {
         let items = fetcher.fetch("latest").await.map_err(io::Error::other)?;
 
         let mut terminal = ratatui::init();
-        let app_result = App::new(items).run(&mut terminal);
+        let app_result = App::new(items, fetcher).run(&mut terminal);
         ratatui::restore();
         app_result
     }

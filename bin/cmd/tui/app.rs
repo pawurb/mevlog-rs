@@ -9,17 +9,20 @@ use std::io;
 use crossterm::event::{self, Event, KeyEventKind};
 use ratatui::{DefaultTerminal, Frame, widgets::TableState};
 
-use crate::cmd::tui::data::TxRow;
+use crate::cmd::tui::data::{DataFetcher, TxRow};
 use crate::cmd::tui::views::TxsTable;
 
 pub struct App {
     pub(crate) table_state: TableState,
     pub(crate) items: Vec<TxRow>,
+    pub(crate) current_block: u64,
+    pub(crate) fetcher: DataFetcher,
     exit: bool,
 }
 
 impl App {
-    pub fn new(items: Vec<TxRow>) -> Self {
+    pub fn new(items: Vec<TxRow>, fetcher: DataFetcher) -> Self {
+        let current_block = items.first().map(|tx| tx.block_number).unwrap_or(0);
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {
                 None
@@ -27,6 +30,8 @@ impl App {
                 Some(0)
             }),
             items,
+            current_block,
+            fetcher,
             exit: false,
         }
     }
