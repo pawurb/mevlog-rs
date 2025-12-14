@@ -3,8 +3,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[cfg(feature = "seed-db")]
 use cmd::seed_db::SeedDBArgs;
 use cmd::{
-    chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tx::TxArgs,
-    update_db::UpdateDBArgs, watch::WatchArgs, tui::TuiArgs,
+    chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tui::TuiArgs, tx::TxArgs,
+    update_db::UpdateDBArgs, watch::WatchArgs,
 };
 use eyre::Result;
 use mevlog::misc::{shared_init::OutputFormat, utils::init_logs};
