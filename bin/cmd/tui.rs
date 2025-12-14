@@ -2,22 +2,20 @@ use std::io;
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind};
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
+    layout::{Constraint, Rect},
+    style::{Color, Modifier, Style},
     symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
+    widgets::{Block, Cell, HighlightSpacing, Row, Table, TableState},
     DefaultTerminal, Frame,
 };
 
-use mevlog::{
-    misc::{
-        shared_init::{ConnOpts, SharedOpts, init_deps},
-    },
-};
+use mevlog::misc::shared_init::{ConnOpts, SharedOpts};
 
-use color_eyre::Result;
+// Styles identical to hotpath
+const HEADER_STYLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
+const SELECTED_ROW_STYLE: Style = Style::new()
+    .bg(Color::DarkGray)
+    .add_modifier(Modifier::BOLD);
 
 #[derive(Debug, clap::Parser)]
 pub struct TuiArgs {
@@ -28,10 +26,24 @@ pub struct TuiArgs {
     conn_opts: ConnOpts,
 }
 
-#[derive(Debug, Default)]
 pub struct App {
-    counter: u8,
+    table_state: TableState,
+    items: Vec<(String, String, String)>,
     exit: bool,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            items: vec![
+                ("A1".to_string(), "B1".to_string(), "C1".to_string()),
+                ("A2".to_string(), "B2".to_string(), "C2".to_string()),
+                ("A3".to_string(), "B3".to_string(), "C3".to_string()),
+            ],
+            table_state: TableState::default().with_selected(0),
+            exit: false,
+        }
+    }
 }
 
 impl TuiArgs {
@@ -53,8 +65,46 @@ impl App {
         Ok(())
     }
 
-    fn draw(&self, frame: &mut Frame) {
-        frame.render_widget(self, frame.area());
+    fn draw(&mut self, frame: &mut Frame) {
+        self.render_table(frame.area(), frame);
+    }
+
+    fn render_table(&mut self, area: Rect, frame: &mut Frame) {
+        let header = Row::new(vec![Cell::from("A"), Cell::from("B"), Cell::from("C")])
+            .style(HEADER_STYLE)
+            .height(1);
+
+        let rows: Vec<Row> = self
+            .items
+            .iter()
+            .map(|(a, b, c)| {
+                Row::new(vec![
+                    Cell::from(a.as_str()),
+                    Cell::from(b.as_str()),
+                    Cell::from(c.as_str()),
+                ])
+            })
+            .collect();
+
+        let widths = [
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+            Constraint::Percentage(34),
+        ];
+
+        let table = Table::new(rows, widths)
+            .header(header)
+            .block(
+                Block::bordered()
+                    .title(" Table ")
+                    .border_set(border::THICK),
+            )
+            .column_spacing(1)
+            .row_highlight_style(SELECTED_ROW_STYLE)
+            .highlight_symbol(">> ")
+            .highlight_spacing(HighlightSpacing::Always);
+
+        frame.render_stateful_widget(table, area, &mut self.table_state);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
@@ -71,9 +121,9 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Left => self.decrement_counter(),
-            KeyCode::Right => self.increment_counter(),
+            KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+            KeyCode::Char('j') | KeyCode::Down => self.select_next(),
+            KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             _ => {}
         }
     }
@@ -82,39 +132,27 @@ impl App {
         self.exit = true;
     }
 
-    fn increment_counter(&mut self) {
-        self.counter += 1;
+    fn select_next(&mut self) {
+        let count = self.items.len();
+        if count == 0 {
+            return;
+        }
+        let i = match self.table_state.selected() {
+            Some(i) => (i + 1).min(count - 1),
+            None => 0,
+        };
+        self.table_state.select(Some(i));
     }
 
-    fn decrement_counter(&mut self) {
-        self.counter -= 1;
-    }
-}
-
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
-        let instructions = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::THICK);
-
-        let counter_text = Text::from(vec![Line::from(vec![
-            "Value: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
-
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
+    fn select_previous(&mut self) {
+        let count = self.items.len();
+        if count == 0 {
+            return;
+        }
+        let i = match self.table_state.selected() {
+            Some(i) => i.saturating_sub(1),
+            None => 0,
+        };
+        self.table_state.select(Some(i));
     }
 }
