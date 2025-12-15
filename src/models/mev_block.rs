@@ -62,7 +62,7 @@ pub struct MEVBlock {
     pub txs_count: u64,
     pub reversed_order: bool,
     pub top_metadata: bool,
-    pub chain: EVMChain,
+    pub chain: Arc<EVMChain>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -74,7 +74,7 @@ pub async fn generate_block(
     symbols_lookup: &ERC20SymbolsLookup,
     txs_filter: &TxsFilter,
     shared_opts: &SharedOpts,
-    chain: &EVMChain,
+    chain: &Arc<EVMChain>,
     rpc_url: &str,
     native_token_price: Option<f64>,
 ) -> Result<MEVBlock> {
@@ -121,7 +121,7 @@ impl MEVBlock {
         provider: &Arc<GenericProvider>,
         trace_mode: Option<&TraceMode>,
         block_info_top: bool,
-        chain: &EVMChain,
+        chain: &Arc<EVMChain>,
         native_token_price: Option<f64>,
     ) -> Result<Self> {
         if which::which("cryo").is_err() {
@@ -151,12 +151,11 @@ impl MEVBlock {
                 };
 
                 txs_data
-                    .clone()
-                    .into_iter()
+                    .iter()
                     .enumerate()
                     .filter_map(|(tx_index, tx_data)| {
                         if tx_index <= range.to as usize {
-                            Some((tx_index as u64, tx_data))
+                            Some((tx_index as u64, tx_data.clone()))
                         } else {
                             None
                         }
@@ -210,7 +209,7 @@ impl MEVBlock {
             let mev_tx = MEVTransaction::new(
                 self.native_token_price,
                 self.chain.clone(),
-                tx.req.clone(),
+                &tx.req,
                 self.block_number,
                 tx.receipt.clone(),
                 tx_hash,
@@ -321,7 +320,7 @@ impl MEVBlock {
             let calls = rpc_tx_calls(mev_tx.tx_hash, provider).await?;
 
             let mut call_extracts = Vec::new();
-            for call in calls.clone() {
+            for call in &calls {
                 if let Some(to) = call.to {
                     let (signature_hash, signature) = extract_signature(
                         Some(&call.input),
@@ -405,19 +404,14 @@ impl MEVBlock {
             }
 
             let Some(mev_tx) = self.mev_transactions.get_mut(&tx_index) else {
-                revm_commit_tx(
-                    tx_data.tx_hash,
-                    tx_data.req.clone(),
-                    &self.revm_context,
-                    revm_db,
-                )?;
+                revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
                 continue;
             };
 
             if let Some(touched) = &filter.touching {
                 let touching = revm_touching_accounts(
                     mev_tx.tx_hash,
-                    mev_tx.inner.clone(),
+                    &mev_tx.inner,
                     &self.revm_context,
                     revm_db,
                 )?;
@@ -425,26 +419,16 @@ impl MEVBlock {
                 if !touching.contains(touched) {
                     self.mev_transactions.remove(&tx_index);
 
-                    revm_commit_tx(
-                        tx_data.tx_hash,
-                        tx_data.req.clone(),
-                        &self.revm_context,
-                        revm_db,
-                    )?;
+                    revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
                     continue;
                 }
             }
 
-            let calls = revm_tx_calls(
-                tx_data.tx_hash,
-                tx_data.req.clone(),
-                &self.revm_context,
-                revm_db,
-            )?;
+            let calls = revm_tx_calls(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
 
             let mut call_extracts = Vec::new();
-            for call in calls.clone() {
-                if let Action::Call(call_action) = call.action {
+            for call in &calls {
+                if let Action::Call(call_action) = &call.action {
                     let (signature_hash, signature) = extract_signature(
                         Some(&call_action.input),
                         tx_index,
@@ -475,12 +459,7 @@ impl MEVBlock {
                 self.mev_transactions.remove(&tx_index);
             }
 
-            revm_commit_tx(
-                tx_data.tx_hash,
-                tx_data.req.clone(),
-                &self.revm_context,
-                revm_db,
-            )?;
+            revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
         }
 
         if let Some(pb) = progress_bar {
