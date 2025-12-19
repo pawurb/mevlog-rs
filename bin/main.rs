@@ -73,7 +73,7 @@ async fn main() {
     _ = inner_main().await;
 }
 
-#[hotpath::main(percentiles = [95], limit = 12)]
+#[hotpath::main(percentiles = [95], limit = 25)]
 async fn inner_main() {
     init_logs();
 
