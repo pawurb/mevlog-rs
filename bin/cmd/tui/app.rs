@@ -7,7 +7,7 @@ mod state;
 use std::io;
 
 use crossterm::event::{self, Event, KeyEventKind};
-use ratatui::{widgets::TableState, DefaultTerminal, Frame};
+use ratatui::{DefaultTerminal, Frame, widgets::TableState};
 
 use crate::cmd::tui::{
     data::{DataFetcher, TxRow},
