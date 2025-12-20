@@ -7,10 +7,12 @@ mod state;
 use std::io;
 
 use crossterm::event::{self, Event, KeyEventKind};
-use ratatui::{DefaultTerminal, Frame, widgets::TableState};
+use ratatui::{widgets::TableState, DefaultTerminal, Frame};
 
-use crate::cmd::tui::data::{DataFetcher, TxRow};
-use crate::cmd::tui::views::TxsTable;
+use crate::cmd::tui::{
+    data::{DataFetcher, TxRow},
+    views::TxsTable,
+};
 
 pub struct App {
     pub(crate) table_state: TableState,
@@ -21,7 +23,8 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(items: Vec<TxRow>, fetcher: DataFetcher) -> Self {
+    pub fn new(items: Vec<TxRow>) -> Self {
+        let fetcher = DataFetcher::new(None, None);
         let current_block = items.first().map(|tx| tx.block_number).unwrap_or(0);
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {

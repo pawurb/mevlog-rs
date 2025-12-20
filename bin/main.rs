@@ -3,9 +3,13 @@ use clap::{Parser, Subcommand, ValueEnum};
 #[cfg(feature = "seed-db")]
 use cmd::seed_db::SeedDBArgs;
 use cmd::{
-    chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tui::TuiArgs, tx::TxArgs,
+    chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tx::TxArgs,
     update_db::UpdateDBArgs, watch::WatchArgs,
 };
+
+#[cfg(feature = "tui")]
+use cmd::tui::TuiArgs;
+
 use eyre::Result;
 use mevlog::misc::{shared_init::OutputFormat, utils::init_logs};
 
@@ -57,6 +61,7 @@ pub enum MLSubcommand {
     #[cfg(feature = "seed-db")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
+    #[cfg(feature = "tui")]
     #[command(about = "Run TUI")]
     Tui(TuiArgs),
 }
@@ -154,11 +159,12 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ML::ChainInfo(args) => {
             args.run(root_args.format).await?;
         }
-        ML::Tui(args) => {
-            args.run().await?;
-        }
         #[cfg(feature = "seed-db")]
         ML::SeedDB(args) => {
+            args.run().await?;
+        }
+        #[cfg(feature = "tui")]
+        ML::Tui(args) => {
             args.run().await?;
         }
     }
