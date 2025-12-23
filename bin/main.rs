@@ -6,6 +6,10 @@ use cmd::{
     chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tx::TxArgs,
     update_db::UpdateDBArgs, watch::WatchArgs,
 };
+
+#[cfg(feature = "tui")]
+use cmd::tui::TuiArgs;
+
 use eyre::Result;
 use mevlog::misc::{shared_init::OutputFormat, utils::init_logs};
 
@@ -57,6 +61,9 @@ pub enum MLSubcommand {
     #[cfg(feature = "seed-db")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
+    #[cfg(feature = "tui")]
+    #[command(about = "Run TUI")]
+    Tui(TuiArgs),
 }
 
 #[cfg(feature = "hotpath-alloc")]
@@ -71,7 +78,7 @@ async fn main() {
     _ = inner_main().await;
 }
 
-#[hotpath::main(percentiles = [95], limit = 12)]
+#[hotpath::main(percentiles = [95], limit = 25)]
 async fn inner_main() {
     init_logs();
 
@@ -154,6 +161,10 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         }
         #[cfg(feature = "seed-db")]
         ML::SeedDB(args) => {
+            args.run().await?;
+        }
+        #[cfg(feature = "tui")]
+        ML::Tui(args) => {
             args.run().await?;
         }
     }
