@@ -4,13 +4,16 @@ mod data;
 mod keys;
 mod state;
 
-use std::io;
+use std::{
+    io,
+    sync::mpsc::{self, Receiver, Sender},
+};
 
 use crossterm::event::{self, Event, KeyEventKind};
 use ratatui::{DefaultTerminal, Frame, widgets::TableState};
 
 use crate::cmd::tui::{
-    data::{DataFetcher, TxRow},
+    data::{DataRequest, DataResponse, TxRow, worker::spawn_data_worker},
     views::TxsTable,
 };
 
@@ -18,14 +21,18 @@ pub struct App {
     pub(crate) table_state: TableState,
     pub(crate) items: Vec<TxRow>,
     pub(crate) current_block: u64,
-    pub(crate) fetcher: DataFetcher,
+    data_req_tx: Sender<DataRequest>,
+    data_resp_rx: Receiver<DataResponse>,
     exit: bool,
 }
 
 impl App {
     pub fn new(items: Vec<TxRow>) -> Self {
-        let fetcher = DataFetcher::new(None, None);
         let current_block = items.first().map(|tx| tx.block_number).unwrap_or(0);
+        let (data_req_tx, data_req_rx) = mpsc::channel();
+        let (data_resp_tx, data_resp_rx) = mpsc::channel();
+        spawn_data_worker(data_req_rx, data_resp_tx);
+
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {
                 None
@@ -34,7 +41,8 @@ impl App {
             }),
             items,
             current_block,
-            fetcher,
+            data_req_tx,
+            data_resp_rx,
             exit: false,
         }
     }
