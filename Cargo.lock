@@ -3976,6 +3976,7 @@ dependencies = [
  "color-eyre",
  "colored",
  "console-subscriber",
+ "crossbeam-channel",
  "crossterm 0.29.0",
  "eyre",
  "foundry-fork-db",

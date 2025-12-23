@@ -54,6 +54,7 @@ hotpath = { version = "0.9", features = ["tokio"] }
 color-eyre = "0.6"
 crossterm = { version = "0.29", optional = true }
 ratatui = { version = "0.29", optional = true }
+crossbeam-channel = { version = "0.5", optional = true }
 
 [dev-dependencies]
 uuid = { version = "1.11.0", features = ["v4", "js"] }
@@ -70,7 +71,7 @@ path = "examples/find_ens_name.rs"
 default = []
 seed-db = []
 tokio-console = ["tokio/full", "tokio/tracing", "dep:console-subscriber"]
-tui = ["dep:crossterm", "dep:ratatui"]
+tui = ["dep:crossterm", "dep:ratatui", "dep:crossbeam-channel"]
 hotpath = ["hotpath/hotpath"]
 hotpath-alloc = ["hotpath/hotpath-alloc"]
 hotpath-off = ["hotpath/hotpath-off"]
