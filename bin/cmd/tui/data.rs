@@ -15,6 +15,7 @@ pub struct TxRow {
 }
 
 pub(crate) enum DataRequest {
+    FetchLatest,
     FetchBlock(u64),
     FetchTx(String),
 }

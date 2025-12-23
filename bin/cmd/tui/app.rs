@@ -7,10 +7,11 @@ mod state;
 use std::io;
 
 use crossbeam_channel::{Receiver, Sender, select};
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::KeyCode;
 use ratatui::{DefaultTerminal, Frame, widgets::TableState};
 
 use crate::cmd::tui::{
+    app::keys::spawn_input_reader,
     data::{DataRequest, DataResponse, TxRow, worker::spawn_data_worker},
     views::TxsTable,
 };
@@ -30,7 +31,7 @@ pub struct App {
     pub(crate) items: Vec<TxRow>,
     pub(crate) current_block: u64,
     data_req_tx: Sender<DataRequest>,
-    event_rx: Receiver<AppEvent>,
+    state_rx: Receiver<AppEvent>,
     exit: bool,
 }
 
@@ -38,16 +39,14 @@ impl App {
     pub fn new(items: Vec<TxRow>) -> Self {
         let current_block = items.first().map(|tx| tx.block_number).unwrap_or(0);
 
-        // Create channels
         let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();
-        let (event_tx, event_rx) = crossbeam_channel::unbounded();
+        let (state_tx, state_rx) = crossbeam_channel::unbounded();
 
-        // Spawn data worker
-        let data_event_tx = event_tx.clone();
-        spawn_data_worker(data_req_rx, data_event_tx);
+        spawn_data_worker(data_req_rx, state_tx.clone());
+        spawn_input_reader(state_tx);
 
-        // Spawn keyboard event reader thread
-        spawn_input_reader(event_tx);
+        // Fetch latest block on launch
+        let _ = data_req_tx.send(DataRequest::FetchLatest);
 
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {
@@ -58,7 +57,7 @@ impl App {
             items,
             current_block,
             data_req_tx,
-            event_rx,
+            state_rx,
             exit: false,
         }
     }
@@ -77,7 +76,7 @@ impl App {
 
     fn handle_events(&mut self) -> io::Result<()> {
         select! {
-            recv(self.event_rx) -> event => {
+            recv(self.state_rx) -> event => {
                 if let Ok(event) = event {
                     match event {
                         AppEvent::Key(key_code) => self.handle_key_event(key_code),
@@ -109,28 +108,4 @@ impl App {
     pub(crate) fn exit(&mut self) {
         self.exit = true;
     }
-}
-
-/// Spawns a thread that reads terminal events and sends them through the channel
-fn spawn_input_reader(event_tx: Sender<AppEvent>) {
-    std::thread::spawn(move || {
-        loop {
-            if let Ok(evt) = event::read() {
-                let app_event = match evt {
-                    Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                        Some(AppEvent::Key(key_event.code))
-                    }
-                    Event::Resize(w, h) => Some(AppEvent::Resize(w, h)),
-                    _ => None,
-                };
-
-                if let Some(app_event) = app_event {
-                    if event_tx.send(app_event).is_err() {
-                        // Channel closed, exit thread
-                        break;
-                    }
-                }
-            }
-        }
-    });
 }

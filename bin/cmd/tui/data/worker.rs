@@ -17,29 +17,35 @@ pub(crate) fn spawn_data_worker(
         let mut current: Option<JoinHandle<()>> = None;
 
         while let Ok(cmd) = data_req_rx.recv() {
+            if let Some(h) = current.take() {
+                h.abort();
+            }
+
             match cmd {
-                DataRequest::FetchBlock(block) => {
-                    if let Some(h) = current.take() {
-                        h.abort();
-                    }
-
+                DataRequest::FetchLatest => {
                     let tx = event_tx.clone();
-
                     current = Some(rt.spawn(async move {
                         let fetcher = DataFetcher::new(None, None);
-                        let block_data = fetcher
-                            .fetch(block.to_string().as_str())
-                            .await
-                            .expect("Fixme");
-                        let _ = tx.send(AppEvent::Data(DataResponse::Block(block, block_data)));
+                        if let Ok(block_data) = fetcher.fetch("latest").await {
+                            let block_num =
+                                block_data.first().map(|tx| tx.block_number).unwrap_or(0);
+                            let _ =
+                                tx.send(AppEvent::Data(DataResponse::Block(block_num, block_data)));
+                        }
+                    }));
+                }
+
+                DataRequest::FetchBlock(block) => {
+                    let tx = event_tx.clone();
+                    current = Some(rt.spawn(async move {
+                        let fetcher = DataFetcher::new(None, None);
+                        if let Ok(block_data) = fetcher.fetch(block.to_string().as_str()).await {
+                            let _ = tx.send(AppEvent::Data(DataResponse::Block(block, block_data)));
+                        }
                     }));
                 }
 
                 DataRequest::FetchTx(_tx_hash) => {
-                    if let Some(h) = current.take() {
-                        h.abort();
-                    }
-
                     current = Some(rt.spawn(async move { todo!() }));
                 }
             }
