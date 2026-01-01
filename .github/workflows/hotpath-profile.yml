@@ -66,67 +66,35 @@ jobs:
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - id: head_alloc_count_metrics
+      - id: head_alloc_metrics
         env:
           HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
-          # Extract alloc count metrics from head branch
+          # Extract alloc metrics from head branch
           git checkout ${{ github.event.pull_request.head.sha }}
           # 1. Build up cache
-          QUIET=1 cargo run --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 
+          QUIET=1 cargo run --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-count-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath,hotpath-alloc' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - id: base_alloc_count_metrics
+      - id: base_alloc_metrics
         env:
           HOTPATH_JSON: true
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
         run: |
-          # Extract alloc count metrics from base branch
+          # Extract alloc metrics from base branch
           git checkout ${{ github.event.pull_request.base.sha }}
           # 1. Build up cache
-          QUIET=1 cargo run --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 
+          QUIET=1 cargo run --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000
           {
             echo 'metrics<<EOF'
             # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-count-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - id: head_alloc_bytes_metrics
-        env:
-          HOTPATH_JSON: true
-          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
-        run: |
-          # Extract alloc bytes metrics from head branch
-          git checkout ${{ github.event.pull_request.head.sha }}
-          # 1. Build up cache
-          QUIET=1 cargo run --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 
-          {
-            echo 'metrics<<EOF'
-            # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
-            echo 'EOF'
-          } >> "$GITHUB_OUTPUT"
-
-      - id: base_alloc_bytes_metrics
-        env:
-          HOTPATH_JSON: true
-          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
-        run: |
-          # Extract alloc bytes metrics from base branch
-          git checkout ${{ github.event.pull_request.base.sha }}
-          # 1. Build up cache
-          QUIET=1 cargo run --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 
-          {
-            echo 'metrics<<EOF'
-            # 2. Generate metrics
-            QUIET=1 cargo run --features 'hotpath,hotpath-alloc-bytes-total' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
+            QUIET=1 cargo run --features 'hotpath,hotpath-alloc' --release --bin mevlog search -b 23263459:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 | grep '^{"hotpath_profiling_mode"'
             echo 'EOF'
           } >> "$GITHUB_OUTPUT"
 
@@ -135,10 +103,8 @@ jobs:
           mkdir -p /tmp/metrics
           echo '${{ steps.head_timing_metrics.outputs.metrics }}' > /tmp/metrics/head_timing.json
           echo '${{ steps.base_timing_metrics.outputs.metrics }}' > /tmp/metrics/base_timing.json
-          echo '${{ steps.head_alloc_count_metrics.outputs.metrics }}' > /tmp/metrics/head_alloc_count.json
-          echo '${{ steps.base_alloc_count_metrics.outputs.metrics }}' > /tmp/metrics/base_alloc_count.json
-          echo '${{ steps.head_alloc_bytes_metrics.outputs.metrics }}' > /tmp/metrics/head_alloc_bytes.json
-          echo '${{ steps.base_alloc_bytes_metrics.outputs.metrics }}' > /tmp/metrics/base_alloc_bytes.json
+          echo '${{ steps.head_alloc_metrics.outputs.metrics }}' > /tmp/metrics/head_alloc.json
+          echo '${{ steps.base_alloc_metrics.outputs.metrics }}' > /tmp/metrics/base_alloc.json
           echo '${{ github.event.pull_request.number }}' > /tmp/metrics/pr_number.txt
 
       - uses: actions/upload-artifact@v4
