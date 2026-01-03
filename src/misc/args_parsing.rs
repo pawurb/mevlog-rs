@@ -38,6 +38,16 @@ impl BlocksRange {
                 let block = single
                     .parse::<u64>()
                     .map_err(|_| eyre!("Invalid block number: '{}'", single))?;
+
+                let latest_block = get_latest_block(provider, latest_offset).await?;
+                if block > latest_block {
+                    eyre::bail!(
+                        "Block number '{}' exceeds latest block '{}'",
+                        block,
+                        latest_block
+                    )
+                }
+
                 Ok(BlocksRange {
                     from: block,
                     to: block,
@@ -60,6 +70,15 @@ impl BlocksRange {
                         "Start block '{}' must be less than or equal to end block '{}'",
                         from,
                         to
+                    )
+                }
+
+                let latest_block = get_latest_block(provider, latest_offset).await?;
+                if to > latest_block {
+                    eyre::bail!(
+                        "End block '{}' exceeds latest block '{}'",
+                        to,
+                        latest_block
                     )
                 }
 
