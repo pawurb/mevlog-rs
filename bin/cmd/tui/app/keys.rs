@@ -3,7 +3,7 @@
 use crossbeam_channel::Sender;
 use crossterm::event::{self, KeyCode};
 
-use super::{App, AppMode};
+use super::{App, AppMode, Tab};
 use crate::cmd::tui::app::AppEvent;
 
 impl App {
@@ -22,6 +22,25 @@ impl App {
     fn handle_main_mode_keys(&mut self, key_code: KeyCode) {
         match key_code {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+
+            KeyCode::Char('1') => self.switch_to_tab(Tab::Explore),
+            KeyCode::Char('2') => self.switch_to_tab(Tab::Search),
+            KeyCode::Tab => self.cycle_tab(),
+
+            _ if self.active_tab == Tab::Explore => {
+                self.handle_explore_keys(key_code);
+            }
+
+            _ if self.active_tab == Tab::Search => {
+                // TODO: WIP
+            }
+
+            _ => {}
+        }
+    }
+
+    fn handle_explore_keys(&mut self, key_code: KeyCode) {
+        match key_code {
             KeyCode::Char('j') | KeyCode::Down => self.select_next(),
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             KeyCode::Char('h') | KeyCode::Left => self.load_previous_block(),
