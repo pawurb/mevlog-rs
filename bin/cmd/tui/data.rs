@@ -1,12 +1,15 @@
+pub use mevlog::ChainEntryJson;
 pub use mevlog::models::json::mev_transaction_json::MEVTransactionJson;
 
-mod fetcher;
+pub(crate) mod chains;
+pub(crate) mod txs;
 pub(crate) mod worker;
 
 #[allow(dead_code)]
 pub(crate) enum DataRequest {
     Block(BlockId),
     Tx(String),
+    Chains(Option<String>),
 }
 
 pub(crate) enum BlockId {
@@ -18,5 +21,6 @@ pub(crate) enum BlockId {
 pub(crate) enum DataResponse {
     Block(u64, Vec<MEVTransactionJson>),
     Tx(String, MEVTransactionJson),
+    Chains(Vec<ChainEntryJson>),
     Error(String),
 }

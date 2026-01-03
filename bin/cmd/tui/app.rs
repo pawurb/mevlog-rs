@@ -15,18 +15,36 @@ use ratatui::{
     widgets::{Block, Clear, Paragraph, TableState},
 };
 
+use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
+
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{BlockId, DataRequest, DataResponse, MEVTransactionJson, worker::spawn_data_worker},
-    views::TxsTable,
+    views::{NetworkSelector, TxsTable},
 };
 
-/// Unified event type for the application
+const DEFAULT_CHAINS: [(u64, &str, &str); 10] = [
+    (1, "Ethereum Mainnet", "ETH"),
+    (10, "OP Mainnet", "ETH"),
+    (56, "BNB Smart Chain Mainnet", "BSC"),
+    (130, "Unichain", "ETH"),
+    (137, "Polygon Mainnet", "Polygon"),
+    (324, "zkSync Mainnet", "ETH"),
+    (8453, "Base", "ETH"),
+    (42161, "Arbitrum One", "ETH"),
+    (43114, "Avalanche C-Chain", "AVAX"),
+    (534352, "Scroll Mainnet", "ETH"),
+];
+
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum AppMode {
+    SelectNetwork,
+    Main,
+}
+
 #[allow(clippy::large_enum_variant)]
 pub(crate) enum AppEvent {
-    /// Keyboard input
     Key(KeyCode),
-    /// Data fetched from worker
     Data(DataResponse),
 }
 
@@ -40,20 +58,46 @@ pub struct App {
     data_req_tx: Sender<DataRequest>,
     state_rx: Receiver<AppEvent>,
     exit: bool,
+    pub(crate) mode: AppMode,
+    pub(crate) network_table_state: TableState,
+    pub(crate) available_chains: Vec<ChainEntryJson>,
+    pub(crate) search_query: String,
+    pub(crate) conn_opts: ConnOpts,
+    state_tx: Sender<AppEvent>,
 }
 
 impl App {
-    pub fn new(items: Vec<MEVTransactionJson>) -> Self {
+    pub fn new(items: Vec<MEVTransactionJson>, conn_opts: &ConnOpts) -> Self {
         let current_block = items.first().map(|tx| tx.block_number).unwrap_or(0);
 
         let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();
         let (state_tx, state_rx) = crossbeam_channel::unbounded();
 
-        spawn_data_worker(data_req_rx, state_tx.clone());
-        spawn_input_reader(state_tx);
+        let mode = if conn_opts.rpc_url.is_none() && conn_opts.chain_id.is_none() {
+            AppMode::SelectNetwork
+        } else {
+            AppMode::Main
+        };
 
-        // Fetch latest block on launch
-        let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
+        spawn_data_worker(data_req_rx, state_tx.clone(), conn_opts);
+        spawn_input_reader(state_tx.clone());
+
+        if mode == AppMode::Main {
+            let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
+        }
+
+        let available_chains = if mode == AppMode::SelectNetwork {
+            DEFAULT_CHAINS
+                .iter()
+                .map(|(id, name, chain)| ChainEntryJson {
+                    chain_id: *id,
+                    name: name.to_string(),
+                    chain: chain.to_string(),
+                })
+                .collect()
+        } else {
+            vec![]
+        };
 
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {
@@ -63,12 +107,18 @@ impl App {
             }),
             items,
             current_block,
-            is_loading: true,
+            is_loading: mode == AppMode::Main,
             loading_block: None,
             error_message: None,
             data_req_tx,
             state_rx,
             exit: false,
+            mode,
+            network_table_state: TableState::default().with_selected(Some(0)),
+            available_chains,
+            search_query: String::new(),
+            conn_opts: conn_opts.clone(),
+            state_tx,
         }
     }
 
@@ -81,12 +131,24 @@ impl App {
     }
 
     fn draw(&mut self, frame: &mut Frame) {
-        TxsTable::new(&self.items).render(frame.area(), frame, &mut self.table_state);
+        match self.mode {
+            AppMode::SelectNetwork => {
+                NetworkSelector::new(&self.available_chains, &self.search_query, self.is_loading)
+                    .render(frame.area(), frame, &mut self.network_table_state);
 
-        if let Some(error_msg) = &self.error_message {
-            self.render_error_popup(frame, error_msg);
-        } else if self.is_loading {
-            self.render_loading_popup(frame);
+                if let Some(error_msg) = &self.error_message {
+                    self.render_error_popup(frame, error_msg);
+                }
+            }
+            AppMode::Main => {
+                TxsTable::new(&self.items).render(frame.area(), frame, &mut self.table_state);
+
+                if let Some(error_msg) = &self.error_message {
+                    self.render_error_popup(frame, error_msg);
+                } else if self.is_loading {
+                    self.render_loading_popup(frame);
+                }
+            }
         }
     }
 
@@ -145,6 +207,14 @@ impl App {
             }
             DataResponse::Tx(_hash, _tx) => {
                 // TODO: handle individual tx updates
+            }
+            DataResponse::Chains(chains) => {
+                self.available_chains = chains;
+                self.is_loading = false;
+
+                if !self.available_chains.is_empty() {
+                    self.network_table_state.select(Some(0));
+                }
             }
             DataResponse::Error(error_msg) => {
                 self.is_loading = false;

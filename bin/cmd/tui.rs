@@ -18,7 +18,7 @@ pub struct TuiArgs {
 impl TuiArgs {
     pub async fn run(&self) -> io::Result<()> {
         let mut terminal = ratatui::init();
-        let app_result = App::new(vec![]).run(&mut terminal);
+        let app_result = App::new(vec![], &self.conn_opts).run(&mut terminal);
         ratatui::restore();
         app_result
     }
