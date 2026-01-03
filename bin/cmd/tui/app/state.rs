@@ -77,6 +77,11 @@ impl App {
         if let Some(selected_idx) = self.network_table_state.selected()
             && let Some(chain) = self.available_chains.get(selected_idx)
         {
+            self.selected_chain = Some(ChainEntryJson {
+                chain_id: chain.chain_id,
+                name: chain.name.clone(),
+                chain: chain.chain.clone(),
+            });
             self.conn_opts.chain_id = Some(chain.chain_id);
 
             let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();

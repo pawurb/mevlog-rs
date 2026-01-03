@@ -3,7 +3,7 @@
 use crossbeam_channel::Sender;
 use crossterm::event::{self, KeyCode};
 
-use super::{App, AppMode};
+use super::{App, AppMode, Tab};
 use crate::cmd::tui::app::AppEvent;
 
 impl App {
@@ -22,6 +22,25 @@ impl App {
     fn handle_main_mode_keys(&mut self, key_code: KeyCode) {
         match key_code {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+
+            KeyCode::Char('1') => self.switch_to_tab(Tab::Explore),
+            KeyCode::Char('2') => self.switch_to_tab(Tab::Search),
+            KeyCode::Tab => self.cycle_tab(),
+
+            _ if self.active_tab == Tab::Explore => {
+                self.handle_explore_keys(key_code);
+            }
+
+            _ if self.active_tab == Tab::Search => {
+                // TODO: WIP
+            }
+
+            _ => {}
+        }
+    }
+
+    fn handle_explore_keys(&mut self, key_code: KeyCode) {
+        match key_code {
             KeyCode::Char('j') | KeyCode::Down => self.select_next(),
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             KeyCode::Char('h') | KeyCode::Left => self.load_previous_block(),
@@ -31,22 +50,44 @@ impl App {
     }
 
     fn handle_network_selection_keys(&mut self, key_code: KeyCode) {
-        match key_code {
-            KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
-            KeyCode::Down | KeyCode::Char('j') => self.select_next_network(),
-            KeyCode::Up | KeyCode::Char('k') => self.select_previous_network(),
-            KeyCode::Enter => self.confirm_network_selection(),
-            KeyCode::Backspace => {
-                if !self.search_query.is_empty() {
-                    self.search_query.pop();
+        if self.search_popup_open {
+            // Popup open mode - only typing and popup controls
+            match key_code {
+                KeyCode::Enter | KeyCode::Esc => {
+                    self.search_popup_open = false;
+                }
+                KeyCode::Backspace => {
+                    if !self.search_query.is_empty() {
+                        self.search_query.pop();
+                        self.request_filtered_chains();
+                    }
+                }
+                KeyCode::Char(c) => {
+                    self.search_query.push(c);
                     self.request_filtered_chains();
                 }
+                _ => {}
             }
-            KeyCode::Char(c) if c.is_alphanumeric() || c == ' ' || c == '-' => {
-                self.search_query.push(c);
-                self.request_filtered_chains();
+        } else {
+            // Popup closed mode - navigation and popup opener
+            match key_code {
+                KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+                KeyCode::Char('s') | KeyCode::Char('S') => {
+                    self.search_popup_open = true;
+                }
+                KeyCode::Char('c') | KeyCode::Char('C') => {
+                    if !self.search_query.is_empty() {
+                        self.search_query.clear();
+                        self.request_filtered_chains();
+                    }
+                }
+                KeyCode::Down | KeyCode::Char('j') => self.select_next_network(),
+                KeyCode::Up | KeyCode::Char('k') => self.select_previous_network(),
+                KeyCode::Enter | KeyCode::Char('o') | KeyCode::Char('O') => {
+                    self.confirm_network_selection()
+                }
+                _ => {}
             }
-            _ => {}
         }
     }
 }
