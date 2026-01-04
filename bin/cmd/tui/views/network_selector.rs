@@ -1,11 +1,11 @@
 use mevlog::ChainEntryJson;
 use ratatui::{
     Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Flex, Layout, Rect},
     style::{Color, Modifier, Style},
     symbols::border,
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, HighlightSpacing, Paragraph, Row, Table, TableState},
+    widgets::{Block, Cell, Clear, HighlightSpacing, Paragraph, Row, Table, TableState},
 };
 
 const HEADER_STYLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
@@ -28,17 +28,12 @@ impl<'a> NetworkSelector<'a> {
         }
     }
 
-    pub fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState) {
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Min(3),    // Table
-                Constraint::Length(3), // Search input box
-            ])
-            .split(area);
+    pub fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState, popup_open: bool) {
+        self.render_chains_table(area, frame, state);
 
-        self.render_chains_table(chunks[0], frame, state);
-        self.render_search_input(chunks[1], frame);
+        if popup_open {
+            self.render_search_popup(frame);
+        }
     }
 
     fn render_chains_table(&self, area: Rect, frame: &mut Frame, state: &mut TableState) {
@@ -87,23 +82,43 @@ impl<'a> NetworkSelector<'a> {
         frame.render_stateful_widget(table, area, state);
     }
 
-    fn render_search_input(&self, area: Rect, frame: &mut Frame) {
+    fn render_search_popup(&self, frame: &mut Frame) {
+        let popup_width = 60.min(frame.area().width - 4);
+        let popup_height = 3;
+        let popup_area = centered_rect(popup_width, popup_height, frame.area());
+
         let input_text = if self.search_query.is_empty() {
             Line::from(vec![
                 Span::styled("Search: ", Style::default().fg(Color::Yellow)),
-                Span::styled("(type to filter)", Style::default().fg(Color::DarkGray)),
+                Span::styled(
+                    "(type to filter, Enter/Esc to close)",
+                    Style::default().fg(Color::DarkGray),
+                ),
             ])
         } else {
             Line::from(vec![
                 Span::styled("Search: ", Style::default().fg(Color::Yellow)),
                 Span::raw(self.search_query),
-                Span::styled("_", Style::default().fg(Color::Yellow)), // Cursor
+                Span::styled("_", Style::default().fg(Color::Yellow)),
             ])
         };
 
-        let input = Paragraph::new(input_text)
-            .block(Block::default().borders(Borders::ALL).title(" Filter "));
+        let popup = Paragraph::new(input_text).block(
+            Block::bordered()
+                .title(" Search Networks ")
+                .style(Style::default().bg(Color::DarkGray))
+                .border_set(border::THICK),
+        );
 
-        frame.render_widget(input, area);
+        frame.render_widget(Clear, popup_area);
+        frame.render_widget(popup, popup_area);
     }
+}
+
+fn centered_rect(width: u16, height: u16, area: Rect) -> Rect {
+    let horizontal = Layout::horizontal([Constraint::Length(width)]).flex(Flex::Center);
+    let vertical = Layout::vertical([Constraint::Length(height)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
 }
