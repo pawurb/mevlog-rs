@@ -124,6 +124,8 @@ Options:
           Include txs by subcalls method names matching the provided regex, signature or signature hash
       --show-calls
           Show detailed tx calls info
+      --ops
+          Display EVM opcodes executed by the transaction (requires --trace)
       --tx-cost <TX_COST>
           Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')
       --real-tx-cost <REAL_TX_COST>
@@ -368,6 +370,49 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 -b 
 ```
 
 You can reverse the display order by adding the `--reverse` flag.
+
+### EVM Opcodes tracing
+
+You can trace the EVM opcodes executed by a transaction using the `--ops` flag. This requires enabling tracing with either `--trace rpc` or `--trace revm`:
+
+```bash
+# Trace opcodes using Revm (works on public RPCs)
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --trace revm --ops
+
+# Trace opcodes using RPC (requires debug API access)
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --trace rpc --ops
+```
+
+**Plain text output:**
+```
+PC       OP           COST     GAS_LEFT
+0        PUSH1        3        545253
+2        PUSH1        3        545250
+4        MSTORE       3        545247
+5        CALLVALUE    2        545244
+...
+```
+
+**JSON output:**
+```bash
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --trace revm --ops --format json
+```
+
+```json
+[{
+  "opcodes": [
+    {"pc": 0, "op": "PUSH1", "cost": 3, "gas_left": 545253},
+    {"pc": 2, "op": "PUSH1", "cost": 3, "gas_left": 545250},
+    {"pc": 4, "op": "MSTORE", "cost": 3, "gas_left": 545247}
+  ]
+}]
+```
+
+The opcode trace shows:
+- **PC**: Program counter (position in bytecode)
+- **OP**: Opcode name (e.g., PUSH1, MSTORE, CALL)
+- **COST**: Gas cost of this opcode execution
+- **GAS_LEFT**: Remaining gas after this opcode executes
 
 ## Listing available chains
 

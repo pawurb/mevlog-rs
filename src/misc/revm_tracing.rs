@@ -26,7 +26,7 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 
 use super::shared_init::TraceMode;
-use crate::models::{evm_chain::EVMChain, mev_block::block_cache_key};
+use crate::models::{evm_chain::EVMChain, mev_block::block_cache_key, mev_opcode::MEVOpcode};
 
 pub async fn init_revm_db(
     block_number: u64,
@@ -198,6 +198,55 @@ pub fn revm_tx_calls(
     let txs = &full_trace.trace;
 
     Ok(txs.clone())
+}
+
+pub fn revm_tx_opcodes(
+    tx_hash: FixedBytes<32>,
+    tx_req: &TransactionRequest,
+    block_context: &RevmBlockContext,
+    cache_db: &mut CacheDB<SharedBackend>,
+) -> Result<Vec<MEVOpcode>> {
+    let trace_types = HashSet::from_iter([TraceType::VmTrace]);
+    let mut evm = Context::mainnet().with_db(cache_db);
+    evm.modify_block(|block| {
+        apply_block_env(block, block_context);
+    });
+    evm.modify_tx(|tx_env| {
+        apply_tx_env(tx_env, tx_req);
+    });
+    let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
+        TracingInspectorConfig::from_parity_config(&trace_types),
+    ));
+
+    let tx_env = evm.tx.clone();
+    let res = match evm.inspect_tx(tx_env) {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::warn!("revm_tx_opcodes {tx_hash} failed. {:?}", e);
+            return Ok(vec![]);
+        }
+    };
+
+    let full_trace = evm
+        .into_inspector()
+        .into_parity_builder()
+        .into_trace_results(&res.result, &trace_types);
+
+    let mut opcodes = Vec::new();
+
+    if let Some(vm_trace) = &full_trace.vm_trace {
+        for op in &vm_trace.ops {
+            if let Some(op_str) = &op.op {
+                let pc = op.pc;
+                let cost = op.cost;
+                let gas_left = op.ex.as_ref().map(|ex| ex.used).unwrap_or(0);
+
+                opcodes.push(MEVOpcode::new(pc as u64, op_str.clone(), cost, gas_left));
+            }
+        }
+    }
+
+    Ok(opcodes)
 }
 
 pub fn revm_commit_tx(

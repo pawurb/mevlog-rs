@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     misc::utils::ToU128,
     models::{
-        json::mev_log_group_json::MEVLogGroupJson,
+        json::{mev_log_group_json::MEVLogGroupJson, mev_opcode_json::MEVOpcodeJson},
         mev_transaction::{
             CallExtract, MEVTransaction, calculate_create_address, display_token,
             display_token_and_usd, display_usd, eth_to_usd,
@@ -40,6 +40,8 @@ pub struct MEVTransactionJson {
     pub display_full_tx_cost_usd: Option<String>,
     pub calls: Option<Vec<CallExtract>>,
     pub log_groups: Vec<MEVLogGroupJson>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub opcodes: Option<Vec<MEVOpcodeJson>>,
 }
 
 impl From<&MEVTransaction> for MEVTransactionJson {
@@ -100,6 +102,10 @@ impl From<&MEVTransaction> for MEVTransactionJson {
             gas_used: tx.receipt.gas_used,
             calls: tx.calls.clone(),
             log_groups,
+            opcodes: tx
+                .opcodes
+                .as_ref()
+                .map(|ops| ops.iter().map(MEVOpcodeJson::from).collect()),
         }
     }
 }
