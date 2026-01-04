@@ -45,6 +45,22 @@ impl App {
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             KeyCode::Char('h') | KeyCode::Left => self.load_previous_block(),
             KeyCode::Char('l') | KeyCode::Right => self.load_next_block(),
+            KeyCode::Char('o') => {
+                self.tx_popup_open = !self.tx_popup_open;
+                if !self.tx_popup_open {
+                    self.tx_popup_scroll = 0;
+                }
+            }
+            KeyCode::Esc if self.tx_popup_open => {
+                self.tx_popup_open = false;
+                self.tx_popup_scroll = 0;
+            }
+            KeyCode::Char('n') if self.tx_popup_open => {
+                self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);
+            }
+            KeyCode::Char('m') if self.tx_popup_open => {
+                self.tx_popup_scroll = self.tx_popup_scroll.saturating_sub(1);
+            }
             _ => {}
         }
     }

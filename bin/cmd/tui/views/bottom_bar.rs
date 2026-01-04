@@ -24,11 +24,11 @@ pub fn render_key_bindings(
     area: Rect,
     mode: &AppMode,
     active_tab: Option<Tab>,
-    search_popup_open: bool,
+    popup_open: bool,
 ) {
     let controls_line = match mode {
         AppMode::SelectNetwork => {
-            if search_popup_open {
+            if popup_open {
                 Line::from(vec![
                     " Type to search ".into(),
                     " | Close ".into(),
@@ -49,13 +49,28 @@ pub fn render_key_bindings(
             }
         }
         AppMode::Main => match active_tab {
-            Some(Tab::Explore) => Line::from(vec![
-                NAV_TXS.blue().bold(),
-                NAV_BLOCKS_LABEL.into(),
-                NAV_BLOCKS.blue().bold(),
-                QUIT_LABEL.into(),
-                QUIT.blue().bold(),
-            ]),
+            Some(Tab::Explore) => {
+                if popup_open {
+                    Line::from(vec![
+                        " Scroll ".into(),
+                        "<n/m>".blue().bold(),
+                        " | Close ".into(),
+                        "<Esc/o>".blue().bold(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                } else {
+                    Line::from(vec![
+                        NAV_TXS.blue().bold(),
+                        NAV_BLOCKS_LABEL.into(),
+                        NAV_BLOCKS.blue().bold(),
+                        " | Open ".into(),
+                        "<o>".blue().bold(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                }
+            }
             Some(Tab::Search) => Line::from(vec![
                 NAV_TXS.blue().bold(),
                 NAV_BLOCKS_LABEL.into(),

@@ -21,7 +21,10 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{BlockId, DataRequest, DataResponse, MEVTransactionJson, worker::spawn_data_worker},
-    views::{NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_key_bindings},
+    views::{
+        NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_key_bindings,
+        render_tx_popup,
+    },
 };
 
 const DEFAULT_CHAINS: [(u64, &str, &str); 10] = [
@@ -70,6 +73,8 @@ pub struct App {
     pub(crate) available_chains: Vec<ChainEntryJson>,
     pub(crate) search_query: String,
     pub(crate) search_popup_open: bool,
+    pub(crate) tx_popup_open: bool,
+    pub(crate) tx_popup_scroll: u16,
     pub(crate) conn_opts: ConnOpts,
     pub(crate) active_tab: Tab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
@@ -139,6 +144,8 @@ impl App {
             available_chains,
             search_query: String::new(),
             search_popup_open: false,
+            tx_popup_open: false,
+            tx_popup_scroll: 0,
             conn_opts: conn_opts.clone(),
             active_tab: Tab::Explore,
             selected_chain,
@@ -205,13 +212,26 @@ impl App {
                 match self.active_tab {
                     Tab::Explore => {
                         TxsTable::new(&self.items).render(chunks[2], frame, &mut self.table_state);
+
+                        if self.tx_popup_open
+                            && let Some(idx) = self.table_state.selected()
+                            && let Some(tx) = self.items.get(idx)
+                        {
+                            render_tx_popup(tx, frame.area(), frame, self.tx_popup_scroll);
+                        }
                     }
                     Tab::Search => {
                         SearchView::new().render(chunks[2], frame);
                     }
                 }
 
-                render_key_bindings(frame, chunks[3], &self.mode, Some(self.active_tab), false);
+                render_key_bindings(
+                    frame,
+                    chunks[3],
+                    &self.mode,
+                    Some(self.active_tab),
+                    self.tx_popup_open,
+                );
 
                 if let Some(error_msg) = &self.error_message {
                     self.render_error_popup(frame, error_msg);
@@ -269,11 +289,26 @@ impl App {
         match response {
             DataResponse::Block(block_num, txs) => {
                 self.current_block = Some(block_num);
+                let prev_selection = self.table_state.selected();
                 self.items = txs;
                 self.is_loading = false;
                 self.loading_block = None;
-                self.table_state
-                    .select(if self.items.is_empty() { None } else { Some(0) });
+                self.tx_popup_scroll = 0;
+
+                let new_selection = if self.tx_popup_open
+                    && let Some(prev_idx) = prev_selection
+                {
+                    if self.items.is_empty() {
+                        None
+                    } else {
+                        Some(prev_idx.min(self.items.len() - 1))
+                    }
+                } else if self.items.is_empty() {
+                    None
+                } else {
+                    Some(0)
+                };
+                self.table_state.select(new_selection);
             }
             DataResponse::Tx(_hash, _tx) => {
                 // TODO: handle individual tx updates
