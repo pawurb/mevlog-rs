@@ -56,6 +56,12 @@ pub async fn get_chain_info_no_benchmark(chain_id: u64) -> Result<ChainInfo> {
     Ok(chain)
 }
 
+pub async fn get_chain_id_from_rpc(rpc_url: &str) -> Result<u64> {
+    let provider = init_provider(rpc_url).await?;
+    let chain_id = provider.get_chain_id().await?;
+    Ok(chain_id)
+}
+
 pub async fn get_chain_info(chain_id: u64, timeout_ms: u64, limit: usize) -> Result<ChainInfo> {
     let chains = get_all_chains().await?;
 

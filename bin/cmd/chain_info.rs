@@ -1,8 +1,8 @@
-use eyre::Result;
+use eyre::{Result, bail};
 use mevlog::{
     ChainInfoJson, ChainInfoNoRpcsJson, RpcUrlInfo,
     misc::{
-        rpc_urls::{get_chain_info, get_chain_info_no_benchmark},
+        rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
         shared_init::OutputFormat,
     },
 };
@@ -16,7 +16,10 @@ pub struct ChainInfoArgs {
     pub skip_urls: bool,
 
     #[arg(long, help = "Chain ID to get information for")]
-    pub chain_id: u64,
+    pub chain_id: Option<u64>,
+
+    #[arg(long, help = "RPC URL to derive chain ID from", env = "ETH_RPC_URL")]
+    pub rpc_url: Option<String>,
 
     #[arg(long, help = "RPC timeout in milliseconds", default_value = "1000")]
     pub rpc_timeout_ms: u64,
@@ -27,14 +30,20 @@ pub struct ChainInfoArgs {
 
 impl ChainInfoArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
+        let chain_id = match (self.chain_id, &self.rpc_url) {
+            (Some(id), _) => id,
+            (None, Some(url)) => get_chain_id_from_rpc(url).await?,
+            (None, None) => bail!("Either --chain-id or --rpc-url must be specified"),
+        };
+
         let chain_info_raw = if self.skip_urls {
-            get_chain_info_no_benchmark(self.chain_id).await?
+            get_chain_info_no_benchmark(chain_id).await?
         } else {
-            let info = get_chain_info(self.chain_id, self.rpc_timeout_ms, self.rpcs_limit).await?;
+            let info = get_chain_info(chain_id, self.rpc_timeout_ms, self.rpcs_limit).await?;
             if info.benchmarked_rpc_urls.is_empty() {
                 return Err(eyre::eyre!(
                     "No working RPC URLs found for chain ID {}",
-                    self.chain_id
+                    chain_id
                 ));
             }
             info
@@ -42,7 +51,7 @@ impl ChainInfoArgs {
 
         if self.skip_urls {
             let no_rpcs = ChainInfoNoRpcsJson {
-                chain_id: self.chain_id,
+                chain_id,
                 name: chain_info_raw.name.clone(),
                 currency: chain_info_raw.native_currency.symbol.clone(),
                 explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
@@ -59,7 +68,7 @@ impl ChainInfoArgs {
                 .collect();
 
             let response = ChainInfoJson {
-                chain_id: self.chain_id,
+                chain_id,
                 name: chain_info_raw.name.clone(),
                 currency: chain_info_raw.native_currency.symbol.clone(),
                 explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
