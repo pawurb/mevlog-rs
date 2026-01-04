@@ -31,9 +31,9 @@ use crate::{
         ens_utils::ENSLookup,
         revm_tracing::{
             RevmBlockContext, init_revm_db, revm_cache_path, revm_commit_tx,
-            revm_touching_accounts, revm_tx_calls,
+            revm_touching_accounts, revm_tx_calls, revm_tx_opcodes,
         },
-        rpc_tracing::{rpc_touching_accounts, rpc_tx_calls},
+        rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
         symbol_utils::ERC20SymbolsLookup,
         utils::{ETH_TRANSFER, SEPARATORER, ToU64, UNKNOWN},
@@ -219,6 +219,7 @@ impl MEVBlock {
                 provider,
                 filter.top_metadata,
                 filter.show_calls,
+                filter.show_opcodes,
             );
 
             let mev_tx = hotpath::future!(mev_tx, log = true);
@@ -339,6 +340,11 @@ impl MEVBlock {
             }
             mev_tx.calls = Some(call_extracts);
 
+            if filter.show_opcodes {
+                let opcodes = rpc_tx_opcodes(mev_tx.tx_hash, provider).await?;
+                mev_tx.opcodes = Some(opcodes);
+            }
+
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
                 calls.into_iter().map(TraceData::from).collect(),
@@ -447,6 +453,12 @@ impl MEVBlock {
             }
 
             mev_tx.calls = Some(call_extracts);
+
+            if filter.show_opcodes {
+                let opcodes =
+                    revm_tx_opcodes(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
+                mev_tx.opcodes = Some(opcodes);
+            }
 
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
@@ -624,12 +636,11 @@ impl fmt::Display for MEVBlock {
             return Ok(());
         }
 
-        writeln!(f, "{SEPARATORER}")?;
-
         let mut indexes = self.mev_transactions.keys().collect::<Vec<_>>();
         indexes.sort();
 
         if indexes.is_empty() {
+            writeln!(f, "{SEPARATORER}")?;
             writeln!(
                 f,
                 "{:width$} {}",
@@ -639,6 +650,24 @@ impl fmt::Display for MEVBlock {
             )?;
             return Ok(());
         }
+
+        let show_opcodes_only = indexes
+            .iter()
+            .any(|&&index| self.mev_transactions[&index].show_opcodes);
+
+        if show_opcodes_only {
+            if !self.reversed_order {
+                indexes.reverse();
+            }
+
+            for &index in indexes.iter() {
+                let tx = &self.mev_transactions[index];
+                write!(f, "{tx}")?;
+            }
+            return Ok(());
+        }
+
+        writeln!(f, "{SEPARATORER}")?;
 
         if self.top_metadata {
             writeln!(f, "{SEPARATORER}")?;

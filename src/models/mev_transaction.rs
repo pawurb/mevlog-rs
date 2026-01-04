@@ -18,7 +18,7 @@ use sqlx::SqlitePool;
 
 use super::{
     db_method::DBMethod, mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog,
-    mev_log_group::MEVLogGroup,
+    mev_log_group::MEVLogGroup, mev_opcode::MEVOpcode,
 };
 use crate::{
     GenericProvider,
@@ -83,6 +83,8 @@ pub struct MEVTransaction {
     pub top_metadata: bool,
     pub calls: Option<Vec<CallExtract>>,
     pub show_calls: bool,
+    pub opcodes: Option<Vec<MEVOpcode>>,
+    pub show_opcodes: bool,
 }
 
 // Parquet row:
@@ -164,6 +166,7 @@ impl MEVTransaction {
         provider: &Arc<GenericProvider>,
         top_metadata: bool,
         show_calls: bool,
+        show_opcodes: bool,
     ) -> Result<Self> {
         let (signature_hash, signature) =
             extract_signature(tx_req.input.input.as_ref(), index, tx_req.to, sqlite).await?;
@@ -196,6 +199,8 @@ impl MEVTransaction {
             top_metadata,
             calls: None,
             show_calls,
+            opcodes: None,
+            show_opcodes,
         })
     }
 
@@ -326,6 +331,20 @@ pub async fn extract_signature(
 
 impl fmt::Display for MEVTransaction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.show_opcodes
+            && let Some(opcodes) = &self.opcodes
+        {
+            writeln!(
+                f,
+                "{:<8} {:<16} {:<8} {:<10}",
+                "PC", "OP", "COST", "GAS_LEFT"
+            )?;
+            for opcode in opcodes {
+                writeln!(f, "{}", opcode)?;
+            }
+            return Ok(());
+        }
+
         if !self.top_metadata {
             for log in &self.log_groups {
                 write!(f, "{log}")?;

@@ -40,6 +40,9 @@ pub struct TxArgs {
     )]
     pub top_metadata: bool,
 
+    #[arg(long, help = "Display EVM opcodes executed by the transaction")]
+    pub ops: bool,
+
     #[command(flatten)]
     shared_opts: SharedOpts,
 
@@ -54,6 +57,10 @@ impl TxArgs {
 
         if self.shared_opts.show_calls && self.shared_opts.trace.is_none() {
             eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
+        }
+
+        if self.ops && self.shared_opts.trace.is_none() {
+            eyre::bail!("'--ops' is supported only with --trace [rpc|revm] enabled")
         }
 
         let deps = init_deps(&self.conn_opts).await?;
@@ -106,6 +113,7 @@ impl TxArgs {
             failed: false,
             erc20_transfers: vec![],
             show_erc20_transfer_amount: self.shared_opts.erc20_transfer_amount,
+            show_opcodes: self.ops,
         };
 
         let ens_lookup_mode = if deps.chain.is_mainnet() && self.shared_opts.ens {

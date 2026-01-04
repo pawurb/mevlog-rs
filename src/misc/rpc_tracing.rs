@@ -11,7 +11,7 @@ use alloy::{
 use eyre::Result;
 use revm::primitives::Address;
 
-use crate::GenericProvider;
+use crate::{GenericProvider, models::mev_opcode::MEVOpcode};
 
 #[hotpath::measure(log = true)]
 pub async fn rpc_tx_calls(
@@ -78,6 +78,46 @@ pub async fn rpc_touching_accounts(
     };
 
     Ok(diff_traces.keys().copied().collect())
+}
+
+#[hotpath::measure(log = true)]
+pub async fn rpc_tx_opcodes(
+    tx_hash: TxHash,
+    provider: &Arc<GenericProvider>,
+) -> Result<Vec<MEVOpcode>> {
+    let tracing_opts = GethDebugTracingOptions::default();
+
+    let trace = match provider
+        .debug_trace_transaction(tx_hash, tracing_opts)
+        .await
+    {
+        Ok(trace) => trace,
+        Err(e) => {
+            tracing::error!("Error tracing tx opcodes: {}", e);
+            eyre::bail!("Error tracing tx opcodes: {}", e);
+        }
+    };
+
+    let struct_logs = match trace {
+        GethTrace::Default(default_frame) => default_frame.struct_logs,
+        _ => {
+            tracing::warn!("Unexpected trace type for opcode tracing");
+            return Ok(vec![]);
+        }
+    };
+
+    let mut opcodes = Vec::new();
+
+    for log in struct_logs {
+        opcodes.push(MEVOpcode::new(
+            log.pc,
+            log.op.to_string(),
+            log.gas_cost,
+            log.gas,
+        ));
+    }
+
+    Ok(opcodes)
 }
 
 fn collect_calls(frame: &CallFrame, result: &mut Vec<CallFrame>) {
