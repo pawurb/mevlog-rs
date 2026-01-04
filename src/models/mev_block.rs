@@ -9,7 +9,6 @@ use cacache;
 use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
-use indicatif::{ProgressBar, ProgressStyle};
 use revm::{
     database::CacheDB,
     primitives::{FixedBytes, TxKind, U256},
@@ -27,11 +26,10 @@ use crate::{
     misc::{
         args_parsing::PositionRange,
         coinbase_bribe::{TraceData, find_coinbase_transfer},
-        db_actions::PROGRESS_CHARS,
         ens_utils::ENSLookup,
         revm_tracing::{
-            RevmBlockContext, init_revm_db, revm_cache_path, revm_commit_tx,
-            revm_touching_accounts, revm_tx_calls, revm_tx_opcodes,
+            RevmBlockContext, init_revm_db, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
+            revm_tx_opcodes,
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
@@ -360,10 +358,6 @@ impl MEVBlock {
         Ok(())
     }
 
-    fn revm_data_cached(&self) -> Result<bool> {
-        Ok(revm_cache_path(self.block_number - 1, &self.chain)?.exists())
-    }
-
     async fn trace_txs_revm(
         &mut self,
         filter: &TxsFilter,
@@ -375,19 +369,6 @@ impl MEVBlock {
         }
 
         let total_txs = self.revm_transactions.len() - 1;
-
-        let progress_bar = if !self.revm_data_cached()? {
-            let pb = ProgressBar::new(total_txs as u64);
-            pb.set_style(ProgressStyle::default_bar()
-        .template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})")
-        .unwrap()
-        .progress_chars(PROGRESS_CHARS));
-
-            pb.set_message(format!("Revm: executing transactions 0-{total_txs},").to_string());
-            Some(pb)
-        } else {
-            None
-        };
 
         for tx_index in 0..=total_txs {
             let mev_tx_data = self.mev_transactions.get(&(tx_index as u64));
@@ -404,10 +385,6 @@ impl MEVBlock {
                 Some(tx_data) => tx_data,
                 None => continue,
             };
-
-            if let Some(pb) = &progress_bar {
-                pb.set_position(tx_index);
-            }
 
             let Some(mev_tx) = self.mev_transactions.get_mut(&tx_index) else {
                 revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
@@ -472,10 +449,6 @@ impl MEVBlock {
             }
 
             revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
-        }
-
-        if let Some(pb) = progress_bar {
-            pb.finish_with_message("Revm trace complete");
         }
 
         Ok(())

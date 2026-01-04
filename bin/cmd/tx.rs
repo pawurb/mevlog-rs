@@ -13,6 +13,14 @@ use mevlog::{
     models::{mev_block::generate_block, txs_filter::TxsFilter},
 };
 use revm::primitives::FixedBytes;
+use serde::Deserialize;
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MinimalTxInfo {
+    block_number: Option<String>,
+    transaction_index: Option<String>,
+}
 
 #[derive(Debug, clap::Parser)]
 pub struct TxArgs {
@@ -64,13 +72,24 @@ impl TxArgs {
         }
 
         let deps = init_deps(&self.conn_opts).await?;
-        let tx = deps.provider.get_transaction_by_hash(self.tx_hash).await?;
-        let tx = tx.ok_or_else(|| eyre!("tx {} not found", self.tx_hash))?;
 
-        let block_number = tx.block_number.expect("commited tx must have block number");
-        let Some(tx_index) = tx.transaction_index else {
-            eyre::bail!("tx index must be present");
-        };
+        let tx_info: MinimalTxInfo = deps
+            .provider
+            .client()
+            .request("eth_getTransactionByHash", (self.tx_hash,))
+            .await?;
+
+        let block_number = tx_info
+            .block_number
+            .ok_or_else(|| eyre!("transaction not found or not mined"))?;
+        let tx_index = tx_info
+            .transaction_index
+            .ok_or_else(|| eyre!("transaction index not found"))?;
+
+        let (block_number, tx_index) = (
+            u64::from_str_radix(block_number.trim_start_matches("0x"), 16)?,
+            u64::from_str_radix(tx_index.trim_start_matches("0x"), 16)?,
+        );
 
         let tx_indexes = get_matching_indexes(tx_index, self.before, self.after);
 
