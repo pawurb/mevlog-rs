@@ -4,7 +4,7 @@ use alloy::{
     consensus::BlockHeader,
     eips::{BlockId, BlockNumberOrTag, calc_blob_gasprice, eip2930::AccessList},
     network::{AnyNetwork, AnyRpcBlock},
-    primitives::Bytes,
+    primitives::{Bytes, address},
     providers::{Provider, ProviderBuilder},
     rpc::types::{
         AccessList as AlloyAccessList, Block, TransactionRequest,
@@ -108,7 +108,7 @@ pub fn revm_touching_accounts(
         apply_block_env(block, block_context);
     });
     evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req);
+        apply_tx_env(tx_env, tx_req, block_context);
     });
     let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
         TracingInspectorConfig::from_parity_config(&trace_types),
@@ -137,7 +137,7 @@ fn _revm_call_tx(
         apply_block_env(block, block_context);
     });
     evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req);
+        apply_tx_env(tx_env, tx_req, block_context);
     });
     let mut evm = evm.build_mainnet();
 
@@ -175,7 +175,7 @@ pub fn revm_tx_calls(
         apply_block_env(block, block_context);
     });
     evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req);
+        apply_tx_env(tx_env, tx_req, block_context);
     });
     let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
         TracingInspectorConfig::from_parity_config(&trace_types),
@@ -212,7 +212,7 @@ pub fn revm_tx_opcodes(
         apply_block_env(block, block_context);
     });
     evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req);
+        apply_tx_env(tx_env, tx_req, block_context);
     });
     let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
         TracingInspectorConfig::from_parity_config(&trace_types),
@@ -260,7 +260,7 @@ pub fn revm_commit_tx(
         apply_block_env(block, block_context);
     });
     evm.modify_tx(|tx| {
-        apply_tx_env(tx, tx_req);
+        apply_tx_env(tx, tx_req, block_context);
     });
     let mut evm = evm.build_mainnet();
 
@@ -287,6 +287,8 @@ pub fn revm_commit_tx(
     Ok(())
 }
 
+const OP_STACK_DEPOSIT_ADDRESS: Address = address!("deaddeaddeaddeaddeaddeaddeaddeaddead0001");
+
 fn apply_block_env(block_env: &mut BlockEnv, block_context: &RevmBlockContext) {
     block_env.number = U256::from(block_context.number);
     block_env.timestamp = U256::from(block_context.timestamp);
@@ -305,7 +307,7 @@ fn apply_block_env(block_env: &mut BlockEnv, block_context: &RevmBlockContext) {
     }
 }
 
-fn apply_tx_env(tx_env: &mut TxEnv, tx_req: &TransactionRequest) {
+fn apply_tx_env(tx_env: &mut TxEnv, tx_req: &TransactionRequest, block_context: &RevmBlockContext) {
     tx_env.caller = tx_req.from.expect("from must be set");
     tx_env.kind = match tx_req.to {
         Some(to) => match to {
@@ -317,9 +319,18 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: &TransactionRequest) {
     tx_env.data = tx_req.input.input.clone().expect("data must be set");
     tx_env.value = tx_req.value.unwrap_or(U256::ZERO);
     tx_env.gas_limit = tx_req.gas.unwrap_or(21000);
-    // For EIP-1559 transactions, gas_price should be set to max_fee_per_gas
-    // If max_fee_per_gas is 0, fall back to gas_price
-    tx_env.gas_price = if let Some(max_fee) = tx_req.max_fee_per_gas {
+
+    // Gas price determination:
+    // - OP Stack deposit txs (from depositor address with zero gas prices): use block basefee
+    // - EIP-1559 txs (max_fee_per_gas set): use max_fee_per_gas, fallback to gas_price if zero
+    // - Legacy txs (gas_price set): use gas_price
+    // - Invalid: panic if neither max_fee_per_gas nor gas_price is provided
+    tx_env.gas_price = if tx_req.from == Some(OP_STACK_DEPOSIT_ADDRESS)
+        && tx_req.max_fee_per_gas.unwrap_or(0) == 0
+        && tx_req.gas_price.unwrap_or(0) == 0
+    {
+        block_context.basefee.to::<u128>().max(1)
+    } else if let Some(max_fee) = tx_req.max_fee_per_gas {
         if max_fee == 0 {
             tx_req.gas_price.unwrap_or(0)
         } else {
@@ -328,7 +339,7 @@ fn apply_tx_env(tx_env: &mut TxEnv, tx_req: &TransactionRequest) {
     } else if let Some(gas_price) = tx_req.gas_price {
         gas_price
     } else {
-        panic!("Transaction must have either gas_price or max_fee_per_gas");
+        panic!("Transaction must have either gas_price or max_fee_per_gas")
     };
 
     tx_env.nonce = tx_req.nonce.unwrap_or(0);
