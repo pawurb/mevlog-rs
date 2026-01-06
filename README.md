@@ -3,8 +3,6 @@
  
 ![Big bribe](big-bribe-tx2.png)
 
-**The project is currently taking part in [Gitcoin Grants](https://giveth.io/project/mevlog-rs-evm-transactions-querying-powered-by-revm).**
-
 Rust-based CLI tool for querying Ethereum (or any EVM-compatible chain) transactions, with flexible filtering and EVM tracing capabilities. 
 
 When working on an MEV bot, I could not find a simple way to search for specific transactions. I wrote one-off query scripts, and wanted to generalize them in an easy to reuse tool. So I started building `mevlog` to work as an _"SQL for blockchain"_. 
@@ -569,5 +567,3 @@ In another terminal:
 cargo install hotpath --features=tui
 hotpath console
 ```
-
-
