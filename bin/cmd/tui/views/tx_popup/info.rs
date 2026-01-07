@@ -3,49 +3,20 @@ use ratatui::{
     Frame,
     layout::Rect,
     style::{Color, Modifier, Style},
-    symbols::border,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph, Wrap},
+    widgets::{Paragraph, Wrap},
 };
 
 use crate::cmd::tui::data::MEVTransactionJson;
 
 const LABEL_WIDTH: usize = 19;
 
-pub fn render_tx_popup(tx: &MEVTransactionJson, area: Rect, frame: &mut Frame, scroll: u16) {
-    let popup_width = (area.width as f32 * 0.8) as u16;
-    let popup_height = (area.height as f32 * 0.8) as u16;
-    let x = (area.width.saturating_sub(popup_width)) / 2;
-    let y = (area.height.saturating_sub(popup_height)) / 2;
-
-    let popup_area = Rect {
-        x: area.x + x,
-        y: area.y + y,
-        width: popup_width,
-        height: popup_height,
-    };
-
-    frame.render_widget(Clear, popup_area);
-
-    let title = format!(" Transaction 0x{} ", tx.tx_hash);
-
-    let block = Block::bordered()
-        .title(title)
-        .title_style(
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        )
-        .border_set(border::DOUBLE);
-
-    let inner_area = block.inner(popup_area);
-    frame.render_widget(block, popup_area);
-
+pub fn render_info_tab(tx: &MEVTransactionJson, area: Rect, frame: &mut Frame, scroll: u16) {
     let lines = build_tx_lines(tx);
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
-    frame.render_widget(paragraph, inner_area);
+    frame.render_widget(paragraph, area);
 }
 
 fn build_tx_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {

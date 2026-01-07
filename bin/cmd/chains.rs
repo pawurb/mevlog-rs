@@ -54,6 +54,7 @@ impl ChainsArgs {
                 chain_id: chain.chain_id,
                 name: chain.name.clone(),
                 chain: chain.chain.clone(),
+                explorer_url: chain.explorers.first().map(|e| e.url.clone()),
             })
             .collect();
 

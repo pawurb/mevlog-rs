@@ -3,7 +3,7 @@
 use crossbeam_channel::Sender;
 use crossterm::event::{self, KeyCode};
 
-use super::{App, AppMode, Tab};
+use super::{App, AppMode, PrimaryTab, TxPopupTab};
 use crate::cmd::tui::app::AppEvent;
 
 impl App {
@@ -23,15 +23,19 @@ impl App {
         match key_code {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
 
-            KeyCode::Char('1') => self.switch_to_tab(Tab::Explore),
-            KeyCode::Char('2') => self.switch_to_tab(Tab::Search),
+            KeyCode::Char('1') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Info,
+            KeyCode::Char('2') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Opcodes,
+            KeyCode::Char('3') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Traces,
+
+            KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
+            KeyCode::Char('2') => self.switch_to_tab(PrimaryTab::Search),
             KeyCode::Tab => self.cycle_tab(),
 
-            _ if self.active_tab == Tab::Explore => {
+            _ if self.active_tab == PrimaryTab::Explore => {
                 self.handle_explore_keys(key_code);
             }
 
-            _ if self.active_tab == Tab::Search => {
+            _ if self.active_tab == PrimaryTab::Search => {
                 // TODO: WIP
             }
 
@@ -49,11 +53,13 @@ impl App {
                 self.tx_popup_open = !self.tx_popup_open;
                 if !self.tx_popup_open {
                     self.tx_popup_scroll = 0;
+                    self.tx_popup_tab = TxPopupTab::default();
                 }
             }
             KeyCode::Esc if self.tx_popup_open => {
                 self.tx_popup_open = false;
                 self.tx_popup_scroll = 0;
+                self.tx_popup_tab = TxPopupTab::default();
             }
             KeyCode::Char('n') if self.tx_popup_open => {
                 self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);

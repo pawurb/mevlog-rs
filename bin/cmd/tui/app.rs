@@ -27,17 +27,17 @@ use crate::cmd::tui::{
     },
 };
 
-const DEFAULT_CHAINS: [(u64, &str, &str); 10] = [
-    (1, "Ethereum Mainnet", "ETH"),
-    (10, "OP Mainnet", "ETH"),
-    (56, "BNB Smart Chain Mainnet", "BSC"),
-    (130, "Unichain", "ETH"),
-    (137, "Polygon Mainnet", "Polygon"),
-    (324, "zkSync Mainnet", "ETH"),
-    (8453, "Base", "ETH"),
-    (42161, "Arbitrum One", "ETH"),
-    (43114, "Avalanche C-Chain", "AVAX"),
-    (534352, "Scroll Mainnet", "ETH"),
+const DEFAULT_CHAINS: [(u64, &str, &str, &str); 10] = [
+    (1, "Ethereum Mainnet", "ETH", "https://etherscan.io"),
+    (10, "OP Mainnet", "ETH", "https://optimistic.etherscan.io"),
+    (56, "BNB Smart Chain Mainnet", "BSC", "https://bscscan.com"),
+    (130, "Unichain", "ETH", "https://unichain.blockscout.com"),
+    (137, "Polygon Mainnet", "Polygon", "https://polygonscan.com"),
+    (324, "zkSync Mainnet", "ETH", "https://era.zksync.network"),
+    (8453, "Base", "ETH", "https://basescan.org"),
+    (42161, "Arbitrum One", "ETH", "https://arbiscan.io"),
+    (43114, "Avalanche C-Chain", "AVAX", "https://snowtrace.io"),
+    (534352, "Scroll Mainnet", "ETH", "https://scrollscan.com"),
 ];
 
 #[derive(Debug, Clone, PartialEq)]
@@ -47,9 +47,17 @@ pub(crate) enum AppMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum Tab {
+pub(crate) enum PrimaryTab {
     Explore,
     Search,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub(crate) enum TxPopupTab {
+    #[default]
+    Info,
+    Opcodes,
+    Traces,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -75,8 +83,9 @@ pub struct App {
     pub(crate) search_popup_open: bool,
     pub(crate) tx_popup_open: bool,
     pub(crate) tx_popup_scroll: u16,
+    pub(crate) tx_popup_tab: TxPopupTab,
     pub(crate) conn_opts: ConnOpts,
-    pub(crate) active_tab: Tab,
+    pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
     state_tx: Sender<AppEvent>,
 }
@@ -97,11 +106,12 @@ impl App {
         let selected_chain = conn_opts.chain_id.and_then(|chain_id| {
             DEFAULT_CHAINS
                 .iter()
-                .find(|(id, _, _)| *id == chain_id)
-                .map(|(id, name, chain)| ChainEntryJson {
+                .find(|(id, _, _, _)| *id == chain_id)
+                .map(|(id, name, chain, explorer)| ChainEntryJson {
                     chain_id: *id,
                     name: name.to_string(),
                     chain: chain.to_string(),
+                    explorer_url: Some(explorer.to_string()),
                 })
         });
 
@@ -119,10 +129,11 @@ impl App {
         let available_chains = if mode == AppMode::SelectNetwork {
             DEFAULT_CHAINS
                 .iter()
-                .map(|(id, name, chain)| ChainEntryJson {
+                .map(|(id, name, chain, explorer)| ChainEntryJson {
                     chain_id: *id,
                     name: name.to_string(),
                     chain: chain.to_string(),
+                    explorer_url: Some(explorer.to_string()),
                 })
                 .collect()
         } else {
@@ -150,8 +161,9 @@ impl App {
             search_popup_open: false,
             tx_popup_open: false,
             tx_popup_scroll: 0,
+            tx_popup_tab: TxPopupTab::default(),
             conn_opts: conn_opts.clone(),
-            active_tab: Tab::Explore,
+            active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
         }
@@ -214,17 +226,28 @@ impl App {
                 .render(chunks[1], frame);
 
                 match self.active_tab {
-                    Tab::Explore => {
+                    PrimaryTab::Explore => {
                         TxsTable::new(&self.items).render(chunks[2], frame, &mut self.table_state);
 
                         if self.tx_popup_open
                             && let Some(idx) = self.table_state.selected()
                             && let Some(tx) = self.items.get(idx)
                         {
-                            render_tx_popup(tx, frame.area(), frame, self.tx_popup_scroll);
+                            let explorer_url = self
+                                .selected_chain
+                                .as_ref()
+                                .and_then(|c| c.explorer_url.clone());
+                            render_tx_popup(
+                                tx,
+                                frame.area(),
+                                frame,
+                                self.tx_popup_scroll,
+                                self.tx_popup_tab,
+                                explorer_url.as_deref(),
+                            );
                         }
                     }
-                    Tab::Search => {
+                    PrimaryTab::Search => {
                         SearchView::new().render(chunks[2], frame);
                     }
                 }

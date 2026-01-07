@@ -127,6 +127,7 @@ pub(crate) fn spawn_data_worker(
                                             chain_id,
                                             name: chain_info.name,
                                             chain: chain_info.chain,
+                                            explorer_url: chain_info.explorers.first().map(|e| e.url.clone()),
                                         };
                                         let _ =
                                             tx.send(AppEvent::Data(DataResponse::ChainInfo(entry)));
@@ -137,6 +138,7 @@ pub(crate) fn spawn_data_worker(
                                             chain_id,
                                             name: format!("Chain {chain_id}"),
                                             chain: "Unknown".to_string(),
+                                            explorer_url: None,
                                         };
                                         let _ =
                                             tx.send(AppEvent::Data(DataResponse::ChainInfo(entry)));

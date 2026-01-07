@@ -58,9 +58,11 @@ pub struct ChainInfoNoRpcsJson {
     pub explorer_url: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainEntryJson {
     pub chain_id: u64,
     pub name: String,
     pub chain: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explorer_url: Option<String>,
 }

@@ -1,4 +1,4 @@
-use crate::cmd::tui::app::{AppMode, Tab};
+use crate::cmd::tui::app::{AppMode, PrimaryTab};
 use ratatui::{
     Frame,
     layout::Rect,
@@ -23,7 +23,7 @@ pub fn render_key_bindings(
     frame: &mut Frame,
     area: Rect,
     mode: &AppMode,
-    active_tab: Option<Tab>,
+    active_tab: Option<PrimaryTab>,
     popup_open: bool,
 ) {
     let controls_line = match mode {
@@ -49,10 +49,12 @@ pub fn render_key_bindings(
             }
         }
         AppMode::Main => match active_tab {
-            Some(Tab::Explore) => {
+            Some(PrimaryTab::Explore) => {
                 if popup_open {
                     Line::from(vec![
-                        " Scroll ".into(),
+                        "[1-3] ".blue().bold(),
+                        "Tabs".into(),
+                        " | Scroll ".into(),
                         "<n/m>".blue().bold(),
                         " | Close ".into(),
                         "<Esc/o>".blue().bold(),
@@ -71,7 +73,7 @@ pub fn render_key_bindings(
                     ])
                 }
             }
-            Some(Tab::Search) => Line::from(vec![
+            Some(PrimaryTab::Search) => Line::from(vec![
                 NAV_TXS.blue().bold(),
                 NAV_BLOCKS_LABEL.into(),
                 NAV_BLOCKS.blue().bold(),

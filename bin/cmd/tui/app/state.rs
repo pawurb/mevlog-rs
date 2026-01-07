@@ -58,10 +58,11 @@ impl App {
         if self.search_query.is_empty() {
             self.available_chains = DEFAULT_CHAINS
                 .iter()
-                .map(|(id, name, chain)| ChainEntryJson {
+                .map(|(id, name, chain, explorer)| ChainEntryJson {
                     chain_id: *id,
                     name: name.to_string(),
                     chain: chain.to_string(),
+                    explorer_url: Some(explorer.to_string()),
                 })
                 .collect();
             self.is_loading = false;
@@ -77,11 +78,7 @@ impl App {
         if let Some(selected_idx) = self.network_table_state.selected()
             && let Some(chain) = self.available_chains.get(selected_idx)
         {
-            self.selected_chain = Some(ChainEntryJson {
-                chain_id: chain.chain_id,
-                name: chain.name.clone(),
-                chain: chain.chain.clone(),
-            });
+            self.selected_chain = Some(chain.clone());
             self.conn_opts.chain_id = Some(chain.chain_id);
 
             let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();

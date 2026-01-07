@@ -6,19 +6,22 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-use crate::cmd::tui::app::Tab;
+use crate::cmd::tui::app::PrimaryTab;
 
 pub struct TabBar {
-    active_tab: Tab,
+    active_tab: PrimaryTab,
 }
 
 impl TabBar {
-    pub fn new(active_tab: Tab) -> Self {
+    pub fn new(active_tab: PrimaryTab) -> Self {
         Self { active_tab }
     }
 
     pub fn render(&self, area: Rect, frame: &mut Frame) {
-        let tabs = [(Tab::Explore, "1", "Explore"), (Tab::Search, "2", "Search")];
+        let tabs = [
+            (PrimaryTab::Explore, "1", "Explore"),
+            (PrimaryTab::Search, "2", "Search"),
+        ];
 
         let mut spans = Vec::new();
 
