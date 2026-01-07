@@ -10,6 +10,7 @@ pub(crate) enum DataRequest {
     Block(BlockId),
     Tx(String),
     Chains(Option<String>),
+    ChainInfo(String),
 }
 
 pub(crate) enum BlockId {
@@ -22,5 +23,6 @@ pub(crate) enum DataResponse {
     Block(u64, Vec<MEVTransactionJson>),
     Tx(String, MEVTransactionJson),
     Chains(Vec<ChainEntryJson>),
+    ChainInfo(ChainEntryJson),
     Error(String),
 }

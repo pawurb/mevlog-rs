@@ -1,5 +1,13 @@
+use std::collections::HashMap;
+
 use crossbeam_channel::{Receiver, Sender};
-use mevlog::misc::shared_init::ConnOpts;
+use mevlog::{
+    ChainEntryJson,
+    misc::{
+        rpc_urls::{get_chain_id_from_rpc, get_chain_info_no_benchmark},
+        shared_init::ConnOpts,
+    },
+};
 use tokio::{runtime::Runtime, task::JoinHandle};
 use tracing::{debug, error, info};
 
@@ -7,6 +15,25 @@ use crate::cmd::tui::{
     app::AppEvent,
     data::{BlockId, DataRequest, DataResponse, chains::fetch_chains, txs::fetch_txs},
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum RequestKey {
+    Block,
+    Tx,
+    Chains,
+    ChainInfo,
+}
+
+impl DataRequest {
+    fn key(&self) -> RequestKey {
+        match self {
+            DataRequest::Block(_) => RequestKey::Block,
+            DataRequest::Tx(_) => RequestKey::Tx,
+            DataRequest::Chains(_) => RequestKey::Chains,
+            DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
+        }
+    }
+}
 
 pub(crate) fn spawn_data_worker(
     data_req_rx: Receiver<DataRequest>,
@@ -16,20 +43,21 @@ pub(crate) fn spawn_data_worker(
     let conn_opts = conn_opts.clone();
     std::thread::spawn(move || {
         let rt = Runtime::new().expect("tokio runtime");
-        let mut current: Option<JoinHandle<()>> = None;
+        let mut active_tasks: HashMap<RequestKey, JoinHandle<()>> = HashMap::new();
 
         while let Ok(cmd) = data_req_rx.recv() {
-            if let Some(h) = current.take() {
+            let key = cmd.key();
+            if let Some(h) = active_tasks.remove(&key) {
                 h.abort();
             }
 
-            match cmd {
+            let handle = match cmd {
                 DataRequest::Block(BlockId::Latest) => {
                     info!("fetching latest block");
                     let tx = event_tx.clone();
                     let rpc_url = conn_opts.rpc_url.clone();
                     let chain_id = conn_opts.chain_id;
-                    current = Some(rt.spawn(async move {
+                    rt.spawn(async move {
                         match fetch_txs("latest", rpc_url, chain_id).await {
                             Ok(block_data) => {
                                 let block_num =
@@ -44,7 +72,7 @@ pub(crate) fn spawn_data_worker(
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }
-                    }));
+                    })
                 }
 
                 DataRequest::Block(BlockId::Number(block)) => {
@@ -52,7 +80,7 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let rpc_url = conn_opts.rpc_url.clone();
                     let chain_id = conn_opts.chain_id;
-                    current = Some(rt.spawn(async move {
+                    rt.spawn(async move {
                         match fetch_txs(block.to_string().as_str(), rpc_url, chain_id).await {
                             Ok(block_data) => {
                                 debug!(block, txs = block_data.len(), "fetched block");
@@ -64,17 +92,15 @@ pub(crate) fn spawn_data_worker(
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }
-                    }));
+                    })
                 }
 
-                DataRequest::Tx(_tx_hash) => {
-                    current = Some(rt.spawn(async move { todo!() }));
-                }
+                DataRequest::Tx(_tx_hash) => rt.spawn(async move { todo!() }),
 
                 DataRequest::Chains(filter) => {
                     info!(?filter, "fetching chains");
                     let tx = event_tx.clone();
-                    current = Some(rt.spawn(async move {
+                    rt.spawn(async move {
                         match fetch_chains(filter).await {
                             Ok(chains) => {
                                 debug!(count = chains.len(), "fetched chains");
@@ -85,9 +111,48 @@ pub(crate) fn spawn_data_worker(
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }
-                    }));
+                    })
                 }
-            }
+
+                DataRequest::ChainInfo(rpc_url) => {
+                    info!(%rpc_url, "fetching chain info from RPC");
+                    let tx = event_tx.clone();
+                    rt.spawn(async move {
+                        match get_chain_id_from_rpc(&rpc_url).await {
+                            Ok(chain_id) => {
+                                debug!(chain_id, "got chain_id from RPC");
+                                match get_chain_info_no_benchmark(chain_id).await {
+                                    Ok(chain_info) => {
+                                        let entry = ChainEntryJson {
+                                            chain_id,
+                                            name: chain_info.name,
+                                            chain: chain_info.chain,
+                                        };
+                                        let _ =
+                                            tx.send(AppEvent::Data(DataResponse::ChainInfo(entry)));
+                                    }
+                                    Err(e) => {
+                                        debug!(chain_id, error = %e, "chain not in ChainList, using fallback");
+                                        let entry = ChainEntryJson {
+                                            chain_id,
+                                            name: format!("Chain {chain_id}"),
+                                            chain: "Unknown".to_string(),
+                                        };
+                                        let _ =
+                                            tx.send(AppEvent::Data(DataResponse::ChainInfo(entry)));
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!(error = %e, "failed to get chain_id from RPC");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                        }
+                    })
+                }
+            };
+
+            active_tasks.insert(key, handle);
         }
     })
 }

@@ -110,6 +110,10 @@ impl App {
 
         if mode == AppMode::Main {
             let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
+            if conn_opts.rpc_url.is_some() && conn_opts.chain_id.is_none() {
+                let _ =
+                    data_req_tx.send(DataRequest::ChainInfo(conn_opts.rpc_url.clone().unwrap()));
+            }
         }
 
         let available_chains = if mode == AppMode::SelectNetwork {
@@ -320,6 +324,9 @@ impl App {
                 if !self.available_chains.is_empty() {
                     self.network_table_state.select(Some(0));
                 }
+            }
+            DataResponse::ChainInfo(chain) => {
+                self.selected_chain = Some(chain);
             }
             DataResponse::Error(error_msg) => {
                 self.is_loading = false;
