@@ -96,4 +96,28 @@ impl App {
             self.search_query.clear();
         }
     }
+
+    pub(crate) fn request_opcodes_if_needed(&mut self) {
+        if let Some(idx) = self.table_state.selected()
+            && let Some(tx) = self.items.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.opcodes = None;
+            self.opcodes_loading = true;
+            self.opcodes_tx_hash = Some(tx_hash.clone());
+
+            let _ = self.data_req_tx.send(DataRequest::Opcodes(tx_hash));
+        }
+    }
+
+    pub(crate) fn clear_opcodes(&mut self) {
+        self.opcodes = None;
+        self.opcodes_loading = false;
+        self.opcodes_tx_hash = None;
+    }
 }

@@ -24,7 +24,10 @@ impl App {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
 
             KeyCode::Char('1') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Info,
-            KeyCode::Char('2') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Opcodes,
+            KeyCode::Char('2') if self.tx_popup_open => {
+                self.tx_popup_tab = TxPopupTab::Opcodes;
+                self.request_opcodes_if_needed();
+            }
             KeyCode::Char('3') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Traces,
 
             KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
@@ -45,21 +48,39 @@ impl App {
 
     fn handle_explore_keys(&mut self, key_code: KeyCode) {
         match key_code {
-            KeyCode::Char('j') | KeyCode::Down => self.select_next(),
-            KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
-            KeyCode::Char('h') | KeyCode::Left => self.load_previous_block(),
-            KeyCode::Char('l') | KeyCode::Right => self.load_next_block(),
+            KeyCode::Char('j') | KeyCode::Down => {
+                self.select_next();
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
+                    self.request_opcodes_if_needed();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                self.select_previous();
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
+                    self.request_opcodes_if_needed();
+                }
+            }
+            KeyCode::Char('h') | KeyCode::Left => {
+                self.clear_opcodes();
+                self.load_previous_block();
+            }
+            KeyCode::Char('l') | KeyCode::Right => {
+                self.clear_opcodes();
+                self.load_next_block();
+            }
             KeyCode::Char('o') => {
                 self.tx_popup_open = !self.tx_popup_open;
                 if !self.tx_popup_open {
                     self.tx_popup_scroll = 0;
                     self.tx_popup_tab = TxPopupTab::default();
+                    self.clear_opcodes();
                 }
             }
             KeyCode::Esc if self.tx_popup_open => {
                 self.tx_popup_open = false;
                 self.tx_popup_scroll = 0;
                 self.tx_popup_tab = TxPopupTab::default();
+                self.clear_opcodes();
             }
             KeyCode::Char('n') if self.tx_popup_open => {
                 self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);

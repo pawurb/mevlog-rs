@@ -13,7 +13,11 @@ use tracing::{debug, error, info};
 
 use crate::cmd::tui::{
     app::AppEvent,
-    data::{BlockId, DataRequest, DataResponse, chains::fetch_chains, txs::fetch_txs},
+    data::{
+        BlockId, DataRequest, DataResponse,
+        chains::fetch_chains,
+        txs::{fetch_opcodes, fetch_txs},
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -22,6 +26,7 @@ enum RequestKey {
     Tx,
     Chains,
     ChainInfo,
+    Opcodes,
 }
 
 impl DataRequest {
@@ -31,6 +36,7 @@ impl DataRequest {
             DataRequest::Tx(_) => RequestKey::Tx,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
+            DataRequest::Opcodes(_) => RequestKey::Opcodes,
         }
     }
 }
@@ -96,6 +102,27 @@ pub(crate) fn spawn_data_worker(
                 }
 
                 DataRequest::Tx(_tx_hash) => rt.spawn(async move { todo!() }),
+
+                DataRequest::Opcodes(tx_hash) => {
+                    info!(%tx_hash, "fetching opcodes");
+                    let tx = event_tx.clone();
+                    let rpc_url = conn_opts.rpc_url.clone();
+                    let chain_id = conn_opts.chain_id;
+                    let hash = tx_hash.clone();
+                    rt.spawn(async move {
+                        match fetch_opcodes(&hash, rpc_url, chain_id).await {
+                            Ok(opcodes) => {
+                                debug!(tx_hash = %hash, count = opcodes.len(), "fetched opcodes");
+                                let _ =
+                                    tx.send(AppEvent::Data(DataResponse::Opcodes(hash, opcodes)));
+                            }
+                            Err(e) => {
+                                error!(tx_hash = %hash, error = %e, "failed to fetch opcodes");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                        }
+                    })
+                }
 
                 DataRequest::Chains(filter) => {
                     info!(?filter, "fetching chains");
