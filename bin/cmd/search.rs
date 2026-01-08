@@ -225,13 +225,12 @@ impl SearchArgs {
                     &deps.sqlite,
                     block_number,
                     &ens_lookup,
-                    &symbols_lookup,
                     &txs_filter,
                     &self.shared_opts,
                     &deps.chain,
                     &deps.rpc_url,
                     native_token_price,
-                    Some(pre_fetched),
+                    pre_fetched,
                 )
                 .await?;
 

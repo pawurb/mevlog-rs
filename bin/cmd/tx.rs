@@ -10,7 +10,10 @@ use mevlog::{
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
-    models::{mev_block::generate_block, txs_filter::TxsFilter},
+    models::{
+        mev_block::{PreFetchedBlockData, fetch_blocks_batch, generate_block},
+        txs_filter::TxsFilter,
+    },
 };
 use revm::primitives::FixedBytes;
 use serde::Deserialize;
@@ -148,18 +151,40 @@ impl TxArgs {
             self.shared_opts.erc20_symbols,
         );
 
+        let batch_data = fetch_blocks_batch(
+            block_number,
+            block_number,
+            &deps.chain,
+            &deps.sqlite,
+            &symbols_lookup,
+            txs_filter.show_erc20_transfer_amount,
+        )
+        .await?;
+
+        let pre_fetched = PreFetchedBlockData {
+            txs_data: batch_data
+                .txs_by_block
+                .get(&block_number)
+                .cloned()
+                .unwrap_or_default(),
+            logs_data: batch_data
+                .logs_by_block
+                .get(&block_number)
+                .cloned()
+                .unwrap_or_default(),
+        };
+
         let mev_block = generate_block(
             &deps.provider,
             &deps.sqlite,
             block_number,
             &ens_lookup_mode,
-            &symbols_lookup,
             &txs_filter,
             &self.shared_opts,
             &deps.chain,
             &deps.rpc_url,
             native_token_price,
-            None,
+            pre_fetched,
         )
         .await?;
 

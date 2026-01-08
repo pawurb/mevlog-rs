@@ -9,7 +9,7 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
-        mev_block::generate_block,
+        mev_block::{PreFetchedBlockData, fetch_blocks_batch, generate_block},
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
 };
@@ -66,18 +66,41 @@ impl WatchArgs {
                 continue;
             }
             current_block_number = new_block_number;
+
+            let batch_data = fetch_blocks_batch(
+                current_block_number,
+                current_block_number,
+                &deps.chain,
+                &deps.sqlite,
+                &symbols_lookup,
+                txs_filter.show_erc20_transfer_amount,
+            )
+            .await?;
+
+            let pre_fetched = PreFetchedBlockData {
+                txs_data: batch_data
+                    .txs_by_block
+                    .get(&current_block_number)
+                    .cloned()
+                    .unwrap_or_default(),
+                logs_data: batch_data
+                    .logs_by_block
+                    .get(&current_block_number)
+                    .cloned()
+                    .unwrap_or_default(),
+            };
+
             let mev_block = generate_block(
                 &deps.provider,
                 &deps.sqlite,
                 current_block_number,
                 &ens_lookup,
-                &symbols_lookup,
                 &txs_filter,
                 &self.shared_opts,
                 &deps.chain,
                 &deps.rpc_url,
                 native_token_price,
-                None,
+                pre_fetched,
             )
             .await?;
 
