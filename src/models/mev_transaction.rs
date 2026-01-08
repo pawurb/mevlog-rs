@@ -114,9 +114,12 @@ impl MEVTransaction {
     pub async fn tx_data_from_parquet_row(
         batch: &arrow::record_batch::RecordBatch,
         row_idx: usize,
-    ) -> Result<TxData> {
+    ) -> Result<(TxData, u64)> {
         let get_string_value =
             |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+
+        let block_number = get_string_value(0).parse::<u64>().unwrap();
+
         let to_address_str = get_string_value(5);
         let to_address = if to_address_str == "0x" || to_address_str.is_empty() {
             TxKind::Create
@@ -142,15 +145,18 @@ impl MEVTransaction {
             ..Default::default()
         };
 
-        Ok(TxData {
-            req: inner,
-            tx_hash,
-            receipt: ReceiptData {
-                success: get_string_value(16).parse::<bool>().unwrap(),
-                effective_gas_price: get_string_value(12).parse::<u128>().unwrap(),
-                gas_used: get_string_value(11).parse::<u64>().unwrap(),
+        Ok((
+            TxData {
+                req: inner,
+                tx_hash,
+                receipt: ReceiptData {
+                    success: get_string_value(16).parse::<bool>().unwrap(),
+                    effective_gas_price: get_string_value(12).parse::<u128>().unwrap(),
+                    gas_used: get_string_value(11).parse::<u64>().unwrap(),
+                },
             },
-        })
+            block_number,
+        ))
     }
 
     pub async fn new(

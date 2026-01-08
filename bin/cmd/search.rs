@@ -9,7 +9,7 @@ use mevlog::{
     },
     models::{
         json::mev_transaction_json::MEVTransactionJson,
-        mev_block::generate_block,
+        mev_block::{PreFetchedBlockData, fetch_blocks_batch, generate_block},
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
 };
@@ -108,6 +108,13 @@ pub struct SearchArgs {
 
     #[arg(long, help = "Maximum allowed block range size")]
     max_range: Option<u64>,
+
+    #[arg(
+        long,
+        help = "Batch size for data fetching (default: 100)",
+        default_value = "100"
+    )]
+    batch_size: usize,
 }
 
 impl SearchArgs {
@@ -183,26 +190,56 @@ impl SearchArgs {
         }
 
         let mut mev_blocks = vec![];
+        let blocks: Vec<u64> = (block_range.from..=block_range.to).rev().collect();
 
-        for block_number in (block_range.from..=block_range.to).rev() {
-            let mev_block = generate_block(
-                &deps.provider,
-                &deps.sqlite,
-                block_number,
-                &ens_lookup,
-                &symbols_lookup,
-                &txs_filter,
-                &self.shared_opts,
+        for chunk in blocks.chunks(self.batch_size) {
+            let start_block = *chunk.iter().min().unwrap();
+            let end_block = *chunk.iter().max().unwrap();
+
+            let batch_data = fetch_blocks_batch(
+                start_block,
+                end_block,
                 &deps.chain,
-                &deps.rpc_url,
-                native_token_price,
+                &deps.sqlite,
+                &symbols_lookup,
+                txs_filter.show_erc20_transfer_amount,
             )
             .await?;
 
-            if format.is_stream() {
-                mev_block.print_with_format(&format);
-            } else {
-                mev_blocks.push(mev_block);
+            for &block_number in chunk {
+                let pre_fetched = PreFetchedBlockData {
+                    txs_data: batch_data
+                        .txs_by_block
+                        .get(&block_number)
+                        .cloned()
+                        .unwrap_or_default(),
+                    logs_data: batch_data
+                        .logs_by_block
+                        .get(&block_number)
+                        .cloned()
+                        .unwrap_or_default(),
+                };
+
+                let mev_block = generate_block(
+                    &deps.provider,
+                    &deps.sqlite,
+                    block_number,
+                    &ens_lookup,
+                    &symbols_lookup,
+                    &txs_filter,
+                    &self.shared_opts,
+                    &deps.chain,
+                    &deps.rpc_url,
+                    native_token_price,
+                    Some(pre_fetched),
+                )
+                .await?;
+
+                if format.is_stream() {
+                    mev_block.print_with_format(&format);
+                } else {
+                    mev_blocks.push(mev_block);
+                }
             }
         }
 

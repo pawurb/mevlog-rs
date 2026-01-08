@@ -9,7 +9,7 @@ use sqlx::SqlitePool;
 use super::{db_event::DBEvent, mev_log_signature::MEVLogSignature};
 use crate::misc::{parquet_utils::get_parquet_string_value, symbol_utils::ERC20SymbolsLookup};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MEVLog {
     pub source: Address,
     pub signature: MEVLogSignature,
@@ -38,9 +38,11 @@ impl MEVLog {
         symbols_lookup: &ERC20SymbolsLookup,
         sqlite: &SqlitePool,
         show_erc20_transfer_amount: bool,
-    ) -> Result<Self> {
+    ) -> Result<(Self, u64)> {
         let get_string_value =
             |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+
+        let block_number = get_string_value(0).parse::<u64>().unwrap();
 
         let first_topic = get_string_value(5);
         let data = get_string_value(9);
@@ -92,16 +94,19 @@ impl MEVLog {
 
             let signature = log.signature.with_amount(amount);
 
-            return Ok(Self {
-                source,
-                signature,
-                topics,
-                data,
-                tx_index,
-            });
+            return Ok((
+                Self {
+                    source,
+                    signature,
+                    topics,
+                    data,
+                    tx_index,
+                },
+                block_number,
+            ));
         }
 
-        Ok(log)
+        Ok((log, block_number))
     }
 
     pub fn source(&self) -> Address {
