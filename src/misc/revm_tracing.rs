@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{collections::HashSet, mem, path::PathBuf, sync::Arc};
 
 use alloy::{
     consensus::BlockHeader,
@@ -114,7 +114,7 @@ pub fn revm_touching_accounts(
         TracingInspectorConfig::from_parity_config(&trace_types),
     ));
 
-    let tx_env = evm.tx.clone();
+    let tx_env = mem::take(&mut evm.tx);
     let res = match evm.inspect_tx(tx_env) {
         Ok(res) => res,
         Err(e) => {
@@ -141,7 +141,7 @@ fn _revm_call_tx(
     });
     let mut evm = evm.build_mainnet();
 
-    let tx_env = evm.tx.clone();
+    let tx_env = mem::take(&mut evm.tx);
     let ref_tx = match evm.transact(tx_env) {
         Ok(tx) => tx,
         Err(e) => {
@@ -181,7 +181,7 @@ pub fn revm_tx_calls(
         TracingInspectorConfig::from_parity_config(&trace_types),
     ));
 
-    let tx_env = evm.tx.clone();
+    let tx_env = mem::take(&mut evm.tx);
     let res = match evm.inspect_tx(tx_env) {
         Ok(res) => res,
         Err(e) => {
@@ -195,9 +195,7 @@ pub fn revm_tx_calls(
         .into_parity_builder()
         .into_trace_results(&res.result, &trace_types);
 
-    let txs = &full_trace.trace;
-
-    Ok(txs.clone())
+    Ok(full_trace.trace)
 }
 
 pub fn revm_tx_opcodes(
@@ -218,7 +216,7 @@ pub fn revm_tx_opcodes(
         TracingInspectorConfig::from_parity_config(&trace_types),
     ));
 
-    let tx_env = evm.tx.clone();
+    let tx_env = mem::take(&mut evm.tx);
     let res = match evm.inspect_tx(tx_env) {
         Ok(res) => res,
         Err(e) => {
@@ -232,17 +230,19 @@ pub fn revm_tx_opcodes(
         .into_parity_builder()
         .into_trace_results(&res.result, &trace_types);
 
-    let mut opcodes = Vec::new();
+    let Some(vm_trace) = full_trace.vm_trace else {
+        return Ok(vec![]);
+    };
 
-    if let Some(vm_trace) = &full_trace.vm_trace {
-        for op in &vm_trace.ops {
-            if let Some(op_str) = &op.op {
-                let pc = op.pc;
-                let cost = op.cost;
-                let gas_left = op.ex.as_ref().map(|ex| ex.used).unwrap_or(0);
+    let mut opcodes = Vec::with_capacity(vm_trace.ops.len());
 
-                opcodes.push(MEVOpcode::new(pc as u64, op_str.clone(), cost, gas_left));
-            }
+    for op in vm_trace.ops {
+        if let Some(op_str) = op.op {
+            let pc = op.pc;
+            let cost = op.cost;
+            let gas_left = op.ex.as_ref().map(|ex| ex.used).unwrap_or(0);
+
+            opcodes.push(MEVOpcode::new(pc as u64, op_str, cost, gas_left));
         }
     }
 
@@ -264,7 +264,7 @@ pub fn revm_commit_tx(
     });
     let mut evm = evm.build_mainnet();
 
-    let tx_env = evm.tx.clone();
+    let tx_env = mem::take(&mut evm.tx);
     let ref_tx = match evm.transact_commit(tx_env) {
         Ok(tx) => tx,
         Err(e) => {

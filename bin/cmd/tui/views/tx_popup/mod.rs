@@ -81,7 +81,6 @@ fn render_tx_hash_line(
     frame.render_widget(paragraph, area);
 }
 
-
 fn render_popup_tab_bar(area: Rect, frame: &mut Frame, active_tab: TxPopupTab) {
     let tabs = [
         (TxPopupTab::Info, "1", "Info"),

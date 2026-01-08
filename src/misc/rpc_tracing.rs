@@ -1,4 +1,4 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{collections::HashSet, mem, sync::Arc};
 
 use alloy::{
     primitives::TxHash,
@@ -33,13 +33,13 @@ pub async fn rpc_tx_calls(
         }
     };
 
-    let trace = match trace {
+    let frame = match trace {
         GethTrace::CallTracer(frame) => frame,
         _ => unreachable!(),
     };
     let mut all_calls = Vec::new();
 
-    collect_calls(&trace, &mut all_calls);
+    collect_calls(frame, &mut all_calls);
     Ok(all_calls)
 }
 
@@ -106,7 +106,7 @@ pub async fn rpc_tx_opcodes(
         }
     };
 
-    let mut opcodes = Vec::new();
+    let mut opcodes = Vec::with_capacity(struct_logs.len());
 
     for log in struct_logs {
         opcodes.push(MEVOpcode::new(
@@ -120,10 +120,11 @@ pub async fn rpc_tx_opcodes(
     Ok(opcodes)
 }
 
-fn collect_calls(frame: &CallFrame, result: &mut Vec<CallFrame>) {
-    result.push(frame.clone());
+fn collect_calls(mut frame: CallFrame, result: &mut Vec<CallFrame>) {
+    let calls = mem::take(&mut frame.calls);
+    result.push(frame);
 
-    for call in &frame.calls {
+    for call in calls {
         collect_calls(call, result);
     }
 }
