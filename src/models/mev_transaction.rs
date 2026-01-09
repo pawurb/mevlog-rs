@@ -253,14 +253,10 @@ impl MEVTransaction {
     }
 
     pub fn logs(&self) -> Vec<&MEVLog> {
-        let mut logs = vec![];
-        for log_group in &self.log_groups {
-            for log in &log_group.logs {
-                logs.push(log);
-            }
-        }
-
-        logs
+        self.log_groups
+            .iter()
+            .flat_map(|group| &group.logs)
+            .collect()
     }
 
     pub fn log_groups(&self) -> &Vec<MEVLogGroup> {
@@ -309,18 +305,9 @@ pub async fn extract_signature(
         return Ok((None, "CREATE()".to_string()));
     }
 
-    let signature_hash = {
-        if let Some(input) = input {
-            if input.len() >= 4 {
-                let hash = format!("0x{}", hex::encode(&input[..4]));
-                Some(hash)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    };
+    let signature_hash = input
+        .filter(|i| i.len() >= 4)
+        .map(|i| format!("0x{}", hex::encode(&i[..4])));
     let signature = match signature_hash.clone() {
         Some(sig) => {
             if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {

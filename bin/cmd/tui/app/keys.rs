@@ -139,21 +139,12 @@ use crossterm::event::{Event, KeyEventKind};
 
 pub(crate) fn spawn_input_reader(event_tx: Sender<AppEvent>) {
     std::thread::spawn(move || {
-        loop {
-            if let Ok(evt) = event::read() {
-                let app_event = match evt {
-                    Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                        Some(AppEvent::Key(key_event.code))
-                    }
-                    _ => None,
-                };
-
-                if let Some(app_event) = app_event
-                    && event_tx.send(app_event).is_err()
-                {
-                    // Channel closed, exit thread
-                    break;
-                }
+        while let Ok(evt) = event::read() {
+            if let Event::Key(key_event) = evt
+                && key_event.kind == KeyEventKind::Press
+                && event_tx.send(AppEvent::Key(key_event.code)).is_err()
+            {
+                break;
             }
         }
     });

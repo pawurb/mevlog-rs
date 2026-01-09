@@ -14,21 +14,12 @@ pub type GenericProvider = FillProvider<
     RootProvider,
 >;
 
-pub type RevmProvider = alloy::providers::fillers::FillProvider<
-    alloy::providers::fillers::JoinFill<
-        alloy::providers::Identity,
-        alloy::providers::fillers::JoinFill<
-            alloy::providers::fillers::GasFiller,
-            alloy::providers::fillers::JoinFill<
-                alloy::providers::fillers::BlobGasFiller,
-                alloy::providers::fillers::JoinFill<
-                    alloy::providers::fillers::NonceFiller,
-                    alloy::providers::fillers::ChainIdFiller,
-                >,
-            >,
-        >,
+pub type RevmProvider = FillProvider<
+    JoinFill<
+        Identity,
+        JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
     >,
-    alloy::providers::RootProvider<alloy::network::AnyNetwork>,
+    RootProvider<alloy::network::AnyNetwork>,
     alloy::network::AnyNetwork,
 >;
 

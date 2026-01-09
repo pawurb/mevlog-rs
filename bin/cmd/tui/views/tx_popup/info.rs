@@ -124,7 +124,6 @@ fn build_tx_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
             lines.push(Line::from(vec![
                 Span::raw("  "),
                 Span::styled(group.source.to_string(), Style::default().fg(Color::Green)),
-                Span::styled(group.source.to_string(), Style::default().fg(Color::Green)),
             ]));
 
             for log in &group.logs {
