@@ -6,5 +6,5 @@ backup.sh
 deploy.sh
 .cryo/
 *.parquet
-tmp/
+log/
 

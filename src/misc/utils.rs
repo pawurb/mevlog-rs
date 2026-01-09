@@ -47,7 +47,7 @@ fn init_logs_inner(to_file: bool) {
     {
         use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
-        let offset = ::time::UtcOffset::from_hms(1, 0, 0).expect("should get CET offset");
+        let offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
         let time_format =
             time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
                 .unwrap();
@@ -56,9 +56,9 @@ fn init_logs_inner(to_file: bool) {
             .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("error"));
 
         if to_file {
-            std::fs::create_dir_all("tmp").expect("failed to create tmp directory");
+            std::fs::create_dir_all("log").expect("failed to create log directory");
             let log_file =
-                std::fs::File::create("tmp/development.log").expect("failed to create log file");
+                std::fs::File::create("log/development.log").expect("failed to create log file");
             let file_layer = fmt::layer()
                 .with_writer(log_file)
                 .with_ansi(false)
