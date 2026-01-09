@@ -50,6 +50,16 @@ pub struct TxData {
     pub receipt: ReceiptData,
 }
 
+pub struct PreFetchedBlockData {
+    pub txs_data: Vec<TxData>,
+    pub logs_data: Vec<MEVLog>,
+}
+
+pub struct BatchedBlockData {
+    pub txs_by_block: HashMap<u64, Vec<TxData>>,
+    pub logs_by_block: HashMap<u64, Vec<MEVLog>>,
+}
+
 pub struct MEVBlock {
     pub native_token_price: Option<f64>,
     pub block_number: u64,
@@ -69,12 +79,12 @@ pub async fn generate_block(
     sqlite: &SqlitePool,
     block_number: u64,
     ens_lookup: &ENSLookup,
-    symbols_lookup: &ERC20SymbolsLookup,
     txs_filter: &TxsFilter,
     shared_opts: &SharedOpts,
     chain: &Arc<EVMChain>,
     rpc_url: &str,
     native_token_price: Option<f64>,
+    pre_fetched: PreFetchedBlockData,
 ) -> Result<MEVBlock> {
     if block_number == 0 {
         eyre::bail!("Invalid block number: 0");
@@ -91,6 +101,7 @@ pub async fn generate_block(
         txs_filter.top_metadata,
         chain,
         native_token_price,
+        pre_fetched.txs_data,
     )
     .await?;
 
@@ -99,10 +110,10 @@ pub async fn generate_block(
             txs_filter,
             sqlite,
             ens_lookup,
-            symbols_lookup,
             provider,
             revm_db.as_mut(),
             shared_opts,
+            pre_fetched.logs_data,
         )
         .await?;
 
@@ -121,15 +132,8 @@ impl MEVBlock {
         block_info_top: bool,
         chain: &Arc<EVMChain>,
         native_token_price: Option<f64>,
+        txs_data: Vec<TxData>,
     ) -> Result<Self> {
-        if which::which("cryo").is_err() {
-            eyre::bail!(
-                "'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo"
-            );
-        };
-
-        let txs_data = get_txs_data(block_number, chain).await?;
-
         let block = get_cached_block(provider, chain, block_number).await?;
 
         let Some(block) = block else {
@@ -183,10 +187,10 @@ impl MEVBlock {
         filter: &TxsFilter,
         sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
-        symbols_lookup: &ERC20SymbolsLookup,
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         shared_opts: &SharedOpts,
+        logs_data: Vec<MEVLog>,
     ) -> Result<()> {
         for (tx_index, tx) in self.txs_data.iter().enumerate() {
             let tx_index = tx_index as u64;
@@ -275,7 +279,7 @@ impl MEVBlock {
             self.mev_transactions.insert(tx_index, mev_tx);
         }
 
-        self.ingest_logs(filter, sqlite, symbols_lookup).await?;
+        self.ingest_logs(filter, logs_data).await?;
 
         // first exclude txs based non-tracing filters
         self.non_trace_filter_txs(filter).await?;
@@ -454,28 +458,7 @@ impl MEVBlock {
         Ok(())
     }
 
-    async fn ingest_logs(
-        &mut self,
-        filter: &TxsFilter,
-        sqlite: &SqlitePool,
-        symbols_lookup: &ERC20SymbolsLookup,
-    ) -> Result<()> {
-        let logs_data = match get_logs_data(
-            self.block_number,
-            &self.chain,
-            symbols_lookup,
-            sqlite,
-            filter.show_erc20_transfer_amount,
-        )
-        .await
-        {
-            Ok(logs) => logs,
-            Err(_e) => {
-                // No logs found or failed to parse, continue without logs processing
-                return Ok(());
-            }
-        };
-
+    async fn ingest_logs(&mut self, filter: &TxsFilter, logs_data: Vec<MEVLog>) -> Result<()> {
         for mev_log in logs_data {
             let tx_index = mev_log.tx_index;
 
@@ -700,34 +683,6 @@ pub fn format_block_age(seconds: i64) -> String {
     }
 }
 
-fn find_matching_parquet_file(
-    chain: &EVMChain,
-    data_type: &str,
-    block_number: u64,
-) -> Result<Option<PathBuf>> {
-    let cache_dir = cryo_cache_dir(chain);
-
-    // Format block number with leading zeros (8 digits)
-    let formatted_block = format!("{block_number:0>8}");
-
-    // Pattern: {chain_prefix}__{data_type}__{formatted_block}_to_{formatted_block}.parquet
-    let expected_filename = format!(
-        "{}__{}__{}_to_{}.parquet",
-        chain.cryo_cache_dir_name(),
-        data_type,
-        formatted_block,
-        formatted_block
-    );
-
-    let expected_path = cache_dir.join(&expected_filename);
-
-    if expected_path.exists() {
-        return Ok(Some(expected_path));
-    }
-
-    Ok(None)
-}
-
 fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
     home::home_dir().unwrap().join(format!(
         ".mevlog/.cryo-cache/{}",
@@ -735,173 +690,161 @@ fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
     ))
 }
 
-async fn get_txs_data(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>> {
-    let txs_data = match try_parse_txs_file(block_number, chain).await {
-        Ok(txs_data) => txs_data,
-        Err(_e) => {
-            let cmd = Command::new("cryo")
-                .args([
-                    "txs",
-                    "-b",
-                    &block_number.to_string(),
-                    "--rpc",
-                    &chain.rpc_url,
-                    "--n-chunks",
-                    "1",
-                    "--output-dir",
-                    cryo_cache_dir(chain).display().to_string().as_str(),
-                ])
-                .output();
+fn run_cryo_batch(
+    data_type: &str,
+    start_block: u64,
+    end_block: u64,
+    chain: &EVMChain,
+) -> Result<()> {
+    let range = format!("{}:{}", start_block, end_block + 1);
+    let cmd = Command::new("cryo")
+        .args([
+            data_type,
+            "-b",
+            &range,
+            "--rpc",
+            &chain.rpc_url,
+            "--output-dir",
+            cryo_cache_dir(chain).display().to_string().as_str(),
+        ])
+        .output();
 
-            if cmd.is_err() {
-                eyre::bail!("cryo command failed: {}", cmd.err().unwrap());
-            }
+    if let Err(e) = cmd {
+        eyre::bail!("cryo batch command failed: {}", e);
+    }
 
-            try_parse_txs_file(block_number, chain).await?
-        }
-    };
+    let output = cmd.unwrap();
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eyre::bail!("cryo batch command failed: {}", stderr);
+    }
 
-    Ok(txs_data)
+    Ok(())
 }
 
-async fn try_parse_txs_file(block_number: u64, chain: &EVMChain) -> Result<Vec<TxData>> {
-    let file_path = match find_matching_parquet_file(chain, "transactions", block_number)? {
-        Some(matching_path) => matching_path,
-        None => {
-            let expected_pattern = format!(
-                "{}/{}__transactions__*{block_number}_to_*{block_number}.parquet",
-                cryo_cache_dir(chain).display(),
-                chain.cryo_cache_dir_name()
-            );
-            eyre::bail!(
-                "No matching transactions Parquet file found (pattern: {expected_pattern}). Make sure that 'cryo' command is working and that you have a valid RPC connection."
-            );
-        }
-    };
+fn find_batch_parquet_file(
+    chain: &EVMChain,
+    data_type: &str,
+    start_block: u64,
+    end_block: u64,
+) -> Option<PathBuf> {
+    let cache_dir = cryo_cache_dir(chain);
+    let chain_name = chain.cryo_cache_dir_name();
+
+    let expected_filename = format!(
+        "{}__{}__{:0>8}_to_{:0>8}.parquet",
+        chain_name, data_type, start_block, end_block
+    );
+
+    let expected_path = cache_dir.join(&expected_filename);
+    if expected_path.exists() {
+        return Some(expected_path);
+    }
+    None
+}
+
+pub async fn fetch_blocks_batch(
+    start_block: u64,
+    end_block: u64,
+    chain: &EVMChain,
+    sqlite: &SqlitePool,
+    symbols_lookup: &ERC20SymbolsLookup,
+    show_erc20_transfer_amount: bool,
+) -> Result<BatchedBlockData> {
+    if which::which("cryo").is_err() {
+        eyre::bail!(
+            "'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo"
+        );
+    }
+
+    if find_batch_parquet_file(chain, "transactions", start_block, end_block).is_none() {
+        run_cryo_batch("txs", start_block, end_block, chain)?;
+    }
+
+    if find_batch_parquet_file(chain, "logs", start_block, end_block).is_none() {
+        run_cryo_batch("logs", start_block, end_block, chain)?;
+    }
+
+    let txs_by_block = parse_batch_txs(start_block, end_block, chain).await?;
+    let logs_by_block = parse_batch_logs(
+        start_block,
+        end_block,
+        chain,
+        sqlite,
+        symbols_lookup,
+        show_erc20_transfer_amount,
+    )
+    .await?;
+
+    Ok(BatchedBlockData {
+        txs_by_block,
+        logs_by_block,
+    })
+}
+
+async fn parse_batch_txs(
+    start_block: u64,
+    end_block: u64,
+    chain: &EVMChain,
+) -> Result<HashMap<u64, Vec<TxData>>> {
+    let file_path = find_batch_parquet_file(chain, "transactions", start_block, end_block)
+        .ok_or_else(|| eyre::eyre!("Batch transactions parquet file not found"))?;
 
     let file = std::fs::File::open(file_path)?;
     let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
     let reader = builder.build()?;
 
-    let mut txs_data = vec![];
+    let mut txs_by_block: HashMap<u64, Vec<TxData>> = HashMap::new();
 
     for batch_result in reader {
         let batch = batch_result?;
 
         for row_idx in 0..batch.num_rows() {
-            let tx_req = match MEVTransaction::tx_data_from_parquet_row(&batch, row_idx).await {
-                Ok(tx) => tx,
-                Err(e) => {
-                    eyre::bail!("Error parsing tx req from parquet: {}", e);
-                }
-            };
-            txs_data.push(tx_req);
+            let (tx_data, block_number) =
+                MEVTransaction::tx_data_from_parquet_row(&batch, row_idx).await?;
+
+            txs_by_block.entry(block_number).or_default().push(tx_data);
         }
     }
 
-    Ok(txs_data)
+    Ok(txs_by_block)
 }
 
-async fn get_logs_data(
-    block_number: u64,
+async fn parse_batch_logs(
+    start_block: u64,
+    end_block: u64,
     chain: &EVMChain,
-    symbols_lookup: &ERC20SymbolsLookup,
     sqlite: &SqlitePool,
-    show_erc20_transfer_amount: bool,
-) -> Result<Vec<MEVLog>> {
-    let logs_data = match try_parse_logs_file(
-        block_number,
-        chain,
-        symbols_lookup,
-        sqlite,
-        show_erc20_transfer_amount,
-    )
-    .await
-    {
-        Ok(logs_data) => logs_data,
-        Err(_e) => {
-            let cmd = Command::new("cryo")
-                .args([
-                    "logs",
-                    "-b",
-                    &block_number.to_string(),
-                    "--rpc",
-                    &chain.rpc_url,
-                    "--n-chunks",
-                    "1",
-                    "--output-dir",
-                    cryo_cache_dir(chain).display().to_string().as_str(),
-                ])
-                .output();
-
-            if cmd.is_err() {
-                eyre::bail!("cryo logs command failed: {}", cmd.err().unwrap());
-            }
-
-            try_parse_logs_file(
-                block_number,
-                chain,
-                symbols_lookup,
-                sqlite,
-                show_erc20_transfer_amount,
-            )
-            .await?
-        }
-    };
-
-    Ok(logs_data)
-}
-
-async fn try_parse_logs_file(
-    block_number: u64,
-    chain: &EVMChain,
     symbols_lookup: &ERC20SymbolsLookup,
-    sqlite: &SqlitePool,
     show_erc20_transfer_amount: bool,
-) -> Result<Vec<MEVLog>> {
-    let file_path = match find_matching_parquet_file(chain, "logs", block_number)? {
-        Some(matching_path) => matching_path,
-        None => {
-            let expected_pattern = format!(
-                "{}/{}__logs__*{block_number}_to_*{block_number}.parquet",
-                cryo_cache_dir(chain).display(),
-                chain.cryo_cache_dir_name()
-            );
-            eyre::bail!(
-                "No matching logs Parquet file found (pattern: {expected_pattern}), continuing without logs processing"
-            );
-        }
-    };
+) -> Result<HashMap<u64, Vec<MEVLog>>> {
+    let file_path = find_batch_parquet_file(chain, "logs", start_block, end_block)
+        .ok_or_else(|| eyre::eyre!("Batch logs parquet file not found"))?;
 
     let file = std::fs::File::open(file_path)?;
     let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
     let reader = builder.build()?;
 
-    let mut logs_data = vec![];
+    let mut logs_by_block: HashMap<u64, Vec<MEVLog>> = HashMap::new();
 
     for batch_result in reader {
         let batch = batch_result?;
 
         for row_idx in 0..batch.num_rows() {
-            let mev_log = match MEVLog::from_parquet_row(
+            let (mev_log, block_number) = MEVLog::from_parquet_row(
                 &batch,
                 row_idx,
                 symbols_lookup,
                 sqlite,
                 show_erc20_transfer_amount,
             )
-            .await
-            {
-                Ok(log) => log,
-                Err(e) => {
-                    eyre::bail!("Error parsing log from parquet: {}", e);
-                }
-            };
-            logs_data.push(mev_log);
+            .await?;
+
+            logs_by_block.entry(block_number).or_default().push(mev_log);
         }
     }
 
-    Ok(logs_data)
+    Ok(logs_by_block)
 }
 
 pub fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {
