@@ -2,6 +2,7 @@ mod info;
 mod opcodes;
 mod traces;
 
+use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -13,6 +14,7 @@ use ratatui::{
 
 use crate::cmd::tui::{app::TxPopupTab, data::MEVTransactionJson};
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_tx_popup(
     tx: &MEVTransactionJson,
     area: Rect,
@@ -20,6 +22,8 @@ pub fn render_tx_popup(
     scroll: u16,
     active_tab: TxPopupTab,
     explorer_url: Option<&str>,
+    opcodes: Option<&[MEVOpcodeJson]>,
+    opcodes_loading: bool,
 ) {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
@@ -55,7 +59,9 @@ pub fn render_tx_popup(
 
     match active_tab {
         TxPopupTab::Info => info::render_info_tab(tx, inner_chunks[3], frame, scroll),
-        TxPopupTab::Opcodes => opcodes::render_opcodes_tab(inner_chunks[3], frame),
+        TxPopupTab::Opcodes => {
+            opcodes::render_opcodes_tab(inner_chunks[3], frame, opcodes, opcodes_loading, scroll)
+        }
         TxPopupTab::Traces => traces::render_traces_tab(inner_chunks[3], frame),
     }
 }
@@ -66,7 +72,7 @@ fn render_tx_hash_line(
     tx: &MEVTransactionJson,
     explorer_url: Option<&str>,
 ) {
-    let tx_hash = format!("0x{}", tx.tx_hash);
+    let tx_hash = tx.tx_hash.to_string();
     let display_text = explorer_url
         .map(|url| format!("{}/tx/{}", url.trim_end_matches('/'), tx_hash))
         .unwrap_or(tx_hash);

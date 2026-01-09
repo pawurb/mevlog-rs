@@ -1,4 +1,5 @@
 pub use mevlog::ChainEntryJson;
+pub use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
 pub use mevlog::models::json::mev_transaction_json::MEVTransactionJson;
 
 pub(crate) mod chains;
@@ -11,6 +12,7 @@ pub(crate) enum DataRequest {
     Tx(String),
     Chains(Option<String>),
     ChainInfo(String),
+    Opcodes(String),
 }
 
 pub(crate) enum BlockId {
@@ -24,5 +26,6 @@ pub(crate) enum DataResponse {
     Tx(String, MEVTransactionJson),
     Chains(Vec<ChainEntryJson>),
     ChainInfo(ChainEntryJson),
+    Opcodes(String, Vec<MEVOpcodeJson>),
     Error(String),
 }

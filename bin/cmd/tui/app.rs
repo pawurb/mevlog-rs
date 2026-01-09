@@ -20,7 +20,10 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
-    data::{BlockId, DataRequest, DataResponse, MEVTransactionJson, worker::spawn_data_worker},
+    data::{
+        BlockId, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
+        worker::spawn_data_worker,
+    },
     views::{
         NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_key_bindings,
         render_tx_popup,
@@ -88,6 +91,9 @@ pub struct App {
     pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
     state_tx: Sender<AppEvent>,
+    pub(crate) opcodes: Option<Vec<MEVOpcodeJson>>,
+    pub(crate) opcodes_loading: bool,
+    pub(crate) opcodes_tx_hash: Option<String>,
 }
 
 impl App {
@@ -166,6 +172,9 @@ impl App {
             active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
+            opcodes: None,
+            opcodes_loading: false,
+            opcodes_tx_hash: None,
         }
     }
 
@@ -244,6 +253,8 @@ impl App {
                                 self.tx_popup_scroll,
                                 self.tx_popup_tab,
                                 explorer_url.as_deref(),
+                                self.opcodes.as_deref(),
+                                self.opcodes_loading,
                             );
                         }
                     }
@@ -336,9 +347,19 @@ impl App {
                     Some(0)
                 };
                 self.table_state.select(new_selection);
+
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
+                    self.request_opcodes_if_needed();
+                }
             }
             DataResponse::Tx(_hash, _tx) => {
                 // TODO: handle individual tx updates
+            }
+            DataResponse::Opcodes(tx_hash, opcodes) => {
+                if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
+                    self.opcodes = Some(opcodes);
+                    self.opcodes_loading = false;
+                }
             }
             DataResponse::Chains(chains) => {
                 self.available_chains = chains;
