@@ -529,9 +529,6 @@ impl App {
                     self.request_traces_if_needed();
                 }
             }
-            DataResponse::Tx(_hash, _tx) => {
-                // TODO: handle individual tx updates
-            }
             DataResponse::SearchResults(txs) => {
                 info!(count = txs.len(), "received search results");
             }

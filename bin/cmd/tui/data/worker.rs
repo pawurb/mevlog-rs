@@ -15,12 +15,9 @@ use tracing::{debug, error, info};
 use crate::cmd::tui::{
     app::AppEvent,
     data::{
-        BlockId, DataRequest, DataResponse,
+        BlockId, DataRequest, DataResponse, SearchFilters,
         chains::fetch_chains,
-        txs::{
-            detect_trace_mode, fetch_opcodes, fetch_search, fetch_traces, fetch_tx_with_trace,
-            fetch_txs,
-        },
+        txs::{detect_trace_mode, fetch_opcodes, fetch_traces, fetch_tx_with_trace, fetch_txs},
     },
 };
 
@@ -78,9 +75,10 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let timeout_duration = Duration::from_millis(opts.block_timeout_ms);
                     rt.spawn(async move {
+                        let filters = SearchFilters::from_blocks("latest");
                         match timeout(
                             timeout_duration,
-                            fetch_txs("latest", Some(opts.rpc_url), Some(opts.chain_id)),
+                            fetch_txs(&filters, Some(opts.rpc_url), Some(opts.chain_id)),
                         )
                         .await
                         {
@@ -112,13 +110,10 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let timeout_duration = Duration::from_millis(opts.block_timeout_ms);
                     rt.spawn(async move {
+                        let filters = SearchFilters::from_blocks(block.to_string());
                         match timeout(
                             timeout_duration,
-                            fetch_txs(
-                                block.to_string().as_str(),
-                                Some(opts.rpc_url),
-                                Some(opts.chain_id),
-                            ),
+                            fetch_txs(&filters, Some(opts.rpc_url), Some(opts.chain_id)),
                         )
                         .await
                         {
@@ -148,8 +143,7 @@ pub(crate) fn spawn_data_worker(
                     info!(?filters.blocks, "executing search");
                     let tx = event_tx.clone();
                     rt.spawn(async move {
-                        match fetch_search(&filters, Some(opts.rpc_url), Some(opts.chain_id)).await
-                        {
+                        match fetch_txs(&filters, Some(opts.rpc_url), Some(opts.chain_id)).await {
                             Ok(txs) => {
                                 info!(count = txs.len(), "search returned results");
                                 let _ = tx.send(AppEvent::Data(DataResponse::SearchResults(txs)));
