@@ -1,6 +1,7 @@
 mod info;
 mod opcodes;
 mod traces;
+mod transfers;
 
 use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
 use ratatui::{
@@ -63,6 +64,9 @@ pub fn render_tx_popup(
             opcodes::render_opcodes_tab(inner_chunks[3], frame, opcodes, opcodes_loading, scroll)
         }
         TxPopupTab::Traces => traces::render_traces_tab(inner_chunks[3], frame),
+        TxPopupTab::Transfers => {
+            transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll)
+        }
     }
 }
 
@@ -90,8 +94,9 @@ fn render_tx_hash_line(
 fn render_popup_tab_bar(area: Rect, frame: &mut Frame, active_tab: TxPopupTab) {
     let tabs = [
         (TxPopupTab::Info, "1", "Info"),
-        (TxPopupTab::Opcodes, "2", "Opcodes"),
-        (TxPopupTab::Traces, "3", "Traces"),
+        (TxPopupTab::Transfers, "2", "Transfers"),
+        (TxPopupTab::Opcodes, "3", "Opcodes"),
+        (TxPopupTab::Traces, "4", "Traces"),
     ];
 
     let mut spans = Vec::new();

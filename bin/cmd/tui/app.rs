@@ -61,6 +61,7 @@ pub(crate) enum TxPopupTab {
     Info,
     Opcodes,
     Traces,
+    Transfers,
 }
 
 #[allow(clippy::large_enum_variant)]
