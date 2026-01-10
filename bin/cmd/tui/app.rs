@@ -7,6 +7,8 @@ mod tabs;
 
 use std::io;
 
+use tracing::info;
+
 use crossbeam_channel::{Receiver, Sender, select};
 use crossterm::event::KeyCode;
 use ratatui::{
@@ -25,7 +27,7 @@ use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
         BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
-        RpcOpts, TraceMode, worker::spawn_data_worker,
+        RpcOpts, SearchFilters, TraceMode, worker::spawn_data_worker,
     },
     views::{
         NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_info_popup,
@@ -124,6 +126,7 @@ pub struct App {
     pub(crate) filter_gas_price: Input,
     pub(crate) search_active_field: usize,
     pub(crate) search_editing: bool,
+    pub(crate) query_popup_open: bool,
 }
 
 impl App {
@@ -248,6 +251,7 @@ impl App {
             filter_gas_price: Input::default(),
             search_active_field: 0,
             search_editing: false,
+            query_popup_open: false,
         }
     }
 
@@ -299,6 +303,7 @@ impl App {
                     false,
                     false,
                     self.can_return_to_main(),
+                    false,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -384,6 +389,10 @@ impl App {
                             self.search_editing,
                         )
                         .render(chunks[2], frame);
+
+                        if self.query_popup_open {
+                            self.render_query_popup(frame);
+                        }
                     }
                 }
 
@@ -398,6 +407,7 @@ impl App {
                     self.block_input_popup_open,
                     self.info_popup_open,
                     false,
+                    self.query_popup_open,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -426,7 +436,10 @@ impl App {
     }
 
     fn render_error_popup(&self, frame: &mut Frame, error_msg: &str) {
-        let text = format!("Error: {} (press any key, r to refresh RPC)", error_msg);
+        let text = format!(
+            "Error: {} (press any key, or 'r' to refresh RPC)",
+            error_msg
+        );
         let max_width = frame.area().width.saturating_sub(4).min(80);
         let inner_width = max_width.saturating_sub(2);
         let lines_needed = (text.len() as u16).div_ceil(inner_width).max(1);
@@ -519,6 +532,9 @@ impl App {
             DataResponse::Tx(_hash, _tx) => {
                 // TODO: handle individual tx updates
             }
+            DataResponse::SearchResults(txs) => {
+                info!(count = txs.len(), "received search results");
+            }
             DataResponse::Opcodes(tx_hash, opcodes) => {
                 if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
                     self.opcodes = Some(opcodes);
@@ -582,6 +598,107 @@ impl App {
 
     pub(crate) fn exit(&mut self) {
         self.exit = true;
+    }
+
+    pub(crate) fn build_search_command(&self) -> String {
+        let mut parts = vec!["mevlog search".to_string()];
+
+        let filters: [(&Input, &str); 10] = [
+            (&self.filter_blocks, "--blocks"),
+            (&self.filter_position, "--position"),
+            (&self.filter_from, "--from"),
+            (&self.filter_to, "--to"),
+            (&self.filter_event, "--event"),
+            (&self.filter_not_event, "--not-event"),
+            (&self.filter_method, "--method"),
+            (&self.filter_erc20_transfer, "--erc20-transfer"),
+            (&self.filter_tx_cost, "--tx-cost"),
+            (&self.filter_gas_price, "--gas-price"),
+        ];
+
+        for (input, flag) in filters {
+            let value = input.value();
+            if !value.is_empty() {
+                parts.push(format!("{} {}", flag, value));
+            }
+        }
+
+        if let Some(chain_id) = self.chain_id {
+            parts.push(format!("--chain-id {}", chain_id));
+        }
+
+        parts.join(" ")
+    }
+
+    fn build_search_filters(&self) -> SearchFilters {
+        fn non_empty(s: &str) -> Option<String> {
+            if s.is_empty() {
+                None
+            } else {
+                Some(s.to_string())
+            }
+        }
+
+        SearchFilters {
+            blocks: self.filter_blocks.value().to_string(),
+            position: non_empty(self.filter_position.value()),
+            from: non_empty(self.filter_from.value()),
+            to: non_empty(self.filter_to.value()),
+            event: non_empty(self.filter_event.value()),
+            not_event: non_empty(self.filter_not_event.value()),
+            method: non_empty(self.filter_method.value()),
+            erc20_transfer: non_empty(self.filter_erc20_transfer.value()),
+            tx_cost: non_empty(self.filter_tx_cost.value()),
+            gas_price: non_empty(self.filter_gas_price.value()),
+        }
+    }
+
+    pub(crate) fn execute_search(&mut self) {
+        if let Some(opts) = self.rpc_opts() {
+            let filters = self.build_search_filters();
+            let _ = self.data_req_tx.send(DataRequest::Search(filters, opts));
+        }
+    }
+
+    fn render_query_popup(&self, frame: &mut Frame) {
+        let command = self.build_search_command();
+        let area = frame.area();
+        let popup_width = 80.min(area.width.saturating_sub(4));
+        let inner_width = popup_width.saturating_sub(2);
+        let cmd_lines = (command.len() as u16).div_ceil(inner_width).max(1);
+        let popup_height = (cmd_lines + 4).min(area.height.saturating_sub(4));
+        let x = (area.width.saturating_sub(popup_width)) / 2;
+        let y = (area.height.saturating_sub(popup_height)) / 2;
+
+        let popup_area = Rect {
+            x: area.x + x,
+            y: area.y + y,
+            width: popup_width,
+            height: popup_height,
+        };
+
+        frame.render_widget(Clear, popup_area);
+
+        let block = Block::bordered()
+            .border_set(border::DOUBLE)
+            .title(" Search Command ");
+
+        let inner_area = block.inner(popup_area);
+        frame.render_widget(block, popup_area);
+
+        let text = vec![
+            Line::from(Span::styled(command, Style::default().fg(Color::Yellow))),
+            Line::from(""),
+            Line::from(vec![
+                Span::raw("Execute query? "),
+                Span::styled("[y]", Style::default().fg(Color::Green)),
+                Span::raw("/"),
+                Span::styled("[n]", Style::default().fg(Color::Red)),
+            ]),
+        ];
+
+        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
+        frame.render_widget(paragraph, inner_area);
     }
 }
 

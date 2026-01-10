@@ -17,7 +17,10 @@ use crate::cmd::tui::{
     data::{
         BlockId, DataRequest, DataResponse,
         chains::fetch_chains,
-        txs::{detect_trace_mode, fetch_opcodes, fetch_traces, fetch_tx_with_trace, fetch_txs},
+        txs::{
+            detect_trace_mode, fetch_opcodes, fetch_search, fetch_traces, fetch_tx_with_trace,
+            fetch_txs,
+        },
     },
 };
 
@@ -25,6 +28,7 @@ use crate::cmd::tui::{
 enum RequestKey {
     Block,
     Tx,
+    Search,
     Chains,
     ChainInfo,
     Opcodes,
@@ -39,6 +43,7 @@ impl DataRequest {
         match self {
             DataRequest::Block(..) => RequestKey::Block,
             DataRequest::Tx(..) => RequestKey::Tx,
+            DataRequest::Search(..) => RequestKey::Search,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
             DataRequest::Opcodes(..) => RequestKey::Opcodes,
@@ -138,6 +143,26 @@ pub(crate) fn spawn_data_worker(
                 }
 
                 DataRequest::Tx(_tx_hash, _opts) => rt.spawn(async move { todo!() }),
+
+                DataRequest::Search(filters, opts) => {
+                    info!(?filters.blocks, "executing search");
+                    let tx = event_tx.clone();
+                    rt.spawn(async move {
+                        match fetch_search(&filters, Some(opts.rpc_url), Some(opts.chain_id)).await
+                        {
+                            Ok(txs) => {
+                                info!(count = txs.len(), "search returned results");
+                                let _ = tx.send(AppEvent::Data(DataResponse::SearchResults(txs)));
+                            }
+                            Err(e) => {
+                                error!(error = %e, "search failed");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(
+                                    "Search failed: ".to_string() + &e.to_string(),
+                                )));
+                            }
+                        }
+                    })
+                }
 
                 DataRequest::Opcodes(tx_hash, trace_mode, opts) => {
                     info!(%tx_hash, ?trace_mode, "fetching opcodes");

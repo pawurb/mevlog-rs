@@ -15,10 +15,25 @@ pub(crate) struct RpcOpts {
     pub block_timeout_ms: u64,
 }
 
-#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub(crate) struct SearchFilters {
+    pub blocks: String,
+    pub position: Option<String>,
+    pub from: Option<String>,
+    pub to: Option<String>,
+    pub event: Option<String>,
+    pub not_event: Option<String>,
+    pub method: Option<String>,
+    pub erc20_transfer: Option<String>,
+    pub tx_cost: Option<String>,
+    pub gas_price: Option<String>,
+}
+
+#[allow(dead_code, clippy::large_enum_variant)]
 pub(crate) enum DataRequest {
     Block(BlockId, RpcOpts),
     Tx(String, RpcOpts),
+    Search(SearchFilters, RpcOpts),
     Chains(Option<String>),
     ChainInfo(String),
     Opcodes(String, TraceMode, RpcOpts),
@@ -37,6 +52,7 @@ pub(crate) enum BlockId {
 pub(crate) enum DataResponse {
     Block(u64, Vec<MEVTransactionJson>),
     Tx(String, MEVTransactionJson),
+    SearchResults(Vec<MEVTransactionJson>),
     Chains(Vec<ChainEntryJson>),
     ChainInfo(ChainEntryJson),
     Opcodes(String, Vec<MEVOpcodeJson>),
