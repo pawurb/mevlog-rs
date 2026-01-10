@@ -51,6 +51,9 @@ impl App {
                 self.tx_popup_tab = TxPopupTab::Traces;
                 self.request_traces_if_needed();
             }
+            KeyCode::Char('t') if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Info => {
+                self.request_tx_trace();
+            }
 
             KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
             KeyCode::Char('2') => self.switch_to_tab(PrimaryTab::Search),

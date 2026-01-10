@@ -8,7 +8,15 @@ use crate::misc::shared_init::config_path;
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
-    pub chains: HashMap<u64, ChainConfig>,
+    chains: HashMap<String, ChainConfig>,
+}
+
+impl Config {
+    pub fn chains(&self) -> impl Iterator<Item = (u64, &ChainConfig)> {
+        self.chains
+            .iter()
+            .filter_map(|(k, v)| k.parse::<u64>().ok().map(|id| (id, v)))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,6 +62,32 @@ impl Config {
     }
 
     pub fn get_chain(&self, chain_id: u64) -> Option<&ChainConfig> {
-        self.chains.get(&chain_id)
+        let key = chain_id.to_string();
+        self.chains.get(&key)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_unquoted() {
+        let content = r#"
+[chains.1]
+rpc_url = "https://example.com"
+"#;
+        let config: Config = toml::from_str(content).unwrap();
+        assert!(config.get_chain(1).is_some());
+    }
+
+    #[test]
+    fn test_parse_quoted() {
+        let content = r#"
+[chains."1"]
+rpc_url = "https://example.com"
+"#;
+        let config: Config = toml::from_str(content).unwrap();
+        assert!(config.get_chain(1).is_some());
     }
 }

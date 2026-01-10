@@ -1,4 +1,4 @@
-use crate::cmd::tui::app::{AppMode, PrimaryTab};
+use crate::cmd::tui::app::{AppMode, PrimaryTab, TxPopupTab};
 use ratatui::{
     Frame,
     layout::Rect,
@@ -25,6 +25,7 @@ pub fn render_key_bindings(
     active_tab: Option<PrimaryTab>,
     search_popup_open: bool,
     tx_popup_open: bool,
+    tx_popup_tab: TxPopupTab,
     block_popup_open: bool,
     info_popup_open: bool,
     can_go_back: bool,
@@ -78,14 +79,19 @@ pub fn render_key_bindings(
                         QUIT.blue().bold(),
                     ])
                 } else if tx_popup_open {
-                    Line::from(vec![
-                        " Scroll ".into(),
-                        "<n/m>".blue().bold(),
-                        " | Close ".into(),
-                        "<Esc/o>".blue().bold(),
-                        QUIT_LABEL.into(),
-                        QUIT.blue().bold(),
-                    ])
+                    let mut items: Vec<ratatui::text::Span> = vec![];
+                    if tx_popup_tab == TxPopupTab::Info {
+                        items.push(" EVM trace ".into());
+                        items.push("<t>".blue().bold());
+                        items.push(" |".into());
+                    }
+                    items.push(" Scroll ".into());
+                    items.push("<n/m>".blue().bold());
+                    items.push(" | Close ".into());
+                    items.push("<Esc/o>".blue().bold());
+                    items.push(QUIT_LABEL.into());
+                    items.push(QUIT.blue().bold());
+                    Line::from(items)
                 } else {
                     Line::from(vec![
                         NAV_KEYS.blue().bold(),

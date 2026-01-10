@@ -28,6 +28,7 @@ pub fn render_tx_popup(
     opcodes_loading: bool,
     traces: Option<&[CallExtract]>,
     traces_loading: bool,
+    tx_trace_loading: bool,
 ) {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
@@ -62,7 +63,9 @@ pub fn render_tx_popup(
     render_popup_tab_bar(inner_chunks[1], frame, active_tab);
 
     match active_tab {
-        TxPopupTab::Info => info::render_info_tab(tx, inner_chunks[3], frame, scroll),
+        TxPopupTab::Info => {
+            info::render_info_tab(tx, inner_chunks[3], frame, scroll, tx_trace_loading)
+        }
         TxPopupTab::Opcodes => {
             opcodes::render_opcodes_tab(inner_chunks[3], frame, opcodes, opcodes_loading, scroll)
         }

@@ -105,6 +105,8 @@ pub struct App {
     pub(crate) traces: Option<Vec<CallExtract>>,
     pub(crate) traces_loading: bool,
     pub(crate) traces_tx_hash: Option<String>,
+    pub(crate) tx_trace_loading: bool,
+    pub(crate) tx_trace_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
     pub(crate) block_input_query: String,
     pub(crate) trace_mode: Option<TraceMode>,
@@ -227,6 +229,8 @@ impl App {
             traces: None,
             traces_loading: false,
             traces_tx_hash: None,
+            tx_trace_loading: false,
+            tx_trace_hash: None,
             block_input_popup_open: false,
             block_input_query: String::new(),
             trace_mode: None,
@@ -291,6 +295,7 @@ impl App {
                     None,
                     self.search_popup_open,
                     false,
+                    TxPopupTab::default(),
                     false,
                     false,
                     self.can_return_to_main(),
@@ -345,6 +350,7 @@ impl App {
                                 self.opcodes_loading,
                                 self.traces.as_deref(),
                                 self.traces_loading,
+                                self.tx_trace_loading,
                             );
                         }
 
@@ -388,6 +394,7 @@ impl App {
                     Some(self.active_tab),
                     false,
                     self.tx_popup_open,
+                    self.tx_popup_tab,
                     self.block_input_popup_open,
                     self.info_popup_open,
                     false,
@@ -522,6 +529,24 @@ impl App {
                 if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
                     self.traces = Some(traces);
                     self.traces_loading = false;
+                }
+            }
+            DataResponse::TxTraced(tx_hash, traced_tx) => {
+                if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
+                    self.tx_trace_loading = false;
+                    self.tx_trace_hash = None;
+                    if let Some(tx) = self
+                        .items
+                        .iter_mut()
+                        .find(|t| t.tx_hash.to_string() == tx_hash)
+                    {
+                        tx.coinbase_transfer = traced_tx.coinbase_transfer;
+                        tx.display_coinbase_transfer = traced_tx.display_coinbase_transfer;
+                        tx.display_coinbase_transfer_usd = traced_tx.display_coinbase_transfer_usd;
+                        tx.full_tx_cost = traced_tx.full_tx_cost;
+                        tx.display_full_tx_cost = traced_tx.display_full_tx_cost;
+                        tx.display_full_tx_cost_usd = traced_tx.display_full_tx_cost_usd;
+                    }
                 }
             }
             DataResponse::Chains(chains) => {
