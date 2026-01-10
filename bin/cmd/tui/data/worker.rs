@@ -3,7 +3,10 @@ use std::{collections::HashMap, time::Duration};
 use crossbeam_channel::{Receiver, Sender};
 use mevlog::{
     ChainEntryJson,
-    misc::rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
+    misc::{
+        config::Config,
+        rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
+    },
 };
 use rand::seq::IndexedRandom;
 use tokio::{runtime::Runtime, task::JoinHandle, time::timeout};
@@ -14,7 +17,7 @@ use crate::cmd::tui::{
     data::{
         BlockId, DataRequest, DataResponse,
         chains::fetch_chains,
-        txs::{detect_trace_mode, fetch_opcodes, fetch_traces, fetch_txs},
+        txs::{detect_trace_mode, fetch_opcodes, fetch_traces, fetch_tx_with_trace, fetch_txs},
     },
 };
 
@@ -26,6 +29,7 @@ enum RequestKey {
     ChainInfo,
     Opcodes,
     Traces,
+    TxTrace,
     DetectTraceMode,
     RefreshRpc,
 }
@@ -39,6 +43,7 @@ impl DataRequest {
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
             DataRequest::Opcodes(..) => RequestKey::Opcodes,
             DataRequest::Traces(..) => RequestKey::Traces,
+            DataRequest::TxTrace(..) => RequestKey::TxTrace,
             DataRequest::DetectTraceMode(_) => RequestKey::DetectTraceMode,
             DataRequest::RefreshRpc(..) => RequestKey::RefreshRpc,
         }
@@ -185,6 +190,32 @@ pub(crate) fn spawn_data_worker(
                     })
                 }
 
+                DataRequest::TxTrace(tx_hash, trace_mode, opts) => {
+                    info!(%tx_hash, ?trace_mode, "fetching tx with trace");
+                    let tx = event_tx.clone();
+                    let hash = tx_hash.clone();
+                    rt.spawn(async move {
+                        match fetch_tx_with_trace(
+                            &hash,
+                            Some(opts.rpc_url),
+                            Some(opts.chain_id),
+                            trace_mode,
+                        )
+                        .await
+                        {
+                            Ok(traced_tx) => {
+                                debug!(tx_hash = %hash, "fetched tx with trace");
+                                let _ = tx
+                                    .send(AppEvent::Data(DataResponse::TxTraced(hash, traced_tx)));
+                            }
+                            Err(e) => {
+                                error!(tx_hash = %hash, error = %e, "failed to fetch tx trace");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                        }
+                    })
+                }
+
                 DataRequest::DetectTraceMode(rpc_url) => {
                     info!(%rpc_url, "detecting trace mode");
                     let tx = event_tx.clone();
@@ -258,6 +289,16 @@ pub(crate) fn spawn_data_worker(
                     info!(chain_id, "refreshing RPC URL");
                     let tx = event_tx.clone();
                     rt.spawn(async move {
+                        if let Ok(config) = Config::load()
+                            && let Some(chain_cfg) = config.get_chain(chain_id)
+                        {
+                            info!(chain_id, rpc_url = %chain_cfg.rpc_url, "using RPC URL from config");
+                            let _ = tx.send(AppEvent::Data(DataResponse::RpcRefreshed(
+                                chain_cfg.rpc_url.clone(),
+                            )));
+                            return;
+                        }
+
                         match get_chain_info(chain_id, timeout_ms, 3).await {
                             Ok(chain_info) => {
                                 let top_rpcs: Vec<_> =

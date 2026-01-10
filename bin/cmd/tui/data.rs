@@ -23,6 +23,7 @@ pub(crate) enum DataRequest {
     ChainInfo(String),
     Opcodes(String, TraceMode, RpcOpts),
     Traces(String, TraceMode, RpcOpts),
+    TxTrace(String, TraceMode, RpcOpts),
     DetectTraceMode(String),
     RefreshRpc(u64, u64),
 }
@@ -40,6 +41,7 @@ pub(crate) enum DataResponse {
     ChainInfo(ChainEntryJson),
     Opcodes(String, Vec<MEVOpcodeJson>),
     Traces(String, Vec<CallExtract>),
+    TxTraced(String, MEVTransactionJson),
     TraceMode(TraceMode),
     RpcRefreshed(String),
     Error(String),

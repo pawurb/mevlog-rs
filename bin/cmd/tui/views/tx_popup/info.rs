@@ -11,15 +11,21 @@ use crate::cmd::tui::data::MEVTransactionJson;
 
 const LABEL_WIDTH: usize = 19;
 
-pub fn render_info_tab(tx: &MEVTransactionJson, area: Rect, frame: &mut Frame, scroll: u16) {
-    let lines = build_tx_lines(tx);
+pub fn render_info_tab(
+    tx: &MEVTransactionJson,
+    area: Rect,
+    frame: &mut Frame,
+    scroll: u16,
+    tx_trace_loading: bool,
+) {
+    let lines = build_tx_lines(tx, tx_trace_loading);
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(paragraph, area);
 }
 
-fn build_tx_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
+fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     let from_display = tx
@@ -78,7 +84,7 @@ fn build_tx_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
             lines.push(build_label_value_line("Coinbase Transfer:", &display));
         }
         None => {
-            lines.push(build_label_na_line("Coinbase Transfer:"));
+            lines.push(build_label_na_line("Coinbase Transfer:", tx_trace_loading));
         }
     }
 
@@ -92,7 +98,7 @@ fn build_tx_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
             lines.push(build_label_value_line("Real Tx Cost:", &display));
         }
         None => {
-            lines.push(build_label_na_line("Real Tx Cost:"));
+            lines.push(build_label_na_line("Real Tx Cost:", tx_trace_loading));
         }
     }
 
@@ -104,8 +110,11 @@ fn build_tx_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
                 &format!("{:.2} GWEI", real_gas_price),
             ));
         }
-        _ => {
-            lines.push(build_label_na_line("Real Gas Price:"));
+        Some(_) => {
+            lines.push(build_label_value_line("Real Gas Price:", "0.00 GWEI"));
+        }
+        None => {
+            lines.push(build_label_na_line("Real Gas Price:", tx_trace_loading));
         }
     }
 
@@ -151,7 +160,8 @@ fn build_label_value_line(label: &str, value: &str) -> Line<'static> {
     ])
 }
 
-fn build_label_na_line(label: &str) -> Line<'static> {
+fn build_label_na_line(label: &str, is_loading: bool) -> Line<'static> {
+    let value = if is_loading { "Loading..." } else { "N/A" };
     Line::from(vec![
         Span::styled(
             format!("{:width$}", label, width = LABEL_WIDTH),
@@ -160,7 +170,7 @@ fn build_label_na_line(label: &str) -> Line<'static> {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(
-            "N/A".to_string(),
+            value.to_string(),
             Style::default()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD),

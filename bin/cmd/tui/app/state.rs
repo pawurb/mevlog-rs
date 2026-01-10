@@ -187,6 +187,38 @@ impl App {
         self.traces_tx_hash = None;
     }
 
+    pub(crate) fn request_tx_trace(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.table_state.selected()
+            && let Some(tx) = self.items.get(idx)
+        {
+            if tx.full_tx_cost.is_some() {
+                return;
+            }
+
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.tx_trace_loading = true;
+            self.tx_trace_hash = Some(tx_hash.clone());
+
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::TxTrace(tx_hash, trace_mode, opts));
+        }
+    }
+
+    pub(crate) fn clear_tx_trace(&mut self) {
+        self.tx_trace_loading = false;
+        self.tx_trace_hash = None;
+    }
+
     pub(crate) fn return_to_network_selection(&mut self) {
         self.items.clear();
         self.table_state = TableState::default();
@@ -201,6 +233,7 @@ impl App {
         self.error_message = None;
         self.clear_opcodes();
         self.clear_traces();
+        self.clear_tx_trace();
         self.chain_id = None;
         self.rpc_url = None;
         self.trace_mode = None;
