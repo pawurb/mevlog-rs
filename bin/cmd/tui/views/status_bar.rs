@@ -1,7 +1,7 @@
-use crate::cmd::tui::data::ChainEntryJson;
+use crate::cmd::tui::data::{ChainEntryJson, TraceMode};
 use ratatui::{
     Frame,
-    layout::Rect,
+    layout::{Constraint, Layout, Rect},
     style::Stylize,
     symbols::border,
     text::Line,
@@ -13,6 +13,7 @@ pub struct StatusBar<'a> {
     current_block: Option<u64>,
     is_loading: bool,
     loading_block: Option<u64>,
+    trace_mode: Option<&'a TraceMode>,
 }
 
 impl<'a> StatusBar<'a> {
@@ -21,12 +22,14 @@ impl<'a> StatusBar<'a> {
         current_block: Option<u64>,
         is_loading: bool,
         loading_block: Option<u64>,
+        trace_mode: Option<&'a TraceMode>,
     ) -> Self {
         Self {
             chain,
             current_block,
             is_loading,
             loading_block,
+            trace_mode,
         }
     }
 
@@ -67,12 +70,26 @@ impl<'a> StatusBar<'a> {
 
         let status_line = Line::from(status_parts);
 
+        let trace_mode_text = match self.trace_mode {
+            Some(TraceMode::Revm) => "Trace: Revm",
+            Some(TraceMode::RPC) => "Trace: RPC",
+            None => "Trace: ...",
+        };
+        let trace_mode_line = Line::from(trace_mode_text);
+
         let block = Block::bordered()
             .title(" Status ")
             .border_set(border::PLAIN);
 
-        let paragraph = Paragraph::new(status_line).block(block).left_aligned();
+        let inner = block.inner(area);
+        frame.render_widget(block, area);
 
-        frame.render_widget(paragraph, area);
+        let chunks = Layout::horizontal([Constraint::Min(0), Constraint::Length(12)]).split(inner);
+
+        let left_paragraph = Paragraph::new(status_line).left_aligned();
+        let right_paragraph = Paragraph::new(trace_mode_line).right_aligned();
+
+        frame.render_widget(left_paragraph, chunks[0]);
+        frame.render_widget(right_paragraph, chunks[1]);
     }
 }

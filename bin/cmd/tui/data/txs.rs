@@ -1,6 +1,8 @@
-use std::{process::Stdio, time::Duration};
+use std::{process::Stdio, sync::Arc, time::Duration};
 
 use eyre::Result;
+use mevlog::misc::rpc_capability::is_debug_trace_available;
+use mevlog::misc::shared_init::{TraceMode, init_provider};
 use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
 use mevlog::models::mev_transaction::CallExtract;
 use serde::Deserialize;
@@ -94,17 +96,30 @@ pub async fn fetch_txs(
     }
 }
 
+pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
+    let Ok(provider) = init_provider(rpc_url).await else {
+        return TraceMode::Revm;
+    };
+    let provider = Arc::new(provider);
+    if is_debug_trace_available(&provider, 5000).await {
+        TraceMode::RPC
+    } else {
+        TraceMode::Revm
+    }
+}
+
 pub async fn fetch_opcodes(
     tx_hash: &str,
     rpc_url: Option<String>,
     chain_id: Option<u64>,
+    trace_mode: TraceMode,
 ) -> Result<Vec<MEVOpcodeJson>> {
     let mut cmd = Command::new("mevlog");
 
     cmd.arg("tx")
         .arg(tx_hash)
         .arg("--trace")
-        .arg("revm")
+        .arg(trace_mode.to_string())
         .arg("--ops")
         .arg("--format")
         .arg("json");
@@ -172,13 +187,14 @@ pub async fn fetch_traces(
     tx_hash: &str,
     rpc_url: Option<String>,
     chain_id: Option<u64>,
+    trace_mode: TraceMode,
 ) -> Result<Vec<CallExtract>> {
     let mut cmd = Command::new("mevlog");
 
     cmd.arg("tx")
         .arg(tx_hash)
         .arg("--trace")
-        .arg("revm")
+        .arg(trace_mode.to_string())
         .arg("--show-calls")
         .arg("--format")
         .arg("json");

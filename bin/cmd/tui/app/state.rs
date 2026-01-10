@@ -3,9 +3,10 @@
 use ratatui::widgets::TableState;
 
 use mevlog::ChainEntryJson;
+use mevlog::misc::shared_init::ConnOpts;
 
 use crate::cmd::tui::app::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab};
-use crate::cmd::tui::data::{BlockId, DataRequest, worker::spawn_data_worker};
+use crate::cmd::tui::data::{DataRequest, TraceMode, worker::spawn_data_worker};
 
 impl App {
     pub(crate) fn select_next(&mut self) {
@@ -81,7 +82,13 @@ impl App {
             && let Some(chain) = self.available_chains.get(selected_idx)
         {
             self.selected_chain = Some(chain.clone());
-            self.conn_opts.chain_id = Some(chain.chain_id);
+            self.conn_opts = ConnOpts {
+                rpc_url: None,
+                chain_id: Some(chain.chain_id),
+                rpc_timeout_ms: 1000,
+                skip_verify_chain_id: false,
+            };
+            self.trace_mode = None;
 
             let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();
 
@@ -92,7 +99,9 @@ impl App {
             self.mode = AppMode::Main;
             self.is_loading = true;
 
-            let _ = self.data_req_tx.send(DataRequest::Block(BlockId::Latest));
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::ResolveRpcUrl(chain.chain_id));
 
             self.available_chains.clear();
             self.search_query.clear();
@@ -113,7 +122,10 @@ impl App {
             self.opcodes_loading = true;
             self.opcodes_tx_hash = Some(tx_hash.clone());
 
-            let _ = self.data_req_tx.send(DataRequest::Opcodes(tx_hash));
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::Opcodes(tx_hash, trace_mode));
         }
     }
 
@@ -137,7 +149,10 @@ impl App {
             self.traces_loading = true;
             self.traces_tx_hash = Some(tx_hash.clone());
 
-            let _ = self.data_req_tx.send(DataRequest::Traces(tx_hash));
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::Traces(tx_hash, trace_mode));
         }
     }
 
@@ -162,6 +177,7 @@ impl App {
         self.clear_opcodes();
         self.clear_traces();
         self.conn_opts.chain_id = None;
+        self.trace_mode = None;
 
         self.available_chains = DEFAULT_CHAINS
             .iter()

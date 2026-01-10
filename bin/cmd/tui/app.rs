@@ -24,7 +24,7 @@ use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
         BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
-        worker::spawn_data_worker,
+        TraceMode, worker::spawn_data_worker,
     },
     views::{
         NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_key_bindings,
@@ -102,6 +102,7 @@ pub struct App {
     pub(crate) traces_tx_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
     pub(crate) block_input_query: String,
+    pub(crate) trace_mode: Option<TraceMode>,
 }
 
 impl App {
@@ -133,10 +134,14 @@ impl App {
         spawn_input_reader(state_tx.clone());
 
         if mode == AppMode::Main {
-            let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
-            if conn_opts.rpc_url.is_some() && conn_opts.chain_id.is_none() {
-                let _ =
-                    data_req_tx.send(DataRequest::ChainInfo(conn_opts.rpc_url.clone().unwrap()));
+            if let Some(ref rpc_url) = conn_opts.rpc_url {
+                let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
+                let _ = data_req_tx.send(DataRequest::DetectTraceMode(rpc_url.clone()));
+                if conn_opts.chain_id.is_none() {
+                    let _ = data_req_tx.send(DataRequest::ChainInfo(rpc_url.clone()));
+                }
+            } else if let Some(chain_id) = conn_opts.chain_id {
+                let _ = data_req_tx.send(DataRequest::ResolveRpcUrl(chain_id));
             }
         }
 
@@ -188,6 +193,7 @@ impl App {
             traces_tx_hash: None,
             block_input_popup_open: false,
             block_input_query: String::new(),
+            trace_mode: None,
         }
     }
 
@@ -251,6 +257,7 @@ impl App {
                     self.current_block,
                     self.is_loading,
                     self.loading_block,
+                    self.trace_mode.as_ref(),
                 )
                 .render(chunks[1], frame);
 
@@ -435,6 +442,14 @@ impl App {
             }
             DataResponse::ChainInfo(chain) => {
                 self.selected_chain = Some(chain);
+            }
+            DataResponse::TraceMode(trace_mode) => {
+                self.trace_mode = Some(trace_mode);
+            }
+            DataResponse::RpcUrl(_chain_id, rpc_url) => {
+                self.conn_opts.rpc_url = Some(rpc_url.clone());
+                let _ = self.data_req_tx.send(DataRequest::Block(BlockId::Latest));
+                let _ = self.data_req_tx.send(DataRequest::DetectTraceMode(rpc_url));
             }
             DataResponse::Error(error_msg) => {
                 self.is_loading = false;

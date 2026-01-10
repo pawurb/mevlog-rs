@@ -1,4 +1,5 @@
 pub use mevlog::ChainEntryJson;
+pub use mevlog::misc::shared_init::TraceMode;
 pub use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
 pub use mevlog::models::json::mev_transaction_json::MEVTransactionJson;
 pub use mevlog::models::mev_transaction::CallExtract;
@@ -13,8 +14,10 @@ pub(crate) enum DataRequest {
     Tx(String),
     Chains(Option<String>),
     ChainInfo(String),
-    Opcodes(String),
-    Traces(String),
+    Opcodes(String, TraceMode),
+    Traces(String, TraceMode),
+    DetectTraceMode(String),
+    ResolveRpcUrl(u64),
 }
 
 pub(crate) enum BlockId {
@@ -30,5 +33,7 @@ pub(crate) enum DataResponse {
     ChainInfo(ChainEntryJson),
     Opcodes(String, Vec<MEVOpcodeJson>),
     Traces(String, Vec<CallExtract>),
+    TraceMode(TraceMode),
+    RpcUrl(u64, String),
     Error(String),
 }

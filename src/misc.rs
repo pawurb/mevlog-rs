@@ -1,5 +1,6 @@
 pub mod args_parsing;
 pub mod coinbase_bribe;
+pub mod config;
 pub mod database;
 pub mod db_actions;
 pub mod ens_utils;
