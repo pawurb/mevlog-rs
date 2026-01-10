@@ -79,9 +79,7 @@ pub fn render_key_bindings(
                     ])
                 } else if tx_popup_open {
                     Line::from(vec![
-                        "[1-3] ".blue().bold(),
-                        "Tabs".into(),
-                        " | Scroll ".into(),
+                        " Scroll ".into(),
                         "<n/m>".blue().bold(),
                         " | Close ".into(),
                         "<Esc/o>".blue().bold(),

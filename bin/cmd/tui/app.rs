@@ -15,7 +15,7 @@ use ratatui::{
     style::{Color, Style},
     symbols::border,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph, TableState},
+    widgets::{Block, Clear, Paragraph, TableState, Wrap},
 };
 
 use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
@@ -93,6 +93,7 @@ pub struct App {
     pub(crate) rpc_url: Option<String>,
     pub(crate) chain_id: Option<u64>,
     pub(crate) rpc_timeout_ms: u64,
+    pub(crate) block_timeout_ms: u64,
     pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
     #[allow(dead_code)]
@@ -138,6 +139,7 @@ impl App {
         let rpc_url = conn_opts.rpc_url.clone();
         let chain_id = conn_opts.chain_id;
         let rpc_timeout_ms = conn_opts.rpc_timeout_ms;
+        let block_timeout_ms = conn_opts.block_timeout_ms;
 
         spawn_data_worker(data_req_rx, state_tx.clone());
         spawn_input_reader(state_tx.clone());
@@ -148,6 +150,7 @@ impl App {
                     let opts = RpcOpts {
                         rpc_url: url.clone(),
                         chain_id: cid,
+                        block_timeout_ms,
                     };
                     let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest, opts));
                 }
@@ -201,6 +204,7 @@ impl App {
             rpc_url,
             chain_id,
             rpc_timeout_ms,
+            block_timeout_ms,
             active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
@@ -222,6 +226,7 @@ impl App {
         Some(RpcOpts {
             rpc_url: self.rpc_url.clone()?,
             chain_id: self.chain_id?,
+            block_timeout_ms: self.block_timeout_ms,
         })
     }
 
@@ -373,13 +378,17 @@ impl App {
     }
 
     fn render_error_popup(&self, frame: &mut Frame, error_msg: &str) {
-        let text = format!("Error: {} (press any key)", error_msg);
-        let popup_width = (text.len() as u16 + 4).min(frame.area().width - 4);
-        let popup_area = centered_rect(popup_width, 3, frame.area());
+        let text = format!("Error: {} (press any key, r to refresh RPC)", error_msg);
+        let max_width = frame.area().width.saturating_sub(4).min(80);
+        let inner_width = max_width.saturating_sub(2);
+        let lines_needed = (text.len() as u16).div_ceil(inner_width).max(1);
+        let popup_height = (lines_needed + 2).min(frame.area().height.saturating_sub(4));
+        let popup_area = centered_rect(max_width, popup_height, frame.area());
 
         let popup = Paragraph::new(text)
-            .style(Style::default().fg(Color::Red))
-            .block(Block::bordered().style(Style::default().bg(Color::DarkGray)));
+            .style(Style::default().fg(Color::White).bg(Color::Red))
+            .wrap(Wrap { trim: false })
+            .block(Block::bordered().style(Style::default().fg(Color::White).bg(Color::Red)));
 
         frame.render_widget(Clear, popup_area);
         frame.render_widget(popup, popup_area);

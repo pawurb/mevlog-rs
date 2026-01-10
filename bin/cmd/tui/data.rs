@@ -12,6 +12,7 @@ pub(crate) mod worker;
 pub(crate) struct RpcOpts {
     pub rpc_url: String,
     pub chain_id: u64,
+    pub block_timeout_ms: u64,
 }
 
 #[allow(dead_code)]
