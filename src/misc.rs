@@ -8,6 +8,7 @@ pub mod eth_unit_parser;
 pub mod opcode_color;
 pub mod parquet_utils;
 pub mod revm_tracing;
+pub mod rpc_capability;
 pub mod rpc_tracing;
 pub mod rpc_urls;
 pub mod shared_init;

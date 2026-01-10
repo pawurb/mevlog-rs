@@ -1,5 +1,6 @@
 pub mod chain_info;
 pub mod chains;
+pub mod debug_available;
 pub mod search;
 #[cfg(feature = "tui")]
 pub mod tui;

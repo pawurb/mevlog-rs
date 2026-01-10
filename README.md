@@ -517,6 +517,20 @@ Currency: ETH
 Explorer URL: https://etherscan.io
 ```
 
+## Checking debug tracing support
+
+Before using `--trace rpc` mode, you can check if an RPC endpoint supports debug tracing:
+
+```bash
+mevlog debug-available --rpc-url https://eth.llamarpc.com
+# Output: false
+
+mevlog debug-available --rpc-url http://localhost:8545
+# Output: true
+```
+
+This command tests the `debug_traceTransaction` RPC method by fetching a recent transaction and attempting to trace it. Returns `true` if debug tracing is supported, `false` otherwise.
+
 ## Supported EVM chains
 
 The project currently supports over 2k EVM chains by reading the metadata from [ChainList](https://chainlist.org/). But only a few chains display $USD txs prices from integrated [ChainLink oracles](https://docs.chain.link/data-feeds/price-feeds/addresses). I'm planning to work on improving the coverage.
