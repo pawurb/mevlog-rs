@@ -81,6 +81,8 @@ pub fn render_key_bindings(
                         "<b>".blue().bold(),
                         " | Open ".into(),
                         "<o>".blue().bold(),
+                        " | Networks ".into(),
+                        "<n>".blue().bold(),
                         QUIT_LABEL.into(),
                         QUIT.blue().bold(),
                     ])

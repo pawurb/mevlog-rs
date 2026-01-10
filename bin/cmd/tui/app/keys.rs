@@ -83,6 +83,9 @@ impl App {
         }
 
         match key_code {
+            KeyCode::Char('n') if !self.tx_popup_open => {
+                self.return_to_network_selection();
+            }
             KeyCode::Char('j') | KeyCode::Down => {
                 self.select_next();
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {

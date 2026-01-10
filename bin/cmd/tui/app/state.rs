@@ -1,8 +1,10 @@
 //! UI state management - navigation and selection
 
+use ratatui::widgets::TableState;
+
 use mevlog::ChainEntryJson;
 
-use super::{App, AppMode, DEFAULT_CHAINS};
+use crate::cmd::tui::app::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab};
 use crate::cmd::tui::data::{BlockId, DataRequest, worker::spawn_data_worker};
 
 impl App {
@@ -119,5 +121,37 @@ impl App {
         self.opcodes = None;
         self.opcodes_loading = false;
         self.opcodes_tx_hash = None;
+    }
+
+    pub(crate) fn return_to_network_selection(&mut self) {
+        self.items.clear();
+        self.table_state = TableState::default();
+        self.current_block = None;
+        self.loading_block = None;
+        self.is_loading = false;
+        self.tx_popup_open = false;
+        self.tx_popup_scroll = 0;
+        self.tx_popup_tab = TxPopupTab::default();
+        self.selected_chain = None;
+        self.active_tab = PrimaryTab::Explore;
+        self.error_message = None;
+        self.clear_opcodes();
+        self.conn_opts.chain_id = None;
+
+        self.available_chains = DEFAULT_CHAINS
+            .iter()
+            .map(|(id, name, chain, explorer)| ChainEntryJson {
+                chain_id: *id,
+                name: name.to_string(),
+                chain: chain.to_string(),
+                explorer_url: Some(explorer.to_string()),
+            })
+            .collect();
+
+        self.network_table_state = TableState::default().with_selected(Some(0));
+        self.search_query.clear();
+        self.search_popup_open = false;
+
+        self.mode = AppMode::SelectNetwork;
     }
 }
