@@ -24,11 +24,12 @@ impl App {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
 
             KeyCode::Char('1') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Info,
-            KeyCode::Char('2') if self.tx_popup_open => {
+            KeyCode::Char('2') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Transfers,
+            KeyCode::Char('3') if self.tx_popup_open => {
                 self.tx_popup_tab = TxPopupTab::Opcodes;
                 self.request_opcodes_if_needed();
             }
-            KeyCode::Char('3') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Traces,
+            KeyCode::Char('4') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Traces,
 
             KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
             KeyCode::Char('2') => self.switch_to_tab(PrimaryTab::Search),
