@@ -8,6 +8,11 @@ use crate::cmd::tui::app::{App, AppEvent, AppMode, PrimaryTab, TxPopupTab};
 
 impl App {
     pub(crate) fn handle_key_event(&mut self, key_code: KeyCode) {
+        if matches!(key_code, KeyCode::Char('q')) {
+            self.exit();
+            return;
+        }
+
         if self.error_message.is_some() {
             if matches!(key_code, KeyCode::Char('r')) {
                 self.error_message = None;
@@ -30,13 +35,17 @@ impl App {
             return;
         }
 
+        if self.query_popup_open {
+            self.handle_search_keys(key_code);
+            return;
+        }
+
         if self.search_editing {
             self.handle_search_keys(key_code);
             return;
         }
 
         match key_code {
-            KeyCode::Char('q') => self.exit(),
             KeyCode::Char('n') if !self.tx_popup_open && !self.info_popup_open => {
                 self.open_network_selection();
             }
@@ -103,7 +112,6 @@ impl App {
 
         if self.info_popup_open {
             match key_code {
-                KeyCode::Char('q') => self.exit(),
                 KeyCode::Char('r') => self.request_rpc_refresh(),
                 KeyCode::Char('i') | KeyCode::Esc => {
                     self.info_popup_open = false;
@@ -198,7 +206,6 @@ impl App {
             }
         } else {
             match key_code {
-                KeyCode::Char('q') => self.exit(),
                 KeyCode::Char('n') | KeyCode::Esc if self.can_return_to_main() => {
                     self.return_to_main();
                 }
@@ -221,6 +228,20 @@ impl App {
 
     fn handle_search_keys(&mut self, key_code: KeyCode) {
         const NUM_FIELDS: usize = 10;
+
+        if self.query_popup_open {
+            match key_code {
+                KeyCode::Esc | KeyCode::Char('n') => {
+                    self.query_popup_open = false;
+                }
+                KeyCode::Char('y') => {
+                    self.query_popup_open = false;
+                    self.execute_search();
+                }
+                _ => {}
+            }
+            return;
+        }
 
         if self.search_editing {
             match key_code {
@@ -256,6 +277,9 @@ impl App {
                 }
                 KeyCode::Up | KeyCode::Char('k') => {
                     self.search_active_field = self.search_active_field.saturating_sub(1);
+                }
+                KeyCode::Char('s') => {
+                    self.query_popup_open = true;
                 }
                 _ => {}
             }

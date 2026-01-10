@@ -29,6 +29,7 @@ pub fn render_key_bindings(
     block_popup_open: bool,
     info_popup_open: bool,
     can_go_back: bool,
+    query_popup_open: bool,
 ) {
     let controls_line = match mode {
         AppMode::SelectNetwork => {
@@ -108,11 +109,26 @@ pub fn render_key_bindings(
                     ])
                 }
             }
-            Some(PrimaryTab::Search) => Line::from(vec![
-                NAV_KEYS.blue().bold(),
-                QUIT_LABEL.into(),
-                QUIT.blue().bold(),
-            ]),
+            Some(PrimaryTab::Search) => {
+                if query_popup_open {
+                    Line::from(vec![
+                        " Execute ".into(),
+                        "<y>".blue().bold(),
+                        " | Cancel ".into(),
+                        "<n/Esc>".blue().bold(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                } else {
+                    Line::from(vec![
+                        NAV_KEYS.blue().bold(),
+                        " | Query ".into(),
+                        "<s>".blue().bold(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                }
+            }
             None => Line::from(vec![]),
         },
     };
