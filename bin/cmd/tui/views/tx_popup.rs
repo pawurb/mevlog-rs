@@ -4,6 +4,7 @@ mod traces;
 mod transfers;
 
 use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
+use mevlog::models::mev_transaction::CallExtract;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -25,6 +26,8 @@ pub fn render_tx_popup(
     explorer_url: Option<&str>,
     opcodes: Option<&[MEVOpcodeJson]>,
     opcodes_loading: bool,
+    traces: Option<&[CallExtract]>,
+    traces_loading: bool,
 ) {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
@@ -63,7 +66,9 @@ pub fn render_tx_popup(
         TxPopupTab::Opcodes => {
             opcodes::render_opcodes_tab(inner_chunks[3], frame, opcodes, opcodes_loading, scroll)
         }
-        TxPopupTab::Traces => traces::render_traces_tab(inner_chunks[3], frame),
+        TxPopupTab::Traces => {
+            traces::render_traces_tab(inner_chunks[3], frame, traces, traces_loading, scroll)
+        }
         TxPopupTab::Transfers => {
             transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll)
         }

@@ -2,6 +2,7 @@ use std::{process::Stdio, time::Duration};
 
 use eyre::Result;
 use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
+use mevlog::models::mev_transaction::CallExtract;
 use serde::Deserialize;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
@@ -19,6 +20,11 @@ struct ErrorResponse {
 #[derive(Deserialize)]
 struct TxWithOpcodes {
     opcodes: Option<Vec<MEVOpcodeJson>>,
+}
+
+#[derive(Deserialize)]
+struct TxWithCalls {
+    calls: Option<Vec<CallExtract>>,
 }
 
 pub async fn fetch_txs(
@@ -159,5 +165,79 @@ pub async fn fetch_opcodes(
     match result {
         Ok(opcodes) => opcodes,
         Err(_) => eyre::bail!("mevlog tx --ops timed out after 120 seconds"),
+    }
+}
+
+pub async fn fetch_traces(
+    tx_hash: &str,
+    rpc_url: Option<String>,
+    chain_id: Option<u64>,
+) -> Result<Vec<CallExtract>> {
+    let mut cmd = Command::new("mevlog");
+
+    cmd.arg("tx")
+        .arg(tx_hash)
+        .arg("--trace")
+        .arg("revm")
+        .arg("--show-calls")
+        .arg("--format")
+        .arg("json");
+
+    if let Some(rpc_url) = &rpc_url {
+        cmd.arg("--rpc-url").arg(rpc_url);
+    } else if let Some(chain_id) = chain_id {
+        cmd.arg("--chain-id").arg(chain_id.to_string());
+    }
+
+    cmd.env("RUST_LOG", "off")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let timeout_duration = Duration::from_secs(120);
+
+    let result = timeout(timeout_duration, async {
+        let mut child = cmd.spawn()?;
+
+        let stdout = child
+            .stdout
+            .take()
+            .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
+
+        let stderr = child
+            .stderr
+            .take()
+            .ok_or_else(|| eyre::eyre!("Failed to capture stderr"))?;
+
+        let mut stdout_reader = BufReader::new(stdout).lines();
+        let mut stderr_reader = BufReader::new(stderr).lines();
+
+        if let Some(line) = stdout_reader.next_line().await? {
+            if let Ok(txs) = serde_json::from_str::<Vec<TxWithCalls>>(&line) {
+                let calls = txs
+                    .into_iter()
+                    .next()
+                    .and_then(|tx| tx.calls)
+                    .unwrap_or_default();
+                return Ok(calls);
+            }
+
+            return Err(eyre::eyre!("Failed to parse traces response: {}", line));
+        }
+
+        if let Some(line) = stderr_reader.next_line().await? {
+            if let Ok(error_response) = serde_json::from_str::<ErrorResponse>(&line) {
+                return Err(eyre::eyre!("{}", error_response.error));
+            }
+
+            return Err(eyre::eyre!("{}", line));
+        }
+
+        Ok::<_, eyre::Error>(vec![])
+    })
+    .await;
+
+    match result {
+        Ok(traces) => traces,
+        Err(_) => eyre::bail!("mevlog tx --show-calls timed out after 120 seconds"),
     }
 }
