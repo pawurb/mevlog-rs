@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use eyre::{Result, bail};
+use futures_util::stream::{FuturesUnordered, StreamExt};
 use mevlog::{
     misc::{
         args_parsing::BlocksRange,
@@ -115,6 +118,14 @@ pub struct SearchArgs {
         default_value = "100"
     )]
     batch_size: usize,
+
+    #[arg(
+        short = 'j',
+        long = "jobs",
+        help = "Number of parallel block processing jobs",
+        default_value = "1"
+    )]
+    jobs: usize,
 }
 
 impl SearchArgs {
@@ -122,12 +133,17 @@ impl SearchArgs {
         let deps = init_deps(&self.conn_opts).await?;
 
         if (self.limit.is_some() || self.sort.is_some()) && !format.non_stream_json() {
-            {
-                bail!(
-                    "--limit and --sort are not available in --format {:?}",
-                    format
-                );
-            }
+            bail!(
+                "--limit and --sort are not available in --format {:?}",
+                format
+            );
+        }
+
+        if self.jobs > 1 && format.is_stream() {
+            bail!(
+                "--jobs > 1 is not available with streaming output format {:?}",
+                format
+            );
         }
 
         if let Some(sort) = &self.sort
@@ -154,14 +170,18 @@ impl SearchArgs {
             .from_ens_query()
             .or_else(|| txs_filter.to_ens_query());
 
-        let ens_lookup = ENSLookup::lookup_mode(
-            ens_query,
-            deps.ens_lookup_worker,
-            &deps.chain,
-            self.shared_opts.ens,
-            &deps.provider,
-        )
-        .await?;
+        let txs_filter = Arc::new(txs_filter);
+
+        let ens_lookup = Arc::new(
+            ENSLookup::lookup_mode(
+                ens_query,
+                deps.ens_lookup_worker,
+                &deps.chain,
+                self.shared_opts.ens,
+                &deps.provider,
+            )
+            .await?,
+        );
 
         let symbols_lookup = ERC20SymbolsLookup::lookup_mode(
             deps.symbols_lookup_worker,
@@ -191,6 +211,7 @@ impl SearchArgs {
 
         let mut mev_blocks = vec![];
         let blocks: Vec<u64> = (block_range.from..=block_range.to).rev().collect();
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(self.jobs));
 
         for chunk in blocks.chunks(self.batch_size) {
             let start_block = *chunk.iter().min().unwrap();
@@ -206,38 +227,85 @@ impl SearchArgs {
             )
             .await?;
 
-            for &block_number in chunk {
-                let pre_fetched = PreFetchedBlockData {
-                    txs_data: batch_data
-                        .txs_by_block
-                        .get(&block_number)
-                        .cloned()
-                        .unwrap_or_default(),
-                    logs_data: batch_data
-                        .logs_by_block
-                        .get(&block_number)
-                        .cloned()
-                        .unwrap_or_default(),
-                };
+            if format.is_stream() {
+                for &block_number in chunk {
+                    let pre_fetched = PreFetchedBlockData {
+                        txs_data: batch_data
+                            .txs_by_block
+                            .get(&block_number)
+                            .cloned()
+                            .unwrap_or_default(),
+                        logs_data: batch_data
+                            .logs_by_block
+                            .get(&block_number)
+                            .cloned()
+                            .unwrap_or_default(),
+                    };
 
-                let mev_block = generate_block(
-                    &deps.provider,
-                    &deps.sqlite,
-                    block_number,
-                    &ens_lookup,
-                    &txs_filter,
-                    &self.shared_opts,
-                    &deps.chain,
-                    &deps.rpc_url,
-                    native_token_price,
-                    pre_fetched,
-                )
-                .await?;
+                    let mev_block = generate_block(
+                        &deps.provider,
+                        &deps.sqlite,
+                        block_number,
+                        &ens_lookup,
+                        &txs_filter,
+                        &self.shared_opts,
+                        &deps.chain,
+                        &deps.rpc_url,
+                        native_token_price,
+                        pre_fetched,
+                    )
+                    .await?;
 
-                if format.is_stream() {
                     mev_block.print_with_format(&format);
-                } else {
-                    mev_blocks.push(mev_block);
+                }
+            } else {
+                let mut futures = FuturesUnordered::new();
+
+                for &block_number in chunk {
+                    let permit = semaphore.clone().acquire_owned().await?;
+                    let pre_fetched = PreFetchedBlockData {
+                        txs_data: batch_data
+                            .txs_by_block
+                            .get(&block_number)
+                            .cloned()
+                            .unwrap_or_default(),
+                        logs_data: batch_data
+                            .logs_by_block
+                            .get(&block_number)
+                            .cloned()
+                            .unwrap_or_default(),
+                    };
+
+                    let provider = deps.provider.clone();
+                    let sqlite = deps.sqlite.clone();
+                    let ens_lookup = ens_lookup.clone();
+                    let txs_filter = txs_filter.clone();
+                    let shared_opts = self.shared_opts.clone();
+                    let chain = deps.chain.clone();
+                    let rpc_url = deps.rpc_url.clone();
+
+                    futures.push(tokio::task::spawn_blocking(move || {
+                        let rt = tokio::runtime::Handle::current();
+                        let result = rt.block_on(generate_block(
+                            &provider,
+                            &sqlite,
+                            block_number,
+                            &ens_lookup,
+                            &txs_filter,
+                            &shared_opts,
+                            &chain,
+                            &rpc_url,
+                            native_token_price,
+                            pre_fetched,
+                        ));
+                        drop(permit);
+                        (block_number, result)
+                    }));
+                }
+
+                while let Some(join_result) = futures.next().await {
+                    let (_block_number, result) = join_result?;
+                    mev_blocks.push(result?);
                 }
             }
         }
@@ -254,6 +322,10 @@ impl SearchArgs {
 
             if let Some(limit) = self.limit {
                 transactions_json.truncate(limit);
+            }
+
+            if std::env::var("QUIET").unwrap_or_default() == "1" {
+                return Ok(());
             }
 
             match format {

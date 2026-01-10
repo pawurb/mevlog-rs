@@ -554,6 +554,9 @@ impl MEVBlock {
     }
 
     pub fn print_json(&self) {
+        if std::env::var("QUIET").unwrap_or_default() == "1" {
+            return;
+        }
         match serde_json::to_string(&self.transactions_json()) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
@@ -571,6 +574,9 @@ impl MEVBlock {
     }
 
     pub fn print_json_pretty(&self) {
+        if std::env::var("QUIET").unwrap_or_default() == "1" {
+            return;
+        }
         match serde_json::to_string_pretty(&self.transactions_json()) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
