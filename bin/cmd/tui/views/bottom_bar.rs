@@ -8,8 +8,8 @@ use ratatui::{
     widgets::{Block, Paragraph},
 };
 
-// Control text constants
-const NAV_KEYS: &str = " <↑/↓/j/k> <←/→/h/l> ";
+const NAV_KEYS_BLOCK: &str = " <↑/↓/j/k> <←/→/h/l> ";
+const NAV_KEYS_SEARCH: &str = " <↑/↓/j/k> ";
 const NAV_NETWORKS: &str = " <↑/↓/j/k> ";
 const SELECT_LABEL: &str = " | Select ";
 const SELECT: &str = "<Enter/o> ";
@@ -30,6 +30,7 @@ pub fn render_key_bindings(
     info_popup_open: bool,
     can_go_back: bool,
     query_popup_open: bool,
+    results_empty: bool,
 ) {
     let controls_line = match mode {
         AppMode::SelectNetwork => {
@@ -95,7 +96,7 @@ pub fn render_key_bindings(
                     Line::from(items)
                 } else {
                     Line::from(vec![
-                        NAV_KEYS.blue().bold(),
+                        NAV_KEYS_BLOCK.blue().bold(),
                         " | Block ".into(),
                         "<b>".blue().bold(),
                         " | Open ".into(),
@@ -121,9 +122,44 @@ pub fn render_key_bindings(
                     ])
                 } else {
                     Line::from(vec![
-                        NAV_KEYS.blue().bold(),
+                        NAV_KEYS_SEARCH.blue().bold(),
                         " | Query ".into(),
                         "<s>".blue().bold(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                }
+            }
+            Some(PrimaryTab::Results) => {
+                if results_empty {
+                    Line::from(vec![
+                        " Press ".into(),
+                        "<2>".blue().bold(),
+                        " to search ".into(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                } else if tx_popup_open {
+                    let mut items: Vec<ratatui::text::Span> = vec![];
+                    if tx_popup_tab == TxPopupTab::Info {
+                        items.push(" EVM trace ".into());
+                        items.push("<t>".blue().bold());
+                        items.push(" |".into());
+                    }
+                    items.push(" Scroll ".into());
+                    items.push("<n/m>".blue().bold());
+                    items.push(" | Close ".into());
+                    items.push("<Esc/o>".blue().bold());
+                    items.push(QUIT_LABEL.into());
+                    items.push(QUIT.blue().bold());
+                    Line::from(items)
+                } else {
+                    Line::from(vec![
+                        NAV_KEYS_SEARCH.blue().bold(),
+                        " | Open ".into(),
+                        "<o>".blue().bold(),
+                        " | Clear ".into(),
+                        "<c>".blue().bold(),
                         QUIT_LABEL.into(),
                         QUIT.blue().bold(),
                     ])

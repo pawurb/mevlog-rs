@@ -16,11 +16,17 @@ const SELECTED_ROW_STYLE: Style = Style::new()
 
 pub struct TxsTable<'a> {
     items: &'a [MEVTransactionJson],
+    title: Option<String>,
 }
 
 impl<'a> TxsTable<'a> {
     pub fn new(items: &'a [MEVTransactionJson]) -> Self {
-        Self { items }
+        Self { items, title: None }
+    }
+
+    pub fn with_title(mut self, title: &str) -> Self {
+        self.title = Some(title.to_string());
+        self
     }
 
     pub fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState) {
@@ -78,11 +84,12 @@ impl<'a> TxsTable<'a> {
             Constraint::Percentage(20),
         ];
 
-        let title = self
-            .items
-            .first()
-            .map(|tx| format!(" Transactions (Block {}) ", tx.block_number))
-            .unwrap_or_else(|| " Transactions ".to_string());
+        let title = self.title.clone().unwrap_or_else(|| {
+            self.items
+                .first()
+                .map(|tx| format!(" Transactions (Block {}) ", tx.block_number))
+                .unwrap_or_else(|| " Transactions ".to_string())
+        });
 
         let table = Table::new(rows, widths)
             .header(header)

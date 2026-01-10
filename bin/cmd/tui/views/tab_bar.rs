@@ -21,6 +21,7 @@ impl TabBar {
         let tabs = [
             (PrimaryTab::Explore, "1", "Explore"),
             (PrimaryTab::Search, "2", "Search"),
+            (PrimaryTab::Results, "3", "Results"),
         ];
 
         let mut spans = Vec::new();

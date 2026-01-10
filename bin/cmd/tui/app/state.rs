@@ -34,6 +34,30 @@ impl App {
         self.table_state.select(Some(i));
     }
 
+    pub(crate) fn select_next_result(&mut self) {
+        let count = self.search_results.len();
+        if count == 0 {
+            return;
+        }
+        let i = match self.results_table_state.selected() {
+            Some(i) => (i + 1).min(count - 1),
+            None => 0,
+        };
+        self.results_table_state.select(Some(i));
+    }
+
+    pub(crate) fn select_previous_result(&mut self) {
+        let count = self.search_results.len();
+        if count == 0 {
+            return;
+        }
+        let i = match self.results_table_state.selected() {
+            Some(i) => i.saturating_sub(1),
+            None => 0,
+        };
+        self.results_table_state.select(Some(i));
+    }
+
     pub(crate) fn select_next_network(&mut self) {
         let count = self.available_chains.len();
         if count == 0 {
@@ -185,6 +209,54 @@ impl App {
         self.traces = None;
         self.traces_loading = false;
         self.traces_tx_hash = None;
+    }
+
+    pub(crate) fn request_results_opcodes_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.results_table_state.selected()
+            && let Some(tx) = self.search_results.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.opcodes = None;
+            self.opcodes_loading = true;
+            self.opcodes_tx_hash = Some(tx_hash.clone());
+
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::Opcodes(tx_hash, trace_mode, opts));
+        }
+    }
+
+    pub(crate) fn request_results_traces_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.results_table_state.selected()
+            && let Some(tx) = self.search_results.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.traces = None;
+            self.traces_loading = true;
+            self.traces_tx_hash = Some(tx_hash.clone());
+
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::Traces(tx_hash, trace_mode, opts));
+        }
     }
 
     pub(crate) fn request_tx_trace(&mut self) {
