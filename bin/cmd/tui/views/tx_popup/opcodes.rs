@@ -47,7 +47,7 @@ pub fn render_opcodes_tab(
     let header = Line::from(vec![
         Span::styled(format!("{:<8}  ", "PC"), header_style),
         Span::styled(format!("{:<16}  ", "OP"), header_style),
-        Span::styled(format!("{:>8}  ", "COST"), header_style),
+        Span::styled(format!("{:<8}  ", "COST"), header_style),
         Span::styled("GAS_LEFT", header_style),
     ]);
     frame.render_widget(Paragraph::new(header), chunks[0]);
@@ -67,7 +67,7 @@ pub fn render_opcodes_tab(
                 Style::default().fg(op_color),
             ),
             Span::styled(
-                format!("{:>8}  ", opcode.cost),
+                format!("{:<8}  ", opcode.cost),
                 Style::default().fg(Color::Yellow),
             ),
             Span::styled(
