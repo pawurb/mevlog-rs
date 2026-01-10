@@ -1,4 +1,4 @@
-use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
+use mevlog::ChainEntryJson;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -15,7 +15,7 @@ pub fn render_info_popup(
     area: Rect,
     frame: &mut Frame,
     chain: Option<&ChainEntryJson>,
-    conn_opts: &ConnOpts,
+    rpc_url: Option<&str>,
     rpc_refreshing: bool,
 ) {
     let popup_width = POPUP_WIDTH.min(area.width.saturating_sub(4));
@@ -54,16 +54,14 @@ pub fn render_info_popup(
 
     let chain_name = chain.map(|c| c.name.as_str()).unwrap_or("Unknown");
     let chain_id = chain
-        .map(|c| c.chain_id)
-        .or(conn_opts.chain_id)
-        .map(|id| id.to_string())
+        .map(|c| c.chain_id.to_string())
         .unwrap_or_else(|| "Unknown".to_string());
     let network = chain.map(|c| c.chain.as_str()).unwrap_or("Unknown");
     let explorer = chain
         .and_then(|c| c.explorer_url.as_deref())
         .unwrap_or("N/A");
 
-    let rpc_url = conn_opts.rpc_url.as_deref().unwrap_or("Resolving...");
+    let rpc_url = rpc_url.unwrap_or("Resolving...");
 
     frame.render_widget(
         Paragraph::new(Line::from(vec![

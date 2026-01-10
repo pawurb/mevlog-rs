@@ -8,16 +8,22 @@ pub(crate) mod chains;
 pub(crate) mod txs;
 pub(crate) mod worker;
 
+#[derive(Debug, Clone)]
+pub(crate) struct RpcOpts {
+    pub rpc_url: String,
+    pub chain_id: u64,
+}
+
 #[allow(dead_code)]
 pub(crate) enum DataRequest {
-    Block(BlockId),
-    Tx(String),
+    Block(BlockId, RpcOpts),
+    Tx(String, RpcOpts),
     Chains(Option<String>),
     ChainInfo(String),
-    Opcodes(String, TraceMode),
-    Traces(String, TraceMode),
+    Opcodes(String, TraceMode, RpcOpts),
+    Traces(String, TraceMode, RpcOpts),
     DetectTraceMode(String),
-    RefreshRpc(u64),
+    RefreshRpc(u64, u64),
 }
 
 pub(crate) enum BlockId {

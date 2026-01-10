@@ -1,19 +1,23 @@
 //! Data management - fetching and updating transaction data
 
-use super::App;
-use crate::cmd::tui::data::{BlockId, DataRequest};
+use crate::cmd::tui::{
+    app::App,
+    data::{BlockId, DataRequest},
+};
 
 impl App {
-    /// Returns the block number to use for navigation (loading_block if loading, otherwise current_block)
     fn effective_block(&self) -> Option<u64> {
         self.loading_block.or(self.current_block)
     }
 
     pub(crate) fn load_block(&mut self, block: u64) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
         self.is_loading = true;
         self.loading_block = Some(block);
         self.data_req_tx
-            .send(DataRequest::Block(BlockId::Number(block)))
+            .send(DataRequest::Block(BlockId::Number(block), opts))
             .unwrap();
     }
 
@@ -32,10 +36,13 @@ impl App {
     }
 
     pub(crate) fn load_latest_block(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
         self.is_loading = true;
         self.loading_block = None;
         self.data_req_tx
-            .send(DataRequest::Block(BlockId::Latest))
+            .send(DataRequest::Block(BlockId::Latest, opts))
             .unwrap();
     }
 }

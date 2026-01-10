@@ -5,10 +5,7 @@ mod keys;
 mod state;
 mod tabs;
 
-use std::{
-    io,
-    sync::{Arc, RwLock},
-};
+use std::io;
 
 use crossbeam_channel::{Receiver, Sender, select};
 use crossterm::event::KeyCode;
@@ -27,7 +24,7 @@ use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
         BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
-        TraceMode, worker::spawn_data_worker,
+        RpcOpts, TraceMode, worker::spawn_data_worker,
     },
     views::{
         NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_info_popup,
@@ -93,7 +90,9 @@ pub struct App {
     pub(crate) tx_popup_open: bool,
     pub(crate) tx_popup_scroll: u16,
     pub(crate) tx_popup_tab: TxPopupTab,
-    pub(crate) conn_opts: Arc<RwLock<ConnOpts>>,
+    pub(crate) rpc_url: Option<String>,
+    pub(crate) chain_id: Option<u64>,
+    pub(crate) rpc_timeout_ms: u64,
     pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
     #[allow(dead_code)]
@@ -136,21 +135,28 @@ impl App {
                 })
         });
 
-        let conn_opts = Arc::new(RwLock::new(conn_opts.clone()));
+        let rpc_url = conn_opts.rpc_url.clone();
+        let chain_id = conn_opts.chain_id;
+        let rpc_timeout_ms = conn_opts.rpc_timeout_ms;
 
-        spawn_data_worker(data_req_rx, state_tx.clone(), conn_opts.clone());
+        spawn_data_worker(data_req_rx, state_tx.clone());
         spawn_input_reader(state_tx.clone());
 
         if mode == AppMode::Main {
-            let opts = conn_opts.read().unwrap();
-            if let Some(rpc_url) = opts.rpc_url.clone() {
-                let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
-                let _ = data_req_tx.send(DataRequest::DetectTraceMode(rpc_url.clone()));
-                if opts.chain_id.is_none() {
-                    let _ = data_req_tx.send(DataRequest::ChainInfo(rpc_url));
+            if let Some(ref url) = rpc_url {
+                if let Some(cid) = chain_id {
+                    let opts = RpcOpts {
+                        rpc_url: url.clone(),
+                        chain_id: cid,
+                    };
+                    let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest, opts));
                 }
-            } else if let Some(chain_id) = opts.chain_id {
-                let _ = data_req_tx.send(DataRequest::RefreshRpc(chain_id));
+                let _ = data_req_tx.send(DataRequest::DetectTraceMode(url.clone()));
+                if chain_id.is_none() {
+                    let _ = data_req_tx.send(DataRequest::ChainInfo(url.clone()));
+                }
+            } else if let Some(cid) = chain_id {
+                let _ = data_req_tx.send(DataRequest::RefreshRpc(cid, rpc_timeout_ms));
             }
         }
 
@@ -168,12 +174,7 @@ impl App {
             vec![]
         };
 
-        let rpc_refreshing = if mode == AppMode::Main {
-            let opts = conn_opts.read().unwrap();
-            opts.rpc_url.is_none() && opts.chain_id.is_some()
-        } else {
-            false
-        };
+        let rpc_refreshing = mode == AppMode::Main && rpc_url.is_none() && chain_id.is_some();
 
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {
@@ -197,7 +198,9 @@ impl App {
             tx_popup_open: false,
             tx_popup_scroll: 0,
             tx_popup_tab: TxPopupTab::default(),
-            conn_opts,
+            rpc_url,
+            chain_id,
+            rpc_timeout_ms,
             active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
@@ -213,6 +216,13 @@ impl App {
             info_popup_open: false,
             rpc_refreshing,
         }
+    }
+
+    pub(crate) fn rpc_opts(&self) -> Option<RpcOpts> {
+        Some(RpcOpts {
+            rpc_url: self.rpc_url.clone()?,
+            chain_id: self.chain_id?,
+        })
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -311,12 +321,11 @@ impl App {
                         if self.block_input_popup_open {
                             self.render_block_input_popup(frame);
                         } else if self.info_popup_open {
-                            let opts = self.conn_opts.read().unwrap();
                             render_info_popup(
                                 frame.area(),
                                 frame,
                                 self.selected_chain.as_ref(),
-                                &opts,
+                                self.rpc_url.as_deref(),
                                 self.rpc_refreshing,
                             );
                         }

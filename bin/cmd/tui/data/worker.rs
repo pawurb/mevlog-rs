@@ -1,15 +1,9 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::collections::HashMap;
 
 use crossbeam_channel::{Receiver, Sender};
 use mevlog::{
     ChainEntryJson,
-    misc::{
-        rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
-        shared_init::ConnOpts,
-    },
+    misc::rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
 };
 use rand::seq::IndexedRandom;
 use tokio::{runtime::Runtime, task::JoinHandle};
@@ -39,14 +33,14 @@ enum RequestKey {
 impl DataRequest {
     fn key(&self) -> RequestKey {
         match self {
-            DataRequest::Block(_) => RequestKey::Block,
-            DataRequest::Tx(_) => RequestKey::Tx,
+            DataRequest::Block(..) => RequestKey::Block,
+            DataRequest::Tx(..) => RequestKey::Tx,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
-            DataRequest::Opcodes(_, _) => RequestKey::Opcodes,
-            DataRequest::Traces(_, _) => RequestKey::Traces,
+            DataRequest::Opcodes(..) => RequestKey::Opcodes,
+            DataRequest::Traces(..) => RequestKey::Traces,
             DataRequest::DetectTraceMode(_) => RequestKey::DetectTraceMode,
-            DataRequest::RefreshRpc(_) => RequestKey::RefreshRpc,
+            DataRequest::RefreshRpc(..) => RequestKey::RefreshRpc,
         }
     }
 }
@@ -54,7 +48,6 @@ impl DataRequest {
 pub(crate) fn spawn_data_worker(
     data_req_rx: Receiver<DataRequest>,
     event_tx: Sender<AppEvent>,
-    conn_opts: Arc<RwLock<ConnOpts>>,
 ) -> std::thread::JoinHandle<()> {
     std::thread::spawn(move || {
         let rt = Runtime::new().expect("tokio runtime");
@@ -69,16 +62,12 @@ pub(crate) fn spawn_data_worker(
                 h.abort();
             }
 
-            let opts = conn_opts.read().unwrap().clone();
-
             let handle = match cmd {
-                DataRequest::Block(BlockId::Latest) => {
+                DataRequest::Block(BlockId::Latest, opts) => {
                     info!("fetching latest block");
                     let tx = event_tx.clone();
-                    let rpc_url = opts.rpc_url.clone();
-                    let chain_id = opts.chain_id;
                     rt.spawn(async move {
-                        match fetch_txs("latest", rpc_url, chain_id).await {
+                        match fetch_txs("latest", Some(opts.rpc_url), Some(opts.chain_id)).await {
                             Ok(block_data) => {
                                 let block_num =
                                     block_data.first().map(|tx| tx.block_number).unwrap_or(0);
@@ -95,13 +84,17 @@ pub(crate) fn spawn_data_worker(
                     })
                 }
 
-                DataRequest::Block(BlockId::Number(block)) => {
+                DataRequest::Block(BlockId::Number(block), opts) => {
                     info!(block, "fetching block");
                     let tx = event_tx.clone();
-                    let rpc_url = opts.rpc_url.clone();
-                    let chain_id = opts.chain_id;
                     rt.spawn(async move {
-                        match fetch_txs(block.to_string().as_str(), rpc_url, chain_id).await {
+                        match fetch_txs(
+                            block.to_string().as_str(),
+                            Some(opts.rpc_url),
+                            Some(opts.chain_id),
+                        )
+                        .await
+                        {
                             Ok(block_data) => {
                                 debug!(block, txs = block_data.len(), "fetched block");
                                 let _ =
@@ -115,16 +108,21 @@ pub(crate) fn spawn_data_worker(
                     })
                 }
 
-                DataRequest::Tx(_tx_hash) => rt.spawn(async move { todo!() }),
+                DataRequest::Tx(_tx_hash, _opts) => rt.spawn(async move { todo!() }),
 
-                DataRequest::Opcodes(tx_hash, trace_mode) => {
+                DataRequest::Opcodes(tx_hash, trace_mode, opts) => {
                     info!(%tx_hash, ?trace_mode, "fetching opcodes");
                     let tx = event_tx.clone();
-                    let rpc_url = opts.rpc_url.clone();
-                    let chain_id = opts.chain_id;
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_opcodes(&hash, rpc_url, chain_id, trace_mode).await {
+                        match fetch_opcodes(
+                            &hash,
+                            Some(opts.rpc_url),
+                            Some(opts.chain_id),
+                            trace_mode,
+                        )
+                        .await
+                        {
                             Ok(opcodes) => {
                                 debug!(tx_hash = %hash, count = opcodes.len(), "fetched opcodes");
                                 let _ =
@@ -138,14 +136,19 @@ pub(crate) fn spawn_data_worker(
                     })
                 }
 
-                DataRequest::Traces(tx_hash, trace_mode) => {
+                DataRequest::Traces(tx_hash, trace_mode, opts) => {
                     info!(%tx_hash, ?trace_mode, "fetching traces");
                     let tx = event_tx.clone();
-                    let rpc_url = opts.rpc_url.clone();
-                    let chain_id = opts.chain_id;
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_traces(&hash, rpc_url, chain_id, trace_mode).await {
+                        match fetch_traces(
+                            &hash,
+                            Some(opts.rpc_url),
+                            Some(opts.chain_id),
+                            trace_mode,
+                        )
+                        .await
+                        {
                             Ok(traces) => {
                                 debug!(tx_hash = %hash, count = traces.len(), "fetched traces");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Traces(hash, traces)));
@@ -198,7 +201,10 @@ pub(crate) fn spawn_data_worker(
                                             chain_id,
                                             name: chain_info.name,
                                             chain: chain_info.chain,
-                                            explorer_url: chain_info.explorers.first().map(|e| e.url.clone()),
+                                            explorer_url: chain_info
+                                                .explorers
+                                                .first()
+                                                .map(|e| e.url.clone()),
                                         };
                                         let _ =
                                             tx.send(AppEvent::Data(DataResponse::ChainInfo(entry)));
@@ -224,10 +230,9 @@ pub(crate) fn spawn_data_worker(
                     })
                 }
 
-                DataRequest::RefreshRpc(chain_id) => {
+                DataRequest::RefreshRpc(chain_id, timeout_ms) => {
                     info!(chain_id, "refreshing RPC URL");
                     let tx = event_tx.clone();
-                    let timeout_ms = opts.rpc_timeout_ms;
                     rt.spawn(async move {
                         match get_chain_info(chain_id, timeout_ms, 3).await {
                             Ok(chain_info) => {

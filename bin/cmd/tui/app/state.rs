@@ -4,8 +4,10 @@ use ratatui::widgets::TableState;
 
 use mevlog::ChainEntryJson;
 
-use super::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab};
-use crate::cmd::tui::data::{BlockId, DataRequest, TraceMode};
+use crate::cmd::tui::{
+    app::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab},
+    data::{BlockId, DataRequest, TraceMode},
+};
 
 impl App {
     pub(crate) fn select_next(&mut self) {
@@ -81,11 +83,8 @@ impl App {
             && let Some(chain) = self.available_chains.get(selected_idx)
         {
             self.selected_chain = Some(chain.clone());
-            {
-                let mut opts = self.conn_opts.write().unwrap();
-                opts.chain_id = Some(chain.chain_id);
-                opts.rpc_url = None;
-            }
+            self.chain_id = Some(chain.chain_id);
+            self.rpc_url = None;
 
             self.mode = AppMode::Main;
             self.is_loading = true;
@@ -93,7 +92,7 @@ impl App {
 
             let _ = self
                 .data_req_tx
-                .send(DataRequest::RefreshRpc(chain.chain_id));
+                .send(DataRequest::RefreshRpc(chain.chain_id, self.rpc_timeout_ms));
 
             self.available_chains.clear();
             self.search_query.clear();
@@ -117,7 +116,7 @@ impl App {
     }
 
     pub(crate) fn can_return_to_main(&self) -> bool {
-        self.selected_chain.is_some() || self.conn_opts.read().unwrap().rpc_url.is_some()
+        self.selected_chain.is_some() || self.rpc_url.is_some()
     }
 
     pub(crate) fn return_to_main(&mut self) {
@@ -129,6 +128,9 @@ impl App {
     }
 
     pub(crate) fn request_opcodes_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
         if let Some(idx) = self.table_state.selected()
             && let Some(tx) = self.items.get(idx)
         {
@@ -145,7 +147,7 @@ impl App {
             let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
             let _ = self
                 .data_req_tx
-                .send(DataRequest::Opcodes(tx_hash, trace_mode));
+                .send(DataRequest::Opcodes(tx_hash, trace_mode, opts));
         }
     }
 
@@ -156,6 +158,9 @@ impl App {
     }
 
     pub(crate) fn request_traces_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
         if let Some(idx) = self.table_state.selected()
             && let Some(tx) = self.items.get(idx)
         {
@@ -172,7 +177,7 @@ impl App {
             let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
             let _ = self
                 .data_req_tx
-                .send(DataRequest::Traces(tx_hash, trace_mode));
+                .send(DataRequest::Traces(tx_hash, trace_mode, opts));
         }
     }
 
@@ -196,11 +201,8 @@ impl App {
         self.error_message = None;
         self.clear_opcodes();
         self.clear_traces();
-        {
-            let mut opts = self.conn_opts.write().unwrap();
-            opts.chain_id = None;
-            opts.rpc_url = None;
-        }
+        self.chain_id = None;
+        self.rpc_url = None;
         self.trace_mode = None;
         self.info_popup_open = false;
         self.rpc_refreshing = false;
@@ -227,24 +229,30 @@ impl App {
             return;
         }
 
-        let chain_id = self.selected_chain.as_ref().map(|c| c.chain_id).or(self
-            .conn_opts
-            .read()
-            .unwrap()
-            .chain_id);
+        let cid = self
+            .selected_chain
+            .as_ref()
+            .map(|c| c.chain_id)
+            .or(self.chain_id);
 
-        if let Some(chain_id) = chain_id {
+        if let Some(cid) = cid {
             self.rpc_refreshing = true;
-            let _ = self.data_req_tx.send(DataRequest::RefreshRpc(chain_id));
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::RefreshRpc(cid, self.rpc_timeout_ms));
         }
     }
 
     pub(crate) fn handle_rpc_refreshed(&mut self, new_rpc_url: String) {
         self.rpc_refreshing = false;
-        self.conn_opts.write().unwrap().rpc_url = Some(new_rpc_url.clone());
+        self.rpc_url = Some(new_rpc_url.clone());
 
-        self.is_loading = true;
-        let _ = self.data_req_tx.send(DataRequest::Block(BlockId::Latest));
+        if let Some(opts) = self.rpc_opts() {
+            self.is_loading = true;
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::Block(BlockId::Latest, opts));
+        }
         let _ = self
             .data_req_tx
             .send(DataRequest::DetectTraceMode(new_rpc_url));
