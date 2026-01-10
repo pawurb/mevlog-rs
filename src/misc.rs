@@ -4,6 +4,8 @@ pub mod database;
 pub mod db_actions;
 pub mod ens_utils;
 pub mod eth_unit_parser;
+#[cfg(feature = "tui")]
+pub mod opcode_color;
 pub mod parquet_utils;
 pub mod revm_tracing;
 pub mod rpc_tracing;
