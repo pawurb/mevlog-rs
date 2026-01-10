@@ -16,7 +16,7 @@ use crate::cmd::tui::{
     data::{
         BlockId, DataRequest, DataResponse,
         chains::fetch_chains,
-        txs::{fetch_opcodes, fetch_txs},
+        txs::{fetch_opcodes, fetch_traces, fetch_txs},
     },
 };
 
@@ -27,6 +27,7 @@ enum RequestKey {
     Chains,
     ChainInfo,
     Opcodes,
+    Traces,
 }
 
 impl DataRequest {
@@ -37,6 +38,7 @@ impl DataRequest {
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
             DataRequest::Opcodes(_) => RequestKey::Opcodes,
+            DataRequest::Traces(_) => RequestKey::Traces,
         }
     }
 }
@@ -121,6 +123,26 @@ pub(crate) fn spawn_data_worker(
                             }
                             Err(e) => {
                                 error!(tx_hash = %hash, error = %e, "failed to fetch opcodes");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                        }
+                    })
+                }
+
+                DataRequest::Traces(tx_hash) => {
+                    info!(%tx_hash, "fetching traces");
+                    let tx = event_tx.clone();
+                    let rpc_url = conn_opts.rpc_url.clone();
+                    let chain_id = conn_opts.chain_id;
+                    let hash = tx_hash.clone();
+                    rt.spawn(async move {
+                        match fetch_traces(&hash, rpc_url, chain_id).await {
+                            Ok(traces) => {
+                                debug!(tx_hash = %hash, count = traces.len(), "fetched traces");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Traces(hash, traces)));
+                            }
+                            Err(e) => {
+                                error!(tx_hash = %hash, error = %e, "failed to fetch traces");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }

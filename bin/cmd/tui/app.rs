@@ -23,7 +23,7 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
-        BlockId, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
+        BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
         worker::spawn_data_worker,
     },
     views::{
@@ -97,6 +97,9 @@ pub struct App {
     pub(crate) opcodes: Option<Vec<MEVOpcodeJson>>,
     pub(crate) opcodes_loading: bool,
     pub(crate) opcodes_tx_hash: Option<String>,
+    pub(crate) traces: Option<Vec<CallExtract>>,
+    pub(crate) traces_loading: bool,
+    pub(crate) traces_tx_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
     pub(crate) block_input_query: String,
 }
@@ -180,6 +183,9 @@ impl App {
             opcodes: None,
             opcodes_loading: false,
             opcodes_tx_hash: None,
+            traces: None,
+            traces_loading: false,
+            traces_tx_hash: None,
             block_input_popup_open: false,
             block_input_query: String::new(),
         }
@@ -269,6 +275,8 @@ impl App {
                                 explorer_url.as_deref(),
                                 self.opcodes.as_deref(),
                                 self.opcodes_loading,
+                                self.traces.as_deref(),
+                                self.traces_loading,
                             );
                         }
 
@@ -398,6 +406,9 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
                     self.request_opcodes_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
+                    self.request_traces_if_needed();
+                }
             }
             DataResponse::Tx(_hash, _tx) => {
                 // TODO: handle individual tx updates
@@ -406,6 +417,12 @@ impl App {
                 if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
                     self.opcodes = Some(opcodes);
                     self.opcodes_loading = false;
+                }
+            }
+            DataResponse::Traces(tx_hash, traces) => {
+                if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
+                    self.traces = Some(traces);
+                    self.traces_loading = false;
                 }
             }
             DataResponse::Chains(chains) => {

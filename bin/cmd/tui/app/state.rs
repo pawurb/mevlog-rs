@@ -123,6 +123,30 @@ impl App {
         self.opcodes_tx_hash = None;
     }
 
+    pub(crate) fn request_traces_if_needed(&mut self) {
+        if let Some(idx) = self.table_state.selected()
+            && let Some(tx) = self.items.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.traces = None;
+            self.traces_loading = true;
+            self.traces_tx_hash = Some(tx_hash.clone());
+
+            let _ = self.data_req_tx.send(DataRequest::Traces(tx_hash));
+        }
+    }
+
+    pub(crate) fn clear_traces(&mut self) {
+        self.traces = None;
+        self.traces_loading = false;
+        self.traces_tx_hash = None;
+    }
+
     pub(crate) fn return_to_network_selection(&mut self) {
         self.items.clear();
         self.table_state = TableState::default();
@@ -136,6 +160,7 @@ impl App {
         self.active_tab = PrimaryTab::Explore;
         self.error_message = None;
         self.clear_opcodes();
+        self.clear_traces();
         self.conn_opts.chain_id = None;
 
         self.available_chains = DEFAULT_CHAINS

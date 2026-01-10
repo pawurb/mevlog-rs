@@ -34,7 +34,10 @@ impl App {
                 self.tx_popup_tab = TxPopupTab::Opcodes;
                 self.request_opcodes_if_needed();
             }
-            KeyCode::Char('4') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Traces,
+            KeyCode::Char('4') if self.tx_popup_open => {
+                self.tx_popup_tab = TxPopupTab::Traces;
+                self.request_traces_if_needed();
+            }
 
             KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
             KeyCode::Char('2') => self.switch_to_tab(PrimaryTab::Search),
@@ -91,19 +94,27 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
                     self.request_opcodes_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
+                    self.request_traces_if_needed();
+                }
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 self.select_previous();
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
                     self.request_opcodes_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
+                    self.request_traces_if_needed();
+                }
             }
             KeyCode::Char('h') | KeyCode::Left => {
                 self.clear_opcodes();
+                self.clear_traces();
                 self.load_previous_block();
             }
             KeyCode::Char('l') | KeyCode::Right => {
                 self.clear_opcodes();
+                self.clear_traces();
                 self.load_next_block();
             }
             KeyCode::Char('b') => {
@@ -115,6 +126,7 @@ impl App {
                     self.tx_popup_scroll = 0;
                     self.tx_popup_tab = TxPopupTab::default();
                     self.clear_opcodes();
+                    self.clear_traces();
                 }
             }
             KeyCode::Esc if self.tx_popup_open => {
@@ -122,6 +134,7 @@ impl App {
                 self.tx_popup_scroll = 0;
                 self.tx_popup_tab = TxPopupTab::default();
                 self.clear_opcodes();
+                self.clear_traces();
             }
             KeyCode::Char('n') if self.tx_popup_open => {
                 self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);
