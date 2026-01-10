@@ -34,9 +34,23 @@ impl Config {
         let path = Self::config_file_path();
         if !path.exists() {
             fs::create_dir_all(config_path())?;
-            fs::write(&path, "")?;
+            fs::write(&path, Self::default_config_template())?;
         }
         Ok(())
+    }
+
+    fn default_config_template() -> &'static str {
+        r#"# mevlog configuration file
+#
+# Configure custom RPC endpoints for each chain by chain ID.
+# Uncomment and modify the examples below as needed.
+#
+# [chains.1]
+# rpc_url = "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
+#
+# [chains.42161]
+# rpc_url = "https://arb-mainnet.g.alchemy.com/v2/YOUR_API_KEY"
+"#
     }
 
     pub fn get_chain(&self, chain_id: u64) -> Option<&ChainConfig> {
