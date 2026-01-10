@@ -5,8 +5,8 @@ use cmd::seed_db::SeedDBArgs;
 #[cfg(feature = "tui")]
 use cmd::tui::TuiArgs;
 use cmd::{
-    chain_info::ChainInfoArgs, chains::ChainsArgs, search::SearchArgs, tx::TxArgs,
-    update_db::UpdateDBArgs, watch::WatchArgs,
+    chain_info::ChainInfoArgs, chains::ChainsArgs, debug_available::DebugAvailableArgs,
+    search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -56,6 +56,8 @@ pub enum MLSubcommand {
     Chains(ChainsArgs),
     #[command(about = "Show detailed chain information")]
     ChainInfo(ChainInfoArgs),
+    #[command(about = "Check if RPC supports debug tracing")]
+    DebugAvailable(DebugAvailableArgs),
     #[cfg(feature = "seed-db")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
@@ -160,6 +162,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         }
         ML::ChainInfo(args) => {
             args.run(root_args.format).await?;
+        }
+        ML::DebugAvailable(args) => {
+            args.run().await?;
         }
         #[cfg(feature = "seed-db")]
         ML::SeedDB(args) => {
