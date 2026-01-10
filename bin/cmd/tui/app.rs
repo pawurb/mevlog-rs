@@ -483,7 +483,13 @@ impl App {
                 }
             }
             DataResponse::ChainInfo(chain) => {
+                self.chain_id = Some(chain.chain_id);
                 self.selected_chain = Some(chain);
+                if let Some(opts) = self.rpc_opts() {
+                    let _ = self
+                        .data_req_tx
+                        .send(DataRequest::Block(BlockId::Latest, opts));
+                }
             }
             DataResponse::TraceMode(trace_mode) => {
                 self.trace_mode = Some(trace_mode);
