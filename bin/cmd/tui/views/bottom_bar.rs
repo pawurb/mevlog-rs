@@ -17,24 +17,28 @@ const QUIT_LABEL: &str = " | Quit ";
 const QUIT: &str = "<q>";
 
 /// Renders the bottom controls bar showing context-aware keybindings
+#[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
 pub fn render_key_bindings(
     frame: &mut Frame,
     area: Rect,
     mode: &AppMode,
     active_tab: Option<PrimaryTab>,
-    popup_open: bool,
+    search_popup_open: bool,
+    tx_popup_open: bool,
     block_popup_open: bool,
+    info_popup_open: bool,
+    can_go_back: bool,
 ) {
     let controls_line = match mode {
         AppMode::SelectNetwork => {
-            if popup_open {
+            if search_popup_open {
                 Line::from(vec![
                     " Type to search ".into(),
                     " | Close ".into(),
                     "<Enter/Esc>".blue().bold(),
                 ])
             } else {
-                Line::from(vec![
+                let mut items = vec![
                     NAV_NETWORKS.blue().bold(),
                     SELECT_LABEL.into(),
                     SELECT.blue().bold(),
@@ -42,9 +46,14 @@ pub fn render_key_bindings(
                     "<s>".blue().bold(),
                     " | Clear ".into(),
                     "<c>".blue().bold(),
-                    QUIT_LABEL.into(),
-                    QUIT.blue().bold(),
-                ])
+                ];
+                if can_go_back {
+                    items.push(" | Go back ".into());
+                    items.push("<n/Esc>".blue().bold());
+                }
+                items.push(QUIT_LABEL.into());
+                items.push(QUIT.blue().bold());
+                Line::from(items)
             }
         }
         AppMode::Main => match active_tab {
@@ -59,7 +68,16 @@ pub fn render_key_bindings(
                         " | Cancel ".into(),
                         "<Esc>".blue().bold(),
                     ])
-                } else if popup_open {
+                } else if info_popup_open {
+                    Line::from(vec![
+                        " Refresh RPC ".into(),
+                        "<r>".blue().bold(),
+                        " | Close ".into(),
+                        "<i/Esc>".blue().bold(),
+                        QUIT_LABEL.into(),
+                        QUIT.blue().bold(),
+                    ])
+                } else if tx_popup_open {
                     Line::from(vec![
                         "[1-3] ".blue().bold(),
                         "Tabs".into(),
@@ -77,6 +95,8 @@ pub fn render_key_bindings(
                         "<b>".blue().bold(),
                         " | Open ".into(),
                         "<o>".blue().bold(),
+                        " | RPC ".into(),
+                        "<i>".blue().bold(),
                         " | Networks ".into(),
                         "<n>".blue().bold(),
                         QUIT_LABEL.into(),

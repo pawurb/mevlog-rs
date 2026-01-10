@@ -24,11 +24,11 @@ use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
         BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
-        TraceMode, worker::spawn_data_worker,
+        RpcOpts, TraceMode, worker::spawn_data_worker,
     },
     views::{
-        NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_key_bindings,
-        render_tx_popup,
+        NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_info_popup,
+        render_key_bindings, render_tx_popup,
     },
 };
 
@@ -90,9 +90,12 @@ pub struct App {
     pub(crate) tx_popup_open: bool,
     pub(crate) tx_popup_scroll: u16,
     pub(crate) tx_popup_tab: TxPopupTab,
-    pub(crate) conn_opts: ConnOpts,
+    pub(crate) rpc_url: Option<String>,
+    pub(crate) chain_id: Option<u64>,
+    pub(crate) rpc_timeout_ms: u64,
     pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
+    #[allow(dead_code)]
     state_tx: Sender<AppEvent>,
     pub(crate) opcodes: Option<Vec<MEVOpcodeJson>>,
     pub(crate) opcodes_loading: bool,
@@ -103,6 +106,8 @@ pub struct App {
     pub(crate) block_input_popup_open: bool,
     pub(crate) block_input_query: String,
     pub(crate) trace_mode: Option<TraceMode>,
+    pub(crate) info_popup_open: bool,
+    pub(crate) rpc_refreshing: bool,
 }
 
 impl App {
@@ -130,18 +135,28 @@ impl App {
                 })
         });
 
-        spawn_data_worker(data_req_rx, state_tx.clone(), conn_opts);
+        let rpc_url = conn_opts.rpc_url.clone();
+        let chain_id = conn_opts.chain_id;
+        let rpc_timeout_ms = conn_opts.rpc_timeout_ms;
+
+        spawn_data_worker(data_req_rx, state_tx.clone());
         spawn_input_reader(state_tx.clone());
 
         if mode == AppMode::Main {
-            if let Some(ref rpc_url) = conn_opts.rpc_url {
-                let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
-                let _ = data_req_tx.send(DataRequest::DetectTraceMode(rpc_url.clone()));
-                if conn_opts.chain_id.is_none() {
-                    let _ = data_req_tx.send(DataRequest::ChainInfo(rpc_url.clone()));
+            if let Some(ref url) = rpc_url {
+                if let Some(cid) = chain_id {
+                    let opts = RpcOpts {
+                        rpc_url: url.clone(),
+                        chain_id: cid,
+                    };
+                    let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest, opts));
                 }
-            } else if let Some(chain_id) = conn_opts.chain_id {
-                let _ = data_req_tx.send(DataRequest::ResolveRpcUrl(chain_id));
+                let _ = data_req_tx.send(DataRequest::DetectTraceMode(url.clone()));
+                if chain_id.is_none() {
+                    let _ = data_req_tx.send(DataRequest::ChainInfo(url.clone()));
+                }
+            } else if let Some(cid) = chain_id {
+                let _ = data_req_tx.send(DataRequest::RefreshRpc(cid, rpc_timeout_ms));
             }
         }
 
@@ -158,6 +173,8 @@ impl App {
         } else {
             vec![]
         };
+
+        let rpc_refreshing = mode == AppMode::Main && rpc_url.is_none() && chain_id.is_some();
 
         Self {
             table_state: TableState::default().with_selected(if items.is_empty() {
@@ -181,7 +198,9 @@ impl App {
             tx_popup_open: false,
             tx_popup_scroll: 0,
             tx_popup_tab: TxPopupTab::default(),
-            conn_opts: conn_opts.clone(),
+            rpc_url,
+            chain_id,
+            rpc_timeout_ms,
             active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
@@ -194,7 +213,16 @@ impl App {
             block_input_popup_open: false,
             block_input_query: String::new(),
             trace_mode: None,
+            info_popup_open: false,
+            rpc_refreshing,
         }
+    }
+
+    pub(crate) fn rpc_opts(&self) -> Option<RpcOpts> {
+        Some(RpcOpts {
+            rpc_url: self.rpc_url.clone()?,
+            chain_id: self.chain_id?,
+        })
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
@@ -233,6 +261,9 @@ impl App {
                     None,
                     self.search_popup_open,
                     false,
+                    false,
+                    false,
+                    self.can_return_to_main(),
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -289,6 +320,14 @@ impl App {
 
                         if self.block_input_popup_open {
                             self.render_block_input_popup(frame);
+                        } else if self.info_popup_open {
+                            render_info_popup(
+                                frame.area(),
+                                frame,
+                                self.selected_chain.as_ref(),
+                                self.rpc_url.as_deref(),
+                                self.rpc_refreshing,
+                            );
                         }
                     }
                     PrimaryTab::Search => {
@@ -301,8 +340,11 @@ impl App {
                     chunks[3],
                     &self.mode,
                     Some(self.active_tab),
+                    false,
                     self.tx_popup_open,
                     self.block_input_popup_open,
+                    self.info_popup_open,
+                    false,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -441,15 +483,19 @@ impl App {
                 }
             }
             DataResponse::ChainInfo(chain) => {
+                self.chain_id = Some(chain.chain_id);
                 self.selected_chain = Some(chain);
+                if let Some(opts) = self.rpc_opts() {
+                    let _ = self
+                        .data_req_tx
+                        .send(DataRequest::Block(BlockId::Latest, opts));
+                }
             }
             DataResponse::TraceMode(trace_mode) => {
                 self.trace_mode = Some(trace_mode);
             }
-            DataResponse::RpcUrl(_chain_id, rpc_url) => {
-                self.conn_opts.rpc_url = Some(rpc_url.clone());
-                let _ = self.data_req_tx.send(DataRequest::Block(BlockId::Latest));
-                let _ = self.data_req_tx.send(DataRequest::DetectTraceMode(rpc_url));
+            DataResponse::RpcRefreshed(new_rpc_url) => {
+                self.handle_rpc_refreshed(new_rpc_url);
             }
             DataResponse::Error(error_msg) => {
                 self.is_loading = false;
