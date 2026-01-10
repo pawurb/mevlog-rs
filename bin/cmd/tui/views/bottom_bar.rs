@@ -25,6 +25,7 @@ pub fn render_key_bindings(
     mode: &AppMode,
     active_tab: Option<PrimaryTab>,
     popup_open: bool,
+    block_popup_open: bool,
 ) {
     let controls_line = match mode {
         AppMode::SelectNetwork => {
@@ -50,7 +51,17 @@ pub fn render_key_bindings(
         }
         AppMode::Main => match active_tab {
             Some(PrimaryTab::Explore) => {
-                if popup_open {
+                if block_popup_open {
+                    Line::from(vec![
+                        " Enter block number ".into(),
+                        " | Confirm ".into(),
+                        "<Enter/o>".blue().bold(),
+                        " | Latest ".into(),
+                        "<l>".blue().bold(),
+                        " | Cancel ".into(),
+                        "<Esc>".blue().bold(),
+                    ])
+                } else if popup_open {
                     Line::from(vec![
                         "[1-3] ".blue().bold(),
                         "Tabs".into(),
@@ -66,6 +77,8 @@ pub fn render_key_bindings(
                         NAV_TXS.blue().bold(),
                         NAV_BLOCKS_LABEL.into(),
                         NAV_BLOCKS.blue().bold(),
+                        " | Block ".into(),
+                        "<b>".blue().bold(),
                         " | Open ".into(),
                         "<o>".blue().bold(),
                         QUIT_LABEL.into(),

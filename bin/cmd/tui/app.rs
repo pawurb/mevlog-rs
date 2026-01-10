@@ -13,6 +13,8 @@ use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style},
+    symbols::border,
+    text::{Line, Span},
     widgets::{Block, Clear, Paragraph, TableState},
 };
 
@@ -94,6 +96,8 @@ pub struct App {
     pub(crate) opcodes: Option<Vec<MEVOpcodeJson>>,
     pub(crate) opcodes_loading: bool,
     pub(crate) opcodes_tx_hash: Option<String>,
+    pub(crate) block_input_popup_open: bool,
+    pub(crate) block_input_query: String,
 }
 
 impl App {
@@ -175,6 +179,8 @@ impl App {
             opcodes: None,
             opcodes_loading: false,
             opcodes_tx_hash: None,
+            block_input_popup_open: false,
+            block_input_query: String::new(),
         }
     }
 
@@ -207,7 +213,14 @@ impl App {
                     );
 
                 // Render key bindings footer
-                render_key_bindings(frame, chunks[1], &self.mode, None, self.search_popup_open);
+                render_key_bindings(
+                    frame,
+                    chunks[1],
+                    &self.mode,
+                    None,
+                    self.search_popup_open,
+                    false,
+                );
 
                 if let Some(error_msg) = &self.error_message {
                     self.render_error_popup(frame, error_msg);
@@ -257,6 +270,10 @@ impl App {
                                 self.opcodes_loading,
                             );
                         }
+
+                        if self.block_input_popup_open {
+                            self.render_block_input_popup(frame);
+                        }
                     }
                     PrimaryTab::Search => {
                         SearchView::new().render(chunks[2], frame);
@@ -269,6 +286,7 @@ impl App {
                     &self.mode,
                     Some(self.active_tab),
                     self.tx_popup_open,
+                    self.block_input_popup_open,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -304,6 +322,34 @@ impl App {
         let popup = Paragraph::new(text)
             .style(Style::default().fg(Color::Red))
             .block(Block::bordered().style(Style::default().bg(Color::DarkGray)));
+
+        frame.render_widget(Clear, popup_area);
+        frame.render_widget(popup, popup_area);
+    }
+
+    fn render_block_input_popup(&self, frame: &mut Frame) {
+        let popup_width = 40.min(frame.area().width - 4);
+        let popup_area = centered_rect(popup_width, 3, frame.area());
+
+        let input_text = if self.block_input_query.is_empty() {
+            Line::from(vec![
+                Span::styled("Block: ", Style::default().fg(Color::Yellow)),
+                Span::styled("(enter number)", Style::default().fg(Color::DarkGray)),
+            ])
+        } else {
+            Line::from(vec![
+                Span::styled("Block: ", Style::default().fg(Color::Yellow)),
+                Span::raw(&self.block_input_query),
+                Span::styled("_", Style::default().fg(Color::Yellow)),
+            ])
+        };
+
+        let popup = Paragraph::new(input_text).block(
+            Block::bordered()
+                .title(" Go to Block ")
+                .style(Style::default().bg(Color::DarkGray))
+                .border_set(border::THICK),
+        );
 
         frame.render_widget(Clear, popup_area);
         frame.render_widget(popup, popup_area);

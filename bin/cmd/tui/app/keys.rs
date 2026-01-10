@@ -20,6 +20,11 @@ impl App {
     }
 
     fn handle_main_mode_keys(&mut self, key_code: KeyCode) {
+        if self.block_input_popup_open {
+            self.handle_explore_keys(key_code);
+            return;
+        }
+
         match key_code {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
 
@@ -47,6 +52,35 @@ impl App {
     }
 
     fn handle_explore_keys(&mut self, key_code: KeyCode) {
+        if self.block_input_popup_open {
+            match key_code {
+                KeyCode::Esc => {
+                    self.block_input_popup_open = false;
+                    self.block_input_query.clear();
+                }
+                KeyCode::Enter | KeyCode::Char('o') => {
+                    if let Ok(block_num) = self.block_input_query.parse::<u64>() {
+                        self.load_block(block_num);
+                    }
+                    self.block_input_popup_open = false;
+                    self.block_input_query.clear();
+                }
+                KeyCode::Char('l') => {
+                    self.load_latest_block();
+                    self.block_input_popup_open = false;
+                    self.block_input_query.clear();
+                }
+                KeyCode::Backspace => {
+                    self.block_input_query.pop();
+                }
+                KeyCode::Char(c) if c.is_ascii_digit() => {
+                    self.block_input_query.push(c);
+                }
+                _ => {}
+            }
+            return;
+        }
+
         match key_code {
             KeyCode::Char('j') | KeyCode::Down => {
                 self.select_next();
@@ -67,6 +101,9 @@ impl App {
             KeyCode::Char('l') | KeyCode::Right => {
                 self.clear_opcodes();
                 self.load_next_block();
+            }
+            KeyCode::Char('b') => {
+                self.block_input_popup_open = true;
             }
             KeyCode::Char('o') => {
                 self.tx_popup_open = !self.tx_popup_open;

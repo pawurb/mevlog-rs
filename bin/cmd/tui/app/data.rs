@@ -30,4 +30,12 @@ impl App {
             self.load_block(block + 1);
         }
     }
+
+    pub(crate) fn load_latest_block(&mut self) {
+        self.is_loading = true;
+        self.loading_block = None;
+        self.data_req_tx
+            .send(DataRequest::Block(BlockId::Latest))
+            .unwrap();
+    }
 }
