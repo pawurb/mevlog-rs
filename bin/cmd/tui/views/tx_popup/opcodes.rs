@@ -1,4 +1,4 @@
-use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
+use mevlog::{misc::opcode_color::OpcodeColor, models::json::mev_opcode_json::MEVOpcodeJson};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -6,6 +6,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::Paragraph,
 };
+use revm::bytecode::OpCode;
 
 pub fn render_opcodes_tab(
     area: Rect,
@@ -55,7 +56,9 @@ pub fn render_opcodes_tab(
     let mut lines: Vec<Line<'static>> = Vec::with_capacity(opcodes.len());
 
     for opcode in opcodes {
-        let op_color = get_opcode_color(&opcode.op);
+        let op_color = OpCode::parse(&opcode.op)
+            .map(|op| op.color())
+            .unwrap_or(Color::White);
 
         lines.push(Line::from(vec![
             Span::styled(
@@ -79,21 +82,4 @@ pub fn render_opcodes_tab(
 
     let paragraph = Paragraph::new(lines).scroll((scroll, 0));
     frame.render_widget(paragraph, chunks[1]);
-}
-
-fn get_opcode_color(op: &str) -> Color {
-    match op {
-        op if op.starts_with("PUSH") => Color::Magenta,
-        op if op.starts_with("DUP") => Color::Blue,
-        op if op.starts_with("SWAP") => Color::Blue,
-        op if op.starts_with("LOG") => Color::Yellow,
-        "CALL" | "STATICCALL" | "DELEGATECALL" | "CALLCODE" => Color::Red,
-        "CREATE" | "CREATE2" => Color::Red,
-        "SLOAD" | "SSTORE" => Color::Cyan,
-        "MLOAD" | "MSTORE" | "MSTORE8" => Color::Green,
-        "JUMP" | "JUMPI" | "JUMPDEST" => Color::LightRed,
-        "REVERT" | "INVALID" | "SELFDESTRUCT" => Color::Red,
-        "RETURN" | "STOP" => Color::Green,
-        _ => Color::White,
-    }
 }
