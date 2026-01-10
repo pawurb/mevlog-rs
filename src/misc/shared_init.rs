@@ -162,6 +162,13 @@ pub struct ConnOpts {
     )]
     pub rpc_timeout_ms: u64,
 
+    #[arg(
+        long,
+        help = "Timeout in milliseconds for block fetching",
+        default_value = "10000"
+    )]
+    pub block_timeout_ms: u64,
+
     #[arg(long, help = "Skip verifying --chain-id with data from --rpc-url")]
     pub skip_verify_chain_id: bool,
 }

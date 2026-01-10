@@ -9,7 +9,12 @@ use crate::cmd::tui::app::AppEvent;
 impl App {
     pub(crate) fn handle_key_event(&mut self, key_code: KeyCode) {
         if self.error_message.is_some() {
-            self.error_message = None;
+            if matches!(key_code, KeyCode::Char('r')) {
+                self.error_message = None;
+                self.request_rpc_refresh();
+            } else {
+                self.error_message = None;
+            }
             return;
         }
 
@@ -26,10 +31,8 @@ impl App {
         }
 
         match key_code {
-            KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
-            KeyCode::Char('n') | KeyCode::Char('N')
-                if !self.tx_popup_open && !self.info_popup_open =>
-            {
+            KeyCode::Char('q') => self.exit(),
+            KeyCode::Char('n') if !self.tx_popup_open && !self.info_popup_open => {
                 self.open_network_selection();
             }
 
@@ -92,9 +95,8 @@ impl App {
 
         if self.info_popup_open {
             match key_code {
-                KeyCode::Char('r') | KeyCode::Char('R') => {
-                    self.request_rpc_refresh();
-                }
+                KeyCode::Char('q') => self.exit(),
+                KeyCode::Char('r') => self.request_rpc_refresh(),
                 KeyCode::Char('i') | KeyCode::Esc => {
                     self.info_popup_open = false;
                 }
@@ -188,16 +190,14 @@ impl App {
             }
         } else {
             match key_code {
-                KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
-                KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc
-                    if self.can_return_to_main() =>
-                {
+                KeyCode::Char('q') => self.exit(),
+                KeyCode::Char('n') | KeyCode::Esc if self.can_return_to_main() => {
                     self.return_to_main();
                 }
-                KeyCode::Char('s') | KeyCode::Char('S') => {
+                KeyCode::Char('s') => {
                     self.search_popup_open = true;
                 }
-                KeyCode::Char('c') | KeyCode::Char('C') => {
+                KeyCode::Char('c') => {
                     if !self.search_query.is_empty() {
                         self.search_query.clear();
                         self.request_filtered_chains();
@@ -205,9 +205,7 @@ impl App {
                 }
                 KeyCode::Down | KeyCode::Char('j') => self.select_next_network(),
                 KeyCode::Up | KeyCode::Char('k') => self.select_previous_network(),
-                KeyCode::Enter | KeyCode::Char('o') | KeyCode::Char('O') => {
-                    self.confirm_network_selection()
-                }
+                KeyCode::Enter | KeyCode::Char('o') => self.confirm_network_selection(),
                 _ => {}
             }
         }

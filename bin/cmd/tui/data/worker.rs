@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use crossbeam_channel::{Receiver, Sender};
 use mevlog::{
@@ -6,7 +6,7 @@ use mevlog::{
     misc::rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
 };
 use rand::seq::IndexedRandom;
-use tokio::{runtime::Runtime, task::JoinHandle};
+use tokio::{runtime::Runtime, task::JoinHandle, time::timeout};
 use tracing::{debug, error, info};
 
 use crate::cmd::tui::{
@@ -66,9 +66,15 @@ pub(crate) fn spawn_data_worker(
                 DataRequest::Block(BlockId::Latest, opts) => {
                     info!("fetching latest block");
                     let tx = event_tx.clone();
+                    let timeout_duration = Duration::from_millis(opts.block_timeout_ms);
                     rt.spawn(async move {
-                        match fetch_txs("latest", Some(opts.rpc_url), Some(opts.chain_id)).await {
-                            Ok(block_data) => {
+                        match timeout(
+                            timeout_duration,
+                            fetch_txs("latest", Some(opts.rpc_url), Some(opts.chain_id)),
+                        )
+                        .await
+                        {
+                            Ok(Ok(block_data)) => {
                                 let block_num =
                                     block_data.first().map(|tx| tx.block_number).unwrap_or(0);
                                 debug!(block_num, txs = block_data.len(), "fetched latest block");
@@ -76,9 +82,16 @@ pub(crate) fn spawn_data_worker(
                                     block_num, block_data,
                                 )));
                             }
-                            Err(e) => {
+                            Ok(Err(e)) => {
                                 error!(error = %e, "failed to fetch latest block");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                            Err(_) => {
+                                error!("block fetch timed out");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(
+                                    "block fetch timeout, press r to use different RPC endpoint"
+                                        .to_string(),
+                                )));
                             }
                         }
                     })
@@ -87,22 +100,33 @@ pub(crate) fn spawn_data_worker(
                 DataRequest::Block(BlockId::Number(block), opts) => {
                     info!(block, "fetching block");
                     let tx = event_tx.clone();
+                    let timeout_duration = Duration::from_millis(opts.block_timeout_ms);
                     rt.spawn(async move {
-                        match fetch_txs(
-                            block.to_string().as_str(),
-                            Some(opts.rpc_url),
-                            Some(opts.chain_id),
+                        match timeout(
+                            timeout_duration,
+                            fetch_txs(
+                                block.to_string().as_str(),
+                                Some(opts.rpc_url),
+                                Some(opts.chain_id),
+                            ),
                         )
                         .await
                         {
-                            Ok(block_data) => {
+                            Ok(Ok(block_data)) => {
                                 debug!(block, txs = block_data.len(), "fetched block");
                                 let _ =
                                     tx.send(AppEvent::Data(DataResponse::Block(block, block_data)));
                             }
-                            Err(e) => {
+                            Ok(Err(e)) => {
                                 error!(block, error = %e, "failed to fetch block");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                            Err(_) => {
+                                error!(block, "block fetch timed out");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(
+                                    "block fetch timeout, press r to use different RPC endpoint"
+                                        .to_string(),
+                                )));
                             }
                         }
                     })
