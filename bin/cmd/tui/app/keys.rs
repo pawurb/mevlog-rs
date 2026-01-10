@@ -1,10 +1,10 @@
 //! Keyboard input handling
 
 use crossbeam_channel::Sender;
-use crossterm::event::{self, KeyCode};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use tui_input::backend::crossterm::EventHandler;
 
-use super::{App, AppMode, PrimaryTab, TxPopupTab};
-use crate::cmd::tui::app::AppEvent;
+use crate::cmd::tui::app::{App, AppEvent, AppMode, PrimaryTab, TxPopupTab};
 
 impl App {
     pub(crate) fn handle_key_event(&mut self, key_code: KeyCode) {
@@ -27,6 +27,11 @@ impl App {
     fn handle_main_mode_keys(&mut self, key_code: KeyCode) {
         if self.block_input_popup_open || self.info_popup_open {
             self.handle_explore_keys(key_code);
+            return;
+        }
+
+        if self.search_editing {
+            self.handle_search_keys(key_code);
             return;
         }
 
@@ -56,7 +61,7 @@ impl App {
             }
 
             _ if self.active_tab == PrimaryTab::Search => {
-                // TODO: WIP
+                self.handle_search_keys(key_code);
             }
 
             _ => {}
@@ -210,9 +215,50 @@ impl App {
             }
         }
     }
-}
 
-use crossterm::event::{Event, KeyEventKind};
+    fn handle_search_keys(&mut self, key_code: KeyCode) {
+        const NUM_FIELDS: usize = 10;
+
+        if self.search_editing {
+            match key_code {
+                KeyCode::Enter | KeyCode::Esc => {
+                    self.search_editing = false;
+                }
+                _ => {
+                    let event = Event::Key(KeyEvent::new(key_code, KeyModifiers::empty()));
+                    let input = match self.search_active_field {
+                        0 => &mut self.filter_blocks,
+                        1 => &mut self.filter_position,
+                        2 => &mut self.filter_from,
+                        3 => &mut self.filter_to,
+                        4 => &mut self.filter_event,
+                        5 => &mut self.filter_not_event,
+                        6 => &mut self.filter_method,
+                        7 => &mut self.filter_erc20_transfer,
+                        8 => &mut self.filter_tx_cost,
+                        _ => &mut self.filter_gas_price,
+                    };
+                    input.handle_event(&event);
+                }
+            }
+        } else {
+            match key_code {
+                KeyCode::Enter | KeyCode::Char('o') => {
+                    self.search_editing = true;
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    if self.search_active_field < NUM_FIELDS - 1 {
+                        self.search_active_field += 1;
+                    }
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.search_active_field = self.search_active_field.saturating_sub(1);
+                }
+                _ => {}
+            }
+        }
+    }
+}
 
 pub(crate) fn spawn_input_reader(event_tx: Sender<AppEvent>) {
     std::thread::spawn(move || {
