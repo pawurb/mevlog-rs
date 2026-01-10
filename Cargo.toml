@@ -32,6 +32,7 @@ sqlx = { version = "0.8", default-features = false, features = [
   "migrate",
 ] }
 home = "0.5"
+toml = "0.8"
 glob = "0.3"
 clap = { version = "4", features = ["derive", "env"] }
 colored = "3"

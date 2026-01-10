@@ -109,7 +109,7 @@ Options:
   -t, --touching <TOUCHING>
           Filter by contracts with storage changed by the transaction
       --rpc-url <RPC_URL>
-          The URL of the HTTP provider [env: ETH_RPC_URL]
+          The URL of the HTTP provider
       --chain-id <CHAIN_ID>
           Chain ID to automatically select best RPC URL
       --event <EVENT>

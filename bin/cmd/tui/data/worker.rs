@@ -4,7 +4,7 @@ use crossbeam_channel::{Receiver, Sender};
 use mevlog::{
     ChainEntryJson,
     misc::{
-        rpc_urls::{get_chain_id_from_rpc, get_chain_info_no_benchmark},
+        rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
         shared_init::ConnOpts,
     },
 };
@@ -16,7 +16,7 @@ use crate::cmd::tui::{
     data::{
         BlockId, DataRequest, DataResponse,
         chains::fetch_chains,
-        txs::{fetch_opcodes, fetch_traces, fetch_txs},
+        txs::{detect_trace_mode, fetch_opcodes, fetch_traces, fetch_txs},
     },
 };
 
@@ -28,6 +28,8 @@ enum RequestKey {
     ChainInfo,
     Opcodes,
     Traces,
+    DetectTraceMode,
+    ResolveRpcUrl,
 }
 
 impl DataRequest {
@@ -37,8 +39,10 @@ impl DataRequest {
             DataRequest::Tx(_) => RequestKey::Tx,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
-            DataRequest::Opcodes(_) => RequestKey::Opcodes,
-            DataRequest::Traces(_) => RequestKey::Traces,
+            DataRequest::Opcodes(_, _) => RequestKey::Opcodes,
+            DataRequest::Traces(_, _) => RequestKey::Traces,
+            DataRequest::DetectTraceMode(_) => RequestKey::DetectTraceMode,
+            DataRequest::ResolveRpcUrl(_) => RequestKey::ResolveRpcUrl,
         }
     }
 }
@@ -108,14 +112,14 @@ pub(crate) fn spawn_data_worker(
 
                 DataRequest::Tx(_tx_hash) => rt.spawn(async move { todo!() }),
 
-                DataRequest::Opcodes(tx_hash) => {
-                    info!(%tx_hash, "fetching opcodes");
+                DataRequest::Opcodes(tx_hash, trace_mode) => {
+                    info!(%tx_hash, ?trace_mode, "fetching opcodes");
                     let tx = event_tx.clone();
                     let rpc_url = conn_opts.rpc_url.clone();
                     let chain_id = conn_opts.chain_id;
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_opcodes(&hash, rpc_url, chain_id).await {
+                        match fetch_opcodes(&hash, rpc_url, chain_id, trace_mode).await {
                             Ok(opcodes) => {
                                 debug!(tx_hash = %hash, count = opcodes.len(), "fetched opcodes");
                                 let _ =
@@ -129,20 +133,58 @@ pub(crate) fn spawn_data_worker(
                     })
                 }
 
-                DataRequest::Traces(tx_hash) => {
-                    info!(%tx_hash, "fetching traces");
+                DataRequest::Traces(tx_hash, trace_mode) => {
+                    info!(%tx_hash, ?trace_mode, "fetching traces");
                     let tx = event_tx.clone();
                     let rpc_url = conn_opts.rpc_url.clone();
                     let chain_id = conn_opts.chain_id;
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_traces(&hash, rpc_url, chain_id).await {
+                        match fetch_traces(&hash, rpc_url, chain_id, trace_mode).await {
                             Ok(traces) => {
                                 debug!(tx_hash = %hash, count = traces.len(), "fetched traces");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Traces(hash, traces)));
                             }
                             Err(e) => {
                                 error!(tx_hash = %hash, error = %e, "failed to fetch traces");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                        }
+                    })
+                }
+
+                DataRequest::DetectTraceMode(rpc_url) => {
+                    info!(%rpc_url, "detecting trace mode");
+                    let tx = event_tx.clone();
+                    rt.spawn(async move {
+                        let trace_mode = detect_trace_mode(&rpc_url).await;
+                        debug!(?trace_mode, "detected trace mode");
+                        let _ = tx.send(AppEvent::Data(DataResponse::TraceMode(trace_mode)));
+                    })
+                }
+
+                DataRequest::ResolveRpcUrl(chain_id) => {
+                    info!(chain_id, "resolving RPC URL for chain");
+                    let tx = event_tx.clone();
+                    rt.spawn(async move {
+                        match get_chain_info(chain_id, 2000, 1).await {
+                            Ok(chain_info) => {
+                                if let Some((url, _)) = chain_info.benchmarked_rpc_urls.first() {
+                                    debug!(chain_id, %url, "resolved RPC URL");
+                                    let _ = tx.send(AppEvent::Data(DataResponse::RpcUrl(
+                                        chain_id,
+                                        url.clone(),
+                                    )));
+                                } else {
+                                    error!(chain_id, "no RPC URLs found for chain");
+                                    let _ = tx.send(AppEvent::Data(DataResponse::Error(format!(
+                                        "No RPC URLs found for chain {}",
+                                        chain_id
+                                    ))));
+                                }
+                            }
+                            Err(e) => {
+                                error!(chain_id, error = %e, "failed to resolve RPC URL");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }

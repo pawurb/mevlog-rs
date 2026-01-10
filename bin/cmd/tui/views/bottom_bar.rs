@@ -9,9 +9,7 @@ use ratatui::{
 };
 
 // Control text constants
-const NAV_TXS: &str = " <↑/↓/j/k> ";
-const NAV_BLOCKS_LABEL: &str = " | Nav Blocks ";
-const NAV_BLOCKS: &str = "<←/→/h/l> ";
+const NAV_KEYS: &str = " <↑/↓/j/k> <←/→/h/l> ";
 const NAV_NETWORKS: &str = " <↑/↓/j/k> ";
 const SELECT_LABEL: &str = " | Select ";
 const SELECT: &str = "<Enter/o> ";
@@ -74,9 +72,7 @@ pub fn render_key_bindings(
                     ])
                 } else {
                     Line::from(vec![
-                        NAV_TXS.blue().bold(),
-                        NAV_BLOCKS_LABEL.into(),
-                        NAV_BLOCKS.blue().bold(),
+                        NAV_KEYS.blue().bold(),
                         " | Block ".into(),
                         "<b>".blue().bold(),
                         " | Open ".into(),
@@ -89,9 +85,7 @@ pub fn render_key_bindings(
                 }
             }
             Some(PrimaryTab::Search) => Line::from(vec![
-                NAV_TXS.blue().bold(),
-                NAV_BLOCKS_LABEL.into(),
-                NAV_BLOCKS.blue().bold(),
+                NAV_KEYS.blue().bold(),
                 QUIT_LABEL.into(),
                 QUIT.blue().bold(),
             ]),

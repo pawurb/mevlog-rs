@@ -11,7 +11,8 @@ use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
-use super::{
+use crate::misc::{
+    config::Config,
     database::sqlite_conn,
     db_actions::{check_and_create_indexes, db_file_exists},
     ens_utils::start_ens_lookup_worker,
@@ -35,15 +36,21 @@ pub struct SharedDeps {
 
 #[hotpath::measure]
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
+    Config::init_if_missing()?;
+    let config = Config::load()?;
+
     let rpc_url = match (&conn_opts.rpc_url, conn_opts.chain_id) {
-        (Some(url), Some(_)) => url.clone(),
-        (Some(url), None) => url.clone(),
+        (Some(url), _) => url.clone(),
         (None, Some(chain_id)) => {
-            let chain_info = get_chain_info(chain_id, conn_opts.rpc_timeout_ms, 1).await?;
-            if chain_info.benchmarked_rpc_urls.is_empty() {
-                bail!("No working RPC URLs found for chain ID {}", chain_id)
+            if let Some(chain_cfg) = config.get_chain(chain_id) {
+                chain_cfg.rpc_url.clone()
+            } else {
+                let chain_info = get_chain_info(chain_id, conn_opts.rpc_timeout_ms, 1).await?;
+                if chain_info.benchmarked_rpc_urls.is_empty() {
+                    bail!("No working RPC URLs found for chain ID {}", chain_id)
+                }
+                chain_info.benchmarked_rpc_urls[0].0.clone()
             }
-            chain_info.benchmarked_rpc_urls[0].0.clone()
         }
         _ => {
             bail!("Either --rpc-url or --chain-id must be specified")
@@ -142,7 +149,7 @@ pub struct SharedOpts {
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct ConnOpts {
-    #[arg(long, help = "The URL of the HTTP provider", env = "ETH_RPC_URL")]
+    #[arg(long, help = "The URL of the HTTP provider")]
     pub rpc_url: Option<String>,
 
     #[arg(long, help = "Chain ID to automatically select RPC URL from ChainList")]
@@ -159,10 +166,21 @@ pub struct ConnOpts {
     pub skip_verify_chain_id: bool,
 }
 
-#[derive(Debug, Clone, clap::Parser)]
+#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TraceMode {
     Revm,
+    #[serde(rename = "rpc")]
     RPC,
+}
+
+impl std::fmt::Display for TraceMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Revm => write!(f, "revm"),
+            Self::RPC => write!(f, "rpc"),
+        }
+    }
 }
 
 impl FromStr for TraceMode {

@@ -18,7 +18,7 @@ pub struct ChainInfoArgs {
     #[arg(long, help = "Chain ID to get information for")]
     pub chain_id: Option<u64>,
 
-    #[arg(long, help = "RPC URL to derive chain ID from", env = "ETH_RPC_URL")]
+    #[arg(long, help = "RPC URL to derive chain ID from")]
     pub rpc_url: Option<String>,
 
     #[arg(long, help = "RPC timeout in milliseconds", default_value = "1000")]
