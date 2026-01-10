@@ -5,7 +5,10 @@ mod keys;
 mod state;
 mod tabs;
 
-use std::io;
+use std::{
+    io,
+    sync::{Arc, RwLock},
+};
 
 use crossbeam_channel::{Receiver, Sender, select};
 use crossterm::event::KeyCode;
@@ -27,8 +30,8 @@ use crate::cmd::tui::{
         TraceMode, worker::spawn_data_worker,
     },
     views::{
-        NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_key_bindings,
-        render_tx_popup,
+        NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_info_popup,
+        render_key_bindings, render_tx_popup,
     },
 };
 
@@ -90,9 +93,10 @@ pub struct App {
     pub(crate) tx_popup_open: bool,
     pub(crate) tx_popup_scroll: u16,
     pub(crate) tx_popup_tab: TxPopupTab,
-    pub(crate) conn_opts: ConnOpts,
+    pub(crate) conn_opts: Arc<RwLock<ConnOpts>>,
     pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
+    #[allow(dead_code)]
     state_tx: Sender<AppEvent>,
     pub(crate) opcodes: Option<Vec<MEVOpcodeJson>>,
     pub(crate) opcodes_loading: bool,
@@ -103,6 +107,8 @@ pub struct App {
     pub(crate) block_input_popup_open: bool,
     pub(crate) block_input_query: String,
     pub(crate) trace_mode: Option<TraceMode>,
+    pub(crate) info_popup_open: bool,
+    pub(crate) rpc_refreshing: bool,
 }
 
 impl App {
@@ -130,18 +136,21 @@ impl App {
                 })
         });
 
-        spawn_data_worker(data_req_rx, state_tx.clone(), conn_opts);
+        let conn_opts = Arc::new(RwLock::new(conn_opts.clone()));
+
+        spawn_data_worker(data_req_rx, state_tx.clone(), conn_opts.clone());
         spawn_input_reader(state_tx.clone());
 
         if mode == AppMode::Main {
-            if let Some(ref rpc_url) = conn_opts.rpc_url {
+            let opts = conn_opts.read().unwrap();
+            if let Some(rpc_url) = opts.rpc_url.clone() {
                 let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest));
                 let _ = data_req_tx.send(DataRequest::DetectTraceMode(rpc_url.clone()));
-                if conn_opts.chain_id.is_none() {
-                    let _ = data_req_tx.send(DataRequest::ChainInfo(rpc_url.clone()));
+                if opts.chain_id.is_none() {
+                    let _ = data_req_tx.send(DataRequest::ChainInfo(rpc_url));
                 }
-            } else if let Some(chain_id) = conn_opts.chain_id {
-                let _ = data_req_tx.send(DataRequest::ResolveRpcUrl(chain_id));
+            } else if let Some(chain_id) = opts.chain_id {
+                let _ = data_req_tx.send(DataRequest::RefreshRpc(chain_id));
             }
         }
 
@@ -157,6 +166,13 @@ impl App {
                 .collect()
         } else {
             vec![]
+        };
+
+        let rpc_refreshing = if mode == AppMode::Main {
+            let opts = conn_opts.read().unwrap();
+            opts.rpc_url.is_none() && opts.chain_id.is_some()
+        } else {
+            false
         };
 
         Self {
@@ -181,7 +197,7 @@ impl App {
             tx_popup_open: false,
             tx_popup_scroll: 0,
             tx_popup_tab: TxPopupTab::default(),
-            conn_opts: conn_opts.clone(),
+            conn_opts,
             active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
@@ -194,6 +210,8 @@ impl App {
             block_input_popup_open: false,
             block_input_query: String::new(),
             trace_mode: None,
+            info_popup_open: false,
+            rpc_refreshing,
         }
     }
 
@@ -233,6 +251,9 @@ impl App {
                     None,
                     self.search_popup_open,
                     false,
+                    false,
+                    false,
+                    self.can_return_to_main(),
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -289,6 +310,15 @@ impl App {
 
                         if self.block_input_popup_open {
                             self.render_block_input_popup(frame);
+                        } else if self.info_popup_open {
+                            let opts = self.conn_opts.read().unwrap();
+                            render_info_popup(
+                                frame.area(),
+                                frame,
+                                self.selected_chain.as_ref(),
+                                &opts,
+                                self.rpc_refreshing,
+                            );
                         }
                     }
                     PrimaryTab::Search => {
@@ -301,8 +331,11 @@ impl App {
                     chunks[3],
                     &self.mode,
                     Some(self.active_tab),
+                    false,
                     self.tx_popup_open,
                     self.block_input_popup_open,
+                    self.info_popup_open,
+                    false,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -446,10 +479,8 @@ impl App {
             DataResponse::TraceMode(trace_mode) => {
                 self.trace_mode = Some(trace_mode);
             }
-            DataResponse::RpcUrl(_chain_id, rpc_url) => {
-                self.conn_opts.rpc_url = Some(rpc_url.clone());
-                let _ = self.data_req_tx.send(DataRequest::Block(BlockId::Latest));
-                let _ = self.data_req_tx.send(DataRequest::DetectTraceMode(rpc_url));
+            DataResponse::RpcRefreshed(new_rpc_url) => {
+                self.handle_rpc_refreshed(new_rpc_url);
             }
             DataResponse::Error(error_msg) => {
                 self.is_loading = false;

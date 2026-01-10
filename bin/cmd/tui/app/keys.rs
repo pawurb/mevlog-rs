@@ -20,13 +20,18 @@ impl App {
     }
 
     fn handle_main_mode_keys(&mut self, key_code: KeyCode) {
-        if self.block_input_popup_open {
+        if self.block_input_popup_open || self.info_popup_open {
             self.handle_explore_keys(key_code);
             return;
         }
 
         match key_code {
             KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+            KeyCode::Char('n') | KeyCode::Char('N')
+                if !self.tx_popup_open && !self.info_popup_open =>
+            {
+                self.open_network_selection();
+            }
 
             KeyCode::Char('1') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Info,
             KeyCode::Char('2') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Transfers,
@@ -85,6 +90,19 @@ impl App {
             return;
         }
 
+        if self.info_popup_open {
+            match key_code {
+                KeyCode::Char('r') | KeyCode::Char('R') => {
+                    self.request_rpc_refresh();
+                }
+                KeyCode::Char('i') | KeyCode::Esc => {
+                    self.info_popup_open = false;
+                }
+                _ => {}
+            }
+            return;
+        }
+
         match key_code {
             KeyCode::Char('n') if !self.tx_popup_open => {
                 self.return_to_network_selection();
@@ -129,6 +147,9 @@ impl App {
                     self.clear_traces();
                 }
             }
+            KeyCode::Char('i') => {
+                self.info_popup_open = true;
+            }
             KeyCode::Esc if self.tx_popup_open => {
                 self.tx_popup_open = false;
                 self.tx_popup_scroll = 0;
@@ -166,9 +187,13 @@ impl App {
                 _ => {}
             }
         } else {
-            // Popup closed mode - navigation and popup opener
             match key_code {
                 KeyCode::Char('q') | KeyCode::Char('Q') => self.exit(),
+                KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc
+                    if self.can_return_to_main() =>
+                {
+                    self.return_to_main();
+                }
                 KeyCode::Char('s') | KeyCode::Char('S') => {
                     self.search_popup_open = true;
                 }

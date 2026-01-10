@@ -17,7 +17,7 @@ pub(crate) enum DataRequest {
     Opcodes(String, TraceMode),
     Traces(String, TraceMode),
     DetectTraceMode(String),
-    ResolveRpcUrl(u64),
+    RefreshRpc(u64),
 }
 
 pub(crate) enum BlockId {
@@ -34,6 +34,6 @@ pub(crate) enum DataResponse {
     Opcodes(String, Vec<MEVOpcodeJson>),
     Traces(String, Vec<CallExtract>),
     TraceMode(TraceMode),
-    RpcUrl(u64, String),
+    RpcRefreshed(String),
     Error(String),
 }

@@ -3,10 +3,9 @@
 use ratatui::widgets::TableState;
 
 use mevlog::ChainEntryJson;
-use mevlog::misc::shared_init::ConnOpts;
 
-use crate::cmd::tui::app::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab};
-use crate::cmd::tui::data::{DataRequest, TraceMode, worker::spawn_data_worker};
+use super::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab};
+use crate::cmd::tui::data::{BlockId, DataRequest, TraceMode};
 
 impl App {
     pub(crate) fn select_next(&mut self) {
@@ -82,27 +81,48 @@ impl App {
             && let Some(chain) = self.available_chains.get(selected_idx)
         {
             self.selected_chain = Some(chain.clone());
-            self.conn_opts = ConnOpts {
-                rpc_url: None,
-                chain_id: Some(chain.chain_id),
-                rpc_timeout_ms: 1000,
-                skip_verify_chain_id: false,
-            };
-            self.trace_mode = None;
-
-            let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();
-
-            spawn_data_worker(data_req_rx, self.state_tx.clone(), &self.conn_opts);
-
-            self.data_req_tx = data_req_tx;
+            {
+                let mut opts = self.conn_opts.write().unwrap();
+                opts.chain_id = Some(chain.chain_id);
+                opts.rpc_url = None;
+            }
 
             self.mode = AppMode::Main;
             self.is_loading = true;
+            self.rpc_refreshing = true;
 
             let _ = self
                 .data_req_tx
-                .send(DataRequest::ResolveRpcUrl(chain.chain_id));
+                .send(DataRequest::RefreshRpc(chain.chain_id));
 
+            self.available_chains.clear();
+            self.search_query.clear();
+        }
+    }
+
+    pub(crate) fn open_network_selection(&mut self) {
+        self.mode = AppMode::SelectNetwork;
+        self.tx_popup_open = false;
+        self.info_popup_open = false;
+        self.available_chains = DEFAULT_CHAINS
+            .iter()
+            .map(|(id, name, chain, explorer)| ChainEntryJson {
+                chain_id: *id,
+                name: name.to_string(),
+                chain: chain.to_string(),
+                explorer_url: Some(explorer.to_string()),
+            })
+            .collect();
+        self.network_table_state.select(Some(0));
+    }
+
+    pub(crate) fn can_return_to_main(&self) -> bool {
+        self.selected_chain.is_some() || self.conn_opts.read().unwrap().rpc_url.is_some()
+    }
+
+    pub(crate) fn return_to_main(&mut self) {
+        if self.can_return_to_main() {
+            self.mode = AppMode::Main;
             self.available_chains.clear();
             self.search_query.clear();
         }
@@ -176,8 +196,14 @@ impl App {
         self.error_message = None;
         self.clear_opcodes();
         self.clear_traces();
-        self.conn_opts.chain_id = None;
+        {
+            let mut opts = self.conn_opts.write().unwrap();
+            opts.chain_id = None;
+            opts.rpc_url = None;
+        }
         self.trace_mode = None;
+        self.info_popup_open = false;
+        self.rpc_refreshing = false;
 
         self.available_chains = DEFAULT_CHAINS
             .iter()
@@ -194,5 +220,33 @@ impl App {
         self.search_popup_open = false;
 
         self.mode = AppMode::SelectNetwork;
+    }
+
+    pub(crate) fn request_rpc_refresh(&mut self) {
+        if self.rpc_refreshing {
+            return;
+        }
+
+        let chain_id = self.selected_chain.as_ref().map(|c| c.chain_id).or(self
+            .conn_opts
+            .read()
+            .unwrap()
+            .chain_id);
+
+        if let Some(chain_id) = chain_id {
+            self.rpc_refreshing = true;
+            let _ = self.data_req_tx.send(DataRequest::RefreshRpc(chain_id));
+        }
+    }
+
+    pub(crate) fn handle_rpc_refreshed(&mut self, new_rpc_url: String) {
+        self.rpc_refreshing = false;
+        self.conn_opts.write().unwrap().rpc_url = Some(new_rpc_url.clone());
+
+        self.is_loading = true;
+        let _ = self.data_req_tx.send(DataRequest::Block(BlockId::Latest));
+        let _ = self
+            .data_req_tx
+            .send(DataRequest::DetectTraceMode(new_rpc_url));
     }
 }
