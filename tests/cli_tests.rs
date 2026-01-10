@@ -13,6 +13,7 @@ pub mod tests {
     fn test_cli_search() -> Result<()> {
         for tracing_mode in tracing_modes() {
             let cmd = Command::new("cargo")
+                .env("RUST_LOG", "off")
                 .arg("run")
                 .arg("--bin")
                 .arg("mevlog")
@@ -46,6 +47,7 @@ pub mod tests {
     fn test_cli_tx() -> Result<()> {
         for tracing_mode in tracing_modes() {
             let cmd = Command::new("cargo")
+                .env("RUST_LOG", "off")
                 .arg("run")
                 .arg("--bin")
                 .arg("mevlog")
@@ -75,6 +77,7 @@ pub mod tests {
     #[test]
     fn test_sig_overwrite() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -103,6 +106,7 @@ pub mod tests {
     fn test_cli_search_touching() {
         for tracing_mode in tracing_modes() {
             let cmd = Command::new("cargo")
+                .env("RUST_LOG", "off")
                 .arg("run")
                 .arg("--bin")
                 .arg("mevlog")
@@ -134,10 +138,11 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 23070298 -p 0:8 --from jaredfromsubway.eth --format json-pretty --ens
+    // cargo run --bin mevlog search -b 23070298 -p 0:8 --from jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
     #[test]
     fn test_cli_search_from_ens() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -151,6 +156,8 @@ pub mod tests {
             .arg("--format")
             .arg("json-pretty")
             .arg("--ens")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .output()
             .expect("failed to execute CLI");
 
@@ -168,10 +175,11 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 16733027 --to jaredfromsubway.eth --format json-pretty --ens
+    // cargo run --bin mevlog search -b 16733027 --to jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
     #[test]
     fn test_cli_search_to_ens() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -183,6 +191,8 @@ pub mod tests {
             .arg("--format")
             .arg("json-pretty")
             .arg("--ens")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .output()
             .expect("failed to execute CLI");
 
@@ -200,11 +210,12 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 23070298 -p 2 --from jaredfromsubway.eth --format json-pretty --ens
+    // cargo run --bin mevlog search -b 23070298 -p 2 --from jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
     #[test]
     fn test_cli_search_symbols_cache() {
         // Populate symbols cache
         let _ = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -219,10 +230,13 @@ pub mod tests {
             .arg("json-pretty")
             .arg("--ens")
             .arg("--erc20-symbols")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .output()
             .expect("failed to execute CLI");
 
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -236,6 +250,8 @@ pub mod tests {
             .arg("--format")
             .arg("json-pretty")
             .arg("--ens")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .output()
             .expect("failed to execute CLI");
 
@@ -253,6 +269,7 @@ pub mod tests {
     #[test]
     fn test_cli_search_sort_limit() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -287,6 +304,7 @@ pub mod tests {
     #[test]
     fn test_cli_search_sort_limit_asc() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -323,6 +341,7 @@ pub mod tests {
     #[test]
     fn test_cli_format_chain_info() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -349,6 +368,7 @@ pub mod tests {
     #[test]
     fn test_cli_format_chain_info_error() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -368,6 +388,7 @@ pub mod tests {
     #[test]
     fn test_cli_chains_filter_json() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -393,6 +414,7 @@ pub mod tests {
     #[test]
     fn test_cli_format_search() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -420,6 +442,7 @@ pub mod tests {
     #[test]
     fn test_cli_format_search_position_range() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -444,6 +467,7 @@ pub mod tests {
     #[test]
     fn test_cli_format_tx_create_addr() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -475,6 +499,7 @@ pub mod tests {
     #[test]
     fn test_cli_format_search_erc20_transfer() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -506,6 +531,7 @@ pub mod tests {
     #[test]
     fn test_cli_erc20_transfer_filters() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -535,6 +561,7 @@ pub mod tests {
     #[test]
     fn test_cli_opcodes_tracing() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -571,6 +598,7 @@ pub mod tests {
     #[test]
     fn test_op_stack_opcodes_tracing() {
         let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
@@ -603,5 +631,44 @@ pub mod tests {
                 "Expected:\n{expected}\n\nGot:\n{output}"
             );
         }
+    }
+
+    // cargo run --bin mevlog debug-available --rpc-url $ETH_RPC_URL
+    #[test]
+    fn test_cli_debug_available_true() {
+        let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("debug-available")
+            .arg("--rpc-url")
+            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        assert!(output.trim() == "true", "Expected: true\n\nGot:\n{output}");
+    }
+
+    // cargo run --bin mevlog debug-available --rpc-url https://eth.merkle.io
+    #[test]
+    fn test_cli_debug_available_false() {
+        let cmd = Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .arg("run")
+            .arg("--bin")
+            .arg("mevlog")
+            .arg("debug-available")
+            .arg("--rpc-url")
+            .arg("https://eth.merkle.io")
+            .output()
+            .expect("failed to execute CLI");
+
+        let output = String::from_utf8(cmd.stdout).unwrap();
+        assert!(
+            output.trim() == "false",
+            "Expected: false\n\nGot:\n{output}"
+        );
     }
 }
