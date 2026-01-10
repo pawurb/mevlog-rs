@@ -53,7 +53,10 @@ pub(crate) fn spawn_data_worker(
 
         while let Ok(cmd) = data_req_rx.recv() {
             let key = cmd.key();
-            if let Some(h) = active_tasks.remove(&key) {
+            if let Some(h) = active_tasks.remove(&key)
+                && !h.is_finished()
+            {
+                info!("Aborting previous task: {:?}", key);
                 h.abort();
             }
 
