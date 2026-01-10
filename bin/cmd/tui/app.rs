@@ -17,6 +17,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Clear, Paragraph, TableState, Wrap},
 };
+use tui_input::Input;
 
 use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 
@@ -109,6 +110,18 @@ pub struct App {
     pub(crate) trace_mode: Option<TraceMode>,
     pub(crate) info_popup_open: bool,
     pub(crate) rpc_refreshing: bool,
+    pub(crate) filter_blocks: Input,
+    pub(crate) filter_position: Input,
+    pub(crate) filter_from: Input,
+    pub(crate) filter_to: Input,
+    pub(crate) filter_event: Input,
+    pub(crate) filter_not_event: Input,
+    pub(crate) filter_method: Input,
+    pub(crate) filter_erc20_transfer: Input,
+    pub(crate) filter_tx_cost: Input,
+    pub(crate) filter_gas_price: Input,
+    pub(crate) search_active_field: usize,
+    pub(crate) search_editing: bool,
 }
 
 impl App {
@@ -219,6 +232,18 @@ impl App {
             trace_mode: None,
             info_popup_open: false,
             rpc_refreshing,
+            filter_blocks: Input::default(),
+            filter_position: Input::default(),
+            filter_from: Input::default(),
+            filter_to: Input::default(),
+            filter_event: Input::default(),
+            filter_not_event: Input::default(),
+            filter_method: Input::default(),
+            filter_erc20_transfer: Input::default(),
+            filter_tx_cost: Input::default(),
+            filter_gas_price: Input::default(),
+            search_active_field: 0,
+            search_editing: false,
         }
     }
 
@@ -336,7 +361,23 @@ impl App {
                         }
                     }
                     PrimaryTab::Search => {
-                        SearchView::new().render(chunks[2], frame);
+                        SearchView::new(
+                            &[
+                                &self.filter_blocks,
+                                &self.filter_position,
+                                &self.filter_from,
+                                &self.filter_to,
+                                &self.filter_event,
+                                &self.filter_not_event,
+                                &self.filter_method,
+                                &self.filter_erc20_transfer,
+                                &self.filter_tx_cost,
+                                &self.filter_gas_price,
+                            ],
+                            self.search_active_field,
+                            self.search_editing,
+                        )
+                        .render(chunks[2], frame);
                     }
                 }
 
