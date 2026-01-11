@@ -18,6 +18,7 @@ pub struct TxsTable<'a> {
     items: &'a [MEVTransactionJson],
     title: Option<String>,
     show_block_number: bool,
+    explorer_url: Option<&'a str>,
 }
 
 impl<'a> TxsTable<'a> {
@@ -26,6 +27,7 @@ impl<'a> TxsTable<'a> {
             items,
             title: None,
             show_block_number: false,
+            explorer_url: None,
         }
     }
 
@@ -36,6 +38,11 @@ impl<'a> TxsTable<'a> {
 
     pub fn with_block_number(mut self) -> Self {
         self.show_block_number = true;
+        self
+    }
+
+    pub fn with_explorer_url(mut self, url: Option<&'a str>) -> Self {
+        self.explorer_url = url;
         self
     }
 
@@ -63,8 +70,35 @@ impl<'a> TxsTable<'a> {
 
         let header = Row::new(header_cells).style(HEADER_STYLE).height(1);
 
-        let rows: Vec<Row> = self
-            .items
+        let visible_rows = area.height.saturating_sub(3) as usize;
+        let total = self.items.len();
+
+        if total == 0 || visible_rows == 0 {
+            let table = Table::new(Vec::<Row>::new(), Vec::<Constraint>::new())
+                .header(header)
+                .block(
+                    Block::bordered()
+                        .title(
+                            self.title
+                                .clone()
+                                .unwrap_or_else(|| " Transactions ".into()),
+                        )
+                        .border_set(border::THICK),
+                );
+            frame.render_widget(table, area);
+            return;
+        }
+
+        let selected = state.selected().unwrap_or(0);
+        let offset = if selected < visible_rows {
+            0
+        } else {
+            (selected - visible_rows + 1).min(total.saturating_sub(visible_rows))
+        };
+        let end = (offset + visible_rows).min(total);
+        let visible_items = &self.items[offset..end];
+
+        let rows: Vec<Row> = visible_items
             .iter()
             .map(|tx| {
                 let tx_hash = tx.tx_hash.to_string();
@@ -137,12 +171,34 @@ impl<'a> TxsTable<'a> {
             ]
         };
 
-        let title = self.title.clone().unwrap_or_else(|| {
-            self.items
-                .first()
-                .map(|tx| format!(" Transactions (Block {}) ", tx.block_number))
-                .unwrap_or_else(|| " Transactions ".to_string())
-        });
+        let title = if let Some(custom_title) = &self.title {
+            format!(
+                "{} [{}-{} of {}] ",
+                custom_title.trim(),
+                offset + 1,
+                end,
+                total
+            )
+        } else if let Some(tx) = self.items.first() {
+            let block_info = if let Some(explorer) = self.explorer_url {
+                format!(
+                    "{}/block/{}",
+                    explorer.trim_end_matches('/'),
+                    tx.block_number
+                )
+            } else {
+                format!("Block {}", tx.block_number)
+            };
+            format!(
+                " Transactions ({}) [{}-{} of {}] ",
+                block_info,
+                offset + 1,
+                end,
+                total
+            )
+        } else {
+            " Transactions ".to_string()
+        };
 
         let table = Table::new(rows, widths)
             .header(header)
@@ -152,6 +208,8 @@ impl<'a> TxsTable<'a> {
             .highlight_symbol(">> ")
             .highlight_spacing(HighlightSpacing::Always);
 
-        frame.render_stateful_widget(table, area, state);
+        let relative_selected = selected - offset;
+        let mut render_state = TableState::default().with_selected(Some(relative_selected));
+        frame.render_stateful_widget(table, area, &mut render_state);
     }
 }

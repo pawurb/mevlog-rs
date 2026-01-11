@@ -341,7 +341,13 @@ impl App {
 
                 match self.active_tab {
                     PrimaryTab::Explore => {
-                        TxsTable::new(&self.items).render(chunks[2], frame, &mut self.table_state);
+                        let explorer_url = self
+                            .selected_chain
+                            .as_ref()
+                            .and_then(|c| c.explorer_url.as_deref());
+                        TxsTable::new(&self.items)
+                            .with_explorer_url(explorer_url)
+                            .render(chunks[2], frame, &mut self.table_state);
 
                         if self.tx_popup_open
                             && let Some(idx) = self.table_state.selected()
