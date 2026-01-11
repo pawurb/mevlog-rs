@@ -131,12 +131,8 @@ async fn ens_name_lookup(
     let node = namehash(&name);
 
     let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
-    let result = ens_lookup.getNameForNode(node).call().await?;
-    let name = {
-        let name = result;
-        if name.is_empty() { None } else { Some(name) }
-    };
-    Ok(name)
+    let name = ens_lookup.getNameForNode(node).call().await?;
+    Ok(if name.is_empty() { None } else { Some(name) })
 }
 
 #[hotpath::measure(log = true)]

@@ -122,12 +122,10 @@ impl SearchArgs {
         let deps = init_deps(&self.conn_opts).await?;
 
         if (self.limit.is_some() || self.sort.is_some()) && !format.non_stream_json() {
-            {
-                bail!(
-                    "--limit and --sort are not available in --format {:?}",
-                    format
-                );
-            }
+            bail!(
+                "--limit and --sort are not available in --format {:?}",
+                format
+            );
         }
 
         if let Some(sort) = &self.sort

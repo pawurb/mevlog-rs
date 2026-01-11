@@ -116,10 +116,8 @@ impl ToU128 for U256 {
 }
 
 pub fn wei_to_eth(wei: U256) -> f64 {
-    let wei_per_eth = ETHER;
     let wei_f64 = wei.to_string().parse::<f64>().unwrap();
-    let wei_per_eth_f64 = wei_per_eth.to_string().parse::<f64>().unwrap();
-
+    let wei_per_eth_f64 = ETHER.to_string().parse::<f64>().unwrap();
     wei_f64 / wei_per_eth_f64
 }
 

@@ -111,9 +111,6 @@ pub async fn download_db_file() -> Result<()> {
             Ok(n) => n,
             Err(e) => return Err(eyre!("Error during extraction: {}", e)),
         };
-        if bytes_read == 0 {
-            break;
-        }
         db_file
             .write_all(&buffer[..bytes_read])
             .map_err(|e| eyre!("Failed writing decompressed data: {}", e))?;

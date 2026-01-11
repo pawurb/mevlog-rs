@@ -579,11 +579,10 @@ impl MEVBlock {
 }
 
 fn escape_html(input: &str) -> String {
-    let escaped = html_escape::encode_text(&input);
-    let escaped = escaped.replace("-&gt;", "->");
-    let escaped = escaped.replace("&lt;Unknown&gt;", UNKNOWN);
-    let escaped = escaped.replace("&lt;ETH transfer&gt;", ETH_TRANSFER);
-    escaped.to_string()
+    html_escape::encode_text(input)
+        .replace("-&gt;", "->")
+        .replace("&lt;Unknown&gt;", UNKNOWN)
+        .replace("&lt;ETH transfer&gt;", ETH_TRANSFER)
 }
 
 impl fmt::Display for MEVBlock {

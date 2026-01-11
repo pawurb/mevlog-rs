@@ -538,11 +538,9 @@ pub enum AddressFilter {
 #[hotpath::measure_all]
 impl AddressFilter {
     pub fn new(value: Option<&str>) -> Result<Option<Self>> {
-        if value.is_none() {
+        let Some(value) = value else {
             return Ok(None);
-        }
-
-        let value = value.unwrap();
+        };
 
         if value == "CREATE" {
             return Ok(Some(AddressFilter::CreateCall));
@@ -553,9 +551,7 @@ impl AddressFilter {
         }
 
         if value.ends_with(".eth") {
-            return Ok(Some(AddressFilter::ENSName(
-                value.to_string().to_lowercase(),
-            )));
+            return Ok(Some(AddressFilter::ENSName(value.to_lowercase())));
         }
 
         eyre::bail!(
