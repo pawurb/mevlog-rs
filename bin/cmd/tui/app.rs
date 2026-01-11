@@ -432,9 +432,13 @@ impl App {
     }
 
     fn render_loading_popup(&self, frame: &mut Frame) {
-        let text = match self.loading_block {
-            Some(block) => format!("Loading block {}...", block),
-            None => "Loading latest block...".to_string(),
+        let text = if self.active_tab == PrimaryTab::Results {
+            "Searching...".to_string()
+        } else {
+            match self.loading_block {
+                Some(block) => format!("Loading block {}...", block),
+                None => "Loading latest block...".to_string(),
+            }
         };
 
         let popup_area = centered_rect(text.len() as u16 + 4, 3, frame.area());
@@ -570,11 +574,16 @@ impl App {
                 if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
                     self.tx_trace_loading = false;
                     self.tx_trace_hash = None;
-                    if let Some(tx) = self
+                    let tx = self
                         .items
                         .iter_mut()
                         .find(|t| t.tx_hash.to_string() == tx_hash)
-                    {
+                        .or_else(|| {
+                            self.search_results
+                                .iter_mut()
+                                .find(|t| t.tx_hash.to_string() == tx_hash)
+                        });
+                    if let Some(tx) = tx {
                         tx.coinbase_transfer = traced_tx.coinbase_transfer;
                         tx.display_coinbase_transfer = traced_tx.display_coinbase_transfer;
                         tx.display_coinbase_transfer_usd = traced_tx.display_coinbase_transfer_usd;

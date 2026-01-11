@@ -286,6 +286,33 @@ impl App {
         }
     }
 
+    pub(crate) fn request_results_tx_trace(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.results_table_state.selected()
+            && let Some(tx) = self.search_results.get(idx)
+        {
+            if tx.full_tx_cost.is_some() {
+                return;
+            }
+
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.tx_trace_loading = true;
+            self.tx_trace_hash = Some(tx_hash.clone());
+
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::TxTrace(tx_hash, trace_mode, opts));
+        }
+    }
+
     pub(crate) fn clear_tx_trace(&mut self) {
         self.tx_trace_loading = false;
         self.tx_trace_hash = None;

@@ -54,14 +54,26 @@ impl App {
             KeyCode::Char('2') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Transfers,
             KeyCode::Char('3') if self.tx_popup_open => {
                 self.tx_popup_tab = TxPopupTab::Opcodes;
-                self.request_opcodes_if_needed();
+                if self.active_tab == PrimaryTab::Results {
+                    self.request_results_opcodes_if_needed();
+                } else {
+                    self.request_opcodes_if_needed();
+                }
             }
             KeyCode::Char('4') if self.tx_popup_open => {
                 self.tx_popup_tab = TxPopupTab::Traces;
-                self.request_traces_if_needed();
+                if self.active_tab == PrimaryTab::Results {
+                    self.request_results_traces_if_needed();
+                } else {
+                    self.request_traces_if_needed();
+                }
             }
             KeyCode::Char('t') if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Info => {
-                self.request_tx_trace();
+                if self.active_tab == PrimaryTab::Results {
+                    self.request_results_tx_trace();
+                } else {
+                    self.request_tx_trace();
+                }
             }
 
             KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
@@ -241,6 +253,10 @@ impl App {
                 }
                 KeyCode::Char('y') => {
                     self.query_popup_open = false;
+                    self.search_results.clear();
+                    self.results_table_state.select(None);
+                    self.active_tab = PrimaryTab::Results;
+                    self.is_loading = true;
                     self.execute_search();
                 }
                 _ => {}
