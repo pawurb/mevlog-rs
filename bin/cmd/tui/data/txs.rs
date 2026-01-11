@@ -8,11 +8,10 @@ use mevlog::models::mev_transaction::CallExtract;
 use serde::Deserialize;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
-    process::Command,
     time::timeout,
 };
 
-use crate::cmd::tui::data::{MEVTransactionJson, SearchFilters};
+use crate::cmd::tui::data::{MEVTransactionJson, SearchFilters, mevlog_cmd};
 
 #[derive(Deserialize)]
 struct ErrorResponse {
@@ -34,7 +33,7 @@ pub async fn fetch_txs(
     rpc_url: Option<String>,
     chain_id: Option<u64>,
 ) -> Result<Vec<MEVTransactionJson>> {
-    let mut cmd = Command::new("mevlog");
+    let mut cmd = mevlog_cmd();
 
     cmd.arg("search")
         .arg("-b")
@@ -142,7 +141,7 @@ pub async fn fetch_opcodes(
     chain_id: Option<u64>,
     trace_mode: TraceMode,
 ) -> Result<Vec<MEVOpcodeJson>> {
-    let mut cmd = Command::new("mevlog");
+    let mut cmd = mevlog_cmd();
 
     cmd.arg("tx")
         .arg(tx_hash)
@@ -217,7 +216,7 @@ pub async fn fetch_traces(
     chain_id: Option<u64>,
     trace_mode: TraceMode,
 ) -> Result<Vec<CallExtract>> {
-    let mut cmd = Command::new("mevlog");
+    let mut cmd = mevlog_cmd();
 
     cmd.arg("tx")
         .arg(tx_hash)
@@ -292,7 +291,7 @@ pub async fn fetch_tx_with_trace(
     chain_id: Option<u64>,
     trace_mode: TraceMode,
 ) -> Result<MEVTransactionJson> {
-    let mut cmd = Command::new("mevlog");
+    let mut cmd = mevlog_cmd();
 
     cmd.arg("tx")
         .arg(tx_hash)

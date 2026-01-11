@@ -3,12 +3,13 @@ use mevlog::ChainEntryJson;
 use std::{process::Stdio, time::Duration};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
-    process::Command,
     time::timeout,
 };
 
+use crate::cmd::tui::data::mevlog_cmd;
+
 pub async fn fetch_chains(filter: Option<String>) -> Result<Vec<ChainEntryJson>> {
-    let mut cmd = Command::new("mevlog");
+    let mut cmd = mevlog_cmd();
     cmd.arg("chains").arg("--format").arg("json");
 
     if let Some(filter) = filter {
