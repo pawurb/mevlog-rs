@@ -142,10 +142,12 @@ Options:
           Enable ENS name resolution for addresses (increases RPC calls)
       --erc20-symbols
           Enable ERC20 token symbol resolution (increases RPC calls)
-      --failed 
+      --failed
           Show only txs which failed to execute
       --format <FORMAT>
           Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
+      --batch-size <SIZE>
+          Batch size for data fetching (default: 100)
 ```
 
 Both `search` and `watch` support the same filtering options.
