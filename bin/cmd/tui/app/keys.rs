@@ -66,6 +66,7 @@ impl App {
 
             KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
             KeyCode::Char('2') => self.switch_to_tab(PrimaryTab::Search),
+            KeyCode::Char('3') => self.switch_to_tab(PrimaryTab::Results),
             KeyCode::Tab => self.cycle_tab(),
 
             _ if self.active_tab == PrimaryTab::Explore => {
@@ -74,6 +75,10 @@ impl App {
 
             _ if self.active_tab == PrimaryTab::Search => {
                 self.handle_search_keys(key_code);
+            }
+
+            _ if self.active_tab == PrimaryTab::Results => {
+                self.handle_results_keys(key_code);
             }
 
             _ => {}
@@ -283,6 +288,58 @@ impl App {
                 }
                 _ => {}
             }
+        }
+    }
+
+    fn handle_results_keys(&mut self, key_code: KeyCode) {
+        match key_code {
+            KeyCode::Char('j') | KeyCode::Down => {
+                self.select_next_result();
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
+                    self.request_results_opcodes_if_needed();
+                }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
+                    self.request_results_traces_if_needed();
+                }
+            }
+            KeyCode::Char('k') | KeyCode::Up => {
+                self.select_previous_result();
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
+                    self.request_results_opcodes_if_needed();
+                }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
+                    self.request_results_traces_if_needed();
+                }
+            }
+            KeyCode::Char('o') => {
+                if !self.search_results.is_empty() {
+                    self.tx_popup_open = !self.tx_popup_open;
+                    if !self.tx_popup_open {
+                        self.tx_popup_scroll = 0;
+                        self.tx_popup_tab = TxPopupTab::default();
+                        self.clear_opcodes();
+                        self.clear_traces();
+                    }
+                }
+            }
+            KeyCode::Esc if self.tx_popup_open => {
+                self.tx_popup_open = false;
+                self.tx_popup_scroll = 0;
+                self.tx_popup_tab = TxPopupTab::default();
+                self.clear_opcodes();
+                self.clear_traces();
+            }
+            KeyCode::Char('n') if self.tx_popup_open => {
+                self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);
+            }
+            KeyCode::Char('m') if self.tx_popup_open => {
+                self.tx_popup_scroll = self.tx_popup_scroll.saturating_sub(1);
+            }
+            KeyCode::Char('c') => {
+                self.search_results.clear();
+                self.results_table_state.select(None);
+            }
+            _ => {}
         }
     }
 }

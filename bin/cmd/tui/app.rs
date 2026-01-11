@@ -13,7 +13,7 @@ use crossbeam_channel::{Receiver, Sender, select};
 use crossterm::event::KeyCode;
 use ratatui::{
     DefaultTerminal, Frame,
-    layout::{Constraint, Direction, Flex, Layout, Rect},
+    layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style},
     symbols::border,
     text::{Line, Span},
@@ -58,6 +58,7 @@ pub(crate) enum AppMode {
 pub(crate) enum PrimaryTab {
     Explore,
     Search,
+    Results,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -79,6 +80,8 @@ pub struct App {
     pub(crate) table_state: TableState,
     pub(crate) items: Vec<MEVTransactionJson>,
     pub(crate) current_block: Option<u64>,
+    pub(crate) search_results: Vec<MEVTransactionJson>,
+    pub(crate) results_table_state: TableState,
     pub(crate) is_loading: bool,
     pub(crate) loading_block: Option<u64>,
     pub(crate) error_message: Option<String>,
@@ -205,6 +208,8 @@ impl App {
             }),
             items,
             current_block,
+            search_results: Vec::new(),
+            results_table_state: TableState::default(),
             is_loading: mode == AppMode::Main,
             loading_block: None,
             error_message: None,
@@ -304,6 +309,8 @@ impl App {
                     false,
                     self.can_return_to_main(),
                     false,
+                    true,
+                    false,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -394,6 +401,9 @@ impl App {
                             self.render_query_popup(frame);
                         }
                     }
+                    PrimaryTab::Results => {
+                        self.render_results_tab(chunks[2], frame);
+                    }
                 }
 
                 render_key_bindings(
@@ -408,6 +418,8 @@ impl App {
                     self.info_popup_open,
                     false,
                     self.query_popup_open,
+                    self.search_results.is_empty(),
+                    self.search_editing,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -530,7 +542,17 @@ impl App {
                 }
             }
             DataResponse::SearchResults(txs) => {
-                info!(count = txs.len(), "received search results");
+                let count = txs.len();
+                info!(count, "received search results");
+                self.search_results = txs;
+                self.active_tab = PrimaryTab::Results;
+                self.results_table_state
+                    .select(if count > 0 { Some(0) } else { None });
+                self.tx_popup_open = false;
+                self.tx_popup_scroll = 0;
+                self.is_loading = false;
+                self.clear_opcodes();
+                self.clear_traces();
             }
             DataResponse::Opcodes(tx_hash, opcodes) => {
                 if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
@@ -696,6 +718,48 @@ impl App {
 
         let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
         frame.render_widget(paragraph, inner_area);
+    }
+
+    fn render_results_tab(&mut self, area: Rect, frame: &mut Frame) {
+        if self.search_results.is_empty() {
+            let placeholder = Paragraph::new("Run search query to see results")
+                .style(Style::default().fg(Color::DarkGray))
+                .alignment(Alignment::Center)
+                .block(
+                    Block::bordered()
+                        .title(" Results ")
+                        .border_set(border::THICK),
+                );
+            frame.render_widget(placeholder, area);
+        } else {
+            TxsTable::new(&self.search_results)
+                .with_title(" Search Results ")
+                .with_block_number()
+                .render(area, frame, &mut self.results_table_state);
+
+            if self.tx_popup_open
+                && let Some(idx) = self.results_table_state.selected()
+                && let Some(tx) = self.search_results.get(idx)
+            {
+                let explorer_url = self
+                    .selected_chain
+                    .as_ref()
+                    .and_then(|c| c.explorer_url.clone());
+                render_tx_popup(
+                    tx,
+                    frame.area(),
+                    frame,
+                    self.tx_popup_scroll,
+                    self.tx_popup_tab,
+                    explorer_url.as_deref(),
+                    self.opcodes.as_deref(),
+                    self.opcodes_loading,
+                    self.traces.as_deref(),
+                    self.traces_loading,
+                    self.tx_trace_loading,
+                );
+            }
+        }
     }
 }
 
