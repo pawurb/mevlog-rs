@@ -310,6 +310,7 @@ impl App {
                     self.can_return_to_main(),
                     false,
                     true,
+                    false,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -418,6 +419,7 @@ impl App {
                     false,
                     self.query_popup_open,
                     self.search_results.is_empty(),
+                    self.search_editing,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -732,6 +734,7 @@ impl App {
         } else {
             TxsTable::new(&self.search_results)
                 .with_title(" Search Results ")
+                .with_block_number()
                 .render(area, frame, &mut self.results_table_state);
 
             if self.tx_popup_open

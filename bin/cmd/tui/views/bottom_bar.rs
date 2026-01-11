@@ -31,6 +31,7 @@ pub fn render_key_bindings(
     can_go_back: bool,
     query_popup_open: bool,
     results_empty: bool,
+    search_editing: bool,
 ) {
     let controls_line = match mode {
         AppMode::SelectNetwork => {
@@ -120,9 +121,13 @@ pub fn render_key_bindings(
                         QUIT_LABEL.into(),
                         QUIT.blue().bold(),
                     ])
+                } else if search_editing {
+                    Line::from(vec![" End edit ".into(), "<Esc/Enter>".blue().bold()])
                 } else {
                     Line::from(vec![
                         NAV_KEYS_SEARCH.blue().bold(),
+                        " | Edit ".into(),
+                        "<Enter/o>".blue().bold(),
                         " | Query ".into(),
                         "<s>".blue().bold(),
                         QUIT_LABEL.into(),
