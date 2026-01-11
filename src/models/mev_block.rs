@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, path::PathBuf, process::Command, sync::Arc};
+use std::{collections::HashMap, fmt, path::PathBuf, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
@@ -33,7 +33,6 @@ use crate::{
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
-        symbol_utils::ERC20SymbolsLookup,
         utils::{ETH_TRANSFER, SEPARATORER, ToU64, UNKNOWN},
     },
     models::{
@@ -680,170 +679,6 @@ pub fn format_block_age(seconds: i64) -> String {
     } else {
         format!("{}d", seconds / 86400)
     }
-}
-
-fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
-    home::home_dir().unwrap().join(format!(
-        ".mevlog/.cryo-cache/{}",
-        chain.cryo_cache_dir_name()
-    ))
-}
-
-fn run_cryo_batch(
-    data_type: &str,
-    start_block: u64,
-    end_block: u64,
-    chain: &EVMChain,
-) -> Result<()> {
-    let range = format!("{}:{}", start_block, end_block + 1);
-    let cmd = Command::new("cryo")
-        .args([
-            data_type,
-            "-b",
-            &range,
-            "--rpc",
-            &chain.rpc_url,
-            "--output-dir",
-            cryo_cache_dir(chain).display().to_string().as_str(),
-        ])
-        .output();
-
-    if let Err(e) = cmd {
-        eyre::bail!("cryo batch command failed: {}", e);
-    }
-
-    let output = cmd.unwrap();
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        eyre::bail!("cryo batch command failed: {}", stderr);
-    }
-
-    Ok(())
-}
-
-fn find_batch_parquet_file(
-    chain: &EVMChain,
-    data_type: &str,
-    start_block: u64,
-    end_block: u64,
-) -> Option<PathBuf> {
-    let cache_dir = cryo_cache_dir(chain);
-    let chain_name = chain.cryo_cache_dir_name();
-
-    let expected_filename = format!(
-        "{}__{}__{:0>8}_to_{:0>8}.parquet",
-        chain_name, data_type, start_block, end_block
-    );
-
-    let expected_path = cache_dir.join(&expected_filename);
-    if expected_path.exists() {
-        return Some(expected_path);
-    }
-    None
-}
-
-pub async fn fetch_blocks_batch(
-    start_block: u64,
-    end_block: u64,
-    chain: &EVMChain,
-    sqlite: &SqlitePool,
-    symbols_lookup: &ERC20SymbolsLookup,
-    show_erc20_transfer_amount: bool,
-) -> Result<BatchedBlockData> {
-    if which::which("cryo").is_err() {
-        eyre::bail!(
-            "'cryo' command not found in PATH. Please install it by running 'cargo install cryo_cli' or visit https://github.com/paradigmxyz/cryo"
-        );
-    }
-
-    if find_batch_parquet_file(chain, "transactions", start_block, end_block).is_none() {
-        run_cryo_batch("txs", start_block, end_block, chain)?;
-    }
-
-    if find_batch_parquet_file(chain, "logs", start_block, end_block).is_none() {
-        run_cryo_batch("logs", start_block, end_block, chain)?;
-    }
-
-    let txs_by_block = parse_batch_txs(start_block, end_block, chain).await?;
-    let logs_by_block = parse_batch_logs(
-        start_block,
-        end_block,
-        chain,
-        sqlite,
-        symbols_lookup,
-        show_erc20_transfer_amount,
-    )
-    .await?;
-
-    Ok(BatchedBlockData {
-        txs_by_block,
-        logs_by_block,
-    })
-}
-
-async fn parse_batch_txs(
-    start_block: u64,
-    end_block: u64,
-    chain: &EVMChain,
-) -> Result<HashMap<u64, Vec<TxData>>> {
-    let file_path = find_batch_parquet_file(chain, "transactions", start_block, end_block)
-        .ok_or_else(|| eyre::eyre!("Batch transactions parquet file not found"))?;
-
-    let file = std::fs::File::open(file_path)?;
-    let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
-    let reader = builder.build()?;
-
-    let mut txs_by_block: HashMap<u64, Vec<TxData>> = HashMap::new();
-
-    for batch_result in reader {
-        let batch = batch_result?;
-
-        for row_idx in 0..batch.num_rows() {
-            let (tx_data, block_number) =
-                MEVTransaction::tx_data_from_parquet_row(&batch, row_idx).await?;
-
-            txs_by_block.entry(block_number).or_default().push(tx_data);
-        }
-    }
-
-    Ok(txs_by_block)
-}
-
-async fn parse_batch_logs(
-    start_block: u64,
-    end_block: u64,
-    chain: &EVMChain,
-    sqlite: &SqlitePool,
-    symbols_lookup: &ERC20SymbolsLookup,
-    show_erc20_transfer_amount: bool,
-) -> Result<HashMap<u64, Vec<MEVLog>>> {
-    let file_path = find_batch_parquet_file(chain, "logs", start_block, end_block)
-        .ok_or_else(|| eyre::eyre!("Batch logs parquet file not found"))?;
-
-    let file = std::fs::File::open(file_path)?;
-    let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
-    let reader = builder.build()?;
-
-    let mut logs_by_block: HashMap<u64, Vec<MEVLog>> = HashMap::new();
-
-    for batch_result in reader {
-        let batch = batch_result?;
-
-        for row_idx in 0..batch.num_rows() {
-            let (mev_log, block_number) = MEVLog::from_parquet_row(
-                &batch,
-                row_idx,
-                symbols_lookup,
-                sqlite,
-                show_erc20_transfer_amount,
-            )
-            .await?;
-
-            logs_by_block.entry(block_number).or_default().push(mev_log);
-        }
-    }
-
-    Ok(logs_by_block)
 }
 
 pub fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {

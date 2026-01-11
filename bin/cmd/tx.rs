@@ -5,13 +5,14 @@ use eyre::{Result, eyre};
 use mevlog::{
     misc::{
         args_parsing::PositionRange,
+        data_fetch::fetch_blocks_batch,
         ens_utils::ENSLookup,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
     models::{
-        mev_block::{PreFetchedBlockData, fetch_blocks_batch, generate_block},
+        mev_block::{PreFetchedBlockData, generate_block},
         txs_filter::TxsFilter,
     },
 };

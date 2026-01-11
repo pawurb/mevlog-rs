@@ -2,6 +2,7 @@ use eyre::{Result, bail};
 use mevlog::{
     misc::{
         args_parsing::BlocksRange,
+        data_fetch::fetch_blocks_batch,
         ens_utils::ENSLookup,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         symbol_utils::ERC20SymbolsLookup,
@@ -9,7 +10,7 @@ use mevlog::{
     },
     models::{
         json::mev_transaction_json::MEVTransactionJson,
-        mev_block::{PreFetchedBlockData, fetch_blocks_batch, generate_block},
+        mev_block::{PreFetchedBlockData, generate_block},
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
 };
