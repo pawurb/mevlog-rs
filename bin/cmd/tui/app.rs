@@ -340,14 +340,17 @@ impl App {
 
                 TabBar::new(self.active_tab).render(chunks[0], frame);
 
-                StatusBar::new(
+                let mut status_bar = StatusBar::new(
                     self.selected_chain.as_ref(),
                     self.current_block,
                     self.is_loading,
                     self.loading_block,
                     self.trace_mode.as_ref(),
-                )
-                .render(chunks[1], frame);
+                );
+                if self.active_tab == PrimaryTab::Results {
+                    status_bar = status_bar.hide_block();
+                }
+                status_bar.render(chunks[1], frame);
 
                 match self.active_tab {
                     PrimaryTab::Explore => {
@@ -648,14 +651,10 @@ impl App {
         self.exit = true;
     }
 
-    pub(crate) fn build_search_command(&self) -> String {
+    pub(crate) fn display_search_command(&self) -> String {
         let txhash = self.filter_txhash.value();
         if !txhash.is_empty() {
-            let mut parts = vec![format!("mevlog tx {}", txhash)];
-            if let Some(chain_id) = self.chain_id {
-                parts.push(format!("--chain-id {}", chain_id));
-            }
-            return parts.join(" ");
+            return format!("mevlog tx {}", txhash);
         }
 
         let mut parts = vec!["mevlog search".to_string()];
@@ -679,10 +678,6 @@ impl App {
             if !value.is_empty() {
                 parts.push(format!("{} {}", flag, value));
             }
-        }
-
-        if let Some(chain_id) = self.chain_id {
-            parts.push(format!("--chain-id {}", chain_id));
         }
 
         parts.join(" ")
@@ -721,7 +716,7 @@ impl App {
     }
 
     fn render_query_popup(&self, frame: &mut Frame) {
-        let command = self.build_search_command();
+        let command = self.display_search_command();
         let area = frame.area();
         let popup_width = 80.min(area.width.saturating_sub(4));
         let inner_width = popup_width.saturating_sub(2);

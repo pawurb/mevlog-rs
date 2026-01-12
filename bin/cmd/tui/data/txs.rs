@@ -10,6 +10,7 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     time::timeout,
 };
+use tracing::debug;
 
 use crate::cmd::tui::data::{MEVTransactionJson, SearchFilters, mevlog_cmd};
 
@@ -81,6 +82,13 @@ pub async fn fetch_txs(
     } else if let Some(chain_id) = chain_id {
         cmd.arg("--chain-id").arg(chain_id.to_string());
     }
+
+    let cmd_args: Vec<_> = cmd
+        .as_std()
+        .get_args()
+        .map(|a| a.to_string_lossy())
+        .collect();
+    debug!(cmd = %cmd_args.join(" "), "mevlog command");
 
     cmd.env("RUST_LOG", "off")
         .stdout(Stdio::piped())

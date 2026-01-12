@@ -14,6 +14,7 @@ pub struct StatusBar<'a> {
     is_loading: bool,
     loading_block: Option<u64>,
     trace_mode: Option<&'a TraceMode>,
+    hide_block: bool,
 }
 
 impl<'a> StatusBar<'a> {
@@ -30,7 +31,13 @@ impl<'a> StatusBar<'a> {
             is_loading,
             loading_block,
             trace_mode,
+            hide_block: false,
         }
+    }
+
+    pub fn hide_block(mut self) -> Self {
+        self.hide_block = true;
+        self
     }
 
     pub fn render(&self, area: Rect, frame: &mut Frame) {
@@ -58,14 +65,16 @@ impl<'a> StatusBar<'a> {
             status_parts.push("Unknown".dark_gray());
         }
 
-        status_parts.push(" | Block ".into());
+        if !self.hide_block {
+            status_parts.push(" | Block ".into());
 
-        if let Some(loading_block) = self.loading_block {
-            status_parts.push(loading_block.to_string().yellow());
-        } else if let Some(current_block) = self.current_block {
-            status_parts.push(current_block.to_string().into());
-        } else {
-            status_parts.push("N/A".dark_gray());
+            if let Some(loading_block) = self.loading_block {
+                status_parts.push(loading_block.to_string().yellow());
+            } else if let Some(current_block) = self.current_block {
+                status_parts.push(current_block.to_string().into());
+            } else {
+                status_parts.push("N/A".dark_gray());
+            }
         }
 
         let status_line = Line::from(status_parts);
