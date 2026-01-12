@@ -128,6 +128,8 @@ pub fn render_key_bindings(
                         NAV_KEYS_SEARCH.blue().bold(),
                         " | Edit ".into(),
                         "<Enter/o>".blue().bold(),
+                        " | Clear ".into(),
+                        "<c>".blue().bold(),
                         " | Search ".into(),
                         "<s>".blue().bold(),
                         QUIT_LABEL.into(),

@@ -35,6 +35,8 @@ pub(crate) struct SearchFilters {
     pub erc20_transfer: Option<String>,
     pub tx_cost: Option<String>,
     pub gas_price: Option<String>,
+    pub limit: Option<String>,
+    pub txhash: Option<String>,
 }
 
 impl SearchFilters {

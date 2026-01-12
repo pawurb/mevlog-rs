@@ -2,6 +2,7 @@
 
 use crossbeam_channel::Sender;
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
 
 use crate::cmd::tui::app::{App, AppEvent, AppMode, PrimaryTab, TxPopupTab};
@@ -244,7 +245,7 @@ impl App {
     }
 
     fn handle_search_keys(&mut self, key_code: KeyCode) {
-        const NUM_FIELDS: usize = 10;
+        const NUM_FIELDS: usize = 12;
 
         if self.query_popup_open {
             match key_code {
@@ -272,15 +273,17 @@ impl App {
                 _ => {
                     let event = Event::Key(KeyEvent::new(key_code, KeyModifiers::empty()));
                     let input = match self.search_active_field {
-                        0 => &mut self.filter_blocks,
-                        1 => &mut self.filter_position,
-                        2 => &mut self.filter_from,
-                        3 => &mut self.filter_to,
-                        4 => &mut self.filter_event,
-                        5 => &mut self.filter_not_event,
-                        6 => &mut self.filter_method,
-                        7 => &mut self.filter_erc20_transfer,
-                        8 => &mut self.filter_tx_cost,
+                        0 => &mut self.filter_limit,
+                        1 => &mut self.filter_txhash,
+                        2 => &mut self.filter_blocks,
+                        3 => &mut self.filter_position,
+                        4 => &mut self.filter_from,
+                        5 => &mut self.filter_to,
+                        6 => &mut self.filter_event,
+                        7 => &mut self.filter_not_event,
+                        8 => &mut self.filter_method,
+                        9 => &mut self.filter_erc20_transfer,
+                        10 => &mut self.filter_tx_cost,
                         _ => &mut self.filter_gas_price,
                     };
                     input.handle_event(&event);
@@ -301,6 +304,23 @@ impl App {
                 }
                 KeyCode::Char('s') => {
                     self.query_popup_open = true;
+                }
+                KeyCode::Char('c') => {
+                    let input = match self.search_active_field {
+                        0 => &mut self.filter_limit,
+                        1 => &mut self.filter_txhash,
+                        2 => &mut self.filter_blocks,
+                        3 => &mut self.filter_position,
+                        4 => &mut self.filter_from,
+                        5 => &mut self.filter_to,
+                        6 => &mut self.filter_event,
+                        7 => &mut self.filter_not_event,
+                        8 => &mut self.filter_method,
+                        9 => &mut self.filter_erc20_transfer,
+                        10 => &mut self.filter_tx_cost,
+                        _ => &mut self.filter_gas_price,
+                    };
+                    *input = Input::default();
                 }
                 _ => {}
             }

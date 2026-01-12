@@ -11,7 +11,15 @@ struct FieldMeta {
     placeholder: &'static str,
 }
 
-const FIELD_METADATA: [FieldMeta; 10] = [
+const FIELD_METADATA: [FieldMeta; 12] = [
+    FieldMeta {
+        title: "Limit",
+        placeholder: "Max results",
+    },
+    FieldMeta {
+        title: "Tx Hash",
+        placeholder: "Transaction hash",
+    },
     FieldMeta {
         title: "Blocks",
         placeholder: "latest",
@@ -55,16 +63,16 @@ const FIELD_METADATA: [FieldMeta; 10] = [
 ];
 
 const FIELD_HEIGHT: u16 = 3;
-const NUM_FIELDS: usize = 10;
+const NUM_FIELDS: usize = 12;
 
 pub struct SearchView<'a> {
-    fields: &'a [&'a Input; 10],
+    fields: &'a [&'a Input; 12],
     active_field: usize,
     editing: bool,
 }
 
 impl<'a> SearchView<'a> {
-    pub fn new(fields: &'a [&'a Input; 10], active_field: usize, editing: bool) -> Self {
+    pub fn new(fields: &'a [&'a Input; 12], active_field: usize, editing: bool) -> Self {
         Self {
             fields,
             active_field,
