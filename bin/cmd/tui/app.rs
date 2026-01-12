@@ -48,6 +48,12 @@ const DEFAULT_CHAINS: [(u64, &str, &str, &str); 10] = [
     (534352, "Scroll Mainnet", "ETH", "https://scrollscan.com"),
 ];
 
+const DB_INITIALIZING_ERRORS: [&str; 3] = [
+    "Database file missing",
+    "error returned from database",
+    "Creating index",
+];
+
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum AppMode {
     SelectNetwork,
@@ -464,10 +470,7 @@ impl App {
     }
 
     fn render_error_popup(&self, frame: &mut Frame, error_msg: &str) {
-        let text = format!(
-            "Error: {} (press any key, or 'r' to refresh RPC)",
-            error_msg
-        );
+        let text = format!("Error: {} - press 'r' to refresh", error_msg);
         let max_width = frame.area().width.saturating_sub(4).min(80);
         let inner_width = max_width.saturating_sub(2);
         let lines_needed = (text.len() as u16).div_ceil(inner_width).max(1);
@@ -631,7 +634,12 @@ impl App {
             DataResponse::Error(error_msg) => {
                 self.is_loading = false;
                 self.loading_block = None;
-                self.error_message = Some(error_msg);
+                let display_msg = if DB_INITIALIZING_ERRORS.iter().any(|e| error_msg.contains(e)) {
+                    "Local database initializing, please wait a moment and".to_string()
+                } else {
+                    error_msg.to_string()
+                };
+                self.error_message = Some(display_msg);
             }
         }
     }
