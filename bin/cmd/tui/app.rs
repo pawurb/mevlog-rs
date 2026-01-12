@@ -127,6 +127,8 @@ pub struct App {
     pub(crate) filter_erc20_transfer: Input,
     pub(crate) filter_tx_cost: Input,
     pub(crate) filter_gas_price: Input,
+    pub(crate) filter_limit: Input,
+    pub(crate) filter_txhash: Input,
     pub(crate) search_active_field: usize,
     pub(crate) search_editing: bool,
     pub(crate) query_popup_open: bool,
@@ -254,6 +256,8 @@ impl App {
             filter_erc20_transfer: Input::default(),
             filter_tx_cost: Input::default(),
             filter_gas_price: Input::default(),
+            filter_limit: Input::default(),
+            filter_txhash: Input::default(),
             search_active_field: 0,
             search_editing: false,
             query_popup_open: false,
@@ -387,6 +391,8 @@ impl App {
                     PrimaryTab::Search => {
                         SearchView::new(
                             &[
+                                &self.filter_limit,
+                                &self.filter_txhash,
                                 &self.filter_blocks,
                                 &self.filter_position,
                                 &self.filter_from,
@@ -635,9 +641,19 @@ impl App {
     }
 
     pub(crate) fn build_search_command(&self) -> String {
+        let txhash = self.filter_txhash.value();
+        if !txhash.is_empty() {
+            let mut parts = vec![format!("mevlog tx {}", txhash)];
+            if let Some(chain_id) = self.chain_id {
+                parts.push(format!("--chain-id {}", chain_id));
+            }
+            return parts.join(" ");
+        }
+
         let mut parts = vec!["mevlog search".to_string()];
 
-        let filters: [(&Input, &str); 10] = [
+        let filters: [(&Input, &str); 11] = [
+            (&self.filter_limit, "--limit"),
             (&self.filter_blocks, "--blocks"),
             (&self.filter_position, "--position"),
             (&self.filter_from, "--from"),
@@ -684,6 +700,8 @@ impl App {
             erc20_transfer: non_empty(self.filter_erc20_transfer.value()),
             tx_cost: non_empty(self.filter_tx_cost.value()),
             gas_price: non_empty(self.filter_gas_price.value()),
+            limit: non_empty(self.filter_limit.value()),
+            txhash: non_empty(self.filter_txhash.value()),
         }
     }
 
