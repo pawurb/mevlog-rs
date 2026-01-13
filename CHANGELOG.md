@@ -2,6 +2,80 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.0] - 2026-01-13
+
+### 🚀 Features
+
+- Add to_ens to txs json
+- Validate latest block
+- Initial TUI implementation
+- Add TUI network selection
+- Add opcodes tracing
+- Add TUI tabs
+- Initial tx inspect view
+- Add initial tx view tabs
+- Show opcodes in tx popup
+- Show tx transfers
+- Add blocks navigation
+- Enable network reselection
+- Show tx traces
+- Add debug-available helper
+- Config file and improve RPC management
+- RPC info and network selection
+- Initial txs search form
+- Add tx trace binding
+- Initial search form
+- Display search results
+- Custom mevlog cmd path
+- Search UI improvements
+- More TUI UI improvements
+
+### 🐛 Bug Fixes
+
+- Sort by erc20Transfer, only include txs with that token
+- Use dedicated RPC for test
+- Fix hotpath PR profile config
+- Fix optimism opcodes tracing
+- Display network name from RPC
+- Only abort unfinished tasks
+- Fix opcodes align
+- Error and UI fixes
+- Improve partial cryo caching
+- Handle initial sqlite db setup
+- Improve logging and dont expose rpc-url
+
+### 🚜 Refactor
+
+- Dry cleanup
+- Exhaustive opcodes styling
+- Reuse search logic
+- Cleanup
+
+### ⚡ Performance
+
+- Reduce tx and chain clones
+- Batch cryo data fetch
+- Improve table rendering performance
+
+### ⚙️ Miscellaneous Tasks
+
+- Update hotpath
+- Use multiple Rust versions in CI
+- Configure hotpath CI
+- Update hotpath
+- Update hotpath, use measure_all macros
+- Cargo update
+- Adjust hotpath CI
+- More secure hotpath CI setup
+- Profile alloc bytes and count
+- Update hotpath
+- Update hotpath
+- Update alloy
+- Cargo update
+- Add default config.toml
+- Update and configure hotpath
+- Release 0.8.0
+
 ## [0.7.1] - 2025-09-15
 
 ### 🚀 Features
@@ -39,6 +113,7 @@ All notable changes to this project will be documented in this file.
 - Add maxperf and instrument profiles
 - Add cargo audit to CI
 - Use edition 2024
+- Release mevlog version 0.7.1
 
 ## [0.7.0] - 2025-08-18
 
