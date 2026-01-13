@@ -19,6 +19,7 @@ When working on an MEV bot, I could not find a simple way to search for specific
 - filter txs by value and real (including bribe) gas prices and cost
 - colored human-readable, and JSON output formats
 - [ChainList](https://chainlist.org/) integration to automatically select RPC endpoints
+- TUI dashboard - browse and analyze EVM chains through a terminal-native visual interface (powered by [ratatui.rs](https://ratatui.rs))
 
 It works on public RPCs thanks to leveraging EVM tracing via [Revm](https://github.com/bluealloy/revm).
 
@@ -50,8 +51,19 @@ or install from the [crates.io](https://crates.io/crates/mevlog):
 
 ```bash
 cargo install mevlog
-mevlog watch --rpc-url https://eth.merkle.io 
+mevlog watch --rpc-url https://eth.merkle.io
 ```
+
+### TUI mode
+
+For a more interactive experience, you can use the TUI (Terminal User Interface) mode:
+
+```bash
+cargo install mevlog --features=tui
+mevlog tui
+```
+
+Visit [mevlog.rs/tui](https://mevlog.rs/tui) for more information.
 
 ### Connection options
 
