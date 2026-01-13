@@ -49,6 +49,7 @@ impl SearchFilters {
 }
 
 #[allow(dead_code, clippy::large_enum_variant)]
+#[derive(Debug)]
 pub(crate) enum DataRequest {
     Block(BlockId, RpcOpts),
     Tx(String, RpcOpts),
@@ -62,12 +63,14 @@ pub(crate) enum DataRequest {
     RefreshRpc(u64, u64),
 }
 
+#[derive(Debug)]
 pub(crate) enum BlockId {
     Latest,
     Number(u64),
 }
 
 #[allow(dead_code, clippy::large_enum_variant)]
+#[derive(Debug)]
 pub(crate) enum DataResponse {
     Block(u64, Vec<MEVTransactionJson>),
     SearchResults(Vec<MEVTransactionJson>),

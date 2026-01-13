@@ -2,13 +2,12 @@
 
 use ratatui::widgets::TableState;
 
-use mevlog::ChainEntryJson;
-
 use crate::cmd::tui::{
     app::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab},
     data::{BlockId, DataRequest, TraceMode},
 };
 
+#[hotpath::measure_all]
 impl App {
     pub(crate) fn select_next(&mut self) {
         let count = self.items.len();
@@ -84,15 +83,7 @@ impl App {
 
     pub(crate) fn request_filtered_chains(&mut self) {
         if self.search_query.is_empty() {
-            self.available_chains = DEFAULT_CHAINS
-                .iter()
-                .map(|(id, name, chain, explorer)| ChainEntryJson {
-                    chain_id: *id,
-                    name: name.to_string(),
-                    chain: chain.to_string(),
-                    explorer_url: Some(explorer.to_string()),
-                })
-                .collect();
+            self.available_chains = DEFAULT_CHAINS.iter().map(|c| c.to_chain_entry()).collect();
             self.is_loading = false;
         } else {
             self.is_loading = true;
@@ -127,15 +118,7 @@ impl App {
         self.mode = AppMode::SelectNetwork;
         self.tx_popup_open = false;
         self.info_popup_open = false;
-        self.available_chains = DEFAULT_CHAINS
-            .iter()
-            .map(|(id, name, chain, explorer)| ChainEntryJson {
-                chain_id: *id,
-                name: name.to_string(),
-                chain: chain.to_string(),
-                explorer_url: Some(explorer.to_string()),
-            })
-            .collect();
+        self.available_chains = DEFAULT_CHAINS.iter().map(|c| c.to_chain_entry()).collect();
         self.network_table_state.select(Some(0));
     }
 
@@ -339,15 +322,7 @@ impl App {
         self.info_popup_open = false;
         self.rpc_refreshing = false;
 
-        self.available_chains = DEFAULT_CHAINS
-            .iter()
-            .map(|(id, name, chain, explorer)| ChainEntryJson {
-                chain_id: *id,
-                name: name.to_string(),
-                chain: chain.to_string(),
-                explorer_url: Some(explorer.to_string()),
-            })
-            .collect();
+        self.available_chains = DEFAULT_CHAINS.iter().map(|c| c.to_chain_entry()).collect();
 
         self.network_table_state = TableState::default().with_selected(Some(0));
         self.search_query.clear();

@@ -51,7 +51,7 @@ html-escape = "0.2"
 which = "7"
 alloy-chains = "0.2"
 console-subscriber = { version = "0.4", optional = true }
-hotpath = { version = "0.9", features = ["tokio"] }
+hotpath = { version = "0.9", features = ["tokio", "crossbeam"] }
 # hotpath = { path = "../hotpath-rs/crates/hotpath", features = ["tokio"] }
 crossterm = { version = "0.28", optional = true }
 ratatui = { version = "0.29", optional = true }

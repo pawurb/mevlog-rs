@@ -8,6 +8,7 @@ use tokio::{
 
 use crate::cmd::tui::data::mevlog_cmd;
 
+#[hotpath::measure(log = true)]
 pub async fn fetch_chains(filter: Option<String>) -> Result<Vec<ChainEntryJson>> {
     let mut cmd = mevlog_cmd();
     cmd.arg("chains").arg("--format").arg("json");

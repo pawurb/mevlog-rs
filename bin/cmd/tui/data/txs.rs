@@ -29,6 +29,7 @@ struct TxWithCalls {
     calls: Option<Vec<CallExtract>>,
 }
 
+#[hotpath::measure]
 pub async fn fetch_txs(
     filters: &SearchFilters,
     rpc_url: Option<String>,
@@ -138,6 +139,7 @@ pub async fn fetch_txs(
     }
 }
 
+#[hotpath::measure(log = true)]
 pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
     let Ok(provider) = init_provider(rpc_url).await else {
         return TraceMode::Revm;
@@ -150,6 +152,7 @@ pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
     }
 }
 
+#[hotpath::measure]
 pub async fn fetch_opcodes(
     tx_hash: &str,
     rpc_url: Option<String>,
@@ -225,6 +228,7 @@ pub async fn fetch_opcodes(
     }
 }
 
+#[hotpath::measure(log = true)]
 pub async fn fetch_traces(
     tx_hash: &str,
     rpc_url: Option<String>,
@@ -300,6 +304,7 @@ pub async fn fetch_traces(
     }
 }
 
+#[hotpath::measure]
 pub async fn fetch_tx_with_trace(
     tx_hash: &str,
     rpc_url: Option<String>,

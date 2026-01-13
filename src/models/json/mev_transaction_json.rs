@@ -12,7 +12,7 @@ use crate::{
     },
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct MEVTransactionJson {
     pub block_number: u64,
     pub signature: String,

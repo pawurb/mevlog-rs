@@ -35,17 +35,49 @@ use crate::cmd::tui::{
     },
 };
 
-const DEFAULT_CHAINS: [(u64, &str, &str, &str); 10] = [
-    (1, "Ethereum Mainnet", "ETH", "https://etherscan.io"),
-    (10, "OP Mainnet", "ETH", "https://optimistic.etherscan.io"),
-    (56, "BNB Smart Chain Mainnet", "BSC", "https://bscscan.com"),
-    (130, "Unichain", "ETH", "https://unichain.blockscout.com"),
-    (137, "Polygon Mainnet", "Polygon", "https://polygonscan.com"),
-    (324, "zkSync Mainnet", "ETH", "https://era.zksync.network"),
-    (8453, "Base", "ETH", "https://basescan.org"),
-    (42161, "Arbitrum One", "ETH", "https://arbiscan.io"),
-    (43114, "Avalanche C-Chain", "AVAX", "https://snowtrace.io"),
-    (534352, "Scroll Mainnet", "ETH", "https://scrollscan.com"),
+pub(crate) struct DefaultChain {
+    pub chain_id: u64,
+    pub name: &'static str,
+    pub chain: &'static str,
+    pub explorer_url: &'static str,
+}
+
+impl DefaultChain {
+    pub const fn new(
+        chain_id: u64,
+        name: &'static str,
+        chain: &'static str,
+        explorer_url: &'static str,
+    ) -> Self {
+        Self {
+            chain_id,
+            name,
+            chain,
+            explorer_url,
+        }
+    }
+
+    pub fn to_chain_entry(&self) -> ChainEntryJson {
+        ChainEntryJson {
+            chain_id: self.chain_id,
+            name: self.name.to_string(),
+            chain: self.chain.to_string(),
+            explorer_url: Some(self.explorer_url.to_string()),
+        }
+    }
+}
+
+pub(crate) const DEFAULT_CHAINS: [DefaultChain; 10] = [
+    DefaultChain::new(1, "Ethereum Mainnet", "ETH", "https://etherscan.io"),
+    DefaultChain::new(10, "OP Mainnet", "ETH", "https://optimistic.etherscan.io"),
+    DefaultChain::new(56, "BNB Smart Chain Mainnet", "BSC", "https://bscscan.com"),
+    DefaultChain::new(130, "Unichain", "ETH", "https://unichain.blockscout.com"),
+    DefaultChain::new(137, "Polygon Mainnet", "Polygon", "https://polygonscan.com"),
+    DefaultChain::new(324, "zkSync Mainnet", "ETH", "https://era.zksync.network"),
+    DefaultChain::new(8453, "Base", "ETH", "https://basescan.org"),
+    DefaultChain::new(42161, "Arbitrum One", "ETH", "https://arbiscan.io"),
+    DefaultChain::new(43114, "Avalanche C-Chain", "AVAX", "https://snowtrace.io"),
+    DefaultChain::new(534352, "Scroll Mainnet", "ETH", "https://scrollscan.com"),
 ];
 
 const DB_INITIALIZING_ERRORS: [&str; 3] = [
@@ -77,6 +109,7 @@ pub(crate) enum TxPopupTab {
 }
 
 #[allow(clippy::large_enum_variant)]
+#[derive(Debug)]
 pub(crate) enum AppEvent {
     Key(KeyCode),
     Data(DataResponse),
@@ -140,12 +173,14 @@ pub struct App {
     pub(crate) query_popup_open: bool,
 }
 
+#[hotpath::measure_all]
 impl App {
     pub fn new(items: Vec<MEVTransactionJson>, conn_opts: &ConnOpts) -> Self {
         let current_block = items.first().map(|tx| tx.block_number);
 
-        let (data_req_tx, data_req_rx) = crossbeam_channel::unbounded();
-        let (state_tx, state_rx) = crossbeam_channel::unbounded();
+        let (data_req_tx, data_req_rx) =
+            hotpath::channel!(crossbeam_channel::unbounded(), log = true);
+        let (state_tx, state_rx) = hotpath::channel!(crossbeam_channel::unbounded(), log = true);
 
         let mode = if conn_opts.rpc_url.is_none() && conn_opts.chain_id.is_none() {
             AppMode::SelectNetwork
@@ -156,13 +191,8 @@ impl App {
         let selected_chain = conn_opts.chain_id.and_then(|chain_id| {
             DEFAULT_CHAINS
                 .iter()
-                .find(|(id, _, _, _)| *id == chain_id)
-                .map(|(id, name, chain, explorer)| ChainEntryJson {
-                    chain_id: *id,
-                    name: name.to_string(),
-                    chain: chain.to_string(),
-                    explorer_url: Some(explorer.to_string()),
-                })
+                .find(|c| c.chain_id == chain_id)
+                .map(|c| c.to_chain_entry())
         });
 
         let rpc_url = conn_opts.rpc_url.clone();
@@ -193,15 +223,7 @@ impl App {
         }
 
         let available_chains = if mode == AppMode::SelectNetwork {
-            DEFAULT_CHAINS
-                .iter()
-                .map(|(id, name, chain, explorer)| ChainEntryJson {
-                    chain_id: *id,
-                    name: name.to_string(),
-                    chain: chain.to_string(),
-                    explorer_url: Some(explorer.to_string()),
-                })
-                .collect()
+            DEFAULT_CHAINS.iter().map(|c| c.to_chain_entry()).collect()
         } else {
             vec![]
         };

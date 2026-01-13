@@ -7,6 +7,7 @@ use tui_input::backend::crossterm::EventHandler;
 
 use crate::cmd::tui::app::{App, AppEvent, AppMode, PrimaryTab, TxPopupTab};
 
+#[hotpath::measure_all]
 impl App {
     pub(crate) fn handle_key_event(&mut self, key_code: KeyCode) {
         if matches!(key_code, KeyCode::Char('q')) {

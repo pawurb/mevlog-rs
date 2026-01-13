@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::mev_opcode::MEVOpcode;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct MEVOpcodeJson {
     pub pc: u64,
     pub op: String,

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::mev_log::MEVLog;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct MEVLogJson {
     pub source: Address,
     pub signature: String,

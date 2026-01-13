@@ -78,7 +78,7 @@ async fn main() {
     _ = inner_main().await;
 }
 
-#[hotpath::main(percentiles = [95], limit = 25)]
+#[hotpath::main(percentiles = [95], limit = 30)]
 async fn inner_main() {
     let root_args = MLArgs::parse();
 

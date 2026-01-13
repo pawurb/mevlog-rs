@@ -5,6 +5,7 @@ use crate::cmd::tui::{
     data::{BlockId, DataRequest},
 };
 
+#[hotpath::measure_all]
 impl App {
     fn effective_block(&self) -> Option<u64> {
         self.loading_block.or(self.current_block)

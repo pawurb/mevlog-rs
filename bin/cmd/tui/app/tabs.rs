@@ -1,7 +1,8 @@
 //! Tab management - switching and cycling
 
-use super::{App, PrimaryTab};
+use crate::cmd::tui::app::{App, PrimaryTab};
 
+#[hotpath::measure_all]
 impl App {
     pub(crate) fn switch_to_tab(&mut self, tab: PrimaryTab) {
         self.active_tab = tab;
