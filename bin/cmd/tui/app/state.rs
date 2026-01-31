@@ -194,6 +194,60 @@ impl App {
         self.traces_tx_hash = None;
     }
 
+    pub(crate) fn request_state_diff_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.table_state.selected()
+            && let Some(tx) = self.items.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.state_diff = None;
+            self.state_diff_loading = true;
+            self.state_diff_tx_hash = Some(tx_hash.clone());
+
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::StateDiff(tx_hash, trace_mode, opts));
+        }
+    }
+
+    pub(crate) fn clear_state_diff(&mut self) {
+        self.state_diff = None;
+        self.state_diff_loading = false;
+        self.state_diff_tx_hash = None;
+    }
+
+    pub(crate) fn request_results_state_diff_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.results_table_state.selected()
+            && let Some(tx) = self.search_results.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.state_diff = None;
+            self.state_diff_loading = true;
+            self.state_diff_tx_hash = Some(tx_hash.clone());
+
+            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
+            let _ = self
+                .data_req_tx
+                .send(DataRequest::StateDiff(tx_hash, trace_mode, opts));
+        }
+    }
+
     pub(crate) fn request_results_opcodes_if_needed(&mut self) {
         let Some(opts) = self.rpc_opts() else {
             return;
@@ -315,6 +369,7 @@ impl App {
         self.error_message = None;
         self.clear_opcodes();
         self.clear_traces();
+        self.clear_state_diff();
         self.clear_tx_trace();
         self.chain_id = None;
         self.rpc_url = None;

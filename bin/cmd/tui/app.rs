@@ -26,8 +26,8 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
-        BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVTransactionJson,
-        RpcOpts, SearchFilters, TraceMode, worker::spawn_data_worker,
+        BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVStateDiffJson,
+        MEVTransactionJson, RpcOpts, SearchFilters, TraceMode, worker::spawn_data_worker,
     },
     views::{
         NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_info_popup,
@@ -106,6 +106,7 @@ pub(crate) enum TxPopupTab {
     Opcodes,
     Traces,
     Transfers,
+    State,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -149,6 +150,9 @@ pub struct App {
     pub(crate) traces: Option<Vec<CallExtract>>,
     pub(crate) traces_loading: bool,
     pub(crate) traces_tx_hash: Option<String>,
+    pub(crate) state_diff: Option<MEVStateDiffJson>,
+    pub(crate) state_diff_loading: bool,
+    pub(crate) state_diff_tx_hash: Option<String>,
     pub(crate) tx_trace_loading: bool,
     pub(crate) tx_trace_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
@@ -267,6 +271,9 @@ impl App {
             traces: None,
             traces_loading: false,
             traces_tx_hash: None,
+            state_diff: None,
+            state_diff_loading: false,
+            state_diff_tx_hash: None,
             tx_trace_loading: false,
             tx_trace_hash: None,
             block_input_popup_open: false,
@@ -403,6 +410,8 @@ impl App {
                                 self.opcodes_loading,
                                 self.traces.as_deref(),
                                 self.traces_loading,
+                                self.state_diff.as_ref(),
+                                self.state_diff_loading,
                                 self.tx_trace_loading,
                             );
                         }
@@ -584,6 +593,9 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
                     self.request_traces_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
+                    self.request_state_diff_if_needed();
+                }
             }
             DataResponse::SearchResults(txs) => {
                 let count = txs.len();
@@ -597,6 +609,7 @@ impl App {
                 self.is_loading = false;
                 self.clear_opcodes();
                 self.clear_traces();
+                self.clear_state_diff();
             }
             DataResponse::Opcodes(tx_hash, opcodes) => {
                 if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
@@ -608,6 +621,12 @@ impl App {
                 if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
                     self.traces = Some(traces);
                     self.traces_loading = false;
+                }
+            }
+            DataResponse::StateDiff(tx_hash, state_diff) => {
+                if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
+                    self.state_diff = Some(state_diff);
+                    self.state_diff_loading = false;
                 }
             }
             DataResponse::TxTraced(tx_hash, traced_tx) => {
@@ -814,6 +833,8 @@ impl App {
                     self.opcodes_loading,
                     self.traces.as_deref(),
                     self.traces_loading,
+                    self.state_diff.as_ref(),
+                    self.state_diff_loading,
                     self.tx_trace_loading,
                 );
             }

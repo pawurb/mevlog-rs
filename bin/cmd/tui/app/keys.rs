@@ -70,6 +70,14 @@ impl App {
                     self.request_traces_if_needed();
                 }
             }
+            KeyCode::Char('5') if self.tx_popup_open => {
+                self.tx_popup_tab = TxPopupTab::State;
+                if self.active_tab == PrimaryTab::Results {
+                    self.request_results_state_diff_if_needed();
+                } else {
+                    self.request_state_diff_if_needed();
+                }
+            }
             KeyCode::Char('t') if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Info => {
                 if self.active_tab == PrimaryTab::Results {
                     self.request_results_tx_trace();
@@ -152,6 +160,9 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
                     self.request_traces_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
+                    self.request_state_diff_if_needed();
+                }
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 self.select_previous();
@@ -161,15 +172,20 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
                     self.request_traces_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
+                    self.request_state_diff_if_needed();
+                }
             }
             KeyCode::Char('h') | KeyCode::Left => {
                 self.clear_opcodes();
                 self.clear_traces();
+                self.clear_state_diff();
                 self.load_previous_block();
             }
             KeyCode::Char('l') | KeyCode::Right => {
                 self.clear_opcodes();
                 self.clear_traces();
+                self.clear_state_diff();
                 self.load_next_block();
             }
             KeyCode::Char('b') => {
@@ -182,6 +198,7 @@ impl App {
                     self.tx_popup_tab = TxPopupTab::default();
                     self.clear_opcodes();
                     self.clear_traces();
+                    self.clear_state_diff();
                 }
             }
             KeyCode::Char('i') => {
@@ -193,6 +210,7 @@ impl App {
                 self.tx_popup_tab = TxPopupTab::default();
                 self.clear_opcodes();
                 self.clear_traces();
+                self.clear_state_diff();
             }
             KeyCode::Char('n') if self.tx_popup_open => {
                 self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);
@@ -338,6 +356,9 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
                     self.request_results_traces_if_needed();
                 }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
+                    self.request_results_state_diff_if_needed();
+                }
             }
             KeyCode::Char('k') | KeyCode::Up => {
                 self.select_previous_result();
@@ -346,6 +367,9 @@ impl App {
                 }
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
                     self.request_results_traces_if_needed();
+                }
+                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
+                    self.request_results_state_diff_if_needed();
                 }
             }
             KeyCode::Char('o') => {
@@ -356,6 +380,7 @@ impl App {
                         self.tx_popup_tab = TxPopupTab::default();
                         self.clear_opcodes();
                         self.clear_traces();
+                        self.clear_state_diff();
                     }
                 }
             }
@@ -365,6 +390,7 @@ impl App {
                 self.tx_popup_tab = TxPopupTab::default();
                 self.clear_opcodes();
                 self.clear_traces();
+                self.clear_state_diff();
             }
             KeyCode::Char('n') if self.tx_popup_open => {
                 self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);

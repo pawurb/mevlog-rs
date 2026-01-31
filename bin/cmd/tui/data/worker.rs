@@ -17,7 +17,10 @@ use crate::cmd::tui::{
     data::{
         BlockId, DataRequest, DataResponse, SearchFilters,
         chains::fetch_chains,
-        txs::{detect_trace_mode, fetch_opcodes, fetch_traces, fetch_tx_with_trace, fetch_txs},
+        txs::{
+            detect_trace_mode, fetch_opcodes, fetch_state_diff, fetch_traces, fetch_tx_with_trace,
+            fetch_txs,
+        },
     },
 };
 
@@ -30,6 +33,7 @@ enum RequestKey {
     ChainInfo,
     Opcodes,
     Traces,
+    StateDiff,
     TxTrace,
     DetectTraceMode,
     RefreshRpc,
@@ -45,6 +49,7 @@ impl DataRequest {
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
             DataRequest::Opcodes(..) => RequestKey::Opcodes,
             DataRequest::Traces(..) => RequestKey::Traces,
+            DataRequest::StateDiff(..) => RequestKey::StateDiff,
             DataRequest::TxTrace(..) => RequestKey::TxTrace,
             DataRequest::DetectTraceMode(_) => RequestKey::DetectTraceMode,
             DataRequest::RefreshRpc(..) => RequestKey::RefreshRpc,
@@ -203,6 +208,33 @@ pub(crate) fn spawn_data_worker(
                             }
                             Err(e) => {
                                 error!(tx_hash = %hash, error = %e, "failed to fetch traces");
+                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
+                            }
+                        }
+                    })
+                }
+
+                DataRequest::StateDiff(tx_hash, trace_mode, opts) => {
+                    info!(%tx_hash, ?trace_mode, "fetching state diff");
+                    let tx = event_tx.clone();
+                    let hash = tx_hash.clone();
+                    rt.spawn(async move {
+                        match fetch_state_diff(
+                            &hash,
+                            Some(opts.rpc_url),
+                            Some(opts.chain_id),
+                            trace_mode,
+                        )
+                        .await
+                        {
+                            Ok(state_diff) => {
+                                debug!(tx_hash = %hash, "fetched state diff");
+                                let _ = tx.send(AppEvent::Data(DataResponse::StateDiff(
+                                    hash, state_diff,
+                                )));
+                            }
+                            Err(e) => {
+                                error!(tx_hash = %hash, error = %e, "failed to fetch state diff");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }

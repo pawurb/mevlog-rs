@@ -1,9 +1,11 @@
 mod info;
 mod opcodes;
+mod state_diff;
 mod traces;
 mod transfers;
 
 use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
+use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
 use mevlog::models::mev_transaction::CallExtract;
 use ratatui::{
     Frame,
@@ -28,6 +30,8 @@ pub fn render_tx_popup(
     opcodes_loading: bool,
     traces: Option<&[CallExtract]>,
     traces_loading: bool,
+    state_diff: Option<&MEVStateDiffJson>,
+    state_diff_loading: bool,
     tx_trace_loading: bool,
 ) {
     let popup_width = (area.width as f32 * 0.8) as u16;
@@ -75,6 +79,13 @@ pub fn render_tx_popup(
         TxPopupTab::Transfers => {
             transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll)
         }
+        TxPopupTab::State => state_diff::render_state_diff_tab(
+            inner_chunks[3],
+            frame,
+            state_diff,
+            state_diff_loading,
+            scroll,
+        ),
     }
 }
 
@@ -105,6 +116,7 @@ fn render_popup_tab_bar(area: Rect, frame: &mut Frame, active_tab: TxPopupTab) {
         (TxPopupTab::Transfers, "2", "Transfers"),
         (TxPopupTab::Opcodes, "3", "Opcodes"),
         (TxPopupTab::Traces, "4", "Traces"),
+        (TxPopupTab::State, "5", "State"),
     ];
 
     let mut spans = Vec::new();
