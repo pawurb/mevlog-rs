@@ -426,6 +426,36 @@ The opcode trace shows:
 - **COST**: Gas cost of this opcode execution
 - **GAS_LEFT**: Remaining gas after this opcode executes
 
+### EVM State Diff
+
+You can view storage slot changes made by a transaction using the `--state-diff` flag. This requires enabling tracing with either `--trace rpc` or `--trace revm`:
+
+```bash
+# View state diff using Revm (works on public RPCs)
+mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --chain-id 1 --trace revm --state-diff --format json-pretty
+
+# View state diff using RPC (requires debug API access)
+mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --chain-id 1 --trace rpc --state-diff --format json-pretty
+```
+
+```json
+[{
+  // ...
+  "state_diff": {
+    "0x1234...abcd": {
+      "0x0000...0001": ["0x0000...0000", "0x0000...0064"],
+      "0x0000...0002": [null, "0x0000...00c8"]
+    }
+  }
+}]
+```
+
+The state diff shows:
+- **ADDRESS**: Contract address where storage was modified
+- **SLOT**: Storage slot that changed
+- **BEFORE**: Value before the transaction (`null` if slot was empty)
+- **AFTER**: Value after the transaction
+
 ## Listing available chains
 
 ```bash
