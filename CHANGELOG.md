@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1] - 2026-01-31
+
+### 🚀 Features
+
+- Add evm state diff tracing
+- Add TUI evm state diff
+
+### ⚙️ Miscellaneous Tasks
+
+- Release 0.8.1
+
 ## [0.8.0] - 2026-01-13
 
 ### 🚀 Features
