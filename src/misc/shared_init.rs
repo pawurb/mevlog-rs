@@ -70,24 +70,23 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let provider = init_provider(&rpc_url).await?;
     let provider = Arc::new(provider);
 
-    let chain_id = if conn_opts.rpc_url.is_some() && conn_opts.chain_id.is_some() {
-        if conn_opts.skip_verify_chain_id {
-            conn_opts.chain_id.unwrap()
-        } else {
-            let chain_id = provider.get_chain_id().await?;
-
-            if chain_id != conn_opts.chain_id.unwrap() {
-                bail!(
-                    "Chain ID mismatch --chain-id {} != --chain-id from --rpc-url {chain_id}",
-                    conn_opts.chain_id.unwrap(),
-                );
+    let chain_id = match (conn_opts.rpc_url.as_ref(), conn_opts.chain_id) {
+        (Some(_), Some(expected_chain_id)) => {
+            if conn_opts.skip_verify_chain_id {
+                expected_chain_id
+            } else {
+                let chain_id = provider.get_chain_id().await?;
+                if chain_id != expected_chain_id {
+                    bail!(
+                        "Chain ID mismatch --chain-id {} != --chain-id from --rpc-url {chain_id}",
+                        expected_chain_id,
+                    );
+                }
+                chain_id
             }
-            chain_id
         }
-    } else if conn_opts.chain_id.is_some() {
-        conn_opts.chain_id.unwrap()
-    } else {
-        provider.get_chain_id().await?
+        (_, Some(chain_id)) => chain_id,
+        (_, None) => provider.get_chain_id().await?,
     };
 
     let db_chain = DBChain::find(chain_id as i64, &sqlite)

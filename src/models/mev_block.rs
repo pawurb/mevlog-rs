@@ -29,9 +29,9 @@ use crate::{
         ens_utils::ENSLookup,
         revm_tracing::{
             RevmBlockContext, init_revm_db, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
-            revm_tx_opcodes,
+            revm_tx_opcodes, revm_tx_state_diff,
         },
-        rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes},
+        rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes, rpc_tx_state_diff},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
         utils::{ETH_TRANSFER, SEPARATORER, ToU64, UNKNOWN},
     },
@@ -221,6 +221,7 @@ impl MEVBlock {
                 filter.top_metadata,
                 filter.show_calls,
                 filter.show_opcodes,
+                filter.show_state_diff,
             );
 
             let mev_tx = hotpath::future!(mev_tx, log = true);
@@ -346,6 +347,11 @@ impl MEVBlock {
                 mev_tx.opcodes = Some(opcodes);
             }
 
+            if filter.show_state_diff {
+                let state_diff = rpc_tx_state_diff(mev_tx.tx_hash, provider).await?;
+                mev_tx.state_diff = Some(state_diff);
+            }
+
             let coinbase_transfer = find_coinbase_transfer(
                 self.revm_context.coinbase,
                 calls.into_iter().map(TraceData::from).collect(),
@@ -438,6 +444,12 @@ impl MEVBlock {
                 let opcodes =
                     revm_tx_opcodes(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
                 mev_tx.opcodes = Some(opcodes);
+            }
+
+            if filter.show_state_diff {
+                let state_diff =
+                    revm_tx_state_diff(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
+                mev_tx.state_diff = Some(state_diff);
             }
 
             let coinbase_transfer = find_coinbase_transfer(
