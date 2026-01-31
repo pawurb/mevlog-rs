@@ -18,7 +18,7 @@ use sqlx::SqlitePool;
 
 use super::{
     db_method::DBMethod, mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog,
-    mev_log_group::MEVLogGroup, mev_opcode::MEVOpcode,
+    mev_log_group::MEVLogGroup, mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff,
 };
 use crate::{
     GenericProvider,
@@ -85,6 +85,8 @@ pub struct MEVTransaction {
     pub show_calls: bool,
     pub opcodes: Option<Vec<MEVOpcode>>,
     pub show_opcodes: bool,
+    pub state_diff: Option<MEVStateDiff>,
+    pub show_state_diff: bool,
 }
 
 // Parquet row:
@@ -173,6 +175,7 @@ impl MEVTransaction {
         top_metadata: bool,
         show_calls: bool,
         show_opcodes: bool,
+        show_state_diff: bool,
     ) -> Result<Self> {
         let (signature_hash, signature) =
             extract_signature(tx_req.input.input.as_ref(), index, tx_req.to, sqlite).await?;
@@ -207,6 +210,8 @@ impl MEVTransaction {
             show_calls,
             opcodes: None,
             show_opcodes,
+            state_diff: None,
+            show_state_diff,
         })
     }
 
@@ -335,6 +340,13 @@ impl fmt::Display for MEVTransaction {
             for opcode in opcodes {
                 writeln!(f, "{}", opcode)?;
             }
+            return Ok(());
+        }
+
+        if self.show_state_diff
+            && let Some(state_diff) = &self.state_diff
+        {
+            write!(f, "{}", state_diff)?;
             return Ok(());
         }
 

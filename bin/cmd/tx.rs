@@ -55,6 +55,12 @@ pub struct TxArgs {
     #[arg(long, help = "Display EVM opcodes executed by the transaction")]
     pub ops: bool,
 
+    #[arg(
+        long,
+        help = "Display storage slot changes (state diff) for the transaction"
+    )]
+    pub state_diff: bool,
+
     #[command(flatten)]
     shared_opts: SharedOpts,
 
@@ -73,6 +79,10 @@ impl TxArgs {
 
         if self.ops && self.shared_opts.trace.is_none() {
             eyre::bail!("'--ops' is supported only with --trace [rpc|revm] enabled")
+        }
+
+        if self.state_diff && self.shared_opts.trace.is_none() {
+            eyre::bail!("'--state-diff' is supported only with --trace [rpc|revm] enabled")
         }
 
         let deps = init_deps(&self.conn_opts).await?;
@@ -137,6 +147,7 @@ impl TxArgs {
             erc20_transfers: vec![],
             show_erc20_transfer_amount: self.shared_opts.erc20_transfer_amount,
             show_opcodes: self.ops,
+            show_state_diff: self.state_diff,
         };
 
         let ens_lookup_mode = if deps.chain.is_mainnet() && self.shared_opts.ens {

@@ -262,6 +262,7 @@ pub struct TxsFilter {
     pub erc20_transfers: Vec<ERC20TransferQuery>,
     pub show_erc20_transfer_amount: bool,
     pub show_opcodes: bool,
+    pub show_state_diff: bool,
 }
 
 impl TxsFilter {
@@ -373,6 +374,7 @@ impl TxsFilter {
                 .collect::<Result<Vec<_>>>()?,
             show_erc20_transfer_amount: shared_opts.erc20_transfer_amount,
             show_opcodes: false,
+            show_state_diff: false,
         })
     }
 

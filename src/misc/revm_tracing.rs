@@ -26,7 +26,12 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 
 use super::shared_init::TraceMode;
-use crate::models::{evm_chain::EVMChain, mev_block::block_cache_key, mev_opcode::MEVOpcode};
+use crate::models::{
+    evm_chain::EVMChain,
+    mev_block::block_cache_key,
+    mev_opcode::MEVOpcode,
+    mev_state_diff::{MEVStateDiff, u256_to_option_b256},
+};
 
 pub async fn init_revm_db(
     block_number: u64,
@@ -247,6 +252,54 @@ pub fn revm_tx_opcodes(
     }
 
     Ok(opcodes)
+}
+
+pub fn revm_tx_state_diff(
+    tx_hash: FixedBytes<32>,
+    tx_req: &TransactionRequest,
+    block_context: &RevmBlockContext,
+    cache_db: &mut CacheDB<SharedBackend>,
+) -> Result<MEVStateDiff> {
+    let trace_types = HashSet::from_iter([TraceType::StateDiff]);
+    let mut evm = Context::mainnet().with_db(cache_db);
+    evm.modify_block(|block| {
+        apply_block_env(block, block_context);
+    });
+    evm.modify_tx(|tx_env| {
+        apply_tx_env(tx_env, tx_req, block_context);
+    });
+    let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
+        TracingInspectorConfig::from_parity_config(&trace_types),
+    ));
+
+    let tx_env = evm.tx.clone();
+    let res = match evm.inspect_tx(tx_env) {
+        Ok(res) => res,
+        Err(e) => {
+            tracing::warn!("revm_tx_state_diff {tx_hash} failed. {:?}", e);
+            return Ok(MEVStateDiff::new());
+        }
+    };
+
+    let mut state_diff = MEVStateDiff::new();
+
+    for (address, account) in res.state.iter() {
+        for (slot, slot_state) in account.storage.iter() {
+            let original = slot_state.original_value;
+            let present = slot_state.present_value;
+
+            if original != present {
+                state_diff.add_change(
+                    *address,
+                    (*slot).into(),
+                    u256_to_option_b256(original),
+                    u256_to_option_b256(present),
+                );
+            }
+        }
+    }
+
+    Ok(state_diff)
 }
 
 pub fn revm_commit_tx(

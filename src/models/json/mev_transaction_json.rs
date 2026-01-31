@@ -4,7 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     misc::utils::ToU128,
     models::{
-        json::{mev_log_group_json::MEVLogGroupJson, mev_opcode_json::MEVOpcodeJson},
+        json::{
+            mev_log_group_json::MEVLogGroupJson, mev_opcode_json::MEVOpcodeJson,
+            mev_state_diff_json::MEVStateDiffJson,
+        },
         mev_transaction::{
             CallExtract, MEVTransaction, calculate_create_address, display_token,
             display_token_and_usd, display_usd, eth_to_usd,
@@ -42,6 +45,8 @@ pub struct MEVTransactionJson {
     pub log_groups: Vec<MEVLogGroupJson>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub opcodes: Option<Vec<MEVOpcodeJson>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_diff: Option<MEVStateDiffJson>,
 }
 
 impl From<&MEVTransaction> for MEVTransactionJson {
@@ -106,6 +111,7 @@ impl From<&MEVTransaction> for MEVTransactionJson {
                 .opcodes
                 .as_ref()
                 .map(|ops| ops.iter().map(MEVOpcodeJson::from).collect()),
+            state_diff: tx.state_diff.as_ref().map(MEVStateDiffJson::from),
         }
     }
 }
