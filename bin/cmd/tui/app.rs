@@ -700,9 +700,12 @@ impl App {
 
         let mut parts = vec!["mevlog search".to_string()];
 
-        let filters: [(&Input, &str); 11] = [
+        let blocks = self.filter_blocks.value();
+        let blocks = if blocks.is_empty() { "latest" } else { blocks };
+        parts.push(format!("--blocks {}", blocks));
+
+        let filters: [(&Input, &str); 10] = [
             (&self.filter_limit, "--limit"),
-            (&self.filter_blocks, "--blocks"),
             (&self.filter_position, "--position"),
             (&self.filter_from, "--from"),
             (&self.filter_to, "--to"),
@@ -733,8 +736,15 @@ impl App {
             }
         }
 
+        let blocks = self.filter_blocks.value();
+        let blocks = if blocks.is_empty() {
+            "latest".to_string()
+        } else {
+            blocks.to_string()
+        };
+
         SearchFilters {
-            blocks: self.filter_blocks.value().to_string(),
+            blocks,
             position: non_empty(self.filter_position.value()),
             from: non_empty(self.filter_from.value()),
             to: non_empty(self.filter_to.value()),
