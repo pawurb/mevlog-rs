@@ -616,7 +616,7 @@ QUIET=1 cargo run --features 'hotpath,hotpath-alloc' --release --bin mevlog sear
 Live profiling:
 
 ```bash
-QUIET=1 cargo run --release --features='hotpath,hotpath-alloc' --bin mevlog watch --rpc-url https://eth.merkle.io --ens --erc20-symbols
+HOTPATH_EXCLUDE_WRAPPER=true QUIET=1 cargo run --release --features='hotpath,hotpath-alloc' --bin mevlog watch --rpc-url $ETH_RPC_URL --ens --erc20-symbols
 ```
 
 In another terminal:

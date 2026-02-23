@@ -66,21 +66,11 @@ pub enum MLSubcommand {
     Tui(TuiArgs),
 }
 
-#[cfg(feature = "hotpath-alloc")]
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
-    _ = inner_main().await;
-}
-
-#[cfg(not(feature = "hotpath-alloc"))]
 #[tokio::main]
-async fn main() {
-    _ = inner_main().await;
-}
-
 #[hotpath::main(percentiles = [95], limit = 30)]
-async fn inner_main() {
+async fn main() {
     let root_args = MLArgs::parse();
+    hotpath::tokio_runtime!();
 
     #[cfg(feature = "tui")]
     mevlog::misc::utils::init_file_logs();
