@@ -604,7 +604,7 @@ Time:
 QUIET=1 cargo run --features 'hotpath' --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000 --rpc-url https://eth.merkle.io
 ```
 
-Run once to cache all relevant data. Subsequent invocations won't trigger any RPC calls, so you can profile performance without network overhead. Annotate more methods with `[cfg_attr(feature = "hotpath", hotpath::measure)]` if needed.
+Run once to cache all relevant data. Subsequent invocations won't trigger any RPC calls, so you can profile performance without network overhead. Annotate more methods with `[hotpath::measure]` if needed.
 
 ![Report](hotpath-report2.png)
 
