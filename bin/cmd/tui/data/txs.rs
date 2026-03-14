@@ -35,7 +35,7 @@ struct TxWithStateDiff {
     state_diff: Option<MEVStateDiffJson>,
 }
 
-#[hotpath::measure]
+#[hotpath::measure(future = true)]
 pub async fn fetch_txs(
     filters: &SearchFilters,
     rpc_url: Option<String>,
@@ -145,7 +145,7 @@ pub async fn fetch_txs(
     }
 }
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
     let Ok(provider) = init_provider(rpc_url).await else {
         return TraceMode::Revm;
@@ -158,7 +158,7 @@ pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
     }
 }
 
-#[hotpath::measure]
+#[hotpath::measure(future = true)]
 pub async fn fetch_opcodes(
     tx_hash: &str,
     rpc_url: Option<String>,
@@ -234,7 +234,7 @@ pub async fn fetch_opcodes(
     }
 }
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 pub async fn fetch_traces(
     tx_hash: &str,
     rpc_url: Option<String>,
@@ -310,7 +310,7 @@ pub async fn fetch_traces(
     }
 }
 
-#[hotpath::measure]
+#[hotpath::measure(future = true)]
 pub async fn fetch_tx_with_trace(
     tx_hash: &str,
     rpc_url: Option<String>,
@@ -383,7 +383,7 @@ pub async fn fetch_tx_with_trace(
     }
 }
 
-#[hotpath::measure]
+#[hotpath::measure(future = true)]
 pub async fn fetch_state_diff(
     tx_hash: &str,
     rpc_url: Option<String>,

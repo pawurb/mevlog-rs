@@ -13,7 +13,7 @@ pub struct DBMethod {
 static METHOD_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Option<String>>>> =
     std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
-#[hotpath::measure_all]
+#[hotpath::measure_all(future = true)]
 impl DBMethod {
     pub async fn exists(signature: &str, conn: &sqlx::SqlitePool) -> Result<bool> {
         let exists = sqlx::query("SELECT EXISTS(SELECT 1 FROM methods WHERE signature = ?)")

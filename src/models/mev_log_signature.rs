@@ -23,7 +23,7 @@ pub enum MEVLogSignatureType {
     UNIV3,
 }
 
-#[hotpath::measure_all]
+#[hotpath::measure_all(future = true)]
 impl MEVLogSignature {
     pub async fn new(
         address: Address,

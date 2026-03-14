@@ -35,7 +35,7 @@ pub enum ENSLookup {
     Disabled,
 }
 
-#[hotpath::measure_all]
+#[hotpath::measure_all(future = true)]
 impl ENSLookup {
     pub async fn lookup_mode(
         ens_query: Option<String>,
@@ -135,7 +135,7 @@ async fn ens_name_lookup(
     Ok(if name.is_empty() { None } else { Some(name) })
 }
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 async fn read_ens_cache(target: Address) -> Result<CachedEntry> {
     {
         let cache = ENS_MEMORY_CACHE.read().await;

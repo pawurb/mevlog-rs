@@ -16,7 +16,7 @@ use crate::{
     models::{mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff},
 };
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 pub async fn rpc_tx_calls(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
@@ -46,7 +46,7 @@ pub async fn rpc_tx_calls(
     Ok(all_calls)
 }
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 pub async fn rpc_touching_accounts(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
@@ -83,7 +83,7 @@ pub async fn rpc_touching_accounts(
     Ok(diff_traces.keys().copied().collect())
 }
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 pub async fn rpc_tx_opcodes(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
@@ -131,7 +131,7 @@ fn collect_calls(frame: &CallFrame, result: &mut Vec<CallFrame>) {
     }
 }
 
-#[hotpath::measure(log = true)]
+#[hotpath::measure(log = true, future = true)]
 pub async fn rpc_tx_state_diff(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,

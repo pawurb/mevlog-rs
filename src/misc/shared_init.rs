@@ -34,7 +34,7 @@ pub struct SharedDeps {
     pub rpc_url: String,
 }
 
-#[hotpath::measure]
+#[hotpath::measure(future = true)]
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     Config::init_if_missing()?;
     let config = Config::load()?;

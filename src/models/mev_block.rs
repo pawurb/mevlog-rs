@@ -119,7 +119,7 @@ pub async fn generate_block(
     Ok(mev_block)
 }
 
-#[hotpath::measure_all]
+#[hotpath::measure_all(future = true)]
 #[allow(clippy::too_many_arguments)]
 impl MEVBlock {
     pub async fn new(
