@@ -83,6 +83,7 @@ pub struct MEVTransaction {
     pub top_metadata: bool,
     pub calls: Option<Vec<CallExtract>>,
     pub show_calls: bool,
+    pub show_logs: bool,
     pub opcodes: Option<Vec<MEVOpcode>>,
     pub show_opcodes: bool,
     pub state_diff: Option<MEVStateDiff>,
@@ -174,6 +175,7 @@ impl MEVTransaction {
         provider: &Arc<GenericProvider>,
         top_metadata: bool,
         show_calls: bool,
+        show_logs: bool,
         show_opcodes: bool,
         show_state_diff: bool,
     ) -> Result<Self> {
@@ -208,6 +210,7 @@ impl MEVTransaction {
             top_metadata,
             calls: None,
             show_calls,
+            show_logs,
             opcodes: None,
             show_opcodes,
             state_diff: None,
@@ -350,7 +353,7 @@ impl fmt::Display for MEVTransaction {
             return Ok(());
         }
 
-        if !self.top_metadata {
+        if self.show_logs && !self.top_metadata {
             for log in &self.log_groups {
                 write!(f, "{log}")?;
             }
@@ -495,7 +498,7 @@ impl fmt::Display for MEVTransaction {
             }
         }
 
-        if self.top_metadata {
+        if self.show_logs && self.top_metadata {
             if !&self.log_groups.is_empty() {
                 writeln!(f)?;
             }

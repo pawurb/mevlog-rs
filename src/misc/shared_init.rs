@@ -139,6 +139,9 @@ pub struct SharedOpts {
     #[arg(long, help = "Enable ERC20 symbols lookup")]
     pub erc20_symbols: bool,
 
+    #[arg(long, help = "Exclude event logs from output")]
+    pub exclude_logs: bool,
+
     #[arg(
         long,
         help = "Provide native token price in USD instead of reading it from price oracle"

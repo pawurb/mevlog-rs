@@ -1,5 +1,5 @@
 use revm::primitives::{Address, FixedBytes, TxKind, U256};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
 
 use crate::{
     misc::utils::ToU128,
@@ -42,6 +42,7 @@ pub struct MEVTransactionJson {
     pub display_full_tx_cost: Option<String>,
     pub display_full_tx_cost_usd: Option<String>,
     pub calls: Option<Vec<CallExtract>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub log_groups: Vec<MEVLogGroupJson>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub opcodes: Option<Vec<MEVOpcodeJson>>,
@@ -113,5 +114,211 @@ impl From<&MEVTransaction> for MEVTransactionJson {
                 .map(|ops| ops.iter().map(MEVOpcodeJson::from).collect()),
             state_diff: tx.state_diff.as_ref().map(MEVStateDiffJson::from),
         }
+    }
+}
+
+struct MEVTransactionJsonOutput<'a> {
+    transaction: &'a MEVTransactionJson,
+    include_logs: bool,
+}
+
+impl Serialize for MEVTransactionJsonOutput<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let tx = self.transaction;
+        let mut output = serializer.serialize_struct("MEVTransactionJson", 22)?;
+
+        output.serialize_field("block_number", &tx.block_number)?;
+        output.serialize_field("signature", &tx.signature)?;
+        output.serialize_field("signature_hash", &tx.signature_hash)?;
+        output.serialize_field("tx_hash", &tx.tx_hash)?;
+        output.serialize_field("index", &tx.index)?;
+        output.serialize_field("from", &tx.from)?;
+        output.serialize_field("from_ens", &tx.from_ens)?;
+        output.serialize_field("to", &tx.to)?;
+        output.serialize_field("to_ens", &tx.to_ens)?;
+        output.serialize_field("nonce", &tx.nonce)?;
+        output.serialize_field("value", &tx.value)?;
+        output.serialize_field("display_value", &tx.display_value)?;
+        output.serialize_field("coinbase_transfer", &tx.coinbase_transfer)?;
+        output.serialize_field("display_coinbase_transfer", &tx.display_coinbase_transfer)?;
+        output.serialize_field(
+            "display_coinbase_transfer_usd",
+            &tx.display_coinbase_transfer_usd,
+        )?;
+        output.serialize_field("success", &tx.success)?;
+        output.serialize_field("gas_price", &tx.gas_price)?;
+        output.serialize_field("gas_used", &tx.gas_used)?;
+        output.serialize_field("tx_cost", &tx.tx_cost)?;
+        output.serialize_field("display_tx_cost", &tx.display_tx_cost)?;
+        output.serialize_field("display_tx_cost_usd", &tx.display_tx_cost_usd)?;
+        output.serialize_field("full_tx_cost", &tx.full_tx_cost)?;
+        output.serialize_field("display_full_tx_cost", &tx.display_full_tx_cost)?;
+        output.serialize_field("display_full_tx_cost_usd", &tx.display_full_tx_cost_usd)?;
+        output.serialize_field("calls", &tx.calls)?;
+
+        if self.include_logs && !tx.log_groups.is_empty() {
+            output.serialize_field("log_groups", &tx.log_groups)?;
+        }
+
+        output.serialize_field("opcodes", &tx.opcodes)?;
+        output.serialize_field("state_diff", &tx.state_diff)?;
+        output.end()
+    }
+}
+
+pub fn serialize_transactions_json(
+    transactions: &[MEVTransactionJson],
+    include_logs: bool,
+    pretty: bool,
+) -> serde_json::Result<String> {
+    let output: Vec<_> = transactions
+        .iter()
+        .map(|transaction| MEVTransactionJsonOutput {
+            transaction,
+            include_logs,
+        })
+        .collect();
+
+    if pretty {
+        serde_json::to_string_pretty(&output)
+    } else {
+        serde_json::to_string(&output)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::models::json::mev_log_group_json::MEVLogGroupJson;
+    use crate::models::json::mev_log_json::MEVLogJson;
+
+    use super::*;
+
+    fn base_fields() -> Vec<&'static str> {
+        vec![
+            "block_number",
+            "signature",
+            "signature_hash",
+            "tx_hash",
+            "index",
+            "from",
+            "from_ens",
+            "to",
+            "to_ens",
+            "nonce",
+            "value",
+            "display_value",
+            "coinbase_transfer",
+            "display_coinbase_transfer",
+            "display_coinbase_transfer_usd",
+            "success",
+            "gas_price",
+            "gas_used",
+            "tx_cost",
+            "display_tx_cost",
+            "display_tx_cost_usd",
+            "full_tx_cost",
+            "display_full_tx_cost",
+            "display_full_tx_cost_usd",
+            "calls",
+            "opcodes",
+            "state_diff",
+        ]
+    }
+
+    fn make_tx(with_logs: bool) -> MEVTransactionJson {
+        let log_groups = if with_logs {
+            vec![MEVLogGroupJson {
+                source: Address::ZERO,
+                logs: vec![MEVLogJson {
+                    source: Address::ZERO,
+                    signature: "Transfer(address,address,uint256)".to_string(),
+                    symbol: None,
+                    amount: None,
+                    topics: vec![],
+                    data: "00".to_string(),
+                }],
+            }]
+        } else {
+            vec![]
+        };
+
+        MEVTransactionJson {
+            block_number: 1,
+            signature: "test()".to_string(),
+            signature_hash: None,
+            tx_hash: FixedBytes::ZERO,
+            index: 0,
+            from: Address::ZERO,
+            from_ens: None,
+            to: Some(Address::ZERO),
+            to_ens: None,
+            nonce: 0,
+            value: "0".to_string(),
+            display_value: "0 ETH".to_string(),
+            coinbase_transfer: None,
+            display_coinbase_transfer: None,
+            display_coinbase_transfer_usd: None,
+            success: true,
+            gas_price: 0,
+            gas_used: 0,
+            tx_cost: 0,
+            display_tx_cost: "0 ETH".to_string(),
+            display_tx_cost_usd: None,
+            full_tx_cost: None,
+            display_full_tx_cost: None,
+            display_full_tx_cost_usd: None,
+            calls: None,
+            log_groups,
+            opcodes: None,
+            state_diff: None,
+        }
+    }
+
+    fn get_json_keys(json: &str) -> Vec<String> {
+        let arr: Vec<serde_json::Value> = serde_json::from_str(json).unwrap();
+        let obj = arr[0].as_object().unwrap();
+        obj.keys().cloned().collect()
+    }
+
+    #[test]
+    fn test_include_logs_false_omits_log_groups() {
+        let tx = make_tx(true);
+        let json = serialize_transactions_json(&[tx], false, false).unwrap();
+        let keys = get_json_keys(&json);
+
+        let expected = base_fields();
+        assert_eq!(keys.len(), expected.len());
+        for field in &expected {
+            assert!(keys.contains(&field.to_string()), "missing field: {field}");
+        }
+        assert!(!keys.contains(&"log_groups".to_string()));
+    }
+
+    #[test]
+    fn test_include_logs_true_includes_log_groups() {
+        let tx = make_tx(true);
+        let json = serialize_transactions_json(&[tx], true, false).unwrap();
+        let keys = get_json_keys(&json);
+
+        let mut expected = base_fields();
+        expected.push("log_groups");
+        assert_eq!(keys.len(), expected.len());
+        for field in &expected {
+            assert!(keys.contains(&field.to_string()), "missing field: {field}");
+        }
+    }
+
+    #[test]
+    fn test_include_logs_true_empty_logs_omits_log_groups() {
+        let tx = make_tx(false);
+        let json = serialize_transactions_json(&[tx], true, false).unwrap();
+        let keys = get_json_keys(&json);
+
+        let expected = base_fields();
+        assert_eq!(keys.len(), expected.len());
+        assert!(!keys.contains(&"log_groups".to_string()));
     }
 }

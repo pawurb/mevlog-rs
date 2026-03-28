@@ -200,7 +200,7 @@ impl TxArgs {
         )
         .await?;
 
-        mev_block.print_with_format(&format);
+        mev_block.print_with_format(&format, !self.shared_opts.exclude_logs);
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

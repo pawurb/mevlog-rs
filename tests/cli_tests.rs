@@ -135,6 +135,10 @@ pub mod tests {
                     "Expected:\n{expected}\n\nGot:\n{output}"
                 );
             }
+            assert!(
+                output.contains("\"log_groups\":"),
+                "Expected log_groups to be present when --exclude-logs is not set.\n\nGot:\n{output}"
+            );
         }
     }
 
@@ -495,7 +499,7 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+    // cargo run --bin mevlog search -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' --exclude-logs
     #[test]
     fn test_cli_format_search_erc20_transfer() {
         let cmd = Command::new("cargo")
@@ -512,6 +516,7 @@ pub mod tests {
             .arg("json-pretty")
             .arg("--sort")
             .arg("erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+            .arg("--exclude-logs")
             .output()
             .expect("failed to execute CLI");
 
@@ -525,6 +530,11 @@ pub mod tests {
                 "Expected:\n{expected}\n\nGot:\n{output}",
             );
         }
+
+        assert!(
+            !output.contains("\"log_groups\":"),
+            "Expected log_groups to be omitted when --exclude-logs is set.\n\nGot:\n{output}",
+        );
     }
 
     // cargo run --bin mevlog search --to 0x9008D19f58AAbD9eD0D60971565AA8510560ab41 -b 23632775:23632875 --sort 'erc20Transfer|0x6982508145454ce325ddbe47a25d4ec3d2311933' --limit 1 --chain-id 1 --format json --rpc-url $ETH_RPC_URL
