@@ -262,13 +262,15 @@ impl SearchArgs {
                 OutputFormat::Json => {
                     println!(
                         "{}",
-                        serialize_transactions_json(&transactions_json, json_opts, false,).unwrap()
+                        serialize_transactions_json(&transactions_json, json_opts, false,)
+                            .unwrap()
                     );
                 }
                 OutputFormat::JsonPretty => {
                     println!(
                         "{}",
-                        serialize_transactions_json(&transactions_json, json_opts, true,).unwrap()
+                        serialize_transactions_json(&transactions_json, json_opts, true,)
+                            .unwrap()
                     );
                 }
                 _ => {
