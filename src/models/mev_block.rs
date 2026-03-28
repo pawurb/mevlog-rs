@@ -37,7 +37,7 @@ use crate::{
     },
     models::{
         evm_chain::EVMChain,
-        json::mev_transaction_json::MEVTransactionJson,
+        json::mev_transaction_json::{MEVTransactionJson, serialize_transactions_json},
         mev_transaction::{CallExtract, extract_signature},
     },
 };
@@ -220,6 +220,7 @@ impl MEVBlock {
                 provider,
                 filter.top_metadata,
                 filter.show_calls,
+                !shared_opts.exclude_logs,
                 filter.show_opcodes,
                 filter.show_state_diff,
             );
@@ -556,16 +557,18 @@ impl MEVBlock {
         print!("{}", escape_html(&mev_block_str));
     }
 
-    pub fn print_with_format(&self, format: &OutputFormat) {
+    pub fn print_with_format(&self, format: &OutputFormat, include_logs: bool) {
         match format {
             OutputFormat::Text => self.print(),
-            OutputFormat::Json | OutputFormat::JsonStream => self.print_json(),
-            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => self.print_json_pretty(),
+            OutputFormat::Json | OutputFormat::JsonStream => self.print_json(include_logs),
+            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+                self.print_json_pretty(include_logs)
+            }
         }
     }
 
-    pub fn print_json(&self) {
-        match serde_json::to_string(&self.transactions_json()) {
+    pub fn print_json(&self, include_logs: bool) {
+        match serialize_transactions_json(&self.transactions_json(), include_logs, false) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }
@@ -581,8 +584,8 @@ impl MEVBlock {
             .collect()
     }
 
-    pub fn print_json_pretty(&self) {
-        match serde_json::to_string_pretty(&self.transactions_json()) {
+    pub fn print_json_pretty(&self, include_logs: bool) {
+        match serialize_transactions_json(&self.transactions_json(), include_logs, true) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }

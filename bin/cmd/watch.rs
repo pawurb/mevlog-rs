@@ -105,7 +105,7 @@ impl WatchArgs {
             )
             .await?;
 
-            mev_block.print_with_format(&format);
+            mev_block.print_with_format(&format, !self.shared_opts.exclude_logs);
         }
 
         #[allow(unreachable_code)]

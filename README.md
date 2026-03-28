@@ -156,6 +156,8 @@ Options:
           Enable ERC20 token symbol resolution (increases RPC calls)
       --failed
           Show only txs which failed to execute
+      --exclude-logs
+          Exclude event logs from output
       --format <FORMAT>
           Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
       --batch-size <SIZE>

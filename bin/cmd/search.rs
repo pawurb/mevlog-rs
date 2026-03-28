@@ -9,7 +9,7 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
-        json::mev_transaction_json::MEVTransactionJson,
+        json::mev_transaction_json::{MEVTransactionJson, serialize_transactions_json},
         mev_block::{PreFetchedBlockData, generate_block},
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
@@ -234,7 +234,7 @@ impl SearchArgs {
                 .await?;
 
                 if format.is_stream() {
-                    mev_block.print_with_format(&format);
+                    mev_block.print_with_format(&format, !self.shared_opts.exclude_logs);
                 } else {
                     mev_blocks.push(mev_block);
                 }
@@ -257,12 +257,25 @@ impl SearchArgs {
 
             match format {
                 OutputFormat::Json => {
-                    println!("{}", serde_json::to_string(&transactions_json).unwrap());
+                    println!(
+                        "{}",
+                        serialize_transactions_json(
+                            &transactions_json,
+                            !self.shared_opts.exclude_logs,
+                            false,
+                        )
+                        .unwrap()
+                    );
                 }
                 OutputFormat::JsonPretty => {
                     println!(
                         "{}",
-                        serde_json::to_string_pretty(&transactions_json).unwrap()
+                        serialize_transactions_json(
+                            &transactions_json,
+                            !self.shared_opts.exclude_logs,
+                            true,
+                        )
+                        .unwrap()
                     );
                 }
                 _ => {
