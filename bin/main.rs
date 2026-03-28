@@ -1,5 +1,7 @@
 mod cmd;
 use clap::{Parser, Subcommand, ValueEnum};
+#[cfg(feature = "mcp")]
+use cmd::mcp::McpArgs;
 #[cfg(feature = "seed-db")]
 use cmd::seed_db::SeedDBArgs;
 #[cfg(feature = "tui")]
@@ -58,6 +60,9 @@ pub enum MLSubcommand {
     ChainInfo(ChainInfoArgs),
     #[command(about = "Check if RPC supports debug tracing")]
     DebugAvailable(DebugAvailableArgs),
+    #[cfg(feature = "mcp")]
+    #[command(about = "Start MCP server")]
+    Mcp(McpArgs),
     #[cfg(feature = "seed-db")]
     #[command(about = "[Dev] Seed signatures database from source file")]
     SeedDB(SeedDBArgs),
@@ -156,6 +161,10 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ML::DebugAvailable(args) => {
             args.run().await?;
         }
+        #[cfg(feature = "mcp")]
+        ML::Mcp(args) => {
+            args.run().await?;
+        }
         #[cfg(feature = "seed-db")]
         ML::SeedDB(args) => {
             args.run().await?;
@@ -167,4 +176,32 @@ async fn execute(root_args: MLArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(all(test, feature = "mcp"))]
+mod tests {
+    use super::{MLArgs, MLSubcommand};
+    use clap::Parser;
+
+    #[test]
+    fn search_subcommand_accepts_conn_flags_after_subcommand_name() {
+        let parsed = MLArgs::try_parse_from([
+            "mevlog",
+            "--format",
+            "json",
+            "search",
+            "-b",
+            "10:latest",
+            "--rpc-url",
+            "http://localhost:8545",
+            "--chain-id",
+            "1",
+        ])
+        .expect("search args should parse");
+
+        match parsed.cmd {
+            MLSubcommand::Search(_) => {}
+            other => panic!("expected search command, got {other:?}"),
+        }
+    }
 }

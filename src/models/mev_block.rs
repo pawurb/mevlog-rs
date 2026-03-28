@@ -563,11 +563,7 @@ impl MEVBlock {
         print!("{}", escape_html(&mev_block_str));
     }
 
-    pub fn print_with_format(
-        &self,
-        format: &OutputFormat,
-        json_opts: JsonSerializeOpts,
-    ) {
+    pub fn print_with_format(&self, format: &OutputFormat, json_opts: JsonSerializeOpts) {
         match format {
             OutputFormat::Text => self.print(),
             OutputFormat::Json | OutputFormat::JsonStream => self.print_json(json_opts),

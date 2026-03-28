@@ -8,5 +8,7 @@ pub mod tx;
 pub mod update_db;
 pub mod watch;
 
+#[cfg(feature = "mcp")]
+pub mod mcp;
 #[cfg(feature = "seed-db")]
 pub mod seed_db;

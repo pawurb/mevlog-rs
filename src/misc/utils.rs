@@ -72,6 +72,7 @@ fn init_logs_inner(to_file: bool) {
                 .init();
         } else {
             tracing_subscriber::fmt()
+                .with_writer(std::io::stderr)
                 .with_env_filter(env_filter)
                 .with_timer(timer)
                 .init();
