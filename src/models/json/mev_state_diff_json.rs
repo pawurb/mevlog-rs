@@ -5,8 +5,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::mev_state_diff::MEVStateDiff;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct MEVStateDiffJson(pub BTreeMap<Address, BTreeMap<B256, [Option<B256>; 2]>>);
+
+impl MEVStateDiffJson {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 impl From<&MEVStateDiff> for MEVStateDiffJson {
     fn from(state_diff: &MEVStateDiff) -> Self {

@@ -55,7 +55,7 @@ fn build_transfers_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
     }
 
     let erc20_transfers: Vec<_> = tx
-        .log_groups
+        .logs
         .iter()
         .flat_map(|group| {
             group

@@ -52,15 +52,6 @@ pub struct TxArgs {
     )]
     pub top_metadata: bool,
 
-    #[arg(long, help = "Display EVM opcodes executed by the transaction")]
-    pub ops: bool,
-
-    #[arg(
-        long,
-        help = "Display storage slot changes (state diff) for the transaction"
-    )]
-    pub state_diff: bool,
-
     #[command(flatten)]
     shared_opts: SharedOpts,
 
@@ -73,16 +64,18 @@ impl TxArgs {
         check_range(self.before, "--before")?;
         check_range(self.after, "--after")?;
 
-        if self.shared_opts.show_calls && self.shared_opts.trace.is_none() {
-            eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
-        }
-
-        if self.ops && self.shared_opts.trace.is_none() {
-            eyre::bail!("'--ops' is supported only with --trace [rpc|revm] enabled")
-        }
-
-        if self.state_diff && self.shared_opts.trace.is_none() {
-            eyre::bail!("'--state-diff' is supported only with --trace [rpc|revm] enabled")
+        if self.shared_opts.evm_trace.is_none() {
+            if self.shared_opts.evm_calls {
+                eyre::bail!("'--evm-calls' is supported only with --evm-trace [rpc|revm] enabled")
+            }
+            if self.shared_opts.evm_ops {
+                eyre::bail!("'--evm-ops' is supported only with --evm-trace [rpc|revm] enabled")
+            }
+            if self.shared_opts.evm_state_diff {
+                eyre::bail!(
+                    "'--evm-state-diff' is supported only with --evm-trace [rpc|revm] enabled"
+                )
+            }
         }
 
         let deps = init_deps(&self.conn_opts).await?;
@@ -142,12 +135,12 @@ impl TxArgs {
             reversed_order: self.reverse,
             top_metadata: self.top_metadata,
             match_calls: vec![],
-            show_calls: self.shared_opts.show_calls,
+            show_calls: self.shared_opts.evm_calls,
             failed: false,
             erc20_transfers: vec![],
             show_erc20_transfer_amount: self.shared_opts.erc20_transfer_amount,
-            show_opcodes: self.ops,
-            show_state_diff: self.state_diff,
+            show_opcodes: self.shared_opts.evm_ops,
+            show_state_diff: self.shared_opts.evm_state_diff,
         };
 
         let ens_lookup_mode = if deps.chain.is_mainnet() && self.shared_opts.ens {
@@ -186,6 +179,7 @@ impl TxArgs {
                 .unwrap_or_default(),
         };
 
+        let json_opts = self.shared_opts.json_serialize_opts(&format);
         let mev_block = generate_block(
             &deps.provider,
             &deps.sqlite,
@@ -196,11 +190,12 @@ impl TxArgs {
             &deps.chain,
             &deps.rpc_url,
             native_token_price,
+            json_opts.include_logs,
             pre_fetched,
         )
         .await?;
 
-        mev_block.print_with_format(&format, !self.shared_opts.exclude_logs);
+        mev_block.print_with_format(&format, json_opts);
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

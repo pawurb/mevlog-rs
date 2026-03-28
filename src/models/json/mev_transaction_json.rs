@@ -41,18 +41,19 @@ pub struct MEVTransactionJson {
     pub full_tx_cost: Option<u128>,
     pub display_full_tx_cost: Option<String>,
     pub display_full_tx_cost_usd: Option<String>,
-    pub calls: Option<Vec<CallExtract>>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub log_groups: Vec<MEVLogGroupJson>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub opcodes: Option<Vec<MEVOpcodeJson>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub state_diff: Option<MEVStateDiffJson>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evm_calls: Vec<CallExtract>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub logs: Vec<MEVLogGroupJson>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evm_opcodes: Vec<MEVOpcodeJson>,
+    #[serde(default, skip_serializing_if = "MEVStateDiffJson::is_empty")]
+    pub evm_state_diff: MEVStateDiffJson,
 }
 
 impl From<&MEVTransaction> for MEVTransactionJson {
     fn from(tx: &MEVTransaction) -> Self {
-        let log_groups = tx.log_groups().iter().map(MEVLogGroupJson::from).collect();
+        let logs = tx.log_groups().iter().map(MEVLogGroupJson::from).collect();
 
         let gas_tx_cost = tx.receipt.gas_used as u128 * tx.receipt.effective_gas_price;
         let full_tx_cost = tx.full_tx_cost().map(|amt| amt.to_u128());
@@ -106,20 +107,33 @@ impl From<&MEVTransaction> for MEVTransactionJson {
                     .map(|price| display_usd(eth_to_usd(U256::from(amt), price)))
             }),
             gas_used: tx.receipt.gas_used,
-            calls: tx.calls.clone(),
-            log_groups,
-            opcodes: tx
+            evm_calls: tx.calls.clone().unwrap_or_default(),
+            logs,
+            evm_opcodes: tx
                 .opcodes
                 .as_ref()
-                .map(|ops| ops.iter().map(MEVOpcodeJson::from).collect()),
-            state_diff: tx.state_diff.as_ref().map(MEVStateDiffJson::from),
+                .map(|ops| ops.iter().map(MEVOpcodeJson::from).collect())
+                .unwrap_or_default(),
+            evm_state_diff: tx
+                .state_diff
+                .as_ref()
+                .map(MEVStateDiffJson::from)
+                .unwrap_or_default(),
         }
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct JsonSerializeOpts {
+    pub include_logs: bool,
+    pub include_evm_calls: bool,
+    pub include_evm_opcodes: bool,
+    pub include_evm_state_diff: bool,
+}
+
 struct MEVTransactionJsonOutput<'a> {
     transaction: &'a MEVTransactionJson,
-    include_logs: bool,
+    opts: JsonSerializeOpts,
 }
 
 impl Serialize for MEVTransactionJsonOutput<'_> {
@@ -157,29 +171,32 @@ impl Serialize for MEVTransactionJsonOutput<'_> {
         output.serialize_field("full_tx_cost", &tx.full_tx_cost)?;
         output.serialize_field("display_full_tx_cost", &tx.display_full_tx_cost)?;
         output.serialize_field("display_full_tx_cost_usd", &tx.display_full_tx_cost_usd)?;
-        output.serialize_field("calls", &tx.calls)?;
-
-        if self.include_logs && !tx.log_groups.is_empty() {
-            output.serialize_field("log_groups", &tx.log_groups)?;
+        if self.opts.include_evm_calls && !tx.evm_calls.is_empty() {
+            output.serialize_field("evm_calls", &tx.evm_calls)?;
         }
 
-        output.serialize_field("opcodes", &tx.opcodes)?;
-        output.serialize_field("state_diff", &tx.state_diff)?;
+        if self.opts.include_logs && !tx.logs.is_empty() {
+            output.serialize_field("logs", &tx.logs)?;
+        }
+
+        if self.opts.include_evm_opcodes && !tx.evm_opcodes.is_empty() {
+            output.serialize_field("evm_opcodes", &tx.evm_opcodes)?;
+        }
+        if self.opts.include_evm_state_diff && !tx.evm_state_diff.is_empty() {
+            output.serialize_field("evm_state_diff", &tx.evm_state_diff)?;
+        }
         output.end()
     }
 }
 
 pub fn serialize_transactions_json(
     transactions: &[MEVTransactionJson],
-    include_logs: bool,
+    opts: JsonSerializeOpts,
     pretty: bool,
 ) -> serde_json::Result<String> {
     let output: Vec<_> = transactions
         .iter()
-        .map(|transaction| MEVTransactionJsonOutput {
-            transaction,
-            include_logs,
-        })
+        .map(|transaction| MEVTransactionJsonOutput { transaction, opts })
         .collect();
 
     if pretty {
@@ -222,14 +239,11 @@ mod tests {
             "full_tx_cost",
             "display_full_tx_cost",
             "display_full_tx_cost_usd",
-            "calls",
-            "opcodes",
-            "state_diff",
         ]
     }
 
     fn make_tx(with_logs: bool) -> MEVTransactionJson {
-        let log_groups = if with_logs {
+        let logs = if with_logs {
             vec![MEVLogGroupJson {
                 source: Address::ZERO,
                 logs: vec![MEVLogJson {
@@ -270,10 +284,10 @@ mod tests {
             full_tx_cost: None,
             display_full_tx_cost: None,
             display_full_tx_cost_usd: None,
-            calls: None,
-            log_groups,
-            opcodes: None,
-            state_diff: None,
+            evm_calls: vec![],
+            logs,
+            evm_opcodes: vec![],
+            evm_state_diff: MEVStateDiffJson::default(),
         }
     }
 
@@ -283,10 +297,26 @@ mod tests {
         obj.keys().cloned().collect()
     }
 
+    fn opts_none() -> JsonSerializeOpts {
+        JsonSerializeOpts {
+            include_logs: false,
+            include_evm_calls: false,
+            include_evm_opcodes: false,
+            include_evm_state_diff: false,
+        }
+    }
+
+    fn opts_with_logs() -> JsonSerializeOpts {
+        JsonSerializeOpts {
+            include_logs: true,
+            ..opts_none()
+        }
+    }
+
     #[test]
     fn test_include_logs_false_omits_log_groups() {
         let tx = make_tx(true);
-        let json = serialize_transactions_json(&[tx], false, false).unwrap();
+        let json = serialize_transactions_json(&[tx], opts_none(), false).unwrap();
         let keys = get_json_keys(&json);
 
         let expected = base_fields();
@@ -294,17 +324,17 @@ mod tests {
         for field in &expected {
             assert!(keys.contains(&field.to_string()), "missing field: {field}");
         }
-        assert!(!keys.contains(&"log_groups".to_string()));
+        assert!(!keys.contains(&"logs".to_string()));
     }
 
     #[test]
     fn test_include_logs_true_includes_log_groups() {
         let tx = make_tx(true);
-        let json = serialize_transactions_json(&[tx], true, false).unwrap();
+        let json = serialize_transactions_json(&[tx], opts_with_logs(), false).unwrap();
         let keys = get_json_keys(&json);
 
         let mut expected = base_fields();
-        expected.push("log_groups");
+        expected.push("logs");
         assert_eq!(keys.len(), expected.len());
         for field in &expected {
             assert!(keys.contains(&field.to_string()), "missing field: {field}");
@@ -314,11 +344,11 @@ mod tests {
     #[test]
     fn test_include_logs_true_empty_logs_omits_log_groups() {
         let tx = make_tx(false);
-        let json = serialize_transactions_json(&[tx], true, false).unwrap();
+        let json = serialize_transactions_json(&[tx], opts_with_logs(), false).unwrap();
         let keys = get_json_keys(&json);
 
         let expected = base_fields();
         assert_eq!(keys.len(), expected.len());
-        assert!(!keys.contains(&"log_groups".to_string()));
+        assert!(!keys.contains(&"logs".to_string()));
     }
 }

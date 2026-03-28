@@ -63,7 +63,7 @@ fn extract_erc20_transfer_amount(
     token_address: &Address,
 ) -> U256 {
     transaction
-        .log_groups
+        .logs
         .iter()
         .filter(|group| group.source == *token_address)
         .flat_map(|group| &group.logs)
@@ -131,9 +131,9 @@ impl SearchArgs {
 
         if let Some(sort) = &self.sort
             && sort == &SortField::FullTxCost
-            && self.shared_opts.trace.is_none()
+            && self.shared_opts.evm_trace.is_none()
         {
-            bail!("--sort full-tx-cost is only available with --trace enabled")
+            bail!("--sort full-tx-cost is only available with --evm-trace enabled")
         }
 
         let erc20_sort_token = match &self.sort {
@@ -219,6 +219,7 @@ impl SearchArgs {
                         .unwrap_or_default(),
                 };
 
+                let json_opts = self.shared_opts.json_serialize_opts(&format);
                 let mev_block = generate_block(
                     &deps.provider,
                     &deps.sqlite,
@@ -229,12 +230,13 @@ impl SearchArgs {
                     &deps.chain,
                     &deps.rpc_url,
                     native_token_price,
+                    json_opts.include_logs,
                     pre_fetched,
                 )
                 .await?;
 
                 if format.is_stream() {
-                    mev_block.print_with_format(&format, !self.shared_opts.exclude_logs);
+                    mev_block.print_with_format(&format, json_opts);
                 } else {
                     mev_blocks.push(mev_block);
                 }
@@ -242,6 +244,7 @@ impl SearchArgs {
         }
 
         if !format.is_stream() {
+            let json_opts = self.shared_opts.json_serialize_opts(&format);
             let mut transactions_json: Vec<_> = mev_blocks
                 .iter()
                 .flat_map(|block| block.transactions_json())
@@ -259,23 +262,13 @@ impl SearchArgs {
                 OutputFormat::Json => {
                     println!(
                         "{}",
-                        serialize_transactions_json(
-                            &transactions_json,
-                            !self.shared_opts.exclude_logs,
-                            false,
-                        )
-                        .unwrap()
+                        serialize_transactions_json(&transactions_json, json_opts, false,).unwrap()
                     );
                 }
                 OutputFormat::JsonPretty => {
                     println!(
                         "{}",
-                        serialize_transactions_json(
-                            &transactions_json,
-                            !self.shared_opts.exclude_logs,
-                            true,
-                        )
-                        .unwrap()
+                        serialize_transactions_json(&transactions_json, json_opts, true,).unwrap()
                     );
                 }
                 _ => {

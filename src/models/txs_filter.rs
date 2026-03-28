@@ -273,27 +273,37 @@ impl TxsFilter {
         watch_mode: bool,
         erc20_sort_token: Option<Address>,
     ) -> Result<Self> {
-        if shared_opts.trace.is_none() {
+        if shared_opts.evm_trace.is_none() {
             if filter_opts.touching.is_some() {
                 eyre::bail!(
-                    "'--touching' filter is supported only with --trace [rpc|revm] enabled "
+                    "'--touching' filter is supported only with --evm-trace [rpc|revm] enabled "
                 )
             }
 
             if filter_opts.real_tx_cost.is_some() {
                 eyre::bail!(
-                    "'--real-tx-cost' filter is supported only with --trace [rpc|revm] enabled "
+                    "'--real-tx-cost' filter is supported only with --evm-trace [rpc|revm] enabled "
                 )
             }
 
             if filter_opts.real_gas_price.is_some() {
                 eyre::bail!(
-                    "'--real-gas-price' filter is supported only with --trace [rpc|revm] enabled "
+                    "'--real-gas-price' filter is supported only with --evm-trace [rpc|revm] enabled "
                 )
             }
 
-            if shared_opts.show_calls {
-                eyre::bail!("'--show-calls' is supported only with --trace [rpc|revm] enabled")
+            if shared_opts.evm_calls {
+                eyre::bail!("'--evm-calls' is supported only with --evm-trace [rpc|revm] enabled")
+            }
+
+            if shared_opts.evm_ops {
+                eyre::bail!("'--evm-ops' is supported only with --evm-trace [rpc|revm] enabled")
+            }
+
+            if shared_opts.evm_state_diff {
+                eyre::bail!(
+                    "'--evm-state-diff' is supported only with --evm-trace [rpc|revm] enabled"
+                )
             }
         }
 
@@ -363,7 +373,7 @@ impl TxsFilter {
                 .iter()
                 .map(|query| query.parse())
                 .collect::<Result<Vec<_>>>()?,
-            show_calls: shared_opts.show_calls,
+            show_calls: shared_opts.evm_calls,
             reversed_order: filter_opts.reverse,
             top_metadata: filter_opts.top_metadata,
             failed: filter_opts.failed,
@@ -373,8 +383,8 @@ impl TxsFilter {
                 .map(|query| query.parse())
                 .collect::<Result<Vec<_>>>()?,
             show_erc20_transfer_amount: shared_opts.erc20_transfer_amount,
-            show_opcodes: false,
-            show_state_diff: false,
+            show_opcodes: shared_opts.evm_ops,
+            show_state_diff: shared_opts.evm_state_diff,
         })
     }
 

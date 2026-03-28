@@ -20,21 +20,6 @@ struct ErrorResponse {
     error: String,
 }
 
-#[derive(Deserialize)]
-struct TxWithOpcodes {
-    opcodes: Option<Vec<MEVOpcodeJson>>,
-}
-
-#[derive(Deserialize)]
-struct TxWithCalls {
-    calls: Option<Vec<CallExtract>>,
-}
-
-#[derive(Deserialize)]
-struct TxWithStateDiff {
-    state_diff: Option<MEVStateDiffJson>,
-}
-
 #[hotpath::measure(future = true)]
 pub async fn fetch_txs(
     filters: &SearchFilters,
@@ -44,11 +29,16 @@ pub async fn fetch_txs(
     let mut cmd = mevlog_cmd();
 
     if let Some(ref txhash) = filters.txhash {
-        cmd.arg("tx").arg(txhash).arg("--format").arg("json");
+        cmd.arg("tx")
+            .arg(txhash)
+            .arg("--logs")
+            .arg("--format")
+            .arg("json");
     } else {
         cmd.arg("search")
             .arg("-b")
             .arg(&filters.blocks)
+            .arg("--logs")
             .arg("--format")
             .arg("json");
 
@@ -169,9 +159,9 @@ pub async fn fetch_opcodes(
 
     cmd.arg("tx")
         .arg(tx_hash)
-        .arg("--trace")
+        .arg("--evm-trace")
         .arg(trace_mode.to_string())
-        .arg("--ops")
+        .arg("--evm-ops")
         .arg("--format")
         .arg("json");
 
@@ -204,11 +194,11 @@ pub async fn fetch_opcodes(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<TxWithOpcodes>>(&line) {
+            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
                 let opcodes = txs
                     .into_iter()
                     .next()
-                    .and_then(|tx| tx.opcodes)
+                    .map(|tx| tx.evm_opcodes)
                     .unwrap_or_default();
                 return Ok(opcodes);
             }
@@ -230,7 +220,7 @@ pub async fn fetch_opcodes(
 
     match result {
         Ok(opcodes) => opcodes,
-        Err(_) => eyre::bail!("mevlog tx --ops timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog tx --evm-ops timed out after 120 seconds"),
     }
 }
 
@@ -245,9 +235,9 @@ pub async fn fetch_traces(
 
     cmd.arg("tx")
         .arg(tx_hash)
-        .arg("--trace")
+        .arg("--evm-trace")
         .arg(trace_mode.to_string())
-        .arg("--show-calls")
+        .arg("--evm-calls")
         .arg("--format")
         .arg("json");
 
@@ -280,11 +270,11 @@ pub async fn fetch_traces(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<TxWithCalls>>(&line) {
+            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
                 let calls = txs
                     .into_iter()
                     .next()
-                    .and_then(|tx| tx.calls)
+                    .map(|tx| tx.evm_calls)
                     .unwrap_or_default();
                 return Ok(calls);
             }
@@ -306,7 +296,7 @@ pub async fn fetch_traces(
 
     match result {
         Ok(traces) => traces,
-        Err(_) => eyre::bail!("mevlog tx --show-calls timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog tx --evm-calls timed out after 120 seconds"),
     }
 }
 
@@ -321,8 +311,9 @@ pub async fn fetch_tx_with_trace(
 
     cmd.arg("tx")
         .arg(tx_hash)
-        .arg("--trace")
+        .arg("--evm-trace")
         .arg(trace_mode.to_string())
+        .arg("--logs")
         .arg("--format")
         .arg("json");
 
@@ -379,7 +370,7 @@ pub async fn fetch_tx_with_trace(
 
     match result {
         Ok(tx) => tx,
-        Err(_) => eyre::bail!("mevlog tx --trace timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog tx --evm-trace timed out after 120 seconds"),
     }
 }
 
@@ -394,9 +385,9 @@ pub async fn fetch_state_diff(
 
     cmd.arg("tx")
         .arg(tx_hash)
-        .arg("--trace")
+        .arg("--evm-trace")
         .arg(trace_mode.to_string())
-        .arg("--state-diff")
+        .arg("--evm-state-diff")
         .arg("--format")
         .arg("json");
 
@@ -429,12 +420,12 @@ pub async fn fetch_state_diff(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<TxWithStateDiff>>(&line) {
+            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
                 let state_diff = txs
                     .into_iter()
                     .next()
-                    .and_then(|tx| tx.state_diff)
-                    .unwrap_or_else(|| MEVStateDiffJson(Default::default()));
+                    .map(|tx| tx.evm_state_diff)
+                    .unwrap_or_default();
                 return Ok(state_diff);
             }
 
@@ -449,12 +440,12 @@ pub async fn fetch_state_diff(
             return Err(eyre::eyre!("{}", line));
         }
 
-        Ok::<_, eyre::Error>(MEVStateDiffJson(Default::default()))
+        Ok::<_, eyre::Error>(MEVStateDiffJson::default())
     })
     .await;
 
     match result {
         Ok(state_diff) => state_diff,
-        Err(_) => eyre::bail!("mevlog tx --state-diff timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog tx --evm-state-diff timed out after 120 seconds"),
     }
 }

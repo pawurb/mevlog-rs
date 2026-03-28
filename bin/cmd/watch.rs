@@ -91,6 +91,7 @@ impl WatchArgs {
                     .unwrap_or_default(),
             };
 
+            let json_opts = self.shared_opts.json_serialize_opts(&format);
             let mev_block = generate_block(
                 &deps.provider,
                 &deps.sqlite,
@@ -101,11 +102,12 @@ impl WatchArgs {
                 &deps.chain,
                 &deps.rpc_url,
                 native_token_price,
+                json_opts.include_logs,
                 pre_fetched,
             )
             .await?;
 
-            mev_block.print_with_format(&format, !self.shared_opts.exclude_logs);
+            mev_block.print_with_format(&format, json_opts);
         }
 
         #[allow(unreachable_code)]

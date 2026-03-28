@@ -37,7 +37,9 @@ use crate::{
     },
     models::{
         evm_chain::EVMChain,
-        json::mev_transaction_json::{MEVTransactionJson, serialize_transactions_json},
+        json::mev_transaction_json::{
+            JsonSerializeOpts, MEVTransactionJson, serialize_transactions_json,
+        },
         mev_transaction::{CallExtract, extract_signature},
     },
 };
@@ -83,20 +85,22 @@ pub async fn generate_block(
     chain: &Arc<EVMChain>,
     rpc_url: &str,
     native_token_price: Option<f64>,
+    include_logs: bool,
     pre_fetched: PreFetchedBlockData,
 ) -> Result<MEVBlock> {
     if block_number == 0 {
         eyre::bail!("Invalid block number: 0");
     }
 
-    let mut revm_db = init_revm_db(block_number - 1, &shared_opts.trace, rpc_url, chain).await?;
+    let mut revm_db =
+        init_revm_db(block_number - 1, &shared_opts.evm_trace, rpc_url, chain).await?;
 
     let mut mev_block = MEVBlock::new(
         block_number,
         txs_filter.tx_position.as_ref(),
         txs_filter.reversed_order,
         provider,
-        shared_opts.trace.as_ref(),
+        shared_opts.evm_trace.as_ref(),
         txs_filter.top_metadata,
         chain,
         native_token_price,
@@ -112,6 +116,7 @@ pub async fn generate_block(
             provider,
             revm_db.as_mut(),
             shared_opts,
+            include_logs,
             pre_fetched.logs_data,
         )
         .await?;
@@ -147,7 +152,7 @@ impl MEVBlock {
                 let range = match position_range {
                     Some(range) => range,
                     None => {
-                        eyre::bail!("--trace revm mode requires --position argument");
+                        eyre::bail!("--evm-trace revm mode requires --position argument");
                     }
                 };
 
@@ -189,6 +194,7 @@ impl MEVBlock {
         provider: &Arc<GenericProvider>,
         revm_db: Option<&mut CacheDB<SharedBackend>>,
         shared_opts: &SharedOpts,
+        include_logs: bool,
         logs_data: Vec<MEVLog>,
     ) -> Result<()> {
         for (tx_index, tx) in self.txs_data.iter().enumerate() {
@@ -220,7 +226,7 @@ impl MEVBlock {
                 provider,
                 filter.top_metadata,
                 filter.show_calls,
-                !shared_opts.exclude_logs,
+                include_logs,
                 filter.show_opcodes,
                 filter.show_state_diff,
             );
@@ -285,7 +291,7 @@ impl MEVBlock {
         // first exclude txs based non-tracing filters
         self.non_trace_filter_txs(filter).await?;
 
-        match shared_opts.trace {
+        match shared_opts.evm_trace {
             Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
             Some(TraceMode::Revm) => {
                 self.trace_txs_revm(filter, sqlite, revm_db.expect("Revm must be present"))
@@ -557,18 +563,18 @@ impl MEVBlock {
         print!("{}", escape_html(&mev_block_str));
     }
 
-    pub fn print_with_format(&self, format: &OutputFormat, include_logs: bool) {
+    pub fn print_with_format(&self, format: &OutputFormat, json_opts: JsonSerializeOpts) {
         match format {
             OutputFormat::Text => self.print(),
-            OutputFormat::Json | OutputFormat::JsonStream => self.print_json(include_logs),
+            OutputFormat::Json | OutputFormat::JsonStream => self.print_json(json_opts),
             OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
-                self.print_json_pretty(include_logs)
+                self.print_json_pretty(json_opts)
             }
         }
     }
 
-    pub fn print_json(&self, include_logs: bool) {
-        match serialize_transactions_json(&self.transactions_json(), include_logs, false) {
+    pub fn print_json(&self, json_opts: JsonSerializeOpts) {
+        match serialize_transactions_json(&self.transactions_json(), json_opts, false) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }
@@ -584,8 +590,8 @@ impl MEVBlock {
             .collect()
     }
 
-    pub fn print_json_pretty(&self, include_logs: bool) {
-        match serialize_transactions_json(&self.transactions_json(), include_logs, true) {
+    pub fn print_json_pretty(&self, json_opts: JsonSerializeOpts) {
+        match serialize_transactions_json(&self.transactions_json(), json_opts, true) {
             Ok(json) => println!("{json}"),
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }

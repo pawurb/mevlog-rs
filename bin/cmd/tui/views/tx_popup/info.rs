@@ -109,10 +109,10 @@ fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'
         }
     }
 
-    if !tx.log_groups.is_empty() {
+    if !tx.logs.is_empty() {
         lines.push(Line::from(""));
 
-        let total_logs: usize = tx.log_groups.iter().map(|g| g.logs.len()).sum();
+        let total_logs: usize = tx.logs.iter().map(|g| g.logs.len()).sum();
         lines.push(Line::from(Span::styled(
             format!("Events ({}):", total_logs),
             Style::default()
@@ -120,7 +120,7 @@ fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'
                 .add_modifier(Modifier::BOLD),
         )));
 
-        for group in &tx.log_groups {
+        for group in &tx.logs {
             lines.push(Line::from(vec![
                 Span::raw("  "),
                 Span::styled(group.source.to_string(), Style::default().fg(Color::Green)),

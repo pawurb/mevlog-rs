@@ -81,7 +81,7 @@ mevlog watch --chain-id 137      # Polygon
 mevlog watch --chain-id 56       # BSC
 ```
 
-When using `--chain-id`, mevlog automatically fetches available RPC URLs from [ChainList](https://chainlist.org/), benchmarks them, and selects the fastest responding endpoint. Please remember that `--trace rpc` will likely not work with public RPC endpoints. And `--trace revm` could be throttled.
+When using `--chain-id`, mevlog automatically fetches available RPC URLs from [ChainList](https://chainlist.org/), benchmarks them, and selects the fastest responding endpoint. Please remember that `--evm-trace rpc` will likely not work with public RPC endpoints. And `--evm-trace revm` could be throttled.
 
 To discover available chain IDs, use the `chains` command:
 ```bash
@@ -132,10 +132,12 @@ Options:
           Include txs with root method names matching the provided regex, signature or signature hash
       --calls <CALLS>
           Include txs by subcalls method names matching the provided regex, signature or signature hash
-      --show-calls
-          Show detailed tx calls info
-      --ops
-          Display EVM opcodes executed by the transaction (requires --trace)
+      --evm-calls
+          Show detailed tx calls info (requires --evm-trace)
+      --evm-ops
+          Display EVM opcodes executed by the transaction (requires --evm-trace)
+      --evm-state-diff
+          Display storage slot changes (state diff) for the transaction (requires --evm-trace)
       --tx-cost <TX_COST>
           Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')
       --real-tx-cost <REAL_TX_COST>
@@ -156,8 +158,8 @@ Options:
           Enable ERC20 token symbol resolution (increases RPC calls)
       --failed
           Show only txs which failed to execute
-      --exclude-logs
-          Exclude event logs from output
+      --logs
+          Include event logs in output (default: true for text format, false otherwise)
       --format <FORMAT>
           Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
       --batch-size <SIZE>
@@ -231,7 +233,7 @@ mevlog search -b 20:latest --sort gas-price --limit 10
 - find the 5 most expensive transactions by total cost from recent blocks:
 
 ```bash
-mevlog search -b 10:latest --sort full-tx-cost --limit 5 --trace rpc
+mevlog search -b 10:latest --sort full-tx-cost --limit 5 --evm-trace rpc
 ```
 
 - find the 10 cheapest transactions by gas price (ascending order):
@@ -308,28 +310,28 @@ The tool maintains persistent caches in `~/.mevlog/.ens-cache` and `~/.mevlog/.s
 
 ### EVM tracing filters
 
-All the above queries use only standard block and logs input. By enabling `--trace [rpc|revm]` flag you can query by more conditions:
+All the above queries use only standard block and logs input. By enabling `--evm-trace [rpc|revm]` flag you can query by more conditions:
 
 - query last 5 blocks for a top transaction that paid over 0.02 ETH total (including coinbase bribe) transaction cost:
 
 ```bash
-mevlog search -b 5:latest -p 0 --real-tx-cost ge0.02ether --trace revm
+mevlog search -b 5:latest -p 0 --real-tx-cost ge0.02ether --evm-trace revm
 ```
 
 - find txs that changed storage slots of the [Balancer vault contract](https://etherscan.io/address/0xba12222222228d8ba445958a75a0704d566bf2c8):
 
-`mevlog search -b 10:latest --touching 0xba12222222228d8ba445958a75a0704d566bf2c8 --trace rpc`
+`mevlog search -b 10:latest --touching 0xba12222222228d8ba445958a75a0704d566bf2c8 --evm-trace rpc`
 
 You can also filter by real (including bribe) gas price:
 
 ```bash
-mevlog search -b 5:latest -p 0:5 --real-gas-price ge10gwei --trace rpc
+mevlog search -b 5:latest -p 0:5 --real-gas-price ge10gwei --evm-trace rpc
 ```
 
 It's possible to search txs by their sub method calls:
 
 ```bash
-mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --trace rpc
+mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --evm-trace rpc
 ```
 
 
@@ -361,11 +363,11 @@ mevlog search -b 10:latest --format json-pretty-stream
 
 ## EVM tracing modes
 
-### `--trace rpc` 
+### `--evm-trace rpc` 
 
 This mode uses the `debug_traceTransaction` method. It's usually not available on public endpoints.
 
-### `--trace revm` 
+### `--evm-trace revm` 
 
 This mode leverages Revm tracing by downloading all the relevant storage slots and running simulations locally. If you want to trace a transaction at position 10, Revm must first simulate all the previous transactions from this block. It can be slow and cause throttling from public endpoints. 
 
@@ -387,14 +389,14 @@ You can reverse the display order by adding the `--reverse` flag.
 
 ### EVM Opcodes tracing
 
-You can trace the EVM opcodes executed by a transaction using the `--ops` flag. This requires enabling tracing with either `--trace rpc` or `--trace revm`:
+You can trace the EVM opcodes executed by a transaction using the `--evm-ops` flag. This requires enabling tracing with either `--evm-trace rpc` or `--evm-trace revm`:
 
 ```bash
 # Trace opcodes using Revm (works on public RPCs)
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --trace revm --ops
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --evm-trace revm --evm-ops
 
 # Trace opcodes using RPC (requires debug API access)
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --trace rpc --ops
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --evm-trace rpc --evm-ops
 ```
 
 **Plain text output:**
@@ -409,7 +411,7 @@ PC       OP           COST     GAS_LEFT
 
 **JSON output:**
 ```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --trace revm --ops --format json
+mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --evm-trace revm --evm-ops --format json
 ```
 
 ```json
@@ -430,14 +432,14 @@ The opcode trace shows:
 
 ### EVM State Diff
 
-You can view storage slot changes made by a transaction using the `--state-diff` flag. This requires enabling tracing with either `--trace rpc` or `--trace revm`:
+You can view storage slot changes made by a transaction using the `--evm-state-diff` flag. This requires enabling tracing with either `--evm-trace rpc` or `--evm-trace revm`:
 
 ```bash
 # View state diff using Revm (works on public RPCs)
-mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --chain-id 1 --trace revm --state-diff --format json-pretty
+mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --chain-id 1 --evm-trace revm --evm-state-diff --format json-pretty
 
 # View state diff using RPC (requires debug API access)
-mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --chain-id 1 --trace rpc --state-diff --format json-pretty
+mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --chain-id 1 --evm-trace rpc --evm-state-diff --format json-pretty
 ```
 
 ```json
@@ -565,7 +567,7 @@ Explorer URL: https://etherscan.io
 
 ## Checking debug tracing support
 
-Before using `--trace rpc` mode, you can check if an RPC endpoint supports debug tracing:
+Before using `--evm-trace rpc` mode, you can check if an RPC endpoint supports debug tracing:
 
 ```bash
 mevlog debug-available --rpc-url https://eth.llamarpc.com

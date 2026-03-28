@@ -11,18 +11,21 @@ use sqlx::SqlitePool;
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
-use crate::misc::{
-    config::Config,
-    database::sqlite_conn,
-    db_actions::{check_and_create_indexes, db_file_exists},
-    ens_utils::start_ens_lookup_worker,
-    rpc_urls::get_chain_info,
-    symbol_utils::{ERC20SymbolLookupWorker, start_symbols_lookup_worker},
-};
 use crate::{
     GenericProvider,
     misc::db_actions::download_db_file,
     models::{db_chain::DBChain, evm_chain::EVMChain},
+};
+use crate::{
+    misc::{
+        config::Config,
+        database::sqlite_conn,
+        db_actions::{check_and_create_indexes, db_file_exists},
+        ens_utils::start_ens_lookup_worker,
+        rpc_urls::get_chain_info,
+        symbol_utils::{ERC20SymbolLookupWorker, start_symbols_lookup_worker},
+    },
+    models::json::mev_transaction_json::JsonSerializeOpts,
 };
 
 pub struct SharedDeps {
@@ -125,10 +128,19 @@ pub fn config_path() -> PathBuf {
 #[derive(Clone, Debug, clap::Parser)]
 pub struct SharedOpts {
     #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
-    pub trace: Option<TraceMode>,
+    pub evm_trace: Option<TraceMode>,
 
     #[arg(long, help = "Show detailed tx calls info")]
-    pub show_calls: bool,
+    pub evm_calls: bool,
+
+    #[arg(long, help = "Display EVM opcodes executed by the transaction")]
+    pub evm_ops: bool,
+
+    #[arg(
+        long,
+        help = "Display storage slot changes (state diff) for the transaction"
+    )]
+    pub evm_state_diff: bool,
 
     #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
     pub erc20_transfer_amount: bool,
@@ -139,14 +151,29 @@ pub struct SharedOpts {
     #[arg(long, help = "Enable ERC20 symbols lookup")]
     pub erc20_symbols: bool,
 
-    #[arg(long, help = "Exclude event logs from output")]
-    pub exclude_logs: bool,
+    #[arg(long, num_args = 0..=1, default_missing_value = "true", help = "Include event logs in output (default: true for text format, false otherwise)")]
+    pub logs: Option<bool>,
 
     #[arg(
         long,
         help = "Provide native token price in USD instead of reading it from price oracle"
     )]
     pub native_token_price: Option<f64>,
+}
+
+impl SharedOpts {
+    pub fn include_logs(&self, format: &OutputFormat) -> bool {
+        self.logs.unwrap_or(format == &OutputFormat::Text)
+    }
+
+    pub fn json_serialize_opts(&self, format: &OutputFormat) -> JsonSerializeOpts {
+        JsonSerializeOpts {
+            include_logs: self.include_logs(format),
+            include_evm_calls: self.evm_calls,
+            include_evm_opcodes: self.evm_ops,
+            include_evm_state_diff: self.evm_state_diff,
+        }
+    }
 }
 
 #[derive(Clone, Debug, clap::Parser)]

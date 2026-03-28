@@ -8,7 +8,7 @@ pub mod tests {
         vec!["rpc".to_string(), "revm".to_string()]
     }
 
-    // cargo run --bin mevlog search -b 22045570 -p 0 --rpc-url $ETH_RPC_URL --trace rpc
+    // cargo run --bin mevlog search -b 22045570 -p 0 --rpc-url $ETH_RPC_URL --evm-trace rpc
     #[test]
     fn test_cli_search() -> Result<()> {
         for tracing_mode in tracing_modes() {
@@ -24,7 +24,7 @@ pub mod tests {
                 .arg("0")
                 .arg("--rpc-url")
                 .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
-                .arg("--trace")
+                .arg("--evm-trace")
                 .arg(tracing_mode)
                 .output()
                 .expect("failed to execute CLI");
@@ -42,7 +42,7 @@ pub mod tests {
         Ok(())
     }
 
-    // cargo run --bin mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --rpc-url $ETH_RPC_URL --trace rpc
+    // cargo run --bin mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --rpc-url $ETH_RPC_URL --evm-tracerpc
     #[test]
     fn test_cli_tx() -> Result<()> {
         for tracing_mode in tracing_modes() {
@@ -55,7 +55,7 @@ pub mod tests {
                 .arg("0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660")
                 .arg("--rpc-url")
                 .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
-                .arg("--trace")
+                .arg("--evm-trace")
                 .arg(tracing_mode)
                 .output()
                 .expect("failed to execute CLI");
@@ -101,7 +101,7 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --trace rpc --format json-pretty --touching 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
+    // cargo run --bin mevlog search -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty --touching 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
     #[test]
     fn test_cli_search_touching() {
         for tracing_mode in tracing_modes() {
@@ -117,12 +117,13 @@ pub mod tests {
                 .arg("0:3")
                 .arg("--rpc-url")
                 .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
-                .arg("--trace")
+                .arg("--evm-trace")
                 .arg(tracing_mode)
                 .arg("--format")
                 .arg("json-pretty")
                 .arg("--touching")
                 .arg("0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640")
+                .arg("--logs")
                 .output()
                 .expect("failed to execute CLI");
             let output = String::from_utf8(cmd.stdout).unwrap();
@@ -136,8 +137,8 @@ pub mod tests {
                 );
             }
             assert!(
-                output.contains("\"log_groups\":"),
-                "Expected log_groups to be present when --exclude-logs is not set.\n\nGot:\n{output}"
+                output.contains("\"logs\":"),
+                "Expected logs to be present when --logs is set.\n\nGot:\n{output}"
             );
         }
     }
@@ -254,6 +255,7 @@ pub mod tests {
             .arg("--format")
             .arg("json-pretty")
             .arg("--ens")
+            .arg("--logs")
             .arg("--rpc-url")
             .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
             .output()
@@ -499,7 +501,7 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' --exclude-logs
+    // cargo run --bin mevlog search -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
     #[test]
     fn test_cli_format_search_erc20_transfer() {
         let cmd = Command::new("cargo")
@@ -516,7 +518,6 @@ pub mod tests {
             .arg("json-pretty")
             .arg("--sort")
             .arg("erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
-            .arg("--exclude-logs")
             .output()
             .expect("failed to execute CLI");
 
@@ -532,8 +533,8 @@ pub mod tests {
         }
 
         assert!(
-            !output.contains("\"log_groups\":"),
-            "Expected log_groups to be omitted when --exclude-logs is set.\n\nGot:\n{output}",
+            !output.contains("\"logs\":"),
+            "Expected logs to be omitted by default in json format.\n\nGot:\n{output}",
         );
     }
 
@@ -567,7 +568,7 @@ pub mod tests {
         assert!(output.trim() == "[]", "Expected:\n[]\n\nGot:\n{output}");
     }
 
-    // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --ops --trace revm
+    // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --evm-ops--trace revm
     #[test]
     fn test_cli_opcodes_tracing() {
         let cmd = Command::new("cargo")
@@ -579,8 +580,8 @@ pub mod tests {
             .arg("0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e")
             .arg("--rpc-url")
             .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
-            .arg("--ops")
-            .arg("--trace")
+            .arg("--evm-ops")
+            .arg("--evm-trace")
             .arg("revm")
             .output()
             .expect("failed to execute CLI");
@@ -604,7 +605,7 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog tx 0xe7657d9eac810efacf20a1715013edb02f7811270f11feaa040ded37c8ec2bd9 --rpc-url $BASE_RPC_URL --ops --trace revm
+    // cargo run --bin mevlog tx 0xe7657d9eac810efacf20a1715013edb02f7811270f11feaa040ded37c8ec2bd9 --rpc-url $BASE_RPC_URL --evm-ops --evm-trace revm
     #[test]
     fn test_op_stack_opcodes_tracing() {
         let cmd = Command::new("cargo")
@@ -616,8 +617,8 @@ pub mod tests {
             .arg("0xe7657d9eac810efacf20a1715013edb02f7811270f11feaa040ded37c8ec2bd9")
             .arg("--rpc-url")
             .arg(std::env::var("BASE_RPC_URL").expect("BASE_RPC_URL must be set"))
-            .arg("--ops")
-            .arg("--trace")
+            .arg("--evm-ops")
+            .arg("--evm-trace")
             .arg("revm")
             .output()
             .expect("failed to execute CLI");
