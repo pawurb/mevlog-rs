@@ -37,8 +37,13 @@ pub struct SharedDeps {
     pub rpc_url: String,
 }
 
-#[hotpath::measure(future = true)]
-pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
+pub struct ResolvedConn {
+    pub provider: Arc<GenericProvider>,
+    pub rpc_url: String,
+    pub chain_id: u64,
+}
+
+pub async fn resolve_conn(conn_opts: &ConnOpts) -> Result<ResolvedConn> {
     Config::init_if_missing()?;
     let config = Config::load()?;
 
@@ -60,16 +65,6 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         }
     };
 
-    if !db_file_exists() {
-        let _ = std::fs::create_dir_all(config_path());
-        println!("Database file missing");
-        download_db_file().await?;
-    }
-
-    let sqlite = sqlite_conn(None).await?;
-    check_and_create_indexes(&sqlite).await?;
-    let ens_lookup_worker = start_ens_lookup_worker(&rpc_url);
-    let symbols_lookup_worker = start_symbols_lookup_worker(&rpc_url);
     let provider = init_provider(&rpc_url).await?;
     let provider = Arc::new(provider);
 
@@ -92,18 +87,40 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         (_, None) => provider.get_chain_id().await?,
     };
 
-    let db_chain = DBChain::find(chain_id as i64, &sqlite)
+    Ok(ResolvedConn {
+        provider,
+        rpc_url,
+        chain_id,
+    })
+}
+
+#[hotpath::measure(future = true)]
+pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
+    let resolved = resolve_conn(conn_opts).await?;
+
+    if !db_file_exists() {
+        let _ = std::fs::create_dir_all(config_path());
+        println!("Database file missing");
+        download_db_file().await?;
+    }
+
+    let sqlite = sqlite_conn(None).await?;
+    check_and_create_indexes(&sqlite).await?;
+    let ens_lookup_worker = start_ens_lookup_worker(&resolved.rpc_url);
+    let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
+
+    let db_chain = DBChain::find(resolved.chain_id as i64, &sqlite)
         .await?
-        .unwrap_or(DBChain::unknown(chain_id as i64));
-    let chain = Arc::new(EVMChain::new(db_chain, rpc_url.clone())?);
+        .unwrap_or(DBChain::unknown(resolved.chain_id as i64));
+    let chain = Arc::new(EVMChain::new(db_chain, resolved.rpc_url.clone())?);
 
     Ok(SharedDeps {
         sqlite,
         ens_lookup_worker,
         symbols_lookup_worker,
-        provider,
+        provider: resolved.provider,
         chain,
-        rpc_url,
+        rpc_url: resolved.rpc_url,
     })
 }
 
