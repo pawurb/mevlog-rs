@@ -15,3 +15,7 @@ deploy:
 # Deploy backend and restart
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
+
+# Run benchmarks comparing two git refs
+compare before after:
+    bash scripts/compare.sh {{before}} {{after}}

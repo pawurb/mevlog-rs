@@ -72,7 +72,7 @@ pub enum MLSubcommand {
 }
 
 #[tokio::main]
-#[hotpath::main(percentiles = [95], limit = 30)]
+#[hotpath::main(percentiles = [95], limit = 20)]
 async fn main() {
     let root_args = MLArgs::parse();
     hotpath::tokio_runtime!();
