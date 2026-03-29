@@ -44,7 +44,7 @@ and then:
 ```bash
 git clone https://github.com/pawurb/mevlog-rs
 cd mevlog-rs
-cargo install --path .
+cargo install --path crates/mevlog
 ```
 
 or install from the [crates.io](https://crates.io/crates/mevlog):

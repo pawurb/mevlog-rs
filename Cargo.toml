@@ -27,3 +27,12 @@ url = "2"
 [profile.profiling]
 inherits = "release"
 debug = true
+
+[profile.maxperf]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
+[profile.instrument]
+inherits = "release"
+debug = true

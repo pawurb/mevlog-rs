@@ -83,12 +83,3 @@ hotpath = ["hotpath/hotpath"]
 hotpath-alloc = ["hotpath/hotpath-alloc"]
 hotpath-mcp = ["hotpath/hotpath-mcp"]
 mcp = ["dep:rmcp", "dep:axum", "dep:tokio-util", "dep:schemars"]
-
-[profile.maxperf]
-inherits = "release"
-lto = "fat"
-codegen-units = 1
-
-[profile.instrument]
-inherits = "release"
-debug = true

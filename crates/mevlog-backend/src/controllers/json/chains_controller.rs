@@ -1,6 +1,6 @@
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
-use mevlog::misc::shared_init::mevlog_cmd_path;
 use mevlog::ChainEntryJson;
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use serde::Deserialize;
 use tokio::process::Command as AsyncCommand;
 

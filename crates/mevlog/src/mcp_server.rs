@@ -454,8 +454,7 @@ impl MevlogMcpServer {
         };
         debug!(command = %logged.join(" "), "executing mevlog CLI for MCP request");
 
-        let mut cmd =
-            tokio::process::Command::new(crate::misc::shared_init::mevlog_cmd_path());
+        let mut cmd = tokio::process::Command::new(crate::misc::shared_init::mevlog_cmd_path());
         cmd.args(&cli_args);
 
         let output = cmd.output().await.map_err(|e| {

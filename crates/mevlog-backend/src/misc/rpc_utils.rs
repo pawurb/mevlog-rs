@@ -1,6 +1,6 @@
 use eyre::{Result, bail};
-use mevlog::misc::shared_init::mevlog_cmd_path;
 use mevlog::ChainInfoJson;
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use rand::prelude::*;
 use std::collections::HashMap;
 use std::sync::Arc;
