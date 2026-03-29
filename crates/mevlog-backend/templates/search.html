@@ -1,0 +1,34 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<h1 class="sr-only">Search EVM Transactions</h1>
+
+<!-- React Search Form -->
+<div id="search-form-react-root" 
+     data-blocks="{{ blocks }}"
+     data-position="{{ position }}"
+     data-from="{{ from }}"
+     data-to="{{ to }}"
+     data-event="{{ event }}"
+     data-not-event="{{ not_event }}"
+     data-method="{{ method }}"
+     data-erc20-transfer="{{ erc20_transfer }}"
+     data-tx-cost="{{ tx_cost }}"
+     data-gas-price="{{ gas_price }}"
+     data-chain-id="{{ chain_id }}">
+</div>
+
+
+<!-- Progress indicator (only shown during search) -->
+<div id="search-progress" style="display: none; text-align: center; margin: 16px 0; color: #ffd700; font-family: monospace;">
+  <span id="progress-text">Processing blocks...</span>
+</div>
+
+<!-- React container for JSON data -->
+<div id="mevlog-react-root" class="react-output"></div>
+
+<!-- Fallback for text output -->
+<pre class="output js-cmd-output">{{ output|safe }}</pre>
+
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<h1 class="sr-only">Explore EVM Blocks</h1>
+
+<!-- React container for explore viewer -->
+<div id="explore-react-root" class="react-output" 
+     data-chain-id="{{ self.chain_id_value() }}"
+     data-block-number="{{ self.block_number_value() }}"></div>
+
+{% endblock %}

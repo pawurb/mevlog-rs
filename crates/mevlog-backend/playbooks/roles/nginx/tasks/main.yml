@@ -1,0 +1,10 @@
+- name: Copy website config file
+  copy:
+    src: mevlog.rs.conf
+    dest: /etc/nginx/conf.d/
+    owner: root
+    mode: '0644'
+
+- name: Restart nginx
+  service: name=nginx state=restarted
+

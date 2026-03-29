@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+
+{% block head_extra %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "mevlog.rs",
+  "url": "https://mevlog.rs/",
+  "description": "Open-source web interface for querying EVM transactions across 2000+ chains, powered by Revm.",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://mevlog.rs/search?event={search_term}",
+    "query-input": "required name=search_term"
+  }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+
+<div class="hero-section">
+  <h1 class="main-header">EVM transactions querying powered by Revm</h1>
+  
+  <div class="features-list">
+    <div class="feature-row">
+      <div class="feature-text">
+        <h2>Explore ALL chains in one place</h2>
+        <p>Try a web version integrated with over 2k EVM chains via <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a> RPCs. Or connect <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> to your local node for the best performance.</p></p>
+      </div>
+      <div class="feature-image-container">
+        <img src="/all-chains.png" alt="All Chains" class="feature-image" />
+      </div>
+    </div>
+    
+    <div class="feature-row reverse">
+      <div class="feature-image-container">
+        <img src="/custom-queries.png" alt="Custom Queries" class="feature-image" />
+      </div>
+      <div class="feature-text">
+        <h2>Query txs with flexible filters</h2>
+        <p>Build complex queries with advanced filtering options. Search by events, method calls, ENS names, validator bribes, ERC20 transfers and more.</p>
+      </div>
+    </div>
+    
+    <div class="feature-row">
+      <div class="feature-text">
+        <h2>Quickly find outliers</h2>
+        <p>Identify unusual transactions and potential MEV opportunities. Detect anomalies in gas usage, value transfers, and execution patterns.</p>
+      </div>
+      <div class="feature-image-container">
+        <img src="/find-outliers.png" alt="Find Outliers" class="feature-image" />
+      </div>
+    </div>
+    
+    <div class="feature-row reverse">
+      <div class="feature-image-container">
+        <img src="/open-source.png" alt="Open Source" class="feature-image" />
+      </div>
+      <div class="feature-text">
+        <h2>Open-Source and free to use</h2>
+        <p>Powered by MIT Licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>.</p>
+      </div>
+    </div>
+  </div>
+  
+  <p class="project-description">
+    mevlog.rs is a web interface for <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a>.  This project aims to provide an easy-to-use Open Source tool for querying Ethereum transactions data with EVM tracing insights. It's still in a prototype stage. You can read about the origin of the project on <a target='_blank' class='yellow' href="https://pawelurbanek.com/long-tail-mev-revm">my blog</a>.
+  </p>
+
+  <p class="project-description">
+    It's not a replacement for standard explorers. Think of it as a discovery tool that helps surface interesting transactions and points you to official explorers for deeper analysis.
+  </p>
+
+  <p class="project-description">
+    Currently, the web interface uses public RPCs sourced from <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>. Rust CLI is instrumented by <a class='yellow' target='_blank' href="https://hotpath.rs/">hotpath.rs profiler</a>.
+  </p>
+
+  <p class="project-description">
+    Project received an <a class='yellow' target='_blank' href="https://builder.ensgrants.xyz/">ENS PG Builder Grant</a> which helped me to implement the web interface, TUI, MCP, and ChainList integration.
+  </p>
+</div>
+
+{% endblock %}

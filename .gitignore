@@ -7,4 +7,11 @@ deploy.sh
 .cryo/
 *.parquet
 log/
+certs/
+crates/mevlog-backend/assets/
+crates/mevlog-backend/varlogs/
+crates/mevlog-backend/output.json
+crates/mevlog-backend/javascripts/dist/
+crates/mevlog/Cargo.lock
+crates/mevlog-backend/Cargo.lock
 

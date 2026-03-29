@@ -3,8 +3,14 @@ name: Rust CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'crates/mevlog/**'
+      - 'Cargo.lock'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'crates/mevlog/**'
+      - 'Cargo.lock'
 
 jobs:
   build:
@@ -14,7 +20,7 @@ jobs:
       fail-fast: false
       matrix:
         rust:
-          - 1.89
+          - 1.91
           - stable
           - nightly
     steps:
@@ -25,33 +31,24 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/install-action@cargo-audit
-      - name: Check 
-        run: | 
-          cargo check 
+      - name: Check
+        run: cargo check -p mevlog
       - name: Check tokio-console feature flag
-        run: | 
-          cargo check --features tokio-console
+        run: cargo check -p mevlog --features tokio-console
       - name: Check seed-db feature flag
-        run: | 
-          cargo check --features seed-db
+        run: cargo check -p mevlog --features seed-db
       - name: Check hotpath feature flag
-        run: | 
-          cargo check --features hotpath
+        run: cargo check -p mevlog --features hotpath
       - name: Check tui feature flag
-        run: | 
-          cargo check --features tui
+        run: cargo check -p mevlog --features tui
       - name: Fmt
         if: matrix.rust == 'stable'
-        run: |
-          cargo fmt --all --check
+        run: cargo fmt -p mevlog --check
       - name: Lint
         if: matrix.rust == 'stable'
-        run: |
-          cargo clippy --all --all-features -- -D warnings
+        run: cargo clippy -p mevlog --all-features -- -D warnings
       - name: Audit
         if: matrix.rust == 'stable'
-        run: |
-          cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2025-0055
+        run: cargo audit --ignore RUSTSEC-2023-0071 --ignore RUSTSEC-2025-0055
       - name: Run tests
-        run: | 
-          cargo test --lib -- --nocapture
+        run: cargo test -p mevlog --lib -- --nocapture

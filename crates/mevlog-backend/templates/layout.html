@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }}</title>
+  <meta name="description" content="{{ description }}">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="{{ title }}">
+  <meta property="og:description" content="{{ description }}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:site_name" content="mevlog.rs">
+  <meta property="og:image" content="{{ host }}/mevlog-logo.png">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{ title }}">
+  <meta name="twitter:description" content="{{ description }}">
+  <meta name="twitter:image" content="{{ host }}/mevlog-logo.png">
+  {% block head_extra %}{% endblock %}
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="{{ host }}/{{ deployed_at }}-styles.css">
+  <link rel="stylesheet" href="{{ host }}/{{ deployed_at }}-terminal.css">
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="{{ host }}/{{ deployed_at }}-react-bundle.js"></script>
+  <script src="{{ host }}/{{ deployed_at }}-scripts.js"></script>
+</head>
+
+<body class="terminal">
+  <div class="btn-group sticky-nav" style="display: flex; align-items: center; justify-content: space-between;">
+    <div class="nav-left">
+      <a href="/">
+        <img src="/mevlog-logo.png" alt="mevlog-rs" class="sticky-nav-logo" />
+      </a>
+      <a href="/explore">
+        <button class="btn btn-default btn-ghost{% if page == "explore" %} active{% endif %}">Explore</button>
+      </a>
+      <a href="/search">
+        <button class="btn btn-default btn-ghost{% if page == "search" %} active{% endif %}">Search</button>
+      </a>
+      <a href="/tui">
+        <button class="btn btn-default btn-ghost{% if page == "tui" %} active{% endif %}">TUI</button>
+      </a>
+      <a href="#">
+        <button class="btn btn-default btn-ghost" style="border: none !important;">
+        <a href="https://github.com/pawurb/mevlog-rs" target="_blank">
+          <img src="https://img.shields.io/github/stars/pawurb/mevlog-rs?style=social&cacheSeconds=300" style="width: 110px;" alt="GitHub Stars">
+        </a>
+        </button>
+      </a>
+    </div>
+    <div class="nav-right">
+    </div>
+  </div>
+
+  {% block content %}{% endblock %}
+
+  <hr>
+  <footer>
+    <p>Copyright © <a href='https://pawelurbanek.com' target='_blank'>Paweł Urbanek</a> 2026</p>
+    <p><a href='/terms'>Terms</a></p>
+  </footer>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'crates/mevlog-backend/**'
+      - 'Cargo.lock'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'crates/mevlog-backend/**'
+      - 'Cargo.lock'
+
+jobs:
+  build:
+    name: backend ${{ matrix.rust }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rust:
+          - stable
+          - nightly
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Check
+        run: cargo check -p mevlog-backend
+      - name: Fmt
+        if: matrix.rust == 'stable'
+        run: cargo fmt -p mevlog-backend --check
+      - name: Lint
+        if: matrix.rust == 'stable'
+        run: cargo clippy -p mevlog-backend -- -D warnings
+      - name: Run tests
+        run: cargo test -p mevlog-backend --lib -- --nocapture

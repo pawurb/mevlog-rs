@@ -1,0 +1,3 @@
+[servers]
+web ansible_host=mevlog
+

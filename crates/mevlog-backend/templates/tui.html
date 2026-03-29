@@ -1,0 +1,44 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<div class="hero-section tui-page">
+  <h1 class="main-header">mevlog-rs TUI interface</h1>
+
+  <p class="project-description fade-in">
+    mevlog provides a TUI interface for querying EVM transactions directly from your terminal. The TUI provides the same powerful filtering capabilities as the CLI version, with vim-style keyboard navigation.
+  </p>
+
+  <div class="demo-video fade-in">
+    <video width="100%" loop muted playsinline controls>
+      <source src="/media/mevlog-tui-demo.mp4" type="video/mp4">
+    </video>
+  </div>
+
+  <h2 class="section-header fade-in">Getting started</h2>
+  <div class="install-box fade-in">
+    <div class="install-line">
+      <span class="prompt">$</span>
+      <code class="install-command">cargo install cryo_cli</code>
+    </div>
+    <div class="install-line">
+      <span class="prompt">$</span>
+      <code class="install-command">cargo install mevlog --features=tui</code>
+    </div>
+    <div class="install-line">
+      <span class="prompt">$</span>
+      <code class="install-command">mevlog tui</code>
+    </div>
+  </div>
+
+  <h2 class="section-header fade-in">Features</h2>
+  <ul class="project-description features-list tui-features fade-in">
+    <li><span class="feature-text"><strong>Multi-chain</strong> - 2000+ EVM chains via ChainList RPCs, with automatic fastest-RPC selection and failover on throttling or errors.</span></li>
+    <li><span class="feature-text"><strong>Flexible filters</strong> - search by events, method calls, ENS names, validator bribes, ERC20 transfers and more.
+    <li><span class="feature-text"><strong>Txs insights</strong> - view gas price, cost in USD, and event details.</span></li>
+    <li><span class="feature-text"><strong>EVM tracing</strong> - Revm powered EVM tracing insights that works on RPC endpoints without `debug_traceTransaction` support.</span></li>
+    <li><span class="feature-text"><strong>Vim keybindings</strong> - navigate with familiar keyboard shortcuts</span></li>
+  </ul>
+</div>
+
+{% endblock %}

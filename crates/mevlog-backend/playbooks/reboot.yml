@@ -1,0 +1,9 @@
+# ping.yml
+---
+  - hosts: web
+    become: true
+    tasks:
+      - name: Reboot the machine
+        ignore_errors: yes
+        reboot:
+          reboot_timeout: 5

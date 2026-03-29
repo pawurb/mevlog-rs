@@ -1,0 +1,1027 @@
+:root {
+  --black: #c0c1c3;
+  /* ANSI 0 */
+  --red: #c94234;
+  /* ANSI 1 */
+  --green: #85c54c;
+  /* ANSI 2 */
+  --yellow: #f5ae2e;
+  /* ANSI 3 */
+  --blue: #1398b9;
+  /* ANSI 4 */
+  --magenta: #d0633d;
+  /* ANSI 5 */
+  --cyan: #509552;
+  /* ANSI 6 */
+  --white: #e5c6aa;
+  /* ANSI 7 */
+
+  --bright-black: #675f54;
+  /* ANSI 8 */
+  --bright-red: #ff645a;
+  /* ANSI 9 */
+  --bright-green: #98e036;
+  /* ANSI 10 */
+  --bright-yellow: #e0d561;
+  /* ANSI 11 */
+  --bright-blue: #5fdaff;
+  /* ANSI 12 */
+  --bright-magenta: #ff9269;
+  /* ANSI 13 */
+  --bright-cyan: #84f088;
+  /* ANSI 14 */
+  --bright-white: #f6f7ec;
+  /* ANSI 15 */
+
+  /* UI Colors */
+  --background: #292520;
+  /* Terminal background */
+  --foreground: #e5c7a9;
+  /* Terminal text color */
+  --cursor-color: #f6f7ec;
+  /* Cursor color */
+  --selection-background: #525458;
+  /* Selected text background */
+  --selection-foreground: #e5c7a9;
+  /* Selected text color */
+}
+
+/* Apply background and foreground */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: monospace;
+  padding: 0px 20px 20px 20px;
+  /* ✅ Adjust overall text size */
+  line-height: 1.2;
+  /* ✅ Improves readability */
+  word-wrap: break-word !important;
+  /* Deprecated but still widely supported */
+  overflow-wrap: break-word !important;
+  /* Standard property */
+}
+
+pre {
+  white-space: pre-wrap;
+  /* Keeps spaces but allows wrapping */
+  word-wrap: break-word;
+}
+
+/* Cursor styling */
+::selection {
+  background: var(--selection-background);
+  color: var(--selection-foreground);
+}
+
+/* Style for ANSI terminal-like output */
+.ansi-output {
+  white-space: pre-wrap;
+  /* ✅ Preserves indentation & newlines */
+  word-wrap: break-word;
+  /* ✅ Ensures long lines wrap */
+  font-family: monospace;
+  /* ✅ Matches terminal output */
+  font-size: 18px;
+  /* ✅ Increase font size (adjust as needed) */
+  line-height: 1.5;
+  /* ✅ Better spacing between lines */
+  background-color: var(--background);
+  color: var(--foreground);
+  padding: 15px;
+}
+
+/* Specific ANSI colors */
+.ansi-black {
+  color: var(--black);
+}
+
+.ansi-red {
+  color: var(--red);
+}
+
+.ansi-green {
+  color: var(--green);
+}
+
+.ansi-yellow {
+  color: var(--yellow);
+}
+
+.ansi-blue {
+  color: var(--blue);
+}
+
+.ansi-magenta {
+  color: var(--magenta);
+}
+
+.ansi-cyan {
+  color: var(--cyan);
+}
+
+.ansi-white {
+  color: var(--white);
+}
+
+.ansi-bright-black {
+  color: var(--bright-black);
+}
+
+.ansi-bright-red {
+  color: var(--bright-red);
+}
+
+.ansi-bright-green {
+  color: var(--bright-green);
+}
+
+.ansi-bright-yellow {
+  color: var(--bright-yellow);
+}
+
+.ansi-bright-blue {
+  color: var(--bright-blue);
+}
+
+.ansi-bright-magenta {
+  color: var(--bright-magenta);
+}
+
+.ansi-bright-cyan {
+  color: var(--bright-cyan);
+}
+
+.ansi-bright-white {
+  color: var(--bright-white);
+}
+
+a {
+  all: unset;
+  /* ✅ Resets all inherited styles */
+  text-decoration: underline !important;
+  /* ✅ Removes underlines */
+  cursor: pointer;
+  /* ✅ Ensures link remains clickable */
+}
+
+/* Ensure links remain clickable without changing appearance */
+a:hover,
+a:focus {
+  all: unset;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Style form container (3-column layout) */
+.form-container {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  /* ✅ Creates 3 equal columns */
+  gap: 15px 10px;
+  /* ✅ Adds space between fields */
+  max-width: 95%;
+  /* ✅ Prevents unnecessary stretching */
+  margin: 20px;
+  /* ✅ Removes unwanted centering */
+  align-items: start;
+  /* ✅ Ensures everything aligns to the left */
+  justify-items: start;
+  /* ✅ Forces items to align left */
+  padding: 10px;
+}
+
+/* Align each field properly inside a column */
+.form-container li {
+  display: flex;
+  flex-direction: column;
+  /* ✅ Ensures label is above input */
+  align-items: start;
+  /* ✅ Left-aligns both label and input */
+}
+
+/* Label styling */
+.form-container label {
+  font-weight: bold;
+  margin-bottom: 5px;
+  /* ✅ Space between label and input */
+  text-align: left;
+  /* ✅ Ensures text inside labels is left-aligned */
+}
+
+/* Input styling */
+.form-container input {
+  width: 100%;
+  max-width: 400px;
+  /* ✅ Ensures inputs do not stretch */
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+  text-align: left;
+  /* ✅ Ensures text starts from the left */
+}
+
+form {
+  input.long {
+    width: 60%;
+  }
+
+  input.short {
+    width: 60px !important;
+  }
+}
+
+form.inspect-form {
+  input {
+    margin-bottom: 5px;
+    margin-top: 5px;
+  }
+}
+
+:root {
+  --block-background-color: #292520 !important;
+  --background-color: #292520 !important;
+  --font-color: #e5c7a9 !important;
+}
+
+body {
+  pre {
+    color: --font-color !important;
+  }
+}
+
+
+/* Popup Box Container */
+.popup-box {
+  position: relative;
+  background-color: var(--background);
+  color: var(--foreground);
+  text-align: center;
+}
+
+.popup-content {
+  visibility: hidden;
+  width: 100%;
+  background-color: var(--background);
+  color: var(--foreground);
+  text-align: center;
+  padding: 15px;
+  border: 1px solid var(--foreground);
+
+  /* Fixed positioning to center it */
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  /* Smooth transition */
+  opacity: 0;
+}
+
+/* Show the Popup on Hover */
+.popup-box:hover .popup-content {
+  visibility: visible;
+  opacity: 1;
+}
+
+li::before,
+li::after {
+  content: "" !important;
+  display: none !important;
+}
+
+.popup-content {
+  text-align: left;
+
+  p {
+    margin: 0;
+    /* Removes all margin (no spacing) */
+    padding: 0;
+    /* Ensures no padding */
+    /* display: inline; */
+    /* Makes paragraphs behave like inline text */
+  }
+}
+
+.help-header {
+  display: inline-block;
+  width: 120px !important;
+}
+
+button.btn-search {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.error {
+  color: var(--error-color);
+}
+
+.cyan {
+  color: var(--cyan);
+}
+
+a.cyan:hover {
+  color: var(--bright-cyan);
+  /* background: var(--cyan); */
+}
+
+.magenta {
+  color: var(--magenta);
+}
+
+a.magenta:hover {
+  color: var(--bright-magenta) !important;
+  /* background: var(--magenta); */
+}
+
+.yellow {
+  color: var(--yellow);
+}
+
+a.yellow:hover {
+  color: var(--bright-yellow);
+  /* background: var(--yellow); */
+}
+
+.green {
+  color: var(--green);
+}
+
+a.green:hover {
+  color: var(--bright-green);
+  /* background: var(--green); */
+}
+
+pre.output {
+  min-height: 350px;
+}
+
+.btn.active,
+.btn-ghost.active,
+.btn-default.active {
+  color: var(--secondary-color) !important;
+  border-color: var(--secondary-color) !important;
+}
+
+.command-box {
+  display: block;
+  padding-top: 20px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Sticky navigation for primary CTA buttons */
+.sticky-nav {
+  position: sticky;
+  top: 0;
+  background-color: var(--background);
+  z-index: 1000;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--bright-black);
+  margin-bottom: 20px;
+}
+
+.nav-left {
+  display: flex;
+  align-items: center !important;
+}
+
+.sticky-nav-logo {
+  height: 60px;
+  width: auto;
+  transition: opacity 0.2s ease;
+  margin-right: 15px;
+  transform: translateY(4px);
+}
+
+.sticky-nav-logo:hover {
+  opacity: 0.8;
+}
+
+/* Ensure explore and search buttons stand out in sticky nav */
+.sticky-nav a[href="/explore"] button {
+  border-color: var(--bright-cyan) !important;
+  color: var(--bright-cyan) !important;
+  font-weight: bold;
+}
+
+.sticky-nav a[href="/explore"] button:hover {
+  background-color: var(--bright-cyan) !important;
+  color: var(--background) !important;
+}
+
+.sticky-nav a[href="/search"] button {
+  border-color: var(--yellow) !important;
+  color: var(--yellow) !important;
+  font-weight: bold;
+}
+
+.sticky-nav a[href="/search"] button:hover {
+  background-color: var(--yellow) !important;
+  color: var(--background) !important;
+}
+
+.sticky-nav a[href="/tui"] button {
+  border-color: var(--bright-red) !important;
+  color: var(--bright-red) !important;
+  font-weight: bold;
+}
+
+.sticky-nav a[href="/tui"] button:hover {
+  background-color: var(--bright-red) !important;
+  color: var(--background) !important;
+}
+
+/* Also apply bright cyan to explore button outside sticky nav */
+a[href="/explore"] button {
+  border-color: var(--bright-cyan) !important;
+  color: var(--bright-cyan) !important;
+}
+
+a[href="/explore"] button:hover {
+  background-color: var(--bright-cyan) !important;
+  color: var(--background) !important;
+}
+
+/* Search button styling */
+a[href="/search"] button {
+  border-color: var(--yellow) !important;
+  color: var(--yellow) !important;
+}
+
+a[href="/search"] button:hover {
+  background-color: var(--yellow) !important;
+  color: var(--background) !important;
+}
+
+a[href="/search"] button.active {
+  background-color: var(--yellow) !important;
+  color: var(--background) !important;
+  border-color: var(--yellow) !important;
+}
+
+/* Login button styling */
+a[href="/auth/github/login"] button {
+  border-color: var(--yellow) !important;
+  color: var(--yellow) !important;
+}
+
+a[href="/auth/github/login"] button:hover {
+  background-color: var(--yellow) !important;
+  color: var(--background) !important;
+}
+
+/* Explore button active state */
+a[href="/explore"] button.active {
+  background-color: var(--bright-cyan) !important;
+  color: var(--background) !important;
+  border-color: var(--bright-cyan) !important;
+}
+
+/* TUI button styling */
+a[href="/tui"] button {
+  border-color: var(--bright-red) !important;
+  color: var(--bright-red) !important;
+}
+
+a[href="/tui"] button:hover {
+  background-color: var(--bright-red) !important;
+  color: var(--background) !important;
+}
+
+a[href="/tui"] button.active {
+  background-color: var(--bright-red) !important;
+  color: var(--background) !important;
+  border-color: var(--bright-red) !important;
+}
+
+.video-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  /* Light grey */
+  border-top: 4px solid #3498db;
+  /* Blue */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 20px auto;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-container {
+  text-align: center;
+  padding: 20px;
+}
+
+/* React component styles */
+.react-output {
+  color: var(--foreground);
+  font-family: monospace;
+}
+
+.block-container {
+  margin-bottom: 20px;
+  border: 1px solid var(--bright-black);
+  border-radius: 4px;
+  padding: 15px;
+}
+
+.block-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  font-weight: bold;
+}
+
+.block-number {
+  color: var(--blue);
+}
+
+.native-price {
+  color: var(--green);
+}
+
+.tx-count {
+  color: var(--yellow);
+}
+
+.transaction {
+  margin: 10px 0;
+  padding: 10px;
+  border-left: 3px solid var(--cyan);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.tx-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tx-hash {
+  color: var(--bright-blue);
+  font-weight: bold;
+}
+
+.method {
+  color: var(--magenta);
+}
+
+.status.success {
+  color: var(--green);
+}
+
+.status.failed {
+  color: var(--red);
+}
+
+.tx-details {
+  margin: 8px 0;
+  font-size: 0.9em;
+}
+
+.address {
+  color: var(--cyan);
+}
+
+.gas,
+.value {
+  color: var(--yellow);
+}
+
+.log-group {
+  margin: 10px 0;
+  padding: 8px;
+  border-left: 2px solid var(--bright-black);
+}
+
+.log-group-header {
+  margin-bottom: 5px;
+}
+
+.source {
+  color: var(--bright-cyan);
+  font-weight: bold;
+}
+
+.log-entry {
+  margin: 5px 0;
+  padding: 5px;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.log-signature {
+  color: var(--bright-green);
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.topic {
+  display: block;
+  color: var(--bright-yellow);
+  font-size: 0.8em;
+  margin: 2px 0;
+}
+
+.log-data {
+  color: var(--bright-white);
+  font-size: 0.8em;
+  word-break: break-all;
+}
+
+/* Hero section and features styling */
+.hero-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+  width: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.main-logo {
+  max-width: 400px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.main-header {
+  color: var(--bright-yellow) !important;
+  margin: 20px auto 10px auto;
+  font-weight: bold !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  display: block !important;
+  width: 100%;
+  max-width: 100%;
+  font-family: var(--font-stack) !important;
+}
+
+/* Desktop styles */
+@media (min-width: 769px) {
+  .main-header {
+    font-size: 3.2em !important;
+  }
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+  .main-header {
+    font-size: 1.6em !important;
+  }
+}
+
+
+/* Override terminal.css restrictions specifically for our main header */
+.terminal .main-header,
+.terminal h1.main-header {
+  font-size: 3em;
+  color: var(--yellow) !important;
+  font-weight: bold !important;
+}
+
+.features-list {
+  margin: 40px 0;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 20px;
+  margin: 20px 0;
+  padding: 20px;
+}
+
+.feature-row.reverse {
+  grid-template-columns: 1fr 1fr;
+}
+
+.feature-row .feature-text {
+  grid-column: 1;
+}
+
+.feature-row .feature-image-container {
+  grid-column: 2;
+}
+
+.feature-row.reverse .feature-text {
+  grid-column: 2;
+}
+
+.feature-row.reverse .feature-image-container {
+  grid-column: 1;
+}
+
+.feature-text {
+  text-align: left;
+}
+
+.feature-text h3 {
+  color: var(--bright-cyan) !important;
+  margin-bottom: 20px;
+  font-weight: bold !important;
+  text-shadow: 0 0 7px rgba(84, 240, 136, 0.3);
+}
+
+@media (max-width: 768px) {
+  .feature-text h3 {
+    font-size: 1.6em !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .feature-text h3 {
+    font-size: 2.5em !important;
+  }
+}
+
+.feature-text p {
+  color: var(--foreground);
+  font-size: 1.1em;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.feature-image-container {
+  text-align: center;
+}
+
+.feature-image {
+  max-width: 100%;
+  width: 400px;
+  height: auto;
+  border: 3px solid var(--cyan);
+  border-radius: 12px;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+.feature-image:hover {
+  border-color: var(--bright-cyan);
+  transform: scale(1.02);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+.project-description {
+  margin-top: 30px;
+  font-size: 1.1em;
+  line-height: 1.6;
+  text-align: left;
+  padding: 0 20px;
+}
+
+.install-command {
+  display: inline-block;
+  padding: 8px 16px;
+  border: 1px solid var(--yellow);
+  color: var(--yellow);
+  background-color: transparent;
+}
+
+.install-command::before,
+.install-command::after {
+  content: none;
+}
+
+.section-header {
+  text-align: left;
+  padding-left: 20px;
+  margin-top: 30px;
+  font-size: 1.8rem;
+}
+
+.tui-page .section-header {
+  color: var(--bright-magenta);
+  position: relative;
+  padding-left: 0;
+  margin-top: 40px;
+  margin-bottom: 16px;
+}
+
+.tui-page .section-header::before {
+  content: ">";
+  color: var(--bright-green);
+  margin-right: 12px;
+  font-weight: bold;
+}
+
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .sticky-nav {
+    padding: 8px 0;
+  }
+
+  .sticky-nav-logo {
+    height: 40px;
+    margin-right: 10px;
+    transform: translateY(2px);
+  }
+
+  .nav-left {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .nav-left button {
+    font-size: 0.9em;
+    padding: 8px 12px;
+  }
+
+  .feature-row,
+  .feature-row.reverse {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin: 40px 0;
+  }
+
+  .feature-row .feature-text,
+  .feature-row.reverse .feature-text {
+    grid-column: 1;
+    grid-row: 1;
+    text-align: center;
+  }
+
+  .feature-row .feature-text h3,
+  .feature-row.reverse .feature-text h3,
+  .feature-row .feature-text p,
+  .feature-row.reverse .feature-text p {
+    text-align: center;
+  }
+
+  .feature-row .feature-image-container,
+  .feature-row.reverse .feature-image-container {
+    grid-column: 1;
+    grid-row: 2;
+    display: flex;
+    justify-content: center;
+  }
+
+  .feature-image {
+    width: 300px;
+  }
+}
+
+/* TUI Page Styles */
+.tui-page .fade-in {
+  animation: fadeInUp 0.5s ease-out forwards;
+  opacity: 0;
+}
+
+/* Respect reduced motion preferences - show content immediately */
+@media (prefers-reduced-motion: reduce) {
+  .tui-page .fade-in {
+    animation: none;
+    opacity: 1;
+  }
+}
+
+.tui-page .fade-in:nth-child(1) { animation-delay: 0s; }
+.tui-page .fade-in:nth-child(2) { animation-delay: 0.05s; }
+.tui-page .fade-in:nth-child(3) { animation-delay: 0.1s; }
+.tui-page .fade-in:nth-child(4) { animation-delay: 0.15s; }
+.tui-page .fade-in:nth-child(5) { animation-delay: 0.2s; }
+.tui-page .fade-in:nth-child(6) { animation-delay: 0.25s; }
+.tui-page .fade-in:nth-child(7) { animation-delay: 0.3s; }
+.tui-page .fade-in:nth-child(8) { animation-delay: 0.35s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Install command box */
+.install-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 1px solid var(--bright-black);
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%);
+  transition: all 0.3s ease;
+}
+
+.install-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.install-box:hover {
+  border-color: var(--yellow);
+  box-shadow: 0 0 20px rgba(245, 174, 46, 0.15);
+}
+
+.install-box .prompt {
+  color: var(--bright-green);
+  font-weight: bold;
+  font-size: 1.1em;
+}
+
+.install-box .install-command {
+  border: none;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+/* TUI demo video */
+.demo-video {
+  margin: 30px auto;
+  max-width: 800px;
+}
+
+.demo-video video {
+  width: 100%;
+  border: 2px solid var(--bright-black);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+.demo-video video:hover {
+  border-color: var(--bright-red);
+}
+
+/* TUI features list */
+.tui-features {
+  list-style: none !important;
+  padding-left: 20px !important;
+}
+
+.tui-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(103, 95, 84, 0.3);
+}
+
+.tui-features li:last-child {
+  border-bottom: none;
+}
+
+.feature-icon {
+  flex-shrink: 0;
+  width: 28px;
+  min-width: 28px;
+  text-align: center;
+  display: inline-block;
+}
+
+.tui-features .feature-text {
+  flex: 1;
+}
+
+.tui-features strong {
+  color: var(--bright-cyan);
+  margin-right: 4px;
+}
+
+@media (max-width: 768px) {
+  .tui-features li {
+    font-size: 0.95em;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
