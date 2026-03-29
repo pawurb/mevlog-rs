@@ -1,4 +1,5 @@
 use eyre::{Result, bail};
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use mevlog::ChainInfoJson;
 use rand::prelude::*;
 use std::collections::HashMap;
@@ -62,7 +63,7 @@ async fn get_cached_rpc_urls(chain_id: u64) -> Result<Vec<String>> {
 
 #[hotpath::measure(log = true)]
 async fn fetch_chain_info(chain_id: u64) -> Result<ChainInfoJson> {
-    let mut cmd = AsyncCommand::new("mevlog");
+    let mut cmd = AsyncCommand::new(mevlog_cmd_path());
     cmd.arg("chain-info")
         .arg("--chain-id")
         .arg(chain_id.to_string())

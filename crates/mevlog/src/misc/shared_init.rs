@@ -142,6 +142,12 @@ pub fn config_path() -> PathBuf {
     home::home_dir().unwrap().join(".mevlog")
 }
 
+pub fn mevlog_cmd_path() -> PathBuf {
+    std::env::var_os("MEVLOG_CMD_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("mevlog"))
+}
+
 #[derive(Clone, Debug, clap::Parser)]
 pub struct SharedOpts {
     #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]

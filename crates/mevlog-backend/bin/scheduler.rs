@@ -1,4 +1,5 @@
 use futures::FutureExt;
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use tokio::process::Command;
 
 use alloy::providers::{Provider, ProviderBuilder};
@@ -66,7 +67,7 @@ async fn populate_mainnet_cache() -> Result<()> {
         current_block_number = new_block_number;
 
         let start = measure_start("mevlog latest");
-        let _resp = match Command::new("mevlog")
+        let _resp = match Command::new(mevlog_cmd_path())
             .arg("search")
             .arg("-b")
             .arg("latest")

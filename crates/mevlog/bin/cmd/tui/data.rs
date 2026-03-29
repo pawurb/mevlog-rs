@@ -1,8 +1,7 @@
-use std::env;
 use tokio::process::Command;
 
 pub use mevlog::ChainEntryJson;
-pub use mevlog::misc::shared_init::TraceMode;
+pub use mevlog::misc::shared_init::{TraceMode, mevlog_cmd_path};
 pub use mevlog::models::json::mev_opcode_json::MEVOpcodeJson;
 pub use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
 pub use mevlog::models::json::mev_transaction_json::MEVTransactionJson;
@@ -13,8 +12,7 @@ pub(crate) mod txs;
 pub(crate) mod worker;
 
 pub(crate) fn mevlog_cmd() -> Command {
-    let cmd_path = env::var("MEVLOG_CMD_PATH").unwrap_or_else(|_| "mevlog".to_string());
-    Command::new(cmd_path)
+    Command::new(mevlog_cmd_path())
 }
 
 #[derive(Debug, Clone)]

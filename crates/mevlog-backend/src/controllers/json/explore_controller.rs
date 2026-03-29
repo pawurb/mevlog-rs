@@ -1,4 +1,5 @@
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use serde::Deserialize;
 use tokio::process::Command as AsyncCommand;
 
@@ -31,7 +32,7 @@ pub async fn explore(
 
     let chain_id = params.chain_id.unwrap_or(1);
 
-    let mut cmd = AsyncCommand::new("mevlog");
+    let mut cmd = AsyncCommand::new(mevlog_cmd_path());
     cmd.arg("search")
         .arg("-b")
         .arg(

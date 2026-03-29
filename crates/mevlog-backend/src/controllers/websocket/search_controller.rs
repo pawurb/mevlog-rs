@@ -14,6 +14,7 @@ use axum::{
 };
 
 use futures::stream::StreamExt;
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use tokio::process::Command;
 
 #[hotpath::measure]
@@ -31,7 +32,7 @@ async fn handle_socket(socket: WebSocket, params: SearchParams, _headers: Header
 
     let chain_id = params.chain_id.unwrap_or(1);
 
-    let mut cmd = Command::new("mevlog");
+    let mut cmd = Command::new(mevlog_cmd_path());
 
     cmd.arg("search")
         .arg("--format")

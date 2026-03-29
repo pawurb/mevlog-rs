@@ -435,13 +435,6 @@ impl MevlogMcpServer {
     }
 
     async fn run_mevlog_cmd(&self, args: &[String]) -> Result<String, McpError> {
-        let exe = std::env::var("MEVLOG_CMD_PATH")
-            .map(std::path::PathBuf::from)
-            .or_else(|_| std::env::current_exe())
-            .map_err(|e| {
-                McpError::internal_error(format!("Failed to get mevlog executable path: {e}"), None)
-            })?;
-
         let cli_args = self.build_cli_args(args);
         let logged: Vec<_> = {
             let mut out = Vec::new();
@@ -461,7 +454,8 @@ impl MevlogMcpServer {
         };
         debug!(command = %logged.join(" "), "executing mevlog CLI for MCP request");
 
-        let mut cmd = tokio::process::Command::new(exe);
+        let mut cmd =
+            tokio::process::Command::new(crate::misc::shared_init::mevlog_cmd_path());
         cmd.args(&cli_args);
 
         let output = cmd.output().await.map_err(|e| {

@@ -1,4 +1,5 @@
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use mevlog::ChainEntryJson;
 use serde::Deserialize;
 use tokio::process::Command as AsyncCommand;
@@ -23,7 +24,7 @@ pub async fn chains(
         Err(error_response) => return error_response.into_response(),
     };
 
-    let mut cmd = AsyncCommand::new("mevlog");
+    let mut cmd = AsyncCommand::new(mevlog_cmd_path());
     cmd.arg("chains").arg("--format").arg("json");
     cmd.env("RUST_LOG", "off");
 
