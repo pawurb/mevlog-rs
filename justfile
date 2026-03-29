@@ -6,7 +6,7 @@ default:
 
 # Start the backend server with asset timestamping and environment setup
 server:
-    cd {{backend_dir}} && ./timestamp_assets.sh && source .envrc && cargo run --bin server
+    cd {{backend_dir}} && ./timestamp_assets.sh && cargo run --bin server
 
 # Deploy backend using the deployment script
 deploy:

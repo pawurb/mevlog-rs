@@ -2,7 +2,7 @@
 set -euo pipefail 
 
 REMOTE_ENV_FILE=".env-remote"
-LOCAL_ENV_FILE=".envrc"
+LOCAL_ENV_FILE="../../.envrc"
 CURRENT_TIMESTAMP=$(date +%s)
 sed -i '' "s/^export DEPLOYED_AT=.*/export DEPLOYED_AT=$CURRENT_TIMESTAMP/" "$REMOTE_ENV_FILE"
 sed -i '' "s/^export DEPLOYED_AT=.*/export DEPLOYED_AT=$CURRENT_TIMESTAMP/" "$LOCAL_ENV_FILE"
