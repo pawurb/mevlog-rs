@@ -4,18 +4,17 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-url = "2.5.0"
-alloy = { version = "1.0", features = ["full", "node-bindings"] }
-revm = { version = "27.0.2", features = ["std", "alloydb"] }
+url = { workspace = true }
+alloy = { workspace = true, features = ["full", "node-bindings"] }
 uuid = { version = "1.11.0", features = ["v4"] }
-eyre = "0.6.12"
-serde_json = "1.0.138"
+eyre = { workspace = true }
+serde_json = { workspace = true }
 openssl = { version = "0.10", features = ["vendored"] }
-reqwest = "0.12.12"
-tokio = { version = "1.43.0", features = ["full"] }
-serde = { version = "1.0.217", features = ["derive"] }
-tracing-subscriber = { version = "0.3.19", features = ["time"] }
-tracing = "0.1.41"
+reqwest = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true, features = ["derive"] }
+tracing-subscriber = { workspace = true, features = ["time"] }
+tracing = { workspace = true }
 tracing-futures = "0.2"
 tower-http = { version = "0.6.2", features = [
   "cors",
@@ -32,21 +31,21 @@ tower = "0.5.2"
 futures = "0.3.31"
 tokio-cron-scheduler = { version = "0.13.0", features = ["signal", "english"] }
 tracing-appender = "0.2.3"
-time = "0.3.37"
-axum = { version = "0.8.1", features = ["ws"] }
-futures-util = "0.3.31"
+time = { workspace = true }
+axum = { workspace = true, features = ["ws"] }
+futures-util = { workspace = true }
 unicode-normalization = "0.1.24"
 ansi-to-html = "0.2.2"
 askama = "0.12.1"
-regex = "1.11.1"
+regex = { workspace = true }
 tokio-stream = "0.1.17"
 mevlog = { workspace = true }
-rand = "0.9.2"
+rand = { workspace = true }
 hotpath = { git = "https://github.com/pawurb/hotpath-rs", branch = "main" }
 
 [dev-dependencies]
-glob = "0.3.1"
-reqwest = { version = "0.12", features = ["json"] }
+glob = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
 mockito = "1.5.0"
 http-body-util = "0.1.2"
 

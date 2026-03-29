@@ -7,6 +7,22 @@ resolver = "2"
 
 [workspace.dependencies]
 mevlog = { path = "./crates/mevlog", version = "0.8.1" }
+alloy = "1"
+axum = "0.8"
+eyre = "0.6"
+futures-util = "0.3"
+glob = "0.3"
+rand = "0.9.2"
+regex = "1"
+reqwest = "0.12"
+revm = "33"
+serde = "1"
+serde_json = "1"
+time = "0.3"
+tokio = "1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+url = "2"
 
 [profile.profiling]
 inherits = "release"
