@@ -464,9 +464,15 @@ pub mod tests {
             .output()
             .expect("failed to execute CLI");
 
+        let err = String::from_utf8(cmd.stderr).unwrap();
+        assert!(cmd.status.success(), "CLI failed:\n{err}");
+
         let output = String::from_utf8(cmd.stdout).unwrap();
-        let json: Vec<serde_json::Value> = serde_json::from_str(&output).unwrap();
-        assert_eq!(json.len(), 4);
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let txs = json["transactions"]
+            .as_array()
+            .expect("transactions should be an array");
+        assert_eq!(txs.len(), 4);
     }
 
     // cargo run --bin mevlog tx 0x7138e07de04d486f99f0117de27026272f33786a5aeeffc0913aef7951dfb1c8 --rpc-url $ETH_RPC_URL --format json-pretty
@@ -487,18 +493,26 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-
-        let expected_content = [
-            "\"to\": \"0x7290f841536a3f73835ffad72d27b8c905e1b497\"",
-            "\"signature\": \"CREATE()\"",
-        ];
-
-        for expected in expected_content {
-            assert!(
-                output.contains(expected),
-                "Expected:\n{expected}\n\nGot:\n{output}",
-            );
-        }
+        let json: serde_json::Value = serde_json::from_str(&output).unwrap();
+        let txs = json["transactions"]
+            .as_array()
+            .expect("transactions should be an array");
+        assert_eq!(txs.len(), 1, "Expected one transaction, got:\n{output}");
+        assert_eq!(
+            txs[0]["to"].as_str(),
+            Some("0x7290f841536a3f73835ffad72d27b8c905e1b497"),
+            "Expected CREATE destination address in envelope, got:\n{output}"
+        );
+        assert_eq!(
+            txs[0]["signature"].as_str(),
+            Some("CREATE()"),
+            "Expected CREATE signature in envelope, got:\n{output}"
+        );
+        assert_eq!(
+            json["query"]["command"].as_str(),
+            Some("tx"),
+            "Expected tx query metadata in envelope, got:\n{output}"
+        );
     }
 
     // cargo run --bin mevlog search -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
@@ -565,7 +579,14 @@ pub mod tests {
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        assert!(output.trim() == "[]", "Expected:\n[]\n\nGot:\n{output}");
+        let json: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
+        let txs = json["transactions"]
+            .as_array()
+            .expect("transactions should be an array");
+        assert!(
+            txs.is_empty(),
+            "Expected empty transactions array, got:\n{output}"
+        );
     }
 
     // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --evm-ops--trace revm

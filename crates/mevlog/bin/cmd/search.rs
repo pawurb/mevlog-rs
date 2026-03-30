@@ -1,5 +1,8 @@
+use std::time::Instant;
+
 use eyre::{Result, bail};
 use mevlog::{
+    ChainInfoNoRpcsJson,
     misc::{
         args_parsing::BlocksRange,
         data_fetch::fetch_blocks_batch,
@@ -9,7 +12,9 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
-        json::mev_transaction_json::{MEVTransactionJson, serialize_transactions_json},
+        json::mev_transaction_json::{
+            MEVTransactionJson, SearchQueryParams, serialize_json_response,
+        },
         mev_block::{PreFetchedBlockData, generate_block},
         txs_filter::{TxsFilter, TxsFilterOpts},
     },
@@ -72,10 +77,31 @@ fn extract_erc20_transfer_amount(
         .sum()
 }
 
+impl std::fmt::Display for SortField {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SortField::GasPrice => write!(f, "gas-price"),
+            SortField::GasUsed => write!(f, "gas-used"),
+            SortField::FullTxCost => write!(f, "full-tx-cost"),
+            SortField::TxCost => write!(f, "tx-cost"),
+            SortField::Erc20Transfer(addr) => write!(f, "erc20Transfer|{addr}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum SortDirection {
     Asc,
     Desc,
+}
+
+impl std::fmt::Display for SortDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SortDirection::Asc => write!(f, "asc"),
+            SortDirection::Desc => write!(f, "desc"),
+        }
+    }
 }
 
 #[derive(Debug, clap::Parser)]
@@ -188,6 +214,7 @@ impl SearchArgs {
             }
         }
 
+        let start_time = Instant::now();
         let mut mev_blocks = vec![];
         let blocks: Vec<u64> = (block_range.from..=block_range.to).rev().collect();
 
@@ -258,23 +285,48 @@ impl SearchArgs {
                 transactions_json.truncate(limit);
             }
 
-            match format {
-                OutputFormat::Json => {
-                    println!(
-                        "{}",
-                        serialize_transactions_json(&transactions_json, json_opts, false,).unwrap()
-                    );
-                }
-                OutputFormat::JsonPretty => {
-                    println!(
-                        "{}",
-                        serialize_transactions_json(&transactions_json, json_opts, true,).unwrap()
-                    );
-                }
-                _ => {
-                    unreachable!()
-                }
-            }
+            let chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+            let duration_ms = start_time.elapsed().as_millis() as u64;
+            let query = SearchQueryParams {
+                command: "search",
+                blocks: self.blocks.clone(),
+                limit: self.limit,
+                sort: self.sort.as_ref().map(|s| s.to_string()),
+                sort_dir: self.sort.as_ref().map(|_| self.sort_dir.to_string()),
+                from: self.filter_opts.from.clone(),
+                to: self.filter_opts.to.clone(),
+                position: self.filter_opts.position.clone(),
+                touching: self.filter_opts.touching.map(|a| format!("{a}")),
+                event: self.filter_opts.event.clone(),
+                not_event: self.filter_opts.not_event.clone(),
+                method: self.filter_opts.method.clone(),
+                calls: self.filter_opts.calls.clone(),
+                tx_cost: self.filter_opts.tx_cost.clone(),
+                real_tx_cost: self.filter_opts.real_tx_cost.clone(),
+                gas_price: self.filter_opts.gas_price.clone(),
+                real_gas_price: self.filter_opts.real_gas_price.clone(),
+                value: self.filter_opts.value.clone(),
+                failed: self.filter_opts.failed,
+                erc20_transfer: self.filter_opts.erc20_transfer.clone(),
+                evm_trace: self.shared_opts.evm_trace.clone(),
+                evm_calls: self.shared_opts.evm_calls,
+                evm_ops: self.shared_opts.evm_ops,
+                evm_state_diff: self.shared_opts.evm_state_diff,
+            };
+
+            let pretty = matches!(format, OutputFormat::JsonPretty);
+            println!(
+                "{}",
+                serialize_json_response(
+                    &transactions_json,
+                    json_opts,
+                    pretty,
+                    &chain_info,
+                    duration_ms,
+                    query,
+                )
+                .unwrap()
+            );
         }
 
         // Allow async ENS and erc20 symbols lookups to catch up

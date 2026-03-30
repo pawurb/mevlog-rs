@@ -43,12 +43,23 @@ pub struct ChainInfoJson {
     pub rpc_urls: Vec<RpcUrlInfo>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainInfoNoRpcsJson {
     pub chain_id: u64,
     pub name: String,
     pub currency: String,
     pub explorer_url: Option<String>,
+}
+
+impl ChainInfoNoRpcsJson {
+    pub fn from_evm_chain(chain: &crate::models::evm_chain::EVMChain) -> Self {
+        Self {
+            chain_id: chain.chain_id,
+            name: chain.name.clone(),
+            currency: chain.currency_symbol.clone(),
+            explorer_url: chain.explorer_url.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

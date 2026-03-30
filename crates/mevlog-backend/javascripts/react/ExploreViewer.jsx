@@ -119,12 +119,13 @@ const ExploreViewer = () => {
       const response = await fetch(exploreApiUrl);
       if (response.ok) {
         const jsonData = await response.json();
-        setBlockData(jsonData);
+        const transactions = jsonData.transactions;
+        setBlockData(transactions);
         setHasInitialData(true);
 
         // Extract block number from the first transaction
-        if (jsonData && jsonData.length > 0 && jsonData[0].block_number) {
-          const newBlockNumber = jsonData[0].block_number;
+        if (transactions && transactions.length > 0 && transactions[0].block_number) {
+          const newBlockNumber = transactions[0].block_number;
           setCurrentBlockNumber(newBlockNumber);
           // Update URL with new block number only if we haven't already set it via navigation
           if (!skipUrlUpdate) {
@@ -134,7 +135,7 @@ const ExploreViewer = () => {
 
         // Update MevlogViewer with the fetched data (replace mode)
         if (window.replaceMevlogViewer) {
-          window.replaceMevlogViewer(jsonData);
+          window.replaceMevlogViewer(transactions);
         }
 
         setLoading(false);

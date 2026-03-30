@@ -347,18 +347,40 @@ Mevlog supports different output formats via the `--format` option:
 
 **Streaming vs Batch behavior:**
 - **Streaming formats** (`text`, `json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
-- **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks, useful for piping to other tools or when you need all results in a single JSON array
+- **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks as a single JSON object with `transactions`, `duration_ms`, `chain`, and `query`
 
 Examples:
 ```bash
 # Default human-readable output (streaming)
 mevlog search -b 10:latest --format default
 
-# Compact JSON, all results at once
+# Compact JSON envelope, all results at once
 mevlog search -b 10:latest --format json
 
 # Pretty JSON, streaming block by block
 mevlog search -b 10:latest --format json-pretty-stream
+```
+
+Batch JSON example:
+```json
+{
+  "transactions": [
+    {
+      "tx_hash": "0x..."
+    }
+  ],
+  "duration_ms": 123,
+  "chain": {
+    "chain_id": 1,
+    "name": "Ethereum",
+    "currency": "ETH",
+    "explorer_url": "https://etherscan.io"
+  },
+  "query": {
+    "command": "search",
+    "blocks": "10:latest"
+  }
+}
 ```
 
 ## EVM tracing modes
@@ -415,13 +437,30 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --c
 ```
 
 ```json
-[{
-  "opcodes": [
-    {"pc": 0, "op": "PUSH1", "cost": 3, "gas_left": 545253},
-    {"pc": 2, "op": "PUSH1", "cost": 3, "gas_left": 545250},
-    {"pc": 4, "op": "MSTORE", "cost": 3, "gas_left": 545247}
-  ]
-}]
+{
+  "transactions": [
+    {
+      "evm_opcodes": [
+        {"pc": 0, "op": "PUSH1", "cost": 3, "gas_left": 545253},
+        {"pc": 2, "op": "PUSH1", "cost": 3, "gas_left": 545250},
+        {"pc": 4, "op": "MSTORE", "cost": 3, "gas_left": 545247}
+      ]
+    }
+  ],
+  "duration_ms": 123,
+  "chain": {
+    "chain_id": 1,
+    "name": "Ethereum",
+    "currency": "ETH",
+    "explorer_url": "https://etherscan.io"
+  },
+  "query": {
+    "command": "tx",
+    "tx_hash": "0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660",
+    "evm_trace": "revm",
+    "evm_ops": true
+  }
+}
 ```
 
 The opcode trace shows:
@@ -443,15 +482,19 @@ mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --c
 ```
 
 ```json
-[{
-  // ...
-  "state_diff": {
-    "0x1234...abcd": {
-      "0x0000...0001": ["0x0000...0000", "0x0000...0064"],
-      "0x0000...0002": [null, "0x0000...00c8"]
+{
+  "transactions": [
+    {
+      // ...
+      "evm_state_diff": {
+        "0x1234...abcd": {
+          "0x0000...0001": ["0x0000...0000", "0x0000...0064"],
+          "0x0000...0002": [null, "0x0000...00c8"]
+        }
+      }
     }
-  }
-}]
+  ]
+}
 ```
 
 The state diff shows:
