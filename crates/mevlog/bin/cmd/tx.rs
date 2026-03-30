@@ -1,8 +1,10 @@
 use std::collections::HashSet;
+use std::time::Instant;
 
 use alloy::providers::Provider;
 use eyre::{Result, eyre};
 use mevlog::{
+    ChainInfoNoRpcsJson,
     misc::{
         args_parsing::PositionRange,
         data_fetch::fetch_blocks_batch,
@@ -12,6 +14,7 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
+        json::mev_transaction_json::{TxQueryParams, serialize_json_response},
         mev_block::{PreFetchedBlockData, generate_block},
         txs_filter::TxsFilter,
     },
@@ -79,6 +82,7 @@ impl TxArgs {
         }
 
         let deps = init_deps(&self.conn_opts).await?;
+        let start_time = Instant::now();
 
         let tx_info: MinimalTxInfo = deps
             .provider
@@ -195,7 +199,30 @@ impl TxArgs {
         )
         .await?;
 
-        mev_block.print_with_format(&format, json_opts);
+        if format.non_stream_json() {
+            let txs = mev_block.transactions_json();
+            let chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+            let duration_ms = start_time.elapsed().as_millis() as u64;
+            let pretty = matches!(format, OutputFormat::JsonPretty);
+            let query = TxQueryParams {
+                command: "tx",
+                tx_hash: format!("{:#x}", self.tx_hash),
+                before: self.before,
+                after: self.after,
+                reverse: self.reverse,
+                evm_trace: self.shared_opts.evm_trace.clone(),
+                evm_calls: self.shared_opts.evm_calls,
+                evm_ops: self.shared_opts.evm_ops,
+                evm_state_diff: self.shared_opts.evm_state_diff,
+            };
+            println!(
+                "{}",
+                serialize_json_response(&txs, json_opts, pretty, &chain_info, duration_ms, query)
+                    .unwrap()
+            );
+        } else {
+            mev_block.print_with_format(&format, json_opts);
+        }
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

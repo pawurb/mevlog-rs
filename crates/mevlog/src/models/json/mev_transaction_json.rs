@@ -2,7 +2,8 @@ use revm::primitives::{Address, FixedBytes, TxKind, U256};
 use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
 
 use crate::{
-    misc::utils::ToU128,
+    ChainInfoNoRpcsJson,
+    misc::{shared_init::TraceMode, utils::ToU128},
     models::{
         json::{
             mev_log_group_json::MEVLogGroupJson, mev_opcode_json::MEVOpcodeJson,
@@ -203,6 +204,115 @@ pub fn serialize_transactions_json(
         serde_json::to_string_pretty(&output)
     } else {
         serde_json::to_string(&output)
+    }
+}
+
+fn is_false(v: &bool) -> bool {
+    !v
+}
+
+#[derive(Serialize)]
+pub struct SearchQueryParams {
+    pub command: &'static str,
+    pub blocks: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_dir: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub to: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub position: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub touching: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub event: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub not_event: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub method: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub calls: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_cost: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub real_tx_cost: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gas_price: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub real_gas_price: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub failed: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub erc20_transfer: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evm_trace: Option<TraceMode>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub evm_calls: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub evm_ops: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub evm_state_diff: bool,
+}
+
+#[derive(Serialize)]
+pub struct TxQueryParams {
+    pub command: &'static str,
+    pub tx_hash: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub before: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub after: Option<u8>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub reverse: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub evm_trace: Option<TraceMode>,
+    #[serde(skip_serializing_if = "is_false")]
+    pub evm_calls: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub evm_ops: bool,
+    #[serde(skip_serializing_if = "is_false")]
+    pub evm_state_diff: bool,
+}
+
+#[derive(Serialize)]
+pub struct JsonResponseEnvelope<'a, T: Serialize, Q: Serialize> {
+    pub transactions: T,
+    pub duration_ms: u64,
+    pub chain: &'a ChainInfoNoRpcsJson,
+    pub query: Q,
+}
+
+pub fn serialize_json_response<Q: Serialize>(
+    transactions: &[MEVTransactionJson],
+    opts: JsonSerializeOpts,
+    pretty: bool,
+    chain: &ChainInfoNoRpcsJson,
+    duration_ms: u64,
+    query: Q,
+) -> serde_json::Result<String> {
+    let output: Vec<_> = transactions
+        .iter()
+        .map(|transaction| MEVTransactionJsonOutput { transaction, opts })
+        .collect();
+
+    let envelope = JsonResponseEnvelope {
+        transactions: output,
+        duration_ms,
+        chain,
+        query,
+    };
+
+    if pretty {
+        serde_json::to_string_pretty(&envelope)
+    } else {
+        serde_json::to_string(&envelope)
     }
 }
 
