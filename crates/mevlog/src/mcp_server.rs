@@ -487,21 +487,13 @@ impl MevlogMcpServer {
 #[tool_handler]
 impl ServerHandler for MevlogMcpServer {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo {
-            protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            server_info: Implementation {
-                name: "mevlog".into(),
-                version: env!("CARGO_PKG_VERSION").into(),
-                title: None,
-                website_url: None,
-                icons: None,
-            },
-            instructions: Some(
-                "mevlog MCP server. Provides tools for Ethereum transaction analysis, searching, and chain information."
-                    .into(),
-            ),
-        }
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_server_info(
+                Implementation::new("mevlog", env!("CARGO_PKG_VERSION")),
+            )
+            .with_instructions(
+                "mevlog MCP server. Provides tools for Ethereum transaction analysis, searching, and chain information.",
+            )
     }
 }
 
@@ -561,12 +553,10 @@ pub async fn run_mcp_server(rpc_url: String, chain_id: u64, port: u16) -> eyre::
     let cancellation_token = CancellationToken::new();
     let server_rpc_url = rpc_url.clone();
 
-    let config = StreamableHttpServerConfig {
-        sse_keep_alive: Some(Duration::from_secs(15)),
-        sse_retry: None,
-        stateful_mode: true,
-        cancellation_token: cancellation_token.clone(),
-    };
+    let config = StreamableHttpServerConfig::default()
+        .with_sse_keep_alive(Some(Duration::from_secs(15)))
+        .with_sse_retry(None)
+        .with_cancellation_token(cancellation_token.clone());
 
     let service = StreamableHttpService::new(
         move || Ok(MevlogMcpServer::new(server_rpc_url.clone(), chain_id)),
@@ -576,7 +566,14 @@ pub async fn run_mcp_server(rpc_url: String, chain_id: u64, port: u16) -> eyre::
 
     let app = Router::new()
         .nest_service("/mcp", service)
-        .layer(axum::middleware::from_fn(auth_middleware));
+        .layer(axum::middleware::from_fn(auth_middleware))
+        .fallback(|| async {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                [("content-type", "application/json")],
+                r#"{"error":"not_found"}"#,
+            )
+        });
 
     let addr = format!("localhost:{port}");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
