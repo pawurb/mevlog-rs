@@ -149,7 +149,7 @@ struct ChainInfoParams {
     #[schemars(description = "Chain ID to get information for")]
     chain_id: u64,
     #[schemars(description = "Include RPC endpoints sorted by response time")]
-    include_urls: Option<bool>,
+    include_rpcs: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -400,8 +400,8 @@ Returns JSON with chain_id, name, currency symbol, and explorer URL."#)]
             "--chain-id".to_string(),
             params.0.chain_id.to_string(),
         ];
-        if params.0.include_urls != Some(true) {
-            args.push("--skip-urls".to_string());
+        if params.0.include_rpcs != Some(true) {
+            args.push("--skip-rpcs".to_string());
         }
         let output = self.run_mevlog_cmd(&args).await?;
         Ok(CallToolResult::success(vec![Content::text(output)]))

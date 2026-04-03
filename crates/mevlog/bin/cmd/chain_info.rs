@@ -13,7 +13,7 @@ pub struct ChainInfoArgs {
         long,
         help = "Skip RPC URL benchmarking and only show chain information"
     )]
-    pub skip_urls: bool,
+    pub skip_rpcs: bool,
 
     #[arg(long, help = "Chain ID to get information for")]
     pub chain_id: Option<u64>,
@@ -36,7 +36,7 @@ impl ChainInfoArgs {
             (None, None) => bail!("Either --chain-id or --rpc-url must be specified"),
         };
 
-        let chain_info_raw = if self.skip_urls {
+        let chain_info_raw = if self.skip_rpcs {
             get_chain_info_no_benchmark(chain_id).await?
         } else {
             let info = get_chain_info(chain_id, self.rpc_timeout_ms, self.rpcs_limit).await?;
@@ -49,7 +49,7 @@ impl ChainInfoArgs {
             info
         };
 
-        if self.skip_urls {
+        if self.skip_rpcs {
             let no_rpcs = ChainInfoNoRpcsJson {
                 chain_id,
                 name: chain_info_raw.name.clone(),
