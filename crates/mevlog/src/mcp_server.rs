@@ -148,6 +148,8 @@ struct ListChainsParams {
 struct ChainInfoParams {
     #[schemars(description = "Chain ID to get information for")]
     chain_id: u64,
+    #[schemars(description = "Include RPC endpoints sorted by response time")]
+    include_urls: Option<bool>,
 }
 
 #[derive(Clone)]
@@ -393,12 +395,14 @@ Returns JSON with chain_id, name, currency symbol, and explorer URL."#)]
         params: Parameters<ChainInfoParams>,
     ) -> Result<CallToolResult, McpError> {
         debug!(chain_id = params.0.chain_id, "MCP chain_info request");
-        let args = vec![
+        let mut args = vec![
             "chain-info".to_string(),
             "--chain-id".to_string(),
             params.0.chain_id.to_string(),
-            "--skip-urls".to_string(),
         ];
+        if params.0.include_urls != Some(true) {
+            args.push("--skip-urls".to_string());
+        }
         let output = self.run_mevlog_cmd(&args).await?;
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
