@@ -48,6 +48,10 @@ struct GetTransactionParams {
     erc20_symbols: Option<bool>,
     #[schemars(description = "Include event logs in output")]
     logs: Option<bool>,
+    #[schemars(
+        description = "Native token price in USD (e.g., 3500.0 for ETH). When provided, transaction values and costs are also displayed in USD"
+    )]
+    native_token_price: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -132,6 +136,10 @@ struct SearchTransactionsParams {
     erc20_symbols: Option<bool>,
     #[schemars(description = "Include event logs in output")]
     logs: Option<bool>,
+    #[schemars(
+        description = "Native token price in USD (e.g., 3500.0 for ETH). When provided, transaction values and costs are also displayed in USD"
+    )]
+    native_token_price: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -218,6 +226,10 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         if let Some(logs) = params.0.logs {
             args.push("--logs".to_string());
             args.push(logs.to_string());
+        }
+        if let Some(price) = params.0.native_token_price {
+            args.push("--native-token-price".to_string());
+            args.push(price.to_string());
         }
         self.push_conn_args(&mut args);
         let output = self.run_mevlog_cmd(&args).await?;
@@ -346,6 +358,10 @@ Block range examples: 'latest' (latest block), '22030899' (single block), '22030
         if let Some(logs) = params.0.logs {
             args.push("--logs".to_string());
             args.push(logs.to_string());
+        }
+        if let Some(price) = params.0.native_token_price {
+            args.push("--native-token-price".to_string());
+            args.push(price.to_string());
         }
         self.push_conn_args(&mut args);
         let output = self.run_mevlog_cmd(&args).await?;
