@@ -55,6 +55,7 @@ impl ChainInfoArgs {
                 name: chain_info_raw.name.clone(),
                 currency: chain_info_raw.native_currency.symbol.clone(),
                 explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
+                native_token_price: None,
             };
             self.output_no_rpcs(no_rpcs, format).await?;
         } else {

@@ -201,7 +201,8 @@ impl TxArgs {
 
         if format.non_stream_json() {
             let txs = mev_block.transactions_json();
-            let chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+            let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+            chain_info.native_token_price = native_token_price;
             let duration_ms = start_time.elapsed().as_millis() as u64;
             let pretty = matches!(format, OutputFormat::JsonPretty);
             let query = TxQueryParams {

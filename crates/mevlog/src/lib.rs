@@ -49,6 +49,8 @@ pub struct ChainInfoNoRpcsJson {
     pub name: String,
     pub currency: String,
     pub explorer_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub native_token_price: Option<f64>,
 }
 
 impl ChainInfoNoRpcsJson {
@@ -58,6 +60,7 @@ impl ChainInfoNoRpcsJson {
             name: chain.name.clone(),
             currency: chain.currency_symbol.clone(),
             explorer_url: chain.explorer_url.clone(),
+            native_token_price: None,
         }
     }
 }

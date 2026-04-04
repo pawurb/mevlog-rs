@@ -285,7 +285,8 @@ impl SearchArgs {
                 transactions_json.truncate(limit);
             }
 
-            let chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+            let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+            chain_info.native_token_price = native_token_price;
             let duration_ms = start_time.elapsed().as_millis() as u64;
             let query = SearchQueryParams {
                 command: "search",
