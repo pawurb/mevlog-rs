@@ -284,9 +284,21 @@ pub struct TxQueryParams {
 #[derive(Serialize)]
 pub struct JsonResponseEnvelope<'a, T: Serialize, Q: Serialize> {
     pub transactions: T,
-    pub duration_ms: u64,
+    pub duration: String,
     pub chain: &'a ChainInfoNoRpcsJson,
     pub query: Q,
+}
+
+pub fn format_duration(ns: u64) -> String {
+    if ns < 1_000 {
+        format!("{} ns", ns)
+    } else if ns < 1_000_000 {
+        format!("{:.2} µs", ns as f64 / 1_000.0)
+    } else if ns < 1_000_000_000 {
+        format!("{:.2} ms", ns as f64 / 1_000_000.0)
+    } else {
+        format!("{:.2} s", ns as f64 / 1_000_000_000.0)
+    }
 }
 
 pub fn serialize_json_response<Q: Serialize>(
@@ -294,7 +306,7 @@ pub fn serialize_json_response<Q: Serialize>(
     opts: JsonSerializeOpts,
     pretty: bool,
     chain: &ChainInfoNoRpcsJson,
-    duration_ms: u64,
+    duration_ns: u64,
     query: Q,
 ) -> serde_json::Result<String> {
     let output: Vec<_> = transactions
@@ -304,7 +316,7 @@ pub fn serialize_json_response<Q: Serialize>(
 
     let envelope = JsonResponseEnvelope {
         transactions: output,
-        duration_ms,
+        duration: format_duration(duration_ns),
         chain,
         query,
     };

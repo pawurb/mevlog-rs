@@ -287,7 +287,7 @@ impl SearchArgs {
 
             let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
             chain_info.native_token_price = native_token_price;
-            let duration_ms = start_time.elapsed().as_millis() as u64;
+            let duration_ns = start_time.elapsed().as_nanos() as u64;
             let query = SearchQueryParams {
                 command: "search",
                 blocks: self.blocks.clone(),
@@ -323,7 +323,7 @@ impl SearchArgs {
                     json_opts,
                     pretty,
                     &chain_info,
-                    duration_ms,
+                    duration_ns,
                     query,
                 )
                 .unwrap()

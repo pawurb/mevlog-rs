@@ -180,7 +180,7 @@ impl MevlogMcpServer {
     #[tool(
         description = r#"Get detailed information about a specific Ethereum transaction.
 
-Returns a JSON object with `transactions`, `duration_ms`, `chain`, and `query` fields. The `transactions` array includes transaction details such as hash, block number, from/to addresses, value, gas usage, method signature, event logs, and optionally traced call details.
+Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. The `transactions` array includes transaction details such as hash, block number, from/to addresses, value, gas usage, method signature, event logs, and optionally traced call details.
 
 Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug_traceTransaction) to get internal calls and state changes."#
     )]
@@ -239,7 +239,7 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
     #[tool(
         description = r#"Search for Ethereum transactions matching filter conditions within a block range.
 
-Returns a JSON object with `transactions`, `duration_ms`, `chain`, and `query` fields. Supports filtering by sender, recipient, event signatures, method signatures, and failed status.
+Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. Supports filtering by sender, recipient, event signatures, method signatures, and failed status.
 
 Block range examples: 'latest' (latest block), '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks)."#
     )]

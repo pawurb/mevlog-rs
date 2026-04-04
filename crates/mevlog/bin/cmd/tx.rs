@@ -203,7 +203,7 @@ impl TxArgs {
             let txs = mev_block.transactions_json();
             let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
             chain_info.native_token_price = native_token_price;
-            let duration_ms = start_time.elapsed().as_millis() as u64;
+            let duration_ns = start_time.elapsed().as_nanos() as u64;
             let pretty = matches!(format, OutputFormat::JsonPretty);
             let query = TxQueryParams {
                 command: "tx",
@@ -218,7 +218,7 @@ impl TxArgs {
             };
             println!(
                 "{}",
-                serialize_json_response(&txs, json_opts, pretty, &chain_info, duration_ms, query)
+                serialize_json_response(&txs, json_opts, pretty, &chain_info, duration_ns, query)
                     .unwrap()
             );
         } else {
