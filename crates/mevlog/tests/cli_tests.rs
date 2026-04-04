@@ -469,9 +469,7 @@ pub mod tests {
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-        let txs = json["transactions"]
-            .as_array()
-            .expect("transactions should be an array");
+        let txs = json["txs"].as_array().expect("txs should be an array");
         assert_eq!(txs.len(), 4);
     }
 
@@ -494,9 +492,7 @@ pub mod tests {
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-        let txs = json["transactions"]
-            .as_array()
-            .expect("transactions should be an array");
+        let txs = json["txs"].as_array().expect("txs should be an array");
         assert_eq!(txs.len(), 1, "Expected one transaction, got:\n{output}");
         assert_eq!(
             txs[0]["to"].as_str(),
@@ -580,13 +576,8 @@ pub mod tests {
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
-        let txs = json["transactions"]
-            .as_array()
-            .expect("transactions should be an array");
-        assert!(
-            txs.is_empty(),
-            "Expected empty transactions array, got:\n{output}"
-        );
+        let txs = json["txs"].as_array().expect("txs should be an array");
+        assert!(txs.is_empty(), "Expected empty txs array, got:\n{output}");
     }
 
     // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --evm-ops--trace revm

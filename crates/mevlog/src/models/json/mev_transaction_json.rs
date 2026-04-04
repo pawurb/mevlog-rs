@@ -132,7 +132,7 @@ pub struct JsonSerializeOpts {
     pub include_evm_state_diff: bool,
 }
 
-struct MEVTransactionJsonOutput<'a> {
+pub struct MEVTransactionJsonOutput<'a> {
     transaction: &'a MEVTransactionJson,
     opts: JsonSerializeOpts,
 }
@@ -282,8 +282,9 @@ pub struct TxQueryParams {
 }
 
 #[derive(Serialize)]
-pub struct JsonResponseEnvelope<'a, T: Serialize, Q: Serialize> {
-    pub transactions: T,
+pub struct TxsResponseEnvelopeJson<'a, Q: Serialize> {
+    pub txs: Vec<MEVTransactionJsonOutput<'a>>,
+    pub txs_count: usize,
     pub duration: String,
     pub chain: &'a ChainInfoNoRpcsJson,
     pub query: Q,
@@ -314,8 +315,10 @@ pub fn serialize_json_response<Q: Serialize>(
         .map(|transaction| MEVTransactionJsonOutput { transaction, opts })
         .collect();
 
-    let envelope = JsonResponseEnvelope {
-        transactions: output,
+    let txs_count = output.len();
+    let envelope = TxsResponseEnvelopeJson {
+        txs: output,
+        txs_count,
         duration: format_duration(duration_ns),
         chain,
         query,
