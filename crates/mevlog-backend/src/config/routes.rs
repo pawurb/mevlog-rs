@@ -26,7 +26,7 @@ pub async fn app() -> Router {
         )
         .route("/api/chains", get(json::chains_controller::chains))
         .route("/api/explore", get(json::explore_controller::explore))
-        .route("/ws/search", get(websocket::search_controller::ws_handler))
+        .route("/api/search", get(json::search_controller::search))
         .route("/uptime", get(|| async move { "OK".into_response() }))
         .route("/robots.txt", get(robots_txt))
         .route("/sitemap.xml", get(sitemap_xml))
