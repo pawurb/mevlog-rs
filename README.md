@@ -51,7 +51,7 @@ or install from the [crates.io](https://crates.io/crates/mevlog):
 
 ```bash
 cargo install mevlog
-mevlog watch --rpc-url https://eth.merkle.io
+mevlog search -b 10:latest --rpc-url https://eth.merkle.io
 ```
 
 ### TUI mode
@@ -75,14 +75,14 @@ You can connect to chains using either a direct RPC URL or by specifying a chain
 
 **Using RPC URL:**
 ```bash
-mevlog watch --rpc-url https://eth.merkle.io
+mevlog search -b 10:latest --rpc-url https://eth.merkle.io
 ```
 
 **Using Chain ID:**
 ```bash
-mevlog watch --chain-id 1        # Ethereum mainnet  
-mevlog watch --chain-id 137      # Polygon
-mevlog watch --chain-id 56       # BSC
+mevlog search -b 10:latest --chain-id 1        # Ethereum mainnet  
+mevlog search -b 10:latest --chain-id 137      # Polygon
+mevlog search -b 10:latest --chain-id 56       # BSC
 ```
 
 When using `--chain-id`, mevlog automatically fetches available RPC URLs from [ChainList](https://chainlist.org/), benchmarks them, and selects the fastest responding endpoint. Please remember that `--evm-trace rpc` will likely not work with public RPC endpoints. And `--evm-trace revm` could be throttled.
@@ -96,15 +96,6 @@ mevlog chains --limit 10         # Show only first 10 chains
 ```
 
 On initial run `mevlog` downloads ~80mb [openchain.xyz signatures](https://openchain.xyz/signatures), and [ChainList data](https://chainlist.org/) database to `~/.mevlog`. Signatures data allows displaying human readable info instead of hex blobs.
-
-To avoid throttling on public endpoints `watch` mode displays only the top 5 transactions from each block.
-
-You can change it using the `--position` argument:
-
-```bash
-## display the top 20 txs from each new block
-mevlog watch -p 0:19 
-```
 
 ## Filtering options
 
@@ -165,12 +156,12 @@ Options:
       --logs
           Include event logs in output
       --format <FORMAT>
-          Output format ('json', 'json-pretty', 'json-stream', 'json-pretty-stream') [default: json-pretty]
+          Output format ('json', 'json-pretty') [default: json-pretty]
       --batch-size <SIZE>
           Batch size for data fetching (default: 100)
 ```
 
-Both `search` and `watch` support the same filtering options.
+The `search` command supports the following filtering options.
 
 A few examples of currently supported queries:
 
@@ -343,25 +334,18 @@ mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --evm-trace rpc
 
 Mevlog supports different output formats via the `--format` option:
 
-- `json-pretty` (default): Pretty-printed JSON output, displays all results at once after processing all blocks  
-- `json`: Compact, oneline JSON output, displays all results at once after processing all blocks
-- `json-stream`: Compact, oneline JSON output, displays results block by block as they are processed
-- `json-pretty-stream`: Pretty-printed JSON output, displays results block by block as they are processed
+- `json-pretty` (default): Pretty-printed JSON output
+- `json`: Compact, oneline JSON output
 
-**Streaming vs Batch behavior:**
-- **Streaming formats** (`json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
-- **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks as a single JSON object with `result`, `result_count`, `duration`, `chain`, and `query`
+Both formats collect all results in memory and display them at once after processing all blocks as a single JSON object with `result`, `result_count`, `duration`, `chain`, and `query`.
 
 Examples:
 ```bash
-# Default pretty JSON (batch)
+# Default pretty JSON
 mevlog search -b 10:latest
 
-# Compact JSON envelope, all results at once
+# Compact JSON
 mevlog search -b 10:latest --format json
-
-# Pretty JSON, streaming block by block
-mevlog search -b 10:latest --format json-pretty-stream
 ```
 
 Batch JSON example:
@@ -524,7 +508,7 @@ Sample output:
 - `--filter <TEXT>`: Filter chains by name (case-insensitive substring match)
 - `--chain-id <ID>`: Filter by specific chain IDs (can be used multiple times)
 - `--limit <NUMBER>`: Limit the number of chains returned
-- `--format <FORMAT>`: Output format ('json', 'json-pretty', 'json-stream', 'json-pretty-stream') [default: json-pretty]
+- `--format <FORMAT>`: Output format ('json', 'json-pretty') [default: json-pretty]
 
 ## Getting chain information
 
@@ -580,7 +564,7 @@ If you use it with an unsupported chain, explorer URL and currency symbol is not
 `tokio-console` feature adds support for [tokio-console](https://github.com/tokio-rs/console):
 
 ```bash
-RUSTFLAGS="--cfg tokio_unstable" cargo run --features=tokio-console --bin mevlog watch
+RUSTFLAGS="--cfg tokio_unstable" cargo run --features=tokio-console --bin mevlog search -b 10:latest
 ```
 
 `seed-db` feature enables action to populate signatures and chains metadata SQLite database:
@@ -610,7 +594,7 @@ QUIET=1 cargo run --features 'hotpath,hotpath-alloc' --release --bin mevlog sear
 Live profiling:
 
 ```bash
-HOTPATH_EXCLUDE_WRAPPER=true QUIET=1 cargo run --release --features='hotpath,hotpath-alloc' --bin mevlog watch --rpc-url $ETH_RPC_URL --ens --erc20-symbols
+HOTPATH_EXCLUDE_WRAPPER=true QUIET=1 cargo run --release --features='hotpath,hotpath-alloc' --bin mevlog search -b 10:latest --rpc-url $ETH_RPC_URL --ens --erc20-symbols
 ```
 
 In another terminal:

@@ -269,7 +269,6 @@ impl TxsFilter {
         filter_opts: &TxsFilterOpts,
         tx_indexes: Option<HashSet<u64>>,
         shared_opts: &SharedOpts,
-        watch_mode: bool,
         erc20_sort_token: Option<Address>,
     ) -> Result<Self> {
         if shared_opts.evm_trace.is_none() {
@@ -349,13 +348,7 @@ impl TxsFilter {
             touching: filter_opts.touching,
             tx_position: match filter_opts.position {
                 Some(ref position) => Some(position.parse()?),
-                None => {
-                    if watch_mode {
-                        Some(PositionRange { from: 0, to: 4 })
-                    } else {
-                        None
-                    }
-                }
+                None => None,
             },
             events,
             not_events: filter_opts

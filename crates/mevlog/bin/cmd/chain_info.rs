@@ -84,10 +84,10 @@ impl ChainInfoArgs {
 
     async fn output_no_rpcs(&self, info: ChainInfoNoRpcsJson, format: OutputFormat) -> Result<()> {
         match format {
-            OutputFormat::Json | OutputFormat::JsonStream => {
+            OutputFormat::Json => {
                 println!("{}", serde_json::to_string(&info)?);
             }
-            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+            OutputFormat::JsonPretty => {
                 println!("{}", serde_json::to_string_pretty(&info)?);
             }
         }
@@ -96,10 +96,10 @@ impl ChainInfoArgs {
 
     async fn output_with_rpcs(&self, info: ChainInfoJson, format: OutputFormat) -> Result<()> {
         match format {
-            OutputFormat::Json | OutputFormat::JsonStream => {
+            OutputFormat::Json => {
                 println!("{}", serde_json::to_string(&info)?);
             }
-            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+            OutputFormat::JsonPretty => {
                 println!("{}", serde_json::to_string_pretty(&info)?);
             }
         }

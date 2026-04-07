@@ -254,18 +254,6 @@ impl FromStr for TraceMode {
 pub enum OutputFormat {
     Json,
     JsonPretty,
-    JsonStream,
-    JsonPrettyStream,
-}
-
-impl OutputFormat {
-    pub fn is_stream(&self) -> bool {
-        self == &Self::JsonStream || self == &Self::JsonPrettyStream
-    }
-
-    pub fn non_stream_json(&self) -> bool {
-        self == &Self::Json || self == &Self::JsonPretty
-    }
 }
 
 impl FromStr for OutputFormat {
@@ -275,8 +263,6 @@ impl FromStr for OutputFormat {
         match s {
             "json" => Ok(Self::Json),
             "json-pretty" => Ok(Self::JsonPretty),
-            "json-stream" => Ok(Self::JsonStream),
-            "json-pretty-stream" => Ok(Self::JsonPrettyStream),
             _ => Err(eyre::eyre!("Invalid output format")),
         }
     }

@@ -57,10 +57,10 @@ impl ChainsArgs {
             .collect();
 
         match format {
-            OutputFormat::Json | OutputFormat::JsonStream => {
+            OutputFormat::Json => {
                 println!("{}", serde_json::to_string(&chains_entries)?);
             }
-            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+            OutputFormat::JsonPretty => {
                 println!("{}", serde_json::to_string_pretty(&chains_entries)?);
             }
         }

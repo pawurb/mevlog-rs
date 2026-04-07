@@ -148,13 +148,6 @@ impl SearchArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
-        if (self.limit.is_some() || self.sort.is_some()) && !format.non_stream_json() {
-            bail!(
-                "--limit and --sort are not available in --format {:?}",
-                format
-            );
-        }
-
         if let Some(sort) = &self.sort
             && sort == &SortField::FullTxCost
             && self.shared_opts.evm_trace.is_none()
@@ -167,13 +160,8 @@ impl SearchArgs {
             _ => None,
         };
 
-        let txs_filter = TxsFilter::new(
-            &self.filter_opts,
-            None,
-            &self.shared_opts,
-            false,
-            erc20_sort_token,
-        )?;
+        let txs_filter =
+            TxsFilter::new(&self.filter_opts, None, &self.shared_opts, erc20_sort_token)?;
 
         let ens_query = txs_filter
             .from_ens_query()
@@ -261,73 +249,67 @@ impl SearchArgs {
                 )
                 .await?;
 
-                if format.is_stream() {
-                    mev_block.print_with_format(&format, json_opts);
-                } else {
-                    mev_blocks.push(mev_block);
-                }
+                mev_blocks.push(mev_block);
             }
         }
 
-        if !format.is_stream() {
-            let json_opts = self.shared_opts.json_serialize_opts();
-            let mut transactions_json: Vec<_> = mev_blocks
-                .iter()
-                .flat_map(|block| block.transactions_json())
-                .collect();
+        let json_opts = self.shared_opts.json_serialize_opts();
+        let mut transactions_json: Vec<_> = mev_blocks
+            .iter()
+            .flat_map(|block| block.transactions_json())
+            .collect();
 
-            if let Some(sort_field) = &self.sort {
-                sort_transactions(&mut transactions_json, sort_field, &self.sort_dir);
-            }
-
-            if let Some(limit) = self.limit {
-                transactions_json.truncate(limit);
-            }
-
-            let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
-            chain_info.native_token_price = native_token_price;
-            let duration_ns = start_time.elapsed().as_nanos() as u64;
-            let query = SearchQueryParams {
-                command: "search",
-                blocks: self.blocks.clone(),
-                limit: self.limit,
-                sort: self.sort.as_ref().map(|s| s.to_string()),
-                sort_dir: self.sort.as_ref().map(|_| self.sort_dir.to_string()),
-                from: self.filter_opts.from.clone(),
-                to: self.filter_opts.to.clone(),
-                position: self.filter_opts.position.clone(),
-                touching: self.filter_opts.touching.map(|a| format!("{a}")),
-                event: self.filter_opts.event.clone(),
-                not_event: self.filter_opts.not_event.clone(),
-                method: self.filter_opts.method.clone(),
-                calls: self.filter_opts.calls.clone(),
-                tx_cost: self.filter_opts.tx_cost.clone(),
-                real_tx_cost: self.filter_opts.real_tx_cost.clone(),
-                gas_price: self.filter_opts.gas_price.clone(),
-                real_gas_price: self.filter_opts.real_gas_price.clone(),
-                value: self.filter_opts.value.clone(),
-                failed: self.filter_opts.failed,
-                erc20_transfer: self.filter_opts.erc20_transfer.clone(),
-                evm_trace: self.shared_opts.evm_trace.clone(),
-                evm_calls: self.shared_opts.evm_calls,
-                evm_ops: self.shared_opts.evm_ops,
-                evm_state_diff: self.shared_opts.evm_state_diff,
-            };
-
-            let pretty = matches!(format, OutputFormat::JsonPretty);
-            println!(
-                "{}",
-                serialize_json_response(
-                    &transactions_json,
-                    json_opts,
-                    pretty,
-                    &chain_info,
-                    duration_ns,
-                    query,
-                )
-                .unwrap()
-            );
+        if let Some(sort_field) = &self.sort {
+            sort_transactions(&mut transactions_json, sort_field, &self.sort_dir);
         }
+
+        if let Some(limit) = self.limit {
+            transactions_json.truncate(limit);
+        }
+
+        let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+        chain_info.native_token_price = native_token_price;
+        let duration_ns = start_time.elapsed().as_nanos() as u64;
+        let query = SearchQueryParams {
+            command: "search",
+            blocks: self.blocks.clone(),
+            limit: self.limit,
+            sort: self.sort.as_ref().map(|s| s.to_string()),
+            sort_dir: self.sort.as_ref().map(|_| self.sort_dir.to_string()),
+            from: self.filter_opts.from.clone(),
+            to: self.filter_opts.to.clone(),
+            position: self.filter_opts.position.clone(),
+            touching: self.filter_opts.touching.map(|a| format!("{a}")),
+            event: self.filter_opts.event.clone(),
+            not_event: self.filter_opts.not_event.clone(),
+            method: self.filter_opts.method.clone(),
+            calls: self.filter_opts.calls.clone(),
+            tx_cost: self.filter_opts.tx_cost.clone(),
+            real_tx_cost: self.filter_opts.real_tx_cost.clone(),
+            gas_price: self.filter_opts.gas_price.clone(),
+            real_gas_price: self.filter_opts.real_gas_price.clone(),
+            value: self.filter_opts.value.clone(),
+            failed: self.filter_opts.failed,
+            erc20_transfer: self.filter_opts.erc20_transfer.clone(),
+            evm_trace: self.shared_opts.evm_trace.clone(),
+            evm_calls: self.shared_opts.evm_calls,
+            evm_ops: self.shared_opts.evm_ops,
+            evm_state_diff: self.shared_opts.evm_state_diff,
+        };
+
+        let pretty = matches!(format, OutputFormat::JsonPretty);
+        println!(
+            "{}",
+            serialize_json_response(
+                &transactions_json,
+                json_opts,
+                pretty,
+                &chain_info,
+                duration_ns,
+                query,
+            )
+            .unwrap()
+        );
 
         // Allow async ENS and erc20 symbols lookups to catch up
         if self.shared_opts.erc20_symbols || self.shared_opts.ens {

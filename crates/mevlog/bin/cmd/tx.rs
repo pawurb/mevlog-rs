@@ -197,31 +197,27 @@ impl TxArgs {
         )
         .await?;
 
-        if format.non_stream_json() {
-            let txs = mev_block.transactions_json();
-            let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
-            chain_info.native_token_price = native_token_price;
-            let duration_ns = start_time.elapsed().as_nanos() as u64;
-            let pretty = matches!(format, OutputFormat::JsonPretty);
-            let query = TxQueryParams {
-                command: "tx",
-                tx_hash: format!("{:#x}", self.tx_hash),
-                before: self.before,
-                after: self.after,
-                reverse: self.reverse,
-                evm_trace: self.shared_opts.evm_trace.clone(),
-                evm_calls: self.shared_opts.evm_calls,
-                evm_ops: self.shared_opts.evm_ops,
-                evm_state_diff: self.shared_opts.evm_state_diff,
-            };
-            println!(
-                "{}",
-                serialize_json_response(&txs, json_opts, pretty, &chain_info, duration_ns, query)
-                    .unwrap()
-            );
-        } else {
-            mev_block.print_with_format(&format, json_opts);
-        }
+        let txs = mev_block.transactions_json();
+        let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+        chain_info.native_token_price = native_token_price;
+        let duration_ns = start_time.elapsed().as_nanos() as u64;
+        let pretty = matches!(format, OutputFormat::JsonPretty);
+        let query = TxQueryParams {
+            command: "tx",
+            tx_hash: format!("{:#x}", self.tx_hash),
+            before: self.before,
+            after: self.after,
+            reverse: self.reverse,
+            evm_trace: self.shared_opts.evm_trace.clone(),
+            evm_calls: self.shared_opts.evm_calls,
+            evm_ops: self.shared_opts.evm_ops,
+            evm_state_diff: self.shared_opts.evm_state_diff,
+        };
+        println!(
+            "{}",
+            serialize_json_response(&txs, json_opts, pretty, &chain_info, duration_ns, query)
+                .unwrap()
+        );
 
         // Allow async ENS and symbols lookups to finish
         tokio::time::sleep(std::time::Duration::from_secs(1)).await;

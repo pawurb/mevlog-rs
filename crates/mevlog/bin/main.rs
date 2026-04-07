@@ -8,7 +8,7 @@ use cmd::seed_db::SeedDBArgs;
 use cmd::tui::TuiArgs;
 use cmd::{
     chain_info::ChainInfoArgs, chains::ChainsArgs, debug_available::DebugAvailableArgs,
-    search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs, watch::WatchArgs,
+    search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -37,7 +37,7 @@ pub struct MLArgs {
 
     #[arg(
         long,
-        help = "Output format ('json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
+        help = "Output format ('json', 'json-pretty')",
         default_value = "json-pretty",
         global = true
     )]
@@ -46,10 +46,8 @@ pub struct MLArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum MLSubcommand {
-    #[command(about = "Monitor Ethereum transactions", alias = "w")]
-    Watch(WatchArgs),
     #[command(about = "Find txs matching filter conditions", alias = "s")]
-    Search(SearchArgs),
+    Search(Box<SearchArgs>),
     #[command(about = "Print transaction info", alias = "t")]
     Tx(TxArgs),
     #[command(about = "Update signatures database")]
@@ -106,10 +104,10 @@ fn print_error(e: &eyre::Error, format: &OutputFormat) {
     };
 
     match format {
-        OutputFormat::Json | OutputFormat::JsonStream => {
+        OutputFormat::Json => {
             eprintln!("{}", serde_json::to_string(&error_json).unwrap());
         }
-        OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+        OutputFormat::JsonPretty => {
             eprintln!("{}", serde_json::to_string_pretty(&error_json).unwrap());
         }
     }
@@ -125,9 +123,6 @@ async fn execute(root_args: MLArgs) -> Result<()> {
     }
 
     match root_args.cmd {
-        ML::Watch(args) => {
-            args.run(root_args.format).await?;
-        }
         ML::Tx(args) => {
             args.run(root_args.format).await?;
         }

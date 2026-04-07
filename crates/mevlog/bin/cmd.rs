@@ -6,7 +6,6 @@ pub mod search;
 pub mod tui;
 pub mod tx;
 pub mod update_db;
-pub mod watch;
 
 #[cfg(feature = "mcp")]
 pub mod mcp;

@@ -558,10 +558,8 @@ impl MEVBlock {
 
     pub fn print_with_format(&self, format: &OutputFormat, json_opts: JsonSerializeOpts) {
         match format {
-            OutputFormat::Json | OutputFormat::JsonStream => self.print_json(json_opts),
-            OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
-                self.print_json_pretty(json_opts)
-            }
+            OutputFormat::Json => self.print_json(json_opts),
+            OutputFormat::JsonPretty => self.print_json_pretty(json_opts),
         }
     }
 
