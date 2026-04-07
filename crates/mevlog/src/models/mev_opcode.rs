@@ -1,5 +1,3 @@
-use std::fmt;
-
 #[derive(Clone, Debug)]
 pub struct MEVOpcode {
     pub pc: u64,
@@ -16,15 +14,5 @@ impl MEVOpcode {
             cost,
             gas_left,
         }
-    }
-}
-
-impl fmt::Display for MEVOpcode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{:<8} {:<16} {:<8} {:<10}",
-            self.pc, self.op, self.cost, self.gas_left
-        )
     }
 }

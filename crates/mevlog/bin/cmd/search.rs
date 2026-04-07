@@ -228,7 +228,6 @@ impl SearchArgs {
                 &deps.chain,
                 &deps.sqlite,
                 &symbols_lookup,
-                txs_filter.show_erc20_transfer_amount,
             )
             .await?;
 
@@ -246,7 +245,7 @@ impl SearchArgs {
                         .unwrap_or_default(),
                 };
 
-                let json_opts = self.shared_opts.json_serialize_opts(&format);
+                let json_opts = self.shared_opts.json_serialize_opts();
                 let mev_block = generate_block(
                     &deps.provider,
                     &deps.sqlite,
@@ -271,7 +270,7 @@ impl SearchArgs {
         }
 
         if !format.is_stream() {
-            let json_opts = self.shared_opts.json_serialize_opts(&format);
+            let json_opts = self.shared_opts.json_serialize_opts();
             let mut transactions_json: Vec<_> = mev_blocks
                 .iter()
                 .flat_map(|block| block.transactions_json())

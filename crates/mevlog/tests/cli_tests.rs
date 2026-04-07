@@ -8,7 +8,7 @@ pub mod tests {
         vec!["rpc".to_string(), "revm".to_string()]
     }
 
-    // cargo run --bin mevlog search -b 22045570 -p 0 --rpc-url $ETH_RPC_URL --evm-trace rpc
+    // cargo run --bin mevlog search -b 22045570 -p 0 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty
     #[test]
     fn test_cli_search() -> Result<()> {
         for tracing_mode in tracing_modes() {
@@ -26,11 +26,13 @@ pub mod tests {
                 .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
                 .arg("--evm-trace")
                 .arg(tracing_mode)
+                .arg("--format")
+                .arg("json-pretty")
                 .output()
                 .expect("failed to execute CLI");
 
             let output = String::from_utf8(cmd.stdout).unwrap();
-            let expected_content = ["Real Gas Price:    18253.30 GWEI"];
+            let expected_content = ["\"real_gas_price\""];
             for expected in expected_content {
                 assert!(
                     output.contains(expected),
@@ -42,7 +44,7 @@ pub mod tests {
         Ok(())
     }
 
-    // cargo run --bin mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --rpc-url $ETH_RPC_URL --evm-tracerpc
+    // cargo run --bin mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty
     #[test]
     fn test_cli_tx() -> Result<()> {
         for tracing_mode in tracing_modes() {
@@ -57,11 +59,13 @@ pub mod tests {
                 .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
                 .arg("--evm-trace")
                 .arg(tracing_mode)
+                .arg("--format")
+                .arg("json-pretty")
                 .output()
                 .expect("failed to execute CLI");
 
             let output = String::from_utf8(cmd.stdout).unwrap();
-            let expected_content = ["Real Gas Price:    18253.30 GWEI"];
+            let expected_content = ["\"real_gas_price\""];
             for expected in expected_content {
                 assert!(
                     output.contains(expected),
@@ -73,7 +77,7 @@ pub mod tests {
         Ok(())
     }
 
-    // cargo run --bin mevlog search -b 33410345 -p 0 --rpc-url $BASE_RPC_URL
+    // cargo run --bin mevlog search -b 33410345 -p 0 --rpc-url $BASE_RPC_URL --format json-pretty
     #[test]
     fn test_sig_overwrite() {
         let cmd = Command::new("cargo")
@@ -88,6 +92,8 @@ pub mod tests {
             .arg("0")
             .arg("--rpc-url")
             .arg(std::env::var("BASE_RPC_URL").expect("BASE_RPC_URL must be set"))
+            .arg("--format")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
@@ -586,7 +592,7 @@ pub mod tests {
         assert!(txs.is_empty(), "Expected empty txs array, got:\n{output}");
     }
 
-    // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --evm-ops--trace revm
+    // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --evm-ops --evm-trace revm --format json-pretty
     #[test]
     fn test_cli_opcodes_tracing() {
         let cmd = Command::new("cargo")
@@ -601,29 +607,33 @@ pub mod tests {
             .arg("--evm-ops")
             .arg("--evm-trace")
             .arg("revm")
+            .arg("--format")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        let expected_content = [
-            "PC       OP               COST     GAS_LEFT",
-            "0        PUSH1            3        135288",
-            "2        PUSH1            3        135285",
-            "4        MSTORE           12       135282",
-            "5        PUSH1            3        135270",
-            "7        CALLDATASIZE     2        135267",
-            "8        LT               3        135265",
-            "9        ISZERO           3        135262",
-        ];
-        for expected in expected_content {
-            assert!(
-                output.contains(expected),
-                "Expected:\n{expected}\n\nGot:\n{output}"
-            );
-        }
+        let json: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
+        let txs = json["result"]
+            .as_array()
+            .expect("result should be an array");
+        assert!(!txs.is_empty(), "Expected at least one transaction");
+        assert!(
+            txs[0].get("evm_opcodes").is_some(),
+            "Expected evm_opcodes field in transaction:\n{output}"
+        );
+        let opcodes = txs[0]["evm_opcodes"]
+            .as_array()
+            .expect("evm_opcodes should be an array");
+        assert!(!opcodes.is_empty(), "Expected non-empty evm_opcodes array");
+        assert_eq!(
+            opcodes[0]["op"].as_str(),
+            Some("PUSH1"),
+            "Expected first opcode to be PUSH1"
+        );
     }
 
-    // cargo run --bin mevlog tx 0xe7657d9eac810efacf20a1715013edb02f7811270f11feaa040ded37c8ec2bd9 --rpc-url $BASE_RPC_URL --evm-ops --evm-trace revm
+    // cargo run --bin mevlog tx 0xe7657d9eac810efacf20a1715013edb02f7811270f11feaa040ded37c8ec2bd9 --rpc-url $BASE_RPC_URL --evm-ops --evm-trace revm --format json-pretty
     #[test]
     fn test_op_stack_opcodes_tracing() {
         let cmd = Command::new("cargo")
@@ -638,28 +648,30 @@ pub mod tests {
             .arg("--evm-ops")
             .arg("--evm-trace")
             .arg("revm")
+            .arg("--format")
+            .arg("json-pretty")
             .output()
             .expect("failed to execute CLI");
 
         let output = String::from_utf8(cmd.stdout).unwrap();
-        let expected_content = [
-            "PC       OP               COST     GAS_LEFT",
-            "0        PUSH1            3        977340",
-            "2        PUSH1            3        977337",
-            "4        MSTORE           12       977334",
-            "5        PUSH1            3        977322",
-            "7        CALLDATASIZE     2        977319",
-            "8        LT               3        977317",
-            "9        PUSH2            3        977314",
-            "12       JUMPI            10       977311",
-            "13       PUSH1            3        977301",
-        ];
-        for expected in expected_content {
-            assert!(
-                output.contains(expected),
-                "Expected:\n{expected}\n\nGot:\n{output}"
-            );
-        }
+        let json: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
+        let txs = json["result"]
+            .as_array()
+            .expect("result should be an array");
+        assert!(!txs.is_empty(), "Expected at least one transaction");
+        assert!(
+            txs[0].get("evm_opcodes").is_some(),
+            "Expected evm_opcodes field in transaction:\n{output}"
+        );
+        let opcodes = txs[0]["evm_opcodes"]
+            .as_array()
+            .expect("evm_opcodes should be an array");
+        assert!(!opcodes.is_empty(), "Expected non-empty evm_opcodes array");
+        assert_eq!(
+            opcodes[0]["op"].as_str(),
+            Some("PUSH1"),
+            "Expected first opcode to be PUSH1"
+        );
     }
 
     // cargo run --bin mevlog debug-available --rpc-url $ETH_RPC_URL

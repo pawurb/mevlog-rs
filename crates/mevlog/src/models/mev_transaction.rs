@@ -1,5 +1,4 @@
 use std::{
-    fmt,
     ops::{Add, Div},
     str::FromStr,
     sync::Arc,
@@ -10,7 +9,6 @@ use alloy::{
     rpc::types::{AccessList, TransactionInput, TransactionRequest},
 };
 use bigdecimal::{BigDecimal, ToPrimitive};
-use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
 use serde::{Deserialize, Serialize};
@@ -25,12 +23,10 @@ use crate::{
     misc::{
         ens_utils::ENSLookup,
         parquet_utils::get_parquet_string_value,
-        utils::{ETH_TRANSFER, GWEI, GWEI_F64, SEPARATOR, UNKNOWN, wei_to_eth},
+        utils::{ETH_TRANSFER, UNKNOWN, wei_to_eth},
     },
     models::evm_chain::EVMChain,
 };
-
-const LABEL_WIDTH: usize = 18;
 
 #[derive(Debug, Clone)]
 pub struct ReceiptData {
@@ -45,22 +41,6 @@ pub struct CallExtract {
     pub to: Address,
     pub signature: String,
     pub signature_hash: Option<String>,
-}
-
-impl fmt::Display for CallExtract {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} -> {}::{} ({})",
-            format!("{}", self.from).yellow(),
-            format!("{}", self.to).green(),
-            self.signature.purple(),
-            self.signature_hash
-                .as_ref()
-                .unwrap_or(&"no signature found".to_string())
-        )?;
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -328,215 +308,6 @@ pub async fn extract_signature(
         None => ETH_TRANSFER.to_string(),
     };
     Ok((signature_hash, signature))
-}
-
-impl fmt::Display for MEVTransaction {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.show_opcodes
-            && let Some(opcodes) = &self.opcodes
-        {
-            writeln!(
-                f,
-                "{:<8} {:<16} {:<8} {:<10}",
-                "PC", "OP", "COST", "GAS_LEFT"
-            )?;
-            for opcode in opcodes {
-                writeln!(f, "{}", opcode)?;
-            }
-            return Ok(());
-        }
-
-        if self.show_state_diff
-            && let Some(state_diff) = &self.state_diff
-        {
-            write!(f, "{}", state_diff)?;
-            return Ok(());
-        }
-
-        if self.show_logs && !self.top_metadata {
-            for log in &self.log_groups {
-                write!(f, "{log}")?;
-            }
-        }
-
-        let explorer_url = self.chain.explorer_url.clone().unwrap_or_default();
-
-        if self.top_metadata {
-            writeln!(f, "{SEPARATOR}")?;
-            writeln!(
-                f,
-                "[{}] {}",
-                self.index,
-                &format!("{}/tx/{}", explorer_url, self.tx_hash).yellow(),
-            )?;
-
-            writeln!(f)?;
-            writeln!(f, "{} ->", self.source)?;
-            writeln!(f, "  {}", display_target(self))?;
-        } else {
-            writeln!(f, "{} ->", self.source)?;
-            writeln!(f, "  {}", display_target(self))?;
-
-            writeln!(
-                f,
-                "[{}] {}",
-                self.index,
-                &format!("{}/tx/{}", explorer_url, self.tx_hash).yellow(),
-            )?;
-        }
-
-        writeln!(f)?;
-
-        if !self.receipt.success {
-            writeln!(f, "{}", "Tx reverted!".red().bold())?;
-        }
-
-        if self.show_calls
-            && let Some(calls) = &self.calls
-        {
-            writeln!(f, "{SEPARATOR}")?;
-            writeln!(f, "Calls:")?;
-            for call in calls {
-                writeln!(f, "{call}")?;
-            }
-            writeln!(f, "{SEPARATOR}")?;
-        }
-
-        writeln!(
-            f,
-            "{:width$} {}",
-            "Value:".green().bold(),
-            display_token_and_usd(
-                self.value(),
-                self.native_token_price,
-                &self.chain.currency_symbol
-            ),
-            width = LABEL_WIDTH
-        )?;
-
-        writeln!(
-            f,
-            "{:width$} {:.2} GWEI",
-            "Gas Price:".green().bold(),
-            self.receipt.effective_gas_price as f64 / GWEI_F64,
-            width = LABEL_WIDTH
-        )?;
-
-        writeln!(
-            f,
-            "{:width$} {}",
-            "Gas Tx Cost:".green().bold(),
-            display_token_and_usd(
-                U256::from(self.gas_tx_cost()),
-                self.native_token_price,
-                &self.chain.currency_symbol
-            ),
-            width = LABEL_WIDTH
-        )?;
-
-        match self.coinbase_transfer {
-            Some(coinbase_transfer) => {
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Coinbase Transfer:".green().bold(),
-                    display_token_and_usd(
-                        coinbase_transfer,
-                        self.native_token_price,
-                        &self.chain.currency_symbol
-                    ),
-                    width = LABEL_WIDTH
-                )?;
-
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Real Tx Cost:".green().bold(),
-                    display_token_and_usd(
-                        self.full_tx_cost().expect("must be traced"),
-                        self.native_token_price,
-                        &self.chain.currency_symbol
-                    ),
-                    width = LABEL_WIDTH
-                )?;
-
-                writeln!(
-                    f,
-                    "{:width$} {:.2} GWEI",
-                    "Real Gas Price:".green().bold(),
-                    self.full_effective_gas_price()
-                        .div(GWEI.div(U256::from(100)))
-                        .to_string()
-                        .parse::<f64>()
-                        .unwrap()
-                        / 100.0,
-                    width = LABEL_WIDTH
-                )?;
-            }
-            None => {
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Coinbase Transfer:".yellow().bold(),
-                    "N/A".yellow().bold(),
-                    width = LABEL_WIDTH
-                )?;
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Real Tx Cost:".yellow().bold(),
-                    "N/A".yellow().bold(),
-                    width = LABEL_WIDTH
-                )?;
-                writeln!(
-                    f,
-                    "{:width$} {}",
-                    "Real Gas Price:".yellow().bold(),
-                    "N/A".yellow().bold(),
-                    width = LABEL_WIDTH
-                )?;
-            }
-        }
-
-        if self.show_logs && self.top_metadata {
-            if !&self.log_groups.is_empty() {
-                writeln!(f)?;
-            }
-
-            for log in &self.log_groups {
-                write!(f, "{log}")?;
-            }
-        }
-
-        if !self.top_metadata {
-            writeln!(f, "{SEPARATOR}")?;
-        }
-
-        Ok(())
-    }
-}
-
-fn display_target(tx: &MEVTransaction) -> String {
-    match tx.to {
-        TxKind::Create => {
-            if let Some(from) = tx.inner.from {
-                let contract_address = calculate_create_address(tx.nonce, from);
-                let contract_address_str = format!("0x{}", hex::encode(contract_address));
-
-                format!("{}{}", "CREATE::".green(), contract_address_str.red(),)
-            } else {
-                format!("{}", "CREATE()".green())
-            }
-        }
-        TxKind::Call(_) => {
-            let target_display = tx
-                .target
-                .as_ref()
-                .map(|t| t.to_string())
-                .unwrap_or_else(|| "unknown".to_string());
-            format!("{}::{}", target_display.green(), tx.signature.purple())
-        }
-    }
 }
 
 pub fn calculate_create_address(nonce: u64, from: Address) -> Address {

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag,
@@ -6,7 +6,6 @@ use alloy::{
     rpc::types::{Block, TransactionRequest, trace::parity::Action},
 };
 use cacache;
-use colored::Colorize;
 use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use revm::{
@@ -33,7 +32,6 @@ use crate::{
         },
         rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes, rpc_tx_state_diff},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
-        utils::{ETH_TRANSFER, SEPARATORER, ToU64, UNKNOWN},
     },
     models::{
         evm_chain::EVMChain,
@@ -558,14 +556,8 @@ impl MEVBlock {
         Ok(())
     }
 
-    pub fn print(&self) {
-        let mev_block_str = format!("{self}");
-        print!("{}", escape_html(&mev_block_str));
-    }
-
     pub fn print_with_format(&self, format: &OutputFormat, json_opts: JsonSerializeOpts) {
         match format {
-            OutputFormat::Text => self.print(),
             OutputFormat::Json | OutputFormat::JsonStream => self.print_json(json_opts),
             OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
                 self.print_json_pretty(json_opts)
@@ -596,98 +588,6 @@ impl MEVBlock {
             Err(e) => eprintln!("Error serializing to JSON: {e}"),
         }
     }
-}
-
-fn escape_html(input: &str) -> String {
-    html_escape::encode_text(input)
-        .replace("-&gt;", "->")
-        .replace("&lt;Unknown&gt;", UNKNOWN)
-        .replace("&lt;ETH transfer&gt;", ETH_TRANSFER)
-}
-
-impl fmt::Display for MEVBlock {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if std::env::var("QUIET").unwrap_or_default() == "1" {
-            return Ok(());
-        }
-
-        let mut indexes = self.mev_transactions.keys().collect::<Vec<_>>();
-        indexes.sort();
-
-        if indexes.is_empty() {
-            writeln!(f, "{SEPARATORER}")?;
-            writeln!(
-                f,
-                "{:width$} {}",
-                block_metadata(self).blue().bold(),
-                "No matching transactions".yellow(),
-                width = 53
-            )?;
-            return Ok(());
-        }
-
-        let show_opcodes_only = indexes
-            .iter()
-            .any(|&&index| self.mev_transactions[&index].show_opcodes);
-
-        if show_opcodes_only {
-            if !self.reversed_order {
-                indexes.reverse();
-            }
-
-            for &index in indexes.iter() {
-                let tx = &self.mev_transactions[index];
-                write!(f, "{tx}")?;
-            }
-            return Ok(());
-        }
-
-        writeln!(f, "{SEPARATORER}")?;
-
-        if self.top_metadata {
-            writeln!(f, "{SEPARATORER}")?;
-            writeln!(f, "{}", block_metadata(self).blue().bold())?;
-        }
-
-        if !self.reversed_order {
-            indexes.reverse();
-        }
-
-        for (i, &index) in indexes.iter().enumerate() {
-            let tx = &self.mev_transactions[index];
-            if i < indexes.len() - 1 {
-                writeln!(f, "{tx}")?;
-            } else {
-                write!(f, "{tx}")?;
-            }
-        }
-
-        if !self.top_metadata {
-            writeln!(f, "{}", block_metadata(self).blue().bold())?;
-        }
-        writeln!(f, "{SEPARATORER}")?;
-
-        Ok(())
-    }
-}
-
-fn block_metadata(block: &MEVBlock) -> String {
-    let timestamp = block.revm_context.timestamp;
-    let age = chrono::Utc::now().timestamp() - timestamp as i64;
-    let base_fee_gwei = block.revm_context.basefee.to_u64() as f64 / 1000000000.0;
-
-    format!(
-        "{} | Age {:age_width$} | Base {:base_width$.2} gwei | Txs {}/{} | {} [{}]",
-        block.block_number,
-        format_block_age(age),
-        base_fee_gwei,
-        block.mev_transactions.len(),
-        block.txs_count,
-        block.chain.name,
-        block.chain.chain_id,
-        age_width = 3,
-        base_width = 6,
-    )
 }
 
 pub fn format_block_age(seconds: i64) -> String {

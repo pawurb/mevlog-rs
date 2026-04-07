@@ -1,7 +1,4 @@
-use std::fmt;
-
 use arrow::record_batch::RecordBatch;
-use colored::Colorize;
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::SqlitePool;
@@ -37,7 +34,6 @@ impl MEVLog {
         row_idx: usize,
         symbols_lookup: &ERC20SymbolsLookup,
         sqlite: &SqlitePool,
-        show_erc20_transfer_amount: bool,
     ) -> Result<(Self, u64)> {
         let get_string_value =
             |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
@@ -50,13 +46,7 @@ impl MEVLog {
         let signature_str = DBEvent::find_by_hash(&first_topic, sqlite).await?;
         let data = hex::decode(data.strip_prefix("0x").unwrap_or(&data))?;
         let source: Address = get_string_value(4).parse()?;
-        let signature = MEVLogSignature::new(
-            source,
-            signature_str.clone(),
-            symbols_lookup,
-            show_erc20_transfer_amount,
-        )
-        .await?;
+        let signature = MEVLogSignature::new(source, signature_str.clone(), symbols_lookup).await?;
 
         let topics = [
             get_string_value(5),
@@ -115,22 +105,5 @@ impl MEVLog {
 
     pub fn is_erc20_transfer(&self) -> bool {
         self.signature.signature == "Transfer(address,address,uint256)" && !self.data.is_empty()
-    }
-}
-
-impl fmt::Display for MEVLog {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "{} {}",
-            "emit".yellow(),
-            format!("{}", self.signature).blue()
-        )?;
-        for (i, topic) in self.topics.iter().enumerate() {
-            if i != 0 {
-                writeln!(f, "      {topic:?}")?;
-            }
-        }
-        Ok(())
     }
 }

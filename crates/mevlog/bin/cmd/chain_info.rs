@@ -84,19 +84,6 @@ impl ChainInfoArgs {
 
     async fn output_no_rpcs(&self, info: ChainInfoNoRpcsJson, format: OutputFormat) -> Result<()> {
         match format {
-            OutputFormat::Text => {
-                println!("Chain Information");
-                println!("================");
-                println!("Chain ID: {}", info.chain_id);
-                println!("Name: {}", info.name);
-                println!("Currency: {}", info.currency);
-
-                if let Some(explorer_url) = &info.explorer_url {
-                    println!("Explorer URL: {explorer_url}");
-                } else {
-                    println!("Explorer URL: N/A");
-                }
-            }
             OutputFormat::Json | OutputFormat::JsonStream => {
                 println!("{}", serde_json::to_string(&info)?);
             }
@@ -109,33 +96,6 @@ impl ChainInfoArgs {
 
     async fn output_with_rpcs(&self, info: ChainInfoJson, format: OutputFormat) -> Result<()> {
         match format {
-            OutputFormat::Text => {
-                println!("Chain Information");
-                println!("================");
-                println!("Chain ID: {}", info.chain_id);
-                println!("Name: {}", info.name);
-                println!("Currency: {}", info.currency);
-
-                if let Some(explorer_url) = &info.explorer_url {
-                    println!("Explorer URL: {explorer_url}");
-                } else {
-                    println!("Explorer URL: N/A");
-                }
-
-                if info.rpc_urls.is_empty() {
-                    println!("No healthy RPC URLs available");
-                } else {
-                    println!("\nRPC URLs (responding under {}ms):", info.rpc_timeout_ms);
-                    for (i, rpc_info) in info.rpc_urls.iter().enumerate() {
-                        println!(
-                            "  {}. {} ({}ms)",
-                            i + 1,
-                            rpc_info.url,
-                            rpc_info.response_time_ms
-                        );
-                    }
-                }
-            }
             OutputFormat::Json | OutputFormat::JsonStream => {
                 println!("{}", serde_json::to_string(&info)?);
             }

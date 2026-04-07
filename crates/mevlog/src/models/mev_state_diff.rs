@@ -1,7 +1,6 @@
-use std::{collections::BTreeMap, fmt};
+use std::collections::BTreeMap;
 
 use alloy::primitives::{Address, B256, U256};
-use colored::Colorize;
 
 #[derive(Clone, Debug)]
 pub struct StorageSlotChange {
@@ -45,47 +44,6 @@ impl MEVStateDiff {
 
     pub fn is_empty(&self) -> bool {
         self.contracts.is_empty()
-    }
-}
-
-fn format_value(value: Option<B256>) -> String {
-    match value {
-        Some(v) => format!("{v}"),
-        None => "null".to_string(),
-    }
-}
-
-const COL_WIDTH: usize = 68;
-
-impl fmt::Display for MEVStateDiff {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "{:<44} {:<COL_WIDTH$} {:<COL_WIDTH$} {:<COL_WIDTH$}",
-            "ADDRESS", "SLOT", "BEFORE", "AFTER"
-        )?;
-
-        for (address, changes) in &self.contracts {
-            let addr_str = format!("{address}");
-            for (i, change) in changes.iter().enumerate() {
-                let addr_display = if i == 0 {
-                    addr_str.green().to_string()
-                } else {
-                    " ".repeat(42)
-                };
-
-                writeln!(
-                    f,
-                    "{:<44} {:<COL_WIDTH$} {:<COL_WIDTH$} {:<COL_WIDTH$}",
-                    addr_display,
-                    format!("{}", change.slot).yellow(),
-                    format_value(change.value_before),
-                    format_value(change.value_after),
-                )?;
-            }
-        }
-
-        Ok(())
     }
 }
 

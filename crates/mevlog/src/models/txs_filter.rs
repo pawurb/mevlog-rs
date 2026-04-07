@@ -260,7 +260,6 @@ pub struct TxsFilter {
     pub failed: bool,
     pub top_metadata: bool,
     pub erc20_transfers: Vec<ERC20TransferQuery>,
-    pub show_erc20_transfer_amount: bool,
     pub show_opcodes: bool,
     pub show_state_diff: bool,
 }
@@ -382,7 +381,6 @@ impl TxsFilter {
                 .iter()
                 .map(|query| query.parse())
                 .collect::<Result<Vec<_>>>()?,
-            show_erc20_transfer_amount: shared_opts.erc20_transfer_amount,
             show_opcodes: shared_opts.evm_ops,
             show_state_diff: shared_opts.evm_state_diff,
         })
