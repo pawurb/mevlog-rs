@@ -33,13 +33,11 @@ futures = "0.3.31"
 tokio-cron-scheduler = { version = "0.13.0", features = ["signal", "english"] }
 tracing-appender = "0.2.3"
 time = { workspace = true }
-axum = { workspace = true, features = ["ws"] }
-futures-util = { workspace = true }
+axum = { workspace = true }
 unicode-normalization = "0.1.24"
 ansi-to-html = "0.2.2"
 askama = "0.12.1"
 regex = { workspace = true }
-tokio-stream = "0.1.17"
 mevlog = { workspace = true }
 rand = { workspace = true }
 hotpath = { git = "https://github.com/pawurb/hotpath-rs", branch = "main" }

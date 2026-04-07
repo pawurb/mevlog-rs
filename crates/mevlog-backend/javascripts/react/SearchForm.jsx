@@ -36,7 +36,7 @@ const SearchForm = ({ initialValues = {}, onSubmit }) => {
       progressDiv.style.display = 'none';
     }
 
-    // Check if URL contains search params and automatically start WebSocket connection
+    // Check if URL contains search params and automatically fetch results
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.toString() != "") {
 
@@ -44,7 +44,7 @@ const SearchForm = ({ initialValues = {}, onSubmit }) => {
       if (cmdOutput) {
         cmdOutput.innerHTML = "<div class='spinner-container'><div class='spinner'></div><div>Loading...</div></div>";
       }
-      startWebSocketConnection(urlParams);
+      fetchSearchResults(urlParams);
     }
   }, []);
 
@@ -99,82 +99,40 @@ const SearchForm = ({ initialValues = {}, onSubmit }) => {
     window.history.pushState({}, '', url);
   };
 
-  const wsProtocol = () => {
-    return window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  };
-
-
-  const startWebSocketConnection = (params) => {
-    const socket = new WebSocket(`${wsProtocol()}//${window.location.host}/ws/search?${params.toString()}`);
-
-    // Show progress indicator
+  const fetchSearchResults = async (params) => {
     const progressDiv = document.getElementById('search-progress');
     if (progressDiv) {
       progressDiv.style.display = 'block';
     }
 
-    socket.addEventListener('open', (event) => {
-      console.log('Connected to WebSocket server');
-
-      // Always clear React viewer when WebSocket opens to ensure fresh results
-      if (window.clearMevlogViewer) {
-        window.clearMevlogViewer();
-      }
-    });
+    if (window.clearMevlogViewer) {
+      window.clearMevlogViewer();
+    }
 
     const cmdOutput = document.querySelector('.js-cmd-output');
-    let isFirstMessage = true;
 
-    socket.addEventListener('message', (event) => {
-      console.log('Raw message received:', event.data);
-      try {
-        // Try to parse as JSON first
-        const jsonData = JSON.parse(event.data);
-        console.log('Parsed JSON data:', jsonData);
+    try {
+      const response = await fetch(`/api/search?${params.toString()}`);
+      const jsonData = await response.json();
 
-        if (window.updateMevlogViewer) {
-          console.log('Updating React with JSON data:', jsonData);
-          // Send JSON data to React component
-          window.updateMevlogViewer(jsonData);
-          // Hide the text output when React takes over
+      if (window.replaceMevlogViewer) {
+        window.replaceMevlogViewer(jsonData);
+        if (cmdOutput) {
           cmdOutput.style.display = 'none';
-        } else {
-          console.warn('updateMevlogViewer not available, showing in output');
-          if (isFirstMessage) {
-            cmdOutput.innerHTML = '';
-            isFirstMessage = false;
-          }
-          cmdOutput.insertAdjacentHTML('beforeend', `<pre>${JSON.stringify(jsonData, null, 2)}</pre>`);
         }
-      } catch (e) {
-        console.error('Error parsing JSON, raw data:', event.data);
-        console.error('JSON parse error:', e);
-        // If it's not JSON, display as regular text
-        if (isFirstMessage) {
-          cmdOutput.innerHTML = '';
-          isFirstMessage = false;
-        }
-        cmdOutput.insertAdjacentHTML('beforeend', `<div>${event.data}</div>`);
+      } else if (cmdOutput) {
+        cmdOutput.innerHTML = `<pre>${JSON.stringify(jsonData, null, 2)}</pre>`;
       }
-    });
-
-    socket.addEventListener('close', (event) => {
-      console.log('Disconnected from WebSocket server');
-
-      // Hide progress indicator when connection closes
+    } catch (e) {
+      console.error('Search fetch error:', e);
+      if (window.replaceMevlogViewer) {
+        window.replaceMevlogViewer({ error: 'Failed to fetch search results. Please try again.' });
+      }
+    } finally {
       if (progressDiv) {
         progressDiv.style.display = 'none';
       }
-    });
-
-    socket.addEventListener('error', (event) => {
-      console.error('WebSocket error:', event);
-
-      // Hide progress indicator on error
-      if (progressDiv) {
-        progressDiv.style.display = 'none';
-      }
-    });
+    }
   };
 
   const handleSubmit = (e) => {
@@ -221,8 +179,8 @@ const SearchForm = ({ initialValues = {}, onSubmit }) => {
     // Update browser URL
     window.history.pushState({}, '', url);
 
-    // Establish WebSocket connection
-    startWebSocketConnection(params);
+    // Fetch search results
+    fetchSearchResults(params);
   };
 
   const toggleFilters = () => {
