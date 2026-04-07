@@ -74,7 +74,6 @@ impl WatchArgs {
                 &deps.chain,
                 &deps.sqlite,
                 &symbols_lookup,
-                txs_filter.show_erc20_transfer_amount,
             )
             .await?;
 
@@ -91,7 +90,7 @@ impl WatchArgs {
                     .unwrap_or_default(),
             };
 
-            let json_opts = self.shared_opts.json_serialize_opts(&format);
+            let json_opts = self.shared_opts.json_serialize_opts();
             let mev_block = generate_block(
                 &deps.provider,
                 &deps.sqlite,

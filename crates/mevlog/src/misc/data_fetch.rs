@@ -172,7 +172,6 @@ pub async fn fetch_blocks_batch(
     chain: &EVMChain,
     sqlite: &SqlitePool,
     symbols_lookup: &ERC20SymbolsLookup,
-    show_erc20_transfer_amount: bool,
 ) -> Result<BatchedBlockData> {
     if which::which("cryo").is_err() {
         eyre::bail!(
@@ -201,15 +200,9 @@ pub async fn fetch_blocks_batch(
     let log_files = collect_files_for_range(&log_ranges, start_block, end_block);
 
     let txs_by_block = parse_batch_txs_from_files(&tx_files, start_block, end_block).await?;
-    let logs_by_block = parse_batch_logs_from_files(
-        &log_files,
-        start_block,
-        end_block,
-        sqlite,
-        symbols_lookup,
-        show_erc20_transfer_amount,
-    )
-    .await?;
+    let logs_by_block =
+        parse_batch_logs_from_files(&log_files, start_block, end_block, sqlite, symbols_lookup)
+            .await?;
 
     Ok(BatchedBlockData {
         txs_by_block,
@@ -252,7 +245,6 @@ async fn parse_batch_logs_from_files(
     end_block: u64,
     sqlite: &SqlitePool,
     symbols_lookup: &ERC20SymbolsLookup,
-    show_erc20_transfer_amount: bool,
 ) -> Result<HashMap<u64, Vec<MEVLog>>> {
     let mut logs_by_block: HashMap<u64, Vec<MEVLog>> = HashMap::new();
 
@@ -265,14 +257,8 @@ async fn parse_batch_logs_from_files(
             let batch = batch_result?;
 
             for row_idx in 0..batch.num_rows() {
-                let (mev_log, block_number) = MEVLog::from_parquet_row(
-                    &batch,
-                    row_idx,
-                    symbols_lookup,
-                    sqlite,
-                    show_erc20_transfer_amount,
-                )
-                .await?;
+                let (mev_log, block_number) =
+                    MEVLog::from_parquet_row(&batch, row_idx, symbols_lookup, sqlite).await?;
 
                 if block_number >= start_block && block_number <= end_block {
                     logs_by_block.entry(block_number).or_default().push(mev_log);

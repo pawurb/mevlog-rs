@@ -174,8 +174,8 @@ pub struct SharedOpts {
     #[arg(long, help = "Enable ERC20 symbols lookup")]
     pub erc20_symbols: bool,
 
-    #[arg(long, num_args = 0..=1, default_missing_value = "true", help = "Include event logs in output (default: true for text format, false otherwise)")]
-    pub logs: Option<bool>,
+    #[arg(long, help = "Include event logs in output")]
+    pub logs: bool,
 
     #[arg(
         long,
@@ -185,13 +185,9 @@ pub struct SharedOpts {
 }
 
 impl SharedOpts {
-    pub fn include_logs(&self, format: &OutputFormat) -> bool {
-        self.logs.unwrap_or(format == &OutputFormat::Text)
-    }
-
-    pub fn json_serialize_opts(&self, format: &OutputFormat) -> JsonSerializeOpts {
+    pub fn json_serialize_opts(&self) -> JsonSerializeOpts {
         JsonSerializeOpts {
-            include_logs: self.include_logs(format),
+            include_logs: self.logs,
             include_evm_calls: self.evm_calls,
             include_evm_opcodes: self.evm_ops,
             include_evm_state_diff: self.evm_state_diff,
@@ -256,7 +252,6 @@ impl FromStr for TraceMode {
 
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum OutputFormat {
-    Text,
     Json,
     JsonPretty,
     JsonStream,
@@ -265,7 +260,7 @@ pub enum OutputFormat {
 
 impl OutputFormat {
     pub fn is_stream(&self) -> bool {
-        self == &Self::JsonStream || self == &Self::JsonPrettyStream || self == &Self::Text
+        self == &Self::JsonStream || self == &Self::JsonPrettyStream
     }
 
     pub fn non_stream_json(&self) -> bool {
@@ -278,7 +273,6 @@ impl FromStr for OutputFormat {
 
     fn from_str(s: &str) -> Result<Self> {
         match s {
-            "text" => Ok(Self::Text),
             "json" => Ok(Self::Json),
             "json-pretty" => Ok(Self::JsonPretty),
             "json-stream" => Ok(Self::JsonStream),

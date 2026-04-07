@@ -1,6 +1,5 @@
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 
-use colored::Colorize;
 use eyre::Result;
 use revm::primitives::Address;
 
@@ -37,14 +36,5 @@ impl MEVAddress {
 
     pub fn ens_name(&self) -> Option<&str> {
         self.ens_name.as_deref()
-    }
-}
-
-impl fmt::Display for MEVAddress {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.ens_name {
-            Some(name) => write!(f, "{}", name.yellow()),
-            None => write!(f, "{}", self.address.to_string().yellow()),
-        }
     }
 }

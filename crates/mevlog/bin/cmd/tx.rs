@@ -142,7 +142,6 @@ impl TxArgs {
             show_calls: self.shared_opts.evm_calls,
             failed: false,
             erc20_transfers: vec![],
-            show_erc20_transfer_amount: self.shared_opts.erc20_transfer_amount,
             show_opcodes: self.shared_opts.evm_ops,
             show_state_diff: self.shared_opts.evm_state_diff,
         };
@@ -166,7 +165,6 @@ impl TxArgs {
             &deps.chain,
             &deps.sqlite,
             &symbols_lookup,
-            txs_filter.show_erc20_transfer_amount,
         )
         .await?;
 
@@ -183,7 +181,7 @@ impl TxArgs {
                 .unwrap_or_default(),
         };
 
-        let json_opts = self.shared_opts.json_serialize_opts(&format);
+        let json_opts = self.shared_opts.json_serialize_opts();
         let mev_block = generate_block(
             &deps.provider,
             &deps.sqlite,

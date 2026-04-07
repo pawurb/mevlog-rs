@@ -37,8 +37,8 @@ pub struct MLArgs {
 
     #[arg(
         long,
-        help = "Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
-        default_value = "text",
+        help = "Output format ('json', 'json-pretty', 'json-stream', 'json-pretty-stream')",
+        default_value = "json-pretty",
         global = true
     )]
     pub format: OutputFormat,
@@ -94,38 +94,23 @@ async fn main() {
 }
 
 fn print_error(e: &eyre::Error, format: &OutputFormat) {
-    match format {
-        OutputFormat::Text => {
-            if std::env::var("RUST_BACKTRACE").is_ok() {
-                eprintln!("Error: {e:#?}");
-            } else {
-                eprintln!("Error: {e}");
-            }
-        }
-        OutputFormat::Json
-        | OutputFormat::JsonStream
-        | OutputFormat::JsonPretty
-        | OutputFormat::JsonPrettyStream => {
-            let error_json = if std::env::var("RUST_BACKTRACE").is_ok() {
-                serde_json::json!({
-                    "error": e.to_string(),
-                    "backtrace": format!("{e:#?}")
-                })
-            } else {
-                serde_json::json!({
-                    "error": e.to_string()
-                })
-            };
+    let error_json = if std::env::var("RUST_BACKTRACE").is_ok() {
+        serde_json::json!({
+            "error": e.to_string(),
+            "backtrace": format!("{e:#?}")
+        })
+    } else {
+        serde_json::json!({
+            "error": e.to_string()
+        })
+    };
 
-            match format {
-                OutputFormat::Json | OutputFormat::JsonStream => {
-                    eprintln!("{}", serde_json::to_string(&error_json).unwrap());
-                }
-                OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
-                    eprintln!("{}", serde_json::to_string_pretty(&error_json).unwrap());
-                }
-                _ => unreachable!(),
-            }
+    match format {
+        OutputFormat::Json | OutputFormat::JsonStream => {
+            eprintln!("{}", serde_json::to_string(&error_json).unwrap());
+        }
+        OutputFormat::JsonPretty | OutputFormat::JsonPrettyStream => {
+            eprintln!("{}", serde_json::to_string_pretty(&error_json).unwrap());
         }
     }
 }

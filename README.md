@@ -17,7 +17,7 @@ When working on an MEV bot, I could not find a simple way to search for specific
 - detect validator bribes
 - filter by the amount of a specific ERC20 token sent
 - filter txs by value and real (including bribe) gas prices and cost
-- colored human-readable, and JSON output formats
+- JSON output formats (compact, pretty, streaming)
 - [ChainList](https://chainlist.org/) integration to automatically select RPC endpoints
 - TUI dashboard - browse and analyze EVM chains through a terminal-native visual interface (powered by [ratatui.rs](https://ratatui.rs))
 
@@ -163,9 +163,9 @@ Options:
       --failed
           Show only txs which failed to execute
       --logs
-          Include event logs in output (default: true for text format, false otherwise)
+          Include event logs in output
       --format <FORMAT>
-          Output format ('text', 'json', 'json-pretty', 'json-stream', 'json-pretty-stream')
+          Output format ('json', 'json-pretty', 'json-stream', 'json-pretty-stream') [default: json-pretty]
       --batch-size <SIZE>
           Batch size for data fetching (default: 100)
 ```
@@ -343,20 +343,19 @@ mevlog search -b 5:latest -p 0:5 --calls "/(swap).+/" --evm-trace rpc
 
 Mevlog supports different output formats via the `--format` option:
 
-- `text` (default): Human-readable colored output, displays results block by block as they are processed
+- `json-pretty` (default): Pretty-printed JSON output, displays all results at once after processing all blocks  
 - `json`: Compact, oneline JSON output, displays all results at once after processing all blocks
-- `json-pretty`: Pretty-printed JSON output, displays all results at once after processing all blocks  
 - `json-stream`: Compact, oneline JSON output, displays results block by block as they are processed
 - `json-pretty-stream`: Pretty-printed JSON output, displays results block by block as they are processed
 
 **Streaming vs Batch behavior:**
-- **Streaming formats** (`text`, `json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
+- **Streaming formats** (`json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
 - **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks as a single JSON object with `result`, `result_count`, `duration`, `chain`, and `query`
 
 Examples:
 ```bash
-# Default human-readable output (streaming)
-mevlog search -b 10:latest --format default
+# Default pretty JSON (batch)
+mevlog search -b 10:latest
 
 # Compact JSON envelope, all results at once
 mevlog search -b 10:latest --format json
@@ -424,21 +423,6 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --c
 
 # Trace opcodes using RPC (requires debug API access)
 mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --evm-trace rpc --evm-ops
-```
-
-**Plain text output:**
-```
-PC       OP           COST     GAS_LEFT
-0        PUSH1        3        545253
-2        PUSH1        3        545250
-4        MSTORE       3        545247
-5        CALLVALUE    2        545244
-...
-```
-
-**JSON output:**
-```bash
-mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --chain-id 1 --evm-trace revm --evm-ops --format json
 ```
 
 ```json
@@ -517,25 +501,10 @@ mevlog chains --filter ethereum        # Filter chains containing "ethereum"
 mevlog chains --filter polygon         # Filter chains containing "polygon"
 mevlog chains --chain-id 1 --chain-id 137  # Show specific chains by ID
 mevlog chains --limit 5                # Show only first 5 chains
-mevlog chains --format json            # Output as JSON
-mevlog chains --format json-pretty     # Output as pretty JSON
+mevlog chains --format json            # Output as compact JSON
 ```
 
-Sample text output:
-```text
-Available chains (7 total):
-#    Chain ID Name
-------------------------------------------------------------
-1    1        Ethereum Mainnet
-2    61       Ethereum Classic
-3    1617     Ethereum Inscription Mainnet
-4    52226    Cytonic Ethereum Testnet
-5    513100   EthereumFair
-6    560048   Ethereum Hoodi
-7    11155111 Ethereum Sepolia
-```
-
-Sample JSON output:
+Sample output:
 ```json
 [
   {
@@ -555,7 +524,7 @@ Sample JSON output:
 - `--filter <TEXT>`: Filter chains by name (case-insensitive substring match)
 - `--chain-id <ID>`: Filter by specific chain IDs (can be used multiple times)
 - `--limit <NUMBER>`: Limit the number of chains returned
-- `--format <FORMAT>`: Output format ('text', 'json', 'json-pretty')
+- `--format <FORMAT>`: Output format ('json', 'json-pretty', 'json-stream', 'json-pretty-stream') [default: json-pretty]
 
 ## Getting chain information
 
@@ -565,24 +534,7 @@ mevlog chain-info --chain-id 56   # BSC mainnet
 mevlog chain-info --chain-id 137  # Polygon mainnet
 ```
 
-Sample output:
-
-```text
-Chain Information
-================
-Chain ID: 1
-Name: Ethereum Mainnet
-Currency: ETH
-Explorer URL: https://etherscan.io
-RPC Timeout: 1s
-```
-
-This command displays detailed information about a specific chain, including current token price and RPC endpoint benchmarks. You can also get JSON output:
-
-```bash
-mevlog chain-info --chain-id 1 --format json        # Compact JSON
-mevlog chain-info --chain-id 1 --format json-pretty # Pretty JSON
-```
+This command displays detailed information about a specific chain, including current token price and RPC endpoint benchmarks.
 
 By default, the command filters RPC endpoints responding under 1000ms (1 second). You can adjust this timeout for networks with slower connections:
 
@@ -597,21 +549,10 @@ mevlog chain-info --chain-id 1 --rpcs-limit 3  # Return only first 3 responding 
 mevlog chain-info --chain-id 1 --rpcs-limit 10 # Return up to 10 responding URLs
 ```
 
-If you only need basic chain information without RPC URL benchmarking (which is faster), use the `--skip-urls` flag:
+If you only need basic chain information without RPC URL benchmarking (which is faster), use the `--skip-rpcs` flag:
 
 ```bash
-mevlog chain-info --chain-id 1 --skip-urls
-```
-
-This will display only the core chain information:
-
-```text
-Chain Information
-================
-Chain ID: 1
-Name: Ethereum Mainnet
-Currency: ETH
-Explorer URL: https://etherscan.io
+mevlog chain-info --chain-id 1 --skip-rpcs
 ```
 
 ## Checking debug tracing support
