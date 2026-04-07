@@ -37,8 +37,8 @@ async fn handle_socket(socket: WebSocket, params: SearchParams, _headers: Header
     cmd.arg("search")
         .arg("--format")
         .arg("json-stream")
-        .arg("--latest-offset") // Improves caching
-        .arg("1")
+        .arg("--latest-offset") // Account for RPCs delay
+        .arg("2")
         .arg("--batch-size")
         .arg("20")
         .arg("--max-range")

@@ -21,7 +21,7 @@ pub async fn fetch_chain_info_no_rpcs(chain_id: u64) -> Result<ChainInfoNoRpcsJs
         .arg(chain_id.to_string())
         .arg("--format")
         .arg("json")
-        .arg("--skip-urls");
+        .arg("--skip-rpcs");
     cmd.env("RUST_LOG", "off");
 
     match call_json_command_first_line::<ChainInfoNoRpcsJson>(&mut cmd).await {

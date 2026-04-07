@@ -347,7 +347,7 @@ Mevlog supports different output formats via the `--format` option:
 
 **Streaming vs Batch behavior:**
 - **Streaming formats** (`text`, `json-stream`, `json-pretty-stream`): Display results block by block as they are processed, useful for real-time monitoring and large block ranges
-- **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks as a single JSON object with `transactions`, `duration_ms`, `chain`, and `query`
+- **Batch formats** (`json`, `json-pretty`): Collect all results in memory and display them at once after processing all blocks as a single JSON object with `result`, `result_count`, `duration`, `chain`, and `query`
 
 Examples:
 ```bash
@@ -364,12 +364,13 @@ mevlog search -b 10:latest --format json-pretty-stream
 Batch JSON example:
 ```json
 {
-  "transactions": [
+  "result": [
     {
       "tx_hash": "0x..."
     }
   ],
-  "duration_ms": 123,
+  "result_count": 1,
+  "duration": "123ms",
   "chain": {
     "chain_id": 1,
     "name": "Ethereum",
@@ -438,7 +439,7 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --c
 
 ```json
 {
-  "transactions": [
+  "result": [
     {
       "evm_opcodes": [
         {"pc": 0, "op": "PUSH1", "cost": 3, "gas_left": 545253},
@@ -447,7 +448,8 @@ mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --c
       ]
     }
   ],
-  "duration_ms": 123,
+  "result_count": 1,
+  "duration": "123ms",
   "chain": {
     "chain_id": 1,
     "name": "Ethereum",
@@ -483,7 +485,7 @@ mevlog tx 0x00bbfd50ead7e90e7edaa707cdc402ba9f4b5ff5d74d6dd7348bc7033fea9d44 --c
 
 ```json
 {
-  "transactions": [
+  "result": [
     {
       // ...
       "evm_state_diff": {

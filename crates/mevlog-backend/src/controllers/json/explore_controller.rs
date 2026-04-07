@@ -40,8 +40,8 @@ pub async fn explore(
         .arg("json")
         .arg("--rpc-timeout-ms")
         .arg("500")
-        .arg("--latest-offset") // Improves caching
-        .arg("1");
+        .arg("--latest-offset") // Account for RPCs delay
+        .arg("2");
     cmd.env("RUST_LOG", "off");
 
     let price = get_price_for_chain_id(chain_id).await;

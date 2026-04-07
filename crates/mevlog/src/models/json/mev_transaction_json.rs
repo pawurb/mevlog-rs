@@ -282,9 +282,9 @@ pub struct TxQueryParams {
 }
 
 #[derive(Serialize)]
-pub struct TxsResponseEnvelopeJson<'a, Q: Serialize> {
-    pub txs: Vec<MEVTransactionJsonOutput<'a>>,
-    pub txs_count: usize,
+pub struct ResponseEnvelopeJson<'a, Q: Serialize> {
+    pub result: Vec<MEVTransactionJsonOutput<'a>>,
+    pub result_count: usize,
     pub duration: String,
     pub chain: &'a ChainInfoNoRpcsJson,
     pub query: Q,
@@ -315,10 +315,10 @@ pub fn serialize_json_response<Q: Serialize>(
         .map(|transaction| MEVTransactionJsonOutput { transaction, opts })
         .collect();
 
-    let txs_count = output.len();
-    let envelope = TxsResponseEnvelopeJson {
-        txs: output,
-        txs_count,
+    let result_count = output.len();
+    let envelope = ResponseEnvelopeJson {
+        result: output,
+        result_count,
         duration: format_duration(duration_ns),
         chain,
         query,

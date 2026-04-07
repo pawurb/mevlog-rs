@@ -65,6 +65,8 @@ pub async fn call_json_command_first_line<T: serde::de::DeserializeOwned>(
             })
         })?;
 
+        let stderr = child.stderr.take();
+
         let mut reader = BufReader::new(stdout).lines();
 
         let next_line_future = hotpath::future!(reader.next_line(), log = true);
@@ -81,8 +83,22 @@ pub async fn call_json_command_first_line<T: serde::de::DeserializeOwned>(
                 })),
             }
         } else {
+            let error_msg = if let Some(stderr) = stderr {
+                let mut stderr_reader = BufReader::new(stderr).lines();
+                let mut stderr_lines = Vec::new();
+                while let Ok(Some(line)) = stderr_reader.next_line().await {
+                    stderr_lines.push(line);
+                }
+                if stderr_lines.is_empty() {
+                    "No output received from command".to_string()
+                } else {
+                    decorate_error_message(&stderr_lines.join("\n"))
+                }
+            } else {
+                "No output received from command".to_string()
+            };
             Err(serde_json::json!({
-                "error": "No output received from command"
+                "error": error_msg
             }))
         }
     })

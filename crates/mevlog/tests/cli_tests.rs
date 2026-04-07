@@ -356,7 +356,7 @@ pub mod tests {
             .arg("1")
             .arg("--format")
             .arg("json-pretty")
-            .arg("--skip-urls")
+            .arg("--skip-rpcs")
             .output()
             .expect("failed to execute CLI");
 
@@ -469,7 +469,9 @@ pub mod tests {
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-        let txs = json["txs"].as_array().expect("txs should be an array");
+        let txs = json["result"]
+            .as_array()
+            .expect("result should be an array");
         assert_eq!(txs.len(), 4);
     }
 
@@ -492,7 +494,9 @@ pub mod tests {
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).unwrap();
-        let txs = json["txs"].as_array().expect("txs should be an array");
+        let txs = json["result"]
+            .as_array()
+            .expect("result should be an array");
         assert_eq!(txs.len(), 1, "Expected one transaction, got:\n{output}");
         assert_eq!(
             txs[0]["to"].as_str(),
@@ -576,7 +580,9 @@ pub mod tests {
 
         let output = String::from_utf8(cmd.stdout).unwrap();
         let json: serde_json::Value = serde_json::from_str(&output).expect("should be valid JSON");
-        let txs = json["txs"].as_array().expect("txs should be an array");
+        let txs = json["result"]
+            .as_array()
+            .expect("result should be an array");
         assert!(txs.is_empty(), "Expected empty txs array, got:\n{output}");
     }
 

@@ -154,8 +154,13 @@ fn run_cryo_batch(
 
     let output = cmd.unwrap();
     if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-        eyre::bail!("cryo batch command failed: {}", stderr);
+        eyre::bail!(
+            "cryo batch command failed: stdout={}, stderr={}",
+            stdout,
+            stderr
+        );
     }
 
     Ok(())

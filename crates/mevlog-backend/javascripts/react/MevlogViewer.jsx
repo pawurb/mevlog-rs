@@ -149,12 +149,12 @@ const MevlogViewer = ({ replaceMode = false, showBlockNumbers = true, chainData:
     setTransactions(prevTransactions => {
       let newTransactions;
 
-      // Handle both old and new data structures
-      if (Array.isArray(jsonData)) {
-        // New format: direct array of transactions
-        newTransactions = jsonData.map(tx => ({
+      // Handle envelope format: {result: [...], result_count, duration, chain, query}
+      const txData = jsonData && jsonData.result ? jsonData.result : jsonData;
+
+      if (Array.isArray(txData)) {
+        newTransactions = txData.map(tx => ({
           ...tx,
-          // Add chain data if available
           ...(chainData && {
             chain_id: chainData.chain_id,
             chain_name: chainData.name,
@@ -165,7 +165,7 @@ const MevlogViewer = ({ replaceMode = false, showBlockNumbers = true, chainData:
       } else {
         // Single transaction object
         newTransactions = [{
-          ...jsonData,
+          ...txData,
           ...(chainData && {
             chain_id: chainData.chain_id,
             chain_name: chainData.name,

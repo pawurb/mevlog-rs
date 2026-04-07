@@ -119,7 +119,7 @@ const ExploreViewer = () => {
       const response = await fetch(exploreApiUrl);
       if (response.ok) {
         const jsonData = await response.json();
-        const transactions = jsonData.transactions;
+        const transactions = jsonData.result || jsonData.transactions;
         setBlockData(transactions);
         setHasInitialData(true);
 
