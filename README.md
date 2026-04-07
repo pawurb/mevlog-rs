@@ -534,7 +534,7 @@ mevlog chain-info --chain-id 56   # BSC mainnet
 mevlog chain-info --chain-id 137  # Polygon mainnet
 ```
 
-This command displays detailed information about a specific chain, including current token price and RPC endpoint benchmarks.
+This command displays detailed information about a specific chain, including current token price and RPC endpoint benchmarks. RPC endpoints are benchmarked using `eth_getLogs`, which filters out providers that don't support this method. This ensures that returned RPCs are compatible with [cryo](https://github.com/paradigmxyz/cryo) for fetching transaction and log data.
 
 By default, the command filters RPC endpoints responding under 1000ms (1 second). You can adjust this timeout for networks with slower connections:
 

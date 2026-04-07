@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use alloy::providers::Provider;
+use alloy::{providers::Provider, rpc::types::Filter};
 use eyre::{Result, bail};
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -148,14 +148,25 @@ async fn cache_chains(cache_dir: &std::path::Path, chains: &[ChainInfo]) -> Resu
 
 pub async fn benchmark_url(url: String, timeout_ms: u64) -> Result<u64> {
     let provider = init_provider(&url).await?;
+
+    let latest = tokio::select! {
+        result = provider.get_block_number() => {
+            result.map_err(|_| eyre::eyre!("RPC URL returned an error"))?
+        }
+        _ = sleep(Duration::from_millis(timeout_ms)) => {
+            bail!("RPC URL timed out");
+        }
+    };
+
+    let block = latest.saturating_sub(10);
+    let filter = Filter::new().from_block(block).to_block(block);
+
+    // Benchmark eth_getLogs - filters out RPCs that don't support it
     let start = Instant::now();
     tokio::select! {
-        block_number = provider.get_block_number() => {
-            if block_number.is_err() {
-                bail!("RPC URL returned an error");
-            } else {
-                Ok(start.elapsed().as_millis() as u64)
-            }
+        result = provider.get_logs(&filter) => {
+            result.map_err(|_| eyre::eyre!("eth_getLogs not supported"))?;
+            Ok(start.elapsed().as_millis() as u64)
         }
         _ = sleep(Duration::from_millis(timeout_ms)) => {
             bail!("RPC URL timed out");

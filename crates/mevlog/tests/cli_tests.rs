@@ -32,7 +32,7 @@ pub mod tests {
                 .expect("failed to execute CLI");
 
             let output = String::from_utf8(cmd.stdout).unwrap();
-            let expected_content = ["\"real_gas_price\""];
+            let expected_content = ["\"full_tx_cost\""];
             for expected in expected_content {
                 assert!(
                     output.contains(expected),
@@ -65,7 +65,7 @@ pub mod tests {
                 .expect("failed to execute CLI");
 
             let output = String::from_utf8(cmd.stdout).unwrap();
-            let expected_content = ["\"real_gas_price\""];
+            let expected_content = ["\"full_tx_cost\""];
             for expected in expected_content {
                 assert!(
                     output.contains(expected),
