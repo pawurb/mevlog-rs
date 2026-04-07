@@ -65,6 +65,10 @@ mevlog tui
 
 Visit [mevlog.rs/tui](https://mevlog.rs/tui) for more information.
 
+### MCP server
+
+mevlog includes an [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that exposes its tools to AI assistants like Claude, Cursor, and others. See [docs/MCP.md](docs/MCP.md) for setup instructions, client configuration, and a full reference of available tools.
+
 ### Connection options
 
 You can connect to chains using either a direct RPC URL or by specifying a chain ID:
