@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0] - 2026-04-09
+
+### 🚀 Features
+
+- Add exclude logs config
+- [**breaking**] Adjust output opts and format
+- Add initial MCP server integration
+- [**breaking**] Add query results envelope
+- Add include_urls config to chain_info MCP tool
+- [**breaking**] Rename chain_info params
+- Pass native-token-price to MCP tools
+- Include native-token-price in response envelope
+- [**breaking**] Adjust TxsResponseEnvelopeJson
+- [**breaking**] Remove text output format
+- Filter out RPCs not supporting eth_getLogs
+- [**breaking**] Remove stream formats and watch command
+
+### 🐛 Bug Fixes
+
+- Default search blocks value
+- [**breaking**] Use human readable duration
+- [**breaking**] Sync backend and CLI formats
+
+### ⚙️ Miscellaneous Tasks
+
+- Fix cargo audit CI
+- Update hotpath
+- Fix cargo audit CI
+- Update hotpath
+- Instrument async functions as futures
+- Merge mevlog-backend
+- Add perf compare script
+- Update MCP lib
+- Release 0.9.0
+
 ## [0.8.1] - 2026-01-31
 
 ### 🚀 Features
