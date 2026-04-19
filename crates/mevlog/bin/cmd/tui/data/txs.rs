@@ -20,6 +20,11 @@ struct ErrorResponse {
     error: String,
 }
 
+#[derive(Deserialize)]
+struct Envelope<T> {
+    result: Vec<T>,
+}
+
 #[hotpath::measure(future = true)]
 pub async fn fetch_txs(
     filters: &SearchFilters,
@@ -110,7 +115,8 @@ pub async fn fetch_txs(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+                let txs = envelope.result;
                 return Ok(txs);
             }
 
@@ -194,7 +200,8 @@ pub async fn fetch_opcodes(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+                let txs = envelope.result;
                 let opcodes = txs
                     .into_iter()
                     .next()
@@ -270,7 +277,8 @@ pub async fn fetch_traces(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+                let txs = envelope.result;
                 let calls = txs
                     .into_iter()
                     .next()
@@ -346,7 +354,8 @@ pub async fn fetch_tx_with_trace(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+                let txs = envelope.result;
                 if let Some(tx) = txs.into_iter().next() {
                     return Ok(tx);
                 }
@@ -420,7 +429,8 @@ pub async fn fetch_state_diff(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(txs) = serde_json::from_str::<Vec<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+                let txs = envelope.result;
                 let state_diff = txs
                     .into_iter()
                     .next()
