@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] - 2026-04-19
+
+### 🐛 Bug Fixes
+
+- README.md path
+- Update TUI txs parsing
+
+### ⚙️ Miscellaneous Tasks
+
+- Add LLM skill
+- Release 0.9.1
+
 ## [0.9.0] - 2026-04-09
 
 ### 🚀 Features
