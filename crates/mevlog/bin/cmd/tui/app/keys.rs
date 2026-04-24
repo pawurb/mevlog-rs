@@ -229,11 +229,9 @@ impl App {
                 KeyCode::Enter | KeyCode::Esc => {
                     self.search_popup_open = false;
                 }
-                KeyCode::Backspace => {
-                    if !self.search_query.is_empty() {
-                        self.search_query.pop();
-                        self.request_filtered_chains();
-                    }
+                KeyCode::Backspace if !self.search_query.is_empty() => {
+                    self.search_query.pop();
+                    self.request_filtered_chains();
                 }
                 KeyCode::Char(c) => {
                     self.search_query.push(c);
@@ -249,11 +247,9 @@ impl App {
                 KeyCode::Char('s') => {
                     self.search_popup_open = true;
                 }
-                KeyCode::Char('c') => {
-                    if !self.search_query.is_empty() {
-                        self.search_query.clear();
-                        self.request_filtered_chains();
-                    }
+                KeyCode::Char('c') if !self.search_query.is_empty() => {
+                    self.search_query.clear();
+                    self.request_filtered_chains();
                 }
                 KeyCode::Down | KeyCode::Char('j') => self.select_next_network(),
                 KeyCode::Up | KeyCode::Char('k') => self.select_previous_network(),
@@ -313,10 +309,8 @@ impl App {
                 KeyCode::Enter | KeyCode::Char('o') => {
                     self.search_editing = true;
                 }
-                KeyCode::Down | KeyCode::Char('j') => {
-                    if self.search_active_field < NUM_FIELDS - 1 {
-                        self.search_active_field += 1;
-                    }
+                KeyCode::Down | KeyCode::Char('j') if self.search_active_field < NUM_FIELDS - 1 => {
+                    self.search_active_field += 1;
                 }
                 KeyCode::Up | KeyCode::Char('k') => {
                     self.search_active_field = self.search_active_field.saturating_sub(1);
@@ -372,16 +366,14 @@ impl App {
                     self.request_results_state_diff_if_needed();
                 }
             }
-            KeyCode::Char('o') => {
-                if !self.search_results.is_empty() {
-                    self.tx_popup_open = !self.tx_popup_open;
-                    if !self.tx_popup_open {
-                        self.tx_popup_scroll = 0;
-                        self.tx_popup_tab = TxPopupTab::default();
-                        self.clear_opcodes();
-                        self.clear_traces();
-                        self.clear_state_diff();
-                    }
+            KeyCode::Char('o') if !self.search_results.is_empty() => {
+                self.tx_popup_open = !self.tx_popup_open;
+                if !self.tx_popup_open {
+                    self.tx_popup_scroll = 0;
+                    self.tx_popup_tab = TxPopupTab::default();
+                    self.clear_opcodes();
+                    self.clear_traces();
+                    self.clear_state_diff();
                 }
             }
             KeyCode::Esc if self.tx_popup_open => {

@@ -240,39 +240,33 @@ impl MEVBlock {
             };
 
             match &filter.tx_from {
-                Some(AddressFilter::Address(from_addr)) => {
-                    if &mev_tx.from() != from_addr {
-                        continue;
-                    }
+                Some(AddressFilter::Address(from_addr)) if &mev_tx.from() != from_addr => {
+                    continue;
                 }
-                Some(AddressFilter::ENSName(ens_name)) => {
-                    if mev_tx.from_ens_name() != Some(ens_name) {
-                        continue;
-                    }
+                Some(AddressFilter::ENSName(ens_name))
+                    if mev_tx.from_ens_name() != Some(ens_name) =>
+                {
+                    continue;
                 }
                 Some(AddressFilter::CreateCall) => {
                     eyre::bail!("CREATE query works only for --to filter");
                 }
-                None => {}
+                _ => {}
             }
 
             match &filter.tx_to {
-                Some(AddressFilter::Address(to_addr)) => {
-                    if mev_tx.to() != Some(*to_addr) {
-                        continue;
-                    }
+                Some(AddressFilter::Address(to_addr)) if mev_tx.to() != Some(*to_addr) => {
+                    continue;
                 }
-                Some(AddressFilter::ENSName(ens_name)) => {
-                    if mev_tx.to_ens_name() != Some(ens_name) {
-                        continue;
-                    }
+                Some(AddressFilter::ENSName(ens_name))
+                    if mev_tx.to_ens_name() != Some(ens_name) =>
+                {
+                    continue;
                 }
-                Some(AddressFilter::CreateCall) => {
-                    if mev_tx.to().is_some() {
-                        continue;
-                    }
+                Some(AddressFilter::CreateCall) if mev_tx.to().is_some() => {
+                    continue;
                 }
-                None => {}
+                _ => {}
             }
 
             if let Some(value_filter) = &filter.value

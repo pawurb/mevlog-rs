@@ -200,16 +200,15 @@ impl MEVTransaction {
 
     pub fn add_log(&mut self, new_log: MEVLog) {
         match self.log_groups.last() {
-            Some(last_log) => {
-                if last_log.source() == new_log.source() {
-                    self.log_groups.last_mut().unwrap().add_log(new_log);
-                } else {
-                    self.log_groups.push(MEVLogGroup::new(
-                        new_log.source(),
-                        vec![new_log],
-                        self.chain.clone(),
-                    ));
-                }
+            Some(last_log) if last_log.source() == new_log.source() => {
+                self.log_groups.last_mut().unwrap().add_log(new_log);
+            }
+            Some(_) => {
+                self.log_groups.push(MEVLogGroup::new(
+                    new_log.source(),
+                    vec![new_log],
+                    self.chain.clone(),
+                ));
             }
             None => {
                 self.log_groups.push(MEVLogGroup::new(
