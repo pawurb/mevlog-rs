@@ -18,11 +18,12 @@ mevlog mcp [OPTIONS]
 
 | Option | Default | Env var | Description |
 |---|---|---|---|
+| `--host` | `127.0.0.1` | `MEVLOG_MCP_HOST` | Host/IP to bind (e.g. `127.0.0.1`, `::1`, `0.0.0.0`, `[::]`) |
 | `--port` | `6671` | `MEVLOG_MCP_PORT` | HTTP server port |
 | `--rpc-url` | — | — | RPC endpoint URL |
 | `--chain-id` | — | — | Chain ID (auto-selects RPC from ChainList if `--rpc-url` is omitted) |
 
-The server listens at `http://localhost:<port>/mcp` using the Streamable HTTP transport.
+The server listens at `http://<host>:<port>/mcp` using the Streamable HTTP transport.
 
 ### Authentication
 

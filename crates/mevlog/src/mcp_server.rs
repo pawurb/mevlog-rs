@@ -223,9 +223,8 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         if params.0.erc20_symbols == Some(true) {
             args.push("--erc20-symbols".to_string());
         }
-        if let Some(logs) = params.0.logs {
+        if params.0.logs == Some(true) {
             args.push("--logs".to_string());
-            args.push(logs.to_string());
         }
         if let Some(price) = params.0.native_token_price {
             args.push("--native-token-price".to_string());
@@ -355,9 +354,8 @@ Block range examples: 'latest' (latest block), '22030899' (single block), '22030
         if params.0.erc20_symbols == Some(true) {
             args.push("--erc20-symbols".to_string());
         }
-        if let Some(logs) = params.0.logs {
+        if params.0.logs == Some(true) {
             args.push("--logs".to_string());
-            args.push(logs.to_string());
         }
         if let Some(price) = params.0.native_token_price {
             args.push("--native-token-price".to_string());

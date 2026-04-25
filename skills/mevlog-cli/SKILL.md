@@ -112,7 +112,7 @@ Add `--erc20-transfer-amount` when you want amounts shown inline in output.
 ### Output and display flags
 
 - `--failed`: Show only failed transactions
-- `--logs`: Include logs
+- `--logs`: Include logs. Significantly inflates payload size on `search` queries — prefer running without `--logs` first, then re-run `mevlog tx <hash> --logs` only for the txs you need to inspect
 - `--ens`: Resolve ENS names
 - `--erc20-symbols`: Resolve token symbols
 - `--evm-calls`: Show detailed call info; requires `--evm-trace`
