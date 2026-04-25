@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.2] - 2026-04-25
+
+### 🚀 Features
+
+- Custom MCP host
+
+### 🐛 Bug Fixes
+
+- Update Cargo.lock
+- MCP interface and docs fixes
+
+### ⚙️ Miscellaneous Tasks
+
+- Release 0.9.2
+
 ## [0.9.1] - 2026-04-19
 
 ### 🐛 Bug Fixes
