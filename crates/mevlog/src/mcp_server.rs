@@ -569,7 +569,12 @@ async fn auth_middleware(
     }
 }
 
-pub async fn run_mcp_server(rpc_url: String, chain_id: u64, port: u16) -> eyre::Result<()> {
+pub async fn run_mcp_server(
+    rpc_url: String,
+    chain_id: u64,
+    host: &str,
+    port: u16,
+) -> eyre::Result<()> {
     let cancellation_token = CancellationToken::new();
     let server_rpc_url = rpc_url.clone();
 
@@ -595,7 +600,7 @@ pub async fn run_mcp_server(rpc_url: String, chain_id: u64, port: u16) -> eyre::
             )
         });
 
-    let addr = format!("localhost:{port}");
+    let addr = format!("{host}:{port}");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 
     info!(
