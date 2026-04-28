@@ -433,6 +433,17 @@ pre.output {
   color: var(--background) !important;
 }
 
+.sticky-nav a[href*="openclaw-mev-mcp"] button {
+  border-color: var(--bright-magenta) !important;
+  color: var(--bright-magenta) !important;
+  font-weight: bold;
+}
+
+.sticky-nav a[href*="openclaw-mev-mcp"] button:hover {
+  background-color: var(--bright-magenta) !important;
+  color: var(--background) !important;
+}
+
 /* Also apply bright cyan to explore button outside sticky nav */
 a[href="/explore"] button {
   border-color: var(--bright-cyan) !important;
