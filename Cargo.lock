@@ -3333,27 +3333,52 @@ dependencies = [
 [[package]]
 name = "hotpath"
 version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d9982fcb4356a5260502f0e646411ec1feb2962cc98c230777104a8d1c5ed3"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#c0aecd0255229ad3609ddb256ceb71f9020f4913"
 dependencies = [
  "arc-swap",
- "axum 0.8.8",
  "cfg-if",
- "chrono",
  "clap",
  "colored",
  "crossbeam-channel",
  "eyre",
  "futures-util",
  "hdrhistogram",
- "hotpath-macros 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hotpath-macros 0.14.1",
  "libc",
  "mach2",
  "pin-project-lite",
  "prettytable-rs",
  "quanta",
  "regex",
+ "serde",
+ "serde_json",
+ "tiny_http",
+ "tokio",
+]
+
+[[package]]
+name = "hotpath"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bff002d5c53fa1c6891f32156b9451d16654bc8a761894d7660b25c0a332d517"
+dependencies = [
+ "arc-swap",
+ "axum 0.8.8",
+ "cfg-if",
+ "crossbeam-channel",
+ "flate2",
+ "futures-util",
+ "hdrhistogram",
+ "hotpath-macros 0.16.1",
+ "hotpath-meta",
+ "libc",
+ "object",
+ "pin-project-lite",
+ "prettytable-rs",
+ "quanta",
+ "regex",
  "rmcp 0.13.0",
+ "rustc-demangle",
  "schemars 1.2.1",
  "serde",
  "serde_json",
@@ -3363,36 +3388,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "hotpath"
+name = "hotpath-macros"
 version = "0.14.1"
 source = "git+https://github.com/pawurb/hotpath-rs?branch=main#c0aecd0255229ad3609ddb256ceb71f9020f4913"
 dependencies = [
- "arc-swap",
- "cfg-if",
- "clap",
- "colored",
- "crossbeam-channel",
- "eyre",
- "futures-util",
- "hdrhistogram",
- "hotpath-macros 0.14.1 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
- "libc",
- "mach2",
- "pin-project-lite",
- "prettytable-rs",
- "quanta",
- "regex",
- "serde",
- "serde_json",
- "tiny_http",
- "tokio",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
 name = "hotpath-macros"
-version = "0.14.1"
+version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4398eddb78466298f1ddcc739abbbd8a942e541d1972c7590bd83de364e626e0"
+checksum = "9e2f4ac4534511584b7082657e133dcf3d8727b2f456a6b2a2c3eb02b82c1277"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3400,13 +3409,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "hotpath-macros"
-version = "0.14.1"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#c0aecd0255229ad3609ddb256ceb71f9020f4913"
+name = "hotpath-macros-meta"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a6a87070853e9402ec79184f8d8d930d7eb86cd274aecdcf973f73b6f40271b0"
+
+[[package]]
+name = "hotpath-meta"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31cfef2b9d280ad754c23b40b50cc74676489597f3cebfe0c180389e08a53ed"
 dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.117",
+ "hotpath-macros-meta",
 ]
 
 [[package]]
@@ -4258,7 +4272,7 @@ dependencies = [
  "glob",
  "hex",
  "home",
- "hotpath 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hotpath 0.16.1",
  "html-escape",
  "indicatif",
  "parquet",
@@ -4297,7 +4311,7 @@ dependencies = [
  "eyre",
  "futures",
  "glob",
- "hotpath 0.14.1 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
+ "hotpath 0.14.1",
  "http-body-util",
  "mevlog",
  "mockito",
@@ -4615,6 +4629,15 @@ dependencies = [
  "ruint",
  "serde",
  "smallvec",
+]
+
+[[package]]
+name = "object"
+version = "0.36.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -5958,6 +5981,12 @@ name = "ruint-macro"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
+
+[[package]]
+name = "rustc-demangle"
+version = "0.1.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
 
 [[package]]
 name = "rustc-hash"
