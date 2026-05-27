@@ -2,7 +2,7 @@ use alloy_chains::NamedChain;
 use eyre::Result;
 use revm::primitives::Address;
 
-use crate::models::db_chain::DBChain;
+use crate::models::sigs::db_chain::DBChain;
 
 #[derive(Debug, Clone)]
 pub struct EVMChain {

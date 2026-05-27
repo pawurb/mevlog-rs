@@ -94,7 +94,7 @@ fn normalize_key(signature_hash: &str) -> String {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::models::db_event::test::setup_test_db;
+    use crate::models::sigs::db_event::test::setup_test_db;
 
     #[tokio::test]
     async fn create_and_get_method() -> Result<()> {
