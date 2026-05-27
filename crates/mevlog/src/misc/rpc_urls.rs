@@ -20,9 +20,29 @@ pub struct NativeCurrency {
     pub decimals: u32,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Explorer {
     pub url: String,
+}
+
+// chainlist.org returns explorer elements as either a bare URL string or an
+// object `{ "url": "...", ... }`. Accept both shapes; ignore extra fields.
+impl<'de> Deserialize<'de> for Explorer {
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Raw {
+            Url(String),
+            Obj { url: String },
+        }
+
+        Ok(match Raw::deserialize(deserializer)? {
+            Raw::Url(url) | Raw::Obj { url } => Explorer { url },
+        })
+    }
 }
 
 const CHAINLIST_URL: &str = "https://chainlist.org/rpcs.json";
@@ -109,7 +129,18 @@ pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
 
     let client = reqwest::Client::new();
     let response = client.get(CHAINLIST_URL).send().await?;
-    let chains: Vec<ChainInfo> = response.json().await?;
+    let status = response.status();
+    let body = response.text().await?;
+    let chains: Vec<ChainInfo> = serde_json::from_str(&body).map_err(|e| {
+        let snippet: String = body.chars().take(500).collect();
+        eyre::eyre!(
+            "Failed to parse chainlist JSON (status {}, {} bytes): {}\nbody snippet: {}",
+            status,
+            body.len(),
+            e,
+            snippet
+        )
+    })?;
 
     if let Err(e) = cache_chains(&cache_dir, &chains).await {
         eprintln!("Warning: Failed to cache chains data: {e}");
