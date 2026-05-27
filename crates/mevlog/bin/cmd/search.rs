@@ -12,117 +12,16 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
-        json::mev_transaction_json::{
-            MEVTransactionJson, SearchQueryParams, serialize_json_response,
-        },
+        json::mev_transaction_json::{SearchQueryParams, serialize_json_response},
         mev_block::{PreFetchedBlockData, generate_block},
-        txs_filter::{TxsFilter, TxsFilterOpts},
+        txs_filter::TxsFilter,
     },
 };
-use revm::primitives::{Address, U256};
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum SortField {
-    GasPrice,
-    GasUsed,
-    FullTxCost,
-    TxCost,
-    Erc20Transfer(Address), // Token contract address
-}
-
-impl std::str::FromStr for SortField {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "gas-price" => Ok(SortField::GasPrice),
-            "gas-used" => Ok(SortField::GasUsed),
-            "full-tx-cost" => Ok(SortField::FullTxCost),
-            "tx-cost" => Ok(SortField::TxCost),
-            _ => {
-                if s.starts_with("erc20Transfer|") {
-                    let token_address = s
-                        .strip_prefix("erc20Transfer|")
-                        .ok_or("Token address required after 'erc20Transfer|'")?;
-
-                    match token_address.parse::<Address>() {
-                        Ok(address) => Ok(SortField::Erc20Transfer(address)),
-                        Err(_) => Err(
-                            "Invalid token address format. Expected valid Ethereum address"
-                                .to_string(),
-                        ),
-                    }
-                } else {
-                    Err(format!(
-                        "Invalid sort field: '{}'. Expected one of: gas-price, gas-used, tx-cost, full-tx-cost, or erc20Transfer|<token_address>",
-                        s
-                    ))
-                }
-            }
-        }
-    }
-}
-
-fn extract_erc20_transfer_amount(
-    transaction: &MEVTransactionJson,
-    token_address: &Address,
-) -> U256 {
-    transaction
-        .logs
-        .iter()
-        .filter(|group| group.source == *token_address)
-        .flat_map(|group| &group.logs)
-        .filter(|log| log.signature == "Transfer(address,address,uint256)")
-        .filter_map(|log| log.amount.as_ref().and_then(|amt| amt.parse::<U256>().ok()))
-        .sum()
-}
-
-impl std::fmt::Display for SortField {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SortField::GasPrice => write!(f, "gas-price"),
-            SortField::GasUsed => write!(f, "gas-used"),
-            SortField::FullTxCost => write!(f, "full-tx-cost"),
-            SortField::TxCost => write!(f, "tx-cost"),
-            SortField::Erc20Transfer(addr) => write!(f, "erc20Transfer|{addr}"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
-pub enum SortDirection {
-    Asc,
-    Desc,
-}
-
-impl std::fmt::Display for SortDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SortDirection::Asc => write!(f, "asc"),
-            SortDirection::Desc => write!(f, "desc"),
-        }
-    }
-}
 
 #[derive(Debug, clap::Parser)]
 pub struct SearchArgs {
-    #[arg(short = 'b', long, help_heading = "Block number or range to filter by (e.g., '22030899', 'latest', '22030800:22030900' '50:latest', '50:'", num_args(1..))]
+    #[arg(short = 'b', long, help_heading = "Block number or range to collect (e.g., '22030899', 'latest', '22030800:22030900' '50:latest', '50:'", num_args(1..))]
     blocks: String,
-
-    #[arg(long, help = "Limit the number of transactions returned")]
-    limit: Option<usize>,
-
-    #[arg(
-        long,
-        help = "Sort transactions by field (gas-price, gas-used, tx-cost, full-tx-cost, erc20Transfer|<token_address>)"
-    )]
-    sort: Option<SortField>,
-
-    #[arg(long, help = "Sort direction (desc, asc)", default_value = "desc")]
-    sort_dir: SortDirection,
-
-    #[command(flatten)]
-    filter_opts: TxsFilterOpts,
 
     #[command(flatten)]
     shared_opts: SharedOpts,
@@ -148,27 +47,27 @@ impl SearchArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
-        if let Some(sort) = &self.sort
-            && sort == &SortField::FullTxCost
-            && self.shared_opts.evm_trace.is_none()
-        {
-            bail!("--sort full-tx-cost is only available with --evm-trace enabled")
+        if self.shared_opts.evm_trace.is_none() {
+            if self.shared_opts.evm_calls {
+                bail!("'--evm-calls' is supported only with --evm-trace [rpc|revm] enabled")
+            }
+            if self.shared_opts.evm_ops {
+                bail!("'--evm-ops' is supported only with --evm-trace [rpc|revm] enabled")
+            }
+            if self.shared_opts.evm_state_diff {
+                bail!("'--evm-state-diff' is supported only with --evm-trace [rpc|revm] enabled")
+            }
         }
 
-        let erc20_sort_token = match &self.sort {
-            Some(SortField::Erc20Transfer(token_address)) => Some(*token_address),
-            _ => None,
+        let txs_filter = TxsFilter {
+            show_calls: self.shared_opts.evm_calls,
+            show_opcodes: self.shared_opts.evm_ops,
+            show_state_diff: self.shared_opts.evm_state_diff,
+            ..Default::default()
         };
 
-        let txs_filter =
-            TxsFilter::new(&self.filter_opts, None, &self.shared_opts, erc20_sort_token)?;
-
-        let ens_query = txs_filter
-            .from_ens_query()
-            .or_else(|| txs_filter.to_ens_query());
-
         let ens_lookup = ENSLookup::lookup_mode(
-            ens_query,
+            None,
             deps.ens_lookup_worker,
             &deps.chain,
             self.shared_opts.ens,
@@ -254,18 +153,10 @@ impl SearchArgs {
         }
 
         let json_opts = self.shared_opts.json_serialize_opts();
-        let mut transactions_json: Vec<_> = mev_blocks
+        let transactions_json: Vec<_> = mev_blocks
             .iter()
             .flat_map(|block| block.transactions_json())
             .collect();
-
-        if let Some(sort_field) = &self.sort {
-            sort_transactions(&mut transactions_json, sort_field, &self.sort_dir);
-        }
-
-        if let Some(limit) = self.limit {
-            transactions_json.truncate(limit);
-        }
 
         let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
         chain_info.native_token_price = native_token_price;
@@ -273,24 +164,6 @@ impl SearchArgs {
         let query = SearchQueryParams {
             command: "search",
             blocks: self.blocks.clone(),
-            limit: self.limit,
-            sort: self.sort.as_ref().map(|s| s.to_string()),
-            sort_dir: self.sort.as_ref().map(|_| self.sort_dir.to_string()),
-            from: self.filter_opts.from.clone(),
-            to: self.filter_opts.to.clone(),
-            position: self.filter_opts.position.clone(),
-            touching: self.filter_opts.touching.map(|a| format!("{a}")),
-            event: self.filter_opts.event.clone(),
-            not_event: self.filter_opts.not_event.clone(),
-            method: self.filter_opts.method.clone(),
-            calls: self.filter_opts.calls.clone(),
-            tx_cost: self.filter_opts.tx_cost.clone(),
-            real_tx_cost: self.filter_opts.real_tx_cost.clone(),
-            gas_price: self.filter_opts.gas_price.clone(),
-            real_gas_price: self.filter_opts.real_gas_price.clone(),
-            value: self.filter_opts.value.clone(),
-            failed: self.filter_opts.failed,
-            erc20_transfer: self.filter_opts.erc20_transfer.clone(),
             evm_trace: self.shared_opts.evm_trace.clone(),
             evm_calls: self.shared_opts.evm_calls,
             evm_ops: self.shared_opts.evm_ops,
@@ -317,80 +190,5 @@ impl SearchArgs {
         }
 
         Ok(())
-    }
-}
-
-fn sort_transactions(
-    transactions_json: &mut [MEVTransactionJson],
-    sort_field: &SortField,
-    sort_dir: &SortDirection,
-) {
-    match sort_field {
-        SortField::GasPrice => match sort_dir {
-            SortDirection::Desc => transactions_json.sort_by(|a, b| {
-                b.gas_price
-                    .cmp(&a.gas_price)
-                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
-            }),
-            SortDirection::Asc => transactions_json.sort_by(|a, b| {
-                a.gas_price
-                    .cmp(&b.gas_price)
-                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
-            }),
-        },
-        SortField::GasUsed => match sort_dir {
-            SortDirection::Desc => transactions_json.sort_by(|a, b| {
-                b.gas_used
-                    .cmp(&a.gas_used)
-                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
-            }),
-            SortDirection::Asc => transactions_json.sort_by(|a, b| {
-                a.gas_used
-                    .cmp(&b.gas_used)
-                    .then_with(|| a.tx_hash.cmp(&b.tx_hash))
-            }),
-        },
-        SortField::TxCost => {
-            transactions_json.sort_by(|a, b| {
-                let a_tx_cost = a.gas_used as u128 * a.gas_price;
-                let b_tx_cost = b.gas_used as u128 * b.gas_price;
-                match sort_dir {
-                    SortDirection::Desc => b_tx_cost
-                        .cmp(&a_tx_cost)
-                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
-                    SortDirection::Asc => a_tx_cost
-                        .cmp(&b_tx_cost)
-                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
-                }
-            });
-        }
-        SortField::FullTxCost => {
-            transactions_json.sort_by(|a, b| {
-                let a_cost = a.full_tx_cost.expect("must be traced");
-                let b_cost = b.full_tx_cost.expect("must be traced");
-                match sort_dir {
-                    SortDirection::Desc => {
-                        b_cost.cmp(&a_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
-                    }
-                    SortDirection::Asc => {
-                        a_cost.cmp(&b_cost).then_with(|| a.tx_hash.cmp(&b.tx_hash))
-                    }
-                }
-            });
-        }
-        SortField::Erc20Transfer(token_address) => {
-            transactions_json.sort_by(|a, b| {
-                let a_amount = extract_erc20_transfer_amount(a, token_address);
-                let b_amount = extract_erc20_transfer_amount(b, token_address);
-                match sort_dir {
-                    SortDirection::Desc => b_amount
-                        .cmp(&a_amount)
-                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
-                    SortDirection::Asc => a_amount
-                        .cmp(&b_amount)
-                        .then_with(|| a.tx_hash.cmp(&b.tx_hash)),
-                }
-            });
-        }
     }
 }

@@ -60,64 +60,8 @@ struct SearchTransactionsParams {
         description = "Block range: 'latest', a block number like '22030899', or a range like '22030800:22030900'"
     )]
     blocks: String,
-    #[schemars(description = "Filter by sender address (0x-prefixed) or ENS name")]
-    from: Option<String>,
-    #[schemars(
-        description = "Filter by recipient address (0x-prefixed), ENS name, or 'CREATE' for contract creations"
-    )]
-    to: Option<String>,
-    #[schemars(
-        description = "Filter by event signature name or regex (e.g., 'Transfer' or '/Swap/')"
-    )]
-    event: Option<String>,
-    #[schemars(
-        description = "Exclude txs by event names matching the provided regex or signature"
-    )]
-    not_event: Option<String>,
-    #[schemars(description = "Filter by root method signature name or regex")]
-    method: Option<String>,
-    #[schemars(
-        description = "Filter by subcall method names matching the provided regex, signature or signature hash (requires evm_trace)"
-    )]
-    calls: Option<String>,
-    #[schemars(
-        description = "Filter by contracts with storage changed by the transaction (0x-prefixed address, requires evm_trace)"
-    )]
-    touching: Option<String>,
-    #[schemars(description = "Maximum number of transactions to return")]
-    limit: Option<u32>,
     #[schemars(description = "Tracing mode: 'revm' or 'rpc'")]
     evm_trace: Option<String>,
-    #[schemars(description = "If true, only return failed transactions")]
-    failed: Option<bool>,
-    #[schemars(
-        description = "Sort transactions by field: 'gas-price', 'gas-used', 'tx-cost', 'full-tx-cost', or 'erc20Transfer|<token_address>'"
-    )]
-    sort: Option<String>,
-    #[schemars(description = "Sort direction: 'asc' or 'desc' (default: 'desc')")]
-    sort_dir: Option<String>,
-    #[schemars(
-        description = "Transaction position or range within a block (e.g., '0' for first tx, '0:10' for first 11 txs)"
-    )]
-    position: Option<String>,
-    #[schemars(description = "Filter by tx cost (e.g., 'le0.001ether', 'ge0.01ether')")]
-    tx_cost: Option<String>,
-    #[schemars(
-        description = "Filter by real (including coinbase bribe) tx cost (e.g., 'le0.001ether', 'ge0.01ether')"
-    )]
-    real_tx_cost: Option<String>,
-    #[schemars(description = "Filter by effective gas price (e.g., 'ge2gwei', 'le1gwei')")]
-    gas_price: Option<String>,
-    #[schemars(
-        description = "Filter by real (including coinbase bribe) effective gas price (e.g., 'ge3gwei', 'le2gwei')"
-    )]
-    real_gas_price: Option<String>,
-    #[schemars(description = "Filter by transaction value (e.g., 'ge1ether', 'le0.1ether')")]
-    value: Option<String>,
-    #[schemars(
-        description = "Filter by ERC20 Transfer events with address and optionally amount (e.g., '0xa0b8...|ge1000gwei')"
-    )]
-    erc20_transfer: Option<String>,
     #[schemars(description = "Show detailed tx calls info (requires evm_trace)")]
     evm_calls: Option<bool>,
     #[schemars(
@@ -235,106 +179,24 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(
-        description = r#"Search for Ethereum transactions matching filter conditions within a block range.
+    #[tool(description = r#"Collect Ethereum transactions within a block range.
 
-Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. Supports filtering by sender, recipient, event signatures, method signatures, and failed status.
+Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. Optionally enable tracing (evm_trace) to include internal calls, opcodes, and state changes.
 
-Block range examples: 'latest' (latest block), '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks)."#
-    )]
+Block range examples: 'latest' (latest block), '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks)."#)]
     async fn search_transactions(
         &self,
         params: Parameters<SearchTransactionsParams>,
     ) -> Result<CallToolResult, McpError> {
         debug!(
             blocks = %params.0.blocks,
-            from = ?params.0.from,
-            to = ?params.0.to,
-            event = ?params.0.event,
-            method = ?params.0.method,
-            limit = ?params.0.limit,
             evm_trace = ?params.0.evm_trace,
-            failed = ?params.0.failed,
-            sort = ?params.0.sort,
-            sort_dir = ?params.0.sort_dir,
-            position = ?params.0.position,
             "MCP search_transactions request"
         );
         let mut args = vec!["search".to_string(), "-b".to_string(), params.0.blocks];
-        if let Some(from) = params.0.from {
-            args.push("--from".to_string());
-            args.push(from);
-        }
-        if let Some(to) = params.0.to {
-            args.push("--to".to_string());
-            args.push(to);
-        }
-        if let Some(event) = params.0.event {
-            args.push("--event".to_string());
-            args.push(event);
-        }
-        if let Some(not_event) = params.0.not_event {
-            args.push("--not-event".to_string());
-            args.push(not_event);
-        }
-        if let Some(method) = params.0.method {
-            args.push("--method".to_string());
-            args.push(method);
-        }
-        if let Some(calls) = params.0.calls {
-            args.push("--calls".to_string());
-            args.push(calls);
-        }
-        if let Some(touching) = params.0.touching {
-            args.push("--touching".to_string());
-            args.push(touching);
-        }
-        if let Some(limit) = params.0.limit {
-            args.push("--limit".to_string());
-            args.push(limit.to_string());
-        }
         if let Some(evm_trace) = params.0.evm_trace {
             args.push("--evm-trace".to_string());
             args.push(evm_trace);
-        }
-        if params.0.failed == Some(true) {
-            args.push("--failed".to_string());
-        }
-        if let Some(sort) = params.0.sort {
-            args.push("--sort".to_string());
-            args.push(sort);
-        }
-        if let Some(sort_dir) = params.0.sort_dir {
-            args.push("--sort-dir".to_string());
-            args.push(sort_dir);
-        }
-        if let Some(position) = params.0.position {
-            args.push("--position".to_string());
-            args.push(position);
-        }
-        if let Some(tx_cost) = params.0.tx_cost {
-            args.push("--tx-cost".to_string());
-            args.push(tx_cost);
-        }
-        if let Some(real_tx_cost) = params.0.real_tx_cost {
-            args.push("--real-tx-cost".to_string());
-            args.push(real_tx_cost);
-        }
-        if let Some(gas_price) = params.0.gas_price {
-            args.push("--gas-price".to_string());
-            args.push(gas_price);
-        }
-        if let Some(real_gas_price) = params.0.real_gas_price {
-            args.push("--real-gas-price".to_string());
-            args.push(real_gas_price);
-        }
-        if let Some(value) = params.0.value {
-            args.push("--value".to_string());
-            args.push(value);
-        }
-        if let Some(erc20_transfer) = params.0.erc20_transfer {
-            args.push("--erc20-transfer".to_string());
-            args.push(erc20_transfer);
         }
         if params.0.evm_calls == Some(true) {
             args.push("--evm-calls".to_string());
