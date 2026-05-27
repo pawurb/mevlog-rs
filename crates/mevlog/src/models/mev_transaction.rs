@@ -15,8 +15,8 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 use super::{
-    db_method::DBMethod, mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog,
-    mev_log_group::MEVLogGroup, mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff,
+    mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog, mev_log_group::MEVLogGroup,
+    mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff, sigs::db_method::DBMethod,
 };
 use crate::{
     GenericProvider,

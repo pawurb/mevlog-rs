@@ -14,7 +14,7 @@ use tracing::debug;
 use crate::{
     GenericProvider,
     misc::db_actions::download_db_file,
-    models::{db_chain::DBChain, evm_chain::EVMChain},
+    models::{evm_chain::EVMChain, sigs::db_chain::DBChain},
 };
 use crate::{
     misc::{
