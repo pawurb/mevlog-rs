@@ -19,7 +19,7 @@ use crate::{
 use crate::{
     misc::{
         config::Config,
-        database::sqlite_conn,
+        database::sigs_conn,
         db_actions::{check_and_create_indexes, db_file_exists},
         ens_utils::start_ens_lookup_worker,
         rpc_urls::get_chain_info,
@@ -104,7 +104,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         download_db_file().await?;
     }
 
-    let sqlite = sqlite_conn(None).await?;
+    let sqlite = sigs_conn(None).await?;
     check_and_create_indexes(&sqlite).await?;
     let ens_lookup_worker = start_ens_lookup_worker(&resolved.rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
