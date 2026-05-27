@@ -1,4 +1,8 @@
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use alloy::{
     eips::BlockNumberOrTag,
@@ -18,12 +22,10 @@ use tracing::error;
 use super::{
     mev_log::MEVLog,
     mev_transaction::{MEVTransaction, ReceiptData},
-    txs_filter::TxsFilter,
 };
 use crate::{
     GenericProvider,
     misc::{
-        args_parsing::PositionRange,
         coinbase_bribe::{TraceData, find_coinbase_transfer},
         ens_utils::ENSLookup,
         revm_tracing::{
@@ -67,8 +69,6 @@ pub struct MEVBlock {
     pub txs_data: Vec<TxData>,
     pub revm_context: RevmBlockContext,
     pub txs_count: u64,
-    pub reversed_order: bool,
-    pub top_metadata: bool,
     pub chain: Arc<EVMChain>,
 }
 
@@ -78,7 +78,8 @@ pub async fn generate_block(
     sqlite: &SqlitePool,
     block_number: u64,
     ens_lookup: &ENSLookup,
-    txs_filter: &TxsFilter,
+    tx_indexes: Option<&HashSet<u64>>,
+    top_metadata: bool,
     shared_opts: &SharedOpts,
     chain: &Arc<EVMChain>,
     rpc_url: &str,
@@ -93,13 +94,15 @@ pub async fn generate_block(
     let mut revm_db =
         init_revm_db(block_number - 1, &shared_opts.evm_trace, rpc_url, chain).await?;
 
+    // Cap revm replay at the highest requested tx index; without a selection,
+    // replay the whole block.
+    let max_index = tx_indexes.and_then(|indexes| indexes.iter().max().copied());
+
     let mut mev_block = MEVBlock::new(
         block_number,
-        txs_filter.tx_position.as_ref(),
-        txs_filter.reversed_order,
+        max_index,
         provider,
         shared_opts.evm_trace.as_ref(),
-        txs_filter.top_metadata,
         chain,
         native_token_price,
         pre_fetched.txs_data,
@@ -108,7 +111,8 @@ pub async fn generate_block(
 
     mev_block
         .populate_txs(
-            txs_filter,
+            tx_indexes,
+            top_metadata,
             sqlite,
             ens_lookup,
             provider,
@@ -127,11 +131,9 @@ pub async fn generate_block(
 impl MEVBlock {
     pub async fn new(
         block_number: u64,
-        position_range: Option<&PositionRange>,
-        reversed_order: bool,
+        max_index: Option<u64>,
         provider: &Arc<GenericProvider>,
         trace_mode: Option<&TraceMode>,
-        block_info_top: bool,
         chain: &Arc<EVMChain>,
         native_token_price: Option<f64>,
         txs_data: Vec<TxData>,
@@ -147,8 +149,8 @@ impl MEVBlock {
 
         let revm_transactions: HashMap<u64, TxData> = match trace_mode {
             Some(TraceMode::Revm) => {
-                // Without a position range, replay/trace the whole block.
-                let max_index = position_range.map(|range| range.to as usize);
+                // Without a selection, replay/trace the whole block.
+                let max_index = max_index.map(|max| max as usize);
 
                 txs_data
                     .iter()
@@ -172,9 +174,7 @@ impl MEVBlock {
             txs_count,
             revm_context,
             txs_data,
-            reversed_order,
             revm_transactions,
-            top_metadata: block_info_top,
             chain: chain.clone(),
         })
     }
@@ -182,7 +182,8 @@ impl MEVBlock {
     #[allow(clippy::too_many_arguments)]
     pub async fn populate_txs(
         &mut self,
-        filter: &TxsFilter,
+        tx_indexes: Option<&HashSet<u64>>,
+        top_metadata: bool,
         sqlite: &SqlitePool,
         ens_lookup: &ENSLookup,
         provider: &Arc<GenericProvider>,
@@ -195,14 +196,8 @@ impl MEVBlock {
             let tx_index = tx_index as u64;
             let tx_hash = tx.tx_hash;
 
-            if let Some(indexes) = &filter.tx_indexes
+            if let Some(indexes) = tx_indexes
                 && !indexes.contains(&(tx_index))
-            {
-                continue;
-            }
-
-            if let Some(position_range) = &filter.tx_position
-                && (tx_index < position_range.from || tx_index > position_range.to)
             {
                 continue;
             }
@@ -218,11 +213,11 @@ impl MEVBlock {
                 sqlite,
                 ens_lookup,
                 provider,
-                filter.top_metadata,
-                filter.show_calls,
+                top_metadata,
+                shared_opts.evm_calls,
                 include_logs,
-                filter.show_opcodes,
-                filter.show_state_diff,
+                shared_opts.evm_ops,
+                shared_opts.evm_state_diff,
             );
 
             let mev_tx = hotpath::future!(mev_tx, log = true);
@@ -238,12 +233,12 @@ impl MEVBlock {
             self.mev_transactions.insert(tx_index, mev_tx);
         }
 
-        self.ingest_logs(filter, logs_data).await?;
+        self.ingest_logs(tx_indexes, logs_data).await?;
 
         match shared_opts.evm_trace {
-            Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
+            Some(TraceMode::RPC) => self.trace_txs_rpc(shared_opts, sqlite, provider).await?,
             Some(TraceMode::Revm) => {
-                self.trace_txs_revm(filter, sqlite, revm_db.expect("Revm must be present"))
+                self.trace_txs_revm(shared_opts, sqlite, revm_db.expect("Revm must be present"))
                     .await?
             }
             _ => {}
@@ -254,7 +249,7 @@ impl MEVBlock {
 
     async fn trace_txs_rpc(
         &mut self,
-        filter: &TxsFilter,
+        shared_opts: &SharedOpts,
         sqlite: &SqlitePool,
         provider: &Arc<GenericProvider>,
     ) -> Result<()> {
@@ -288,12 +283,12 @@ impl MEVBlock {
             }
             mev_tx.calls = Some(call_extracts);
 
-            if filter.show_opcodes {
+            if shared_opts.evm_ops {
                 let opcodes = rpc_tx_opcodes(mev_tx.tx_hash, provider).await?;
                 mev_tx.opcodes = Some(opcodes);
             }
 
-            if filter.show_state_diff {
+            if shared_opts.evm_state_diff {
                 let state_diff = rpc_tx_state_diff(mev_tx.tx_hash, provider).await?;
                 mev_tx.state_diff = Some(state_diff);
             }
@@ -311,7 +306,7 @@ impl MEVBlock {
 
     async fn trace_txs_revm(
         &mut self,
-        filter: &TxsFilter,
+        shared_opts: &SharedOpts,
         sqlite: &SqlitePool,
         revm_db: &mut CacheDB<SharedBackend>,
     ) -> Result<()> {
@@ -366,13 +361,13 @@ impl MEVBlock {
 
             mev_tx.calls = Some(call_extracts);
 
-            if filter.show_opcodes {
+            if shared_opts.evm_ops {
                 let opcodes =
                     revm_tx_opcodes(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
                 mev_tx.opcodes = Some(opcodes);
             }
 
-            if filter.show_state_diff {
+            if shared_opts.evm_state_diff {
                 let state_diff =
                     revm_tx_state_diff(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
                 mev_tx.state_diff = Some(state_diff);
@@ -391,17 +386,15 @@ impl MEVBlock {
         Ok(())
     }
 
-    async fn ingest_logs(&mut self, filter: &TxsFilter, logs_data: Vec<MEVLog>) -> Result<()> {
+    async fn ingest_logs(
+        &mut self,
+        tx_indexes: Option<&HashSet<u64>>,
+        logs_data: Vec<MEVLog>,
+    ) -> Result<()> {
         for mev_log in logs_data {
             let tx_index = mev_log.tx_index;
 
-            if let Some(position_range) = &filter.tx_position
-                && (tx_index < position_range.from || tx_index > position_range.to)
-            {
-                continue;
-            }
-
-            if let Some(indexes) = &filter.tx_indexes
+            if let Some(indexes) = tx_indexes
                 && !indexes.contains(&tx_index)
             {
                 continue;

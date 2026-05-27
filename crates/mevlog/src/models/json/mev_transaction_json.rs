@@ -233,8 +233,6 @@ pub struct TxQueryParams {
     pub before: Option<u8>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub after: Option<u8>,
-    #[serde(skip_serializing_if = "is_false")]
-    pub reverse: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub evm_trace: Option<TraceMode>,
     #[serde(skip_serializing_if = "is_false")]
