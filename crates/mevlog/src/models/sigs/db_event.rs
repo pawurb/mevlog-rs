@@ -99,7 +99,7 @@ pub mod test {
     use uuid::Uuid;
 
     use super::*;
-    use crate::misc::database::{init_sqlite_db, sqlite_conn};
+    use crate::misc::database::{init_sigs_db, sigs_conn};
 
     pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
         let uuid = Uuid::new_v4();
@@ -110,7 +110,7 @@ pub mod test {
             println!("DB {} removed", &db_url);
         }
 
-        init_sqlite_db(Some(db_url.clone()))
+        init_sigs_db(Some(db_url.clone()))
             .await
             .expect("Failed to init db");
 
@@ -119,7 +119,7 @@ pub mod test {
         };
 
         (
-            sqlite_conn(Some(db_url))
+            sigs_conn(Some(db_url))
                 .await
                 .expect("Failed to connect to db"),
             cleaner,
