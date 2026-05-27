@@ -11,7 +11,7 @@ use mevlog::{
         database::{init_sqlite_db, sqlite_conn, sqlite_truncate_wal},
         rpc_urls::get_all_chains,
     },
-    models::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
+    models::sigs::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
 };
 use tracing::info;
 

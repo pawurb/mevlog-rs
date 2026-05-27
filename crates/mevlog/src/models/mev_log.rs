@@ -3,7 +3,7 @@ use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::SqlitePool;
 
-use super::{db_event::DBEvent, mev_log_signature::MEVLogSignature};
+use super::{mev_log_signature::MEVLogSignature, sigs::db_event::DBEvent};
 use crate::misc::{parquet_utils::get_parquet_string_value, symbol_utils::ERC20SymbolsLookup};
 
 #[derive(Debug, Clone)]
