@@ -6,7 +6,6 @@ use eyre::{Result, eyre};
 use mevlog::{
     ChainInfoNoRpcsJson,
     misc::{
-        args_parsing::PositionRange,
         data_fetch::fetch_blocks_batch,
         ens_utils::ENSLookup,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
@@ -16,7 +15,6 @@ use mevlog::{
     models::{
         json::mev_transaction_json::{TxQueryParams, serialize_json_response},
         mev_block::{PreFetchedBlockData, generate_block},
-        txs_filter::TxsFilter,
     },
 };
 use revm::primitives::FixedBytes;
@@ -44,9 +42,6 @@ pub struct TxArgs {
         help = "'after' means older transactions (larger indexes)"
     )]
     after: Option<u8>,
-
-    #[arg(short, long, alias = "r", help = "Reverse the order of txs")]
-    pub reverse: bool,
 
     #[arg(
         long,
@@ -104,33 +99,12 @@ impl TxArgs {
 
         let tx_indexes = get_matching_indexes(tx_index, self.before, self.after);
 
-        let max_index = tx_indexes
-            .clone()
-            .into_iter()
-            .max()
-            .expect("tx_indexes must have at least one element");
-
-        let position_range = Some(PositionRange {
-            from: 0,
-            to: max_index,
-        });
-
         let native_token_price = get_native_token_price(
             &deps.chain,
             &deps.provider,
             self.shared_opts.native_token_price,
         )
         .await?;
-
-        let txs_filter = TxsFilter {
-            tx_indexes: Some(tx_indexes),
-            tx_position: position_range,
-            reversed_order: self.reverse,
-            top_metadata: self.top_metadata,
-            show_calls: self.shared_opts.evm_calls,
-            show_opcodes: self.shared_opts.evm_ops,
-            show_state_diff: self.shared_opts.evm_state_diff,
-        };
 
         let ens_lookup_mode = if deps.chain.is_mainnet() && self.shared_opts.ens {
             ENSLookup::Sync
@@ -173,7 +147,8 @@ impl TxArgs {
             &deps.sqlite,
             block_number,
             &ens_lookup_mode,
-            &txs_filter,
+            Some(&tx_indexes),
+            self.top_metadata,
             &self.shared_opts,
             &deps.chain,
             &deps.rpc_url,
@@ -193,7 +168,6 @@ impl TxArgs {
             tx_hash: format!("{:#x}", self.tx_hash),
             before: self.before,
             after: self.after,
-            reverse: self.reverse,
             evm_trace: self.shared_opts.evm_trace.clone(),
             evm_calls: self.shared_opts.evm_calls,
             evm_ops: self.shared_opts.evm_ops,

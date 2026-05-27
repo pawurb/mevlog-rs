@@ -14,7 +14,6 @@ use mevlog::{
     models::{
         json::mev_transaction_json::{SearchQueryParams, serialize_json_response},
         mev_block::{PreFetchedBlockData, generate_block},
-        txs_filter::TxsFilter,
     },
 };
 
@@ -58,13 +57,6 @@ impl SearchArgs {
                 bail!("'--evm-state-diff' is supported only with --evm-trace [rpc|revm] enabled")
             }
         }
-
-        let txs_filter = TxsFilter {
-            show_calls: self.shared_opts.evm_calls,
-            show_opcodes: self.shared_opts.evm_ops,
-            show_state_diff: self.shared_opts.evm_state_diff,
-            ..Default::default()
-        };
 
         let ens_lookup = ENSLookup::lookup_mode(
             None,
@@ -138,7 +130,8 @@ impl SearchArgs {
                     &deps.sqlite,
                     block_number,
                     &ens_lookup,
-                    &txs_filter,
+                    None,
+                    false,
                     &self.shared_opts,
                     &deps.chain,
                     &deps.rpc_url,
