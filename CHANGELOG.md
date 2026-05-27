@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.3] - 2026-05-27
+
+### 🐛 Bug Fixes
+
+- Parse different ChainList response formats
+
+### ⚙️ Miscellaneous Tasks
+
+- Update hotpath
+- Release 0.9.3
+
 ## [0.9.2] - 2026-04-25
 
 ### 🚀 Features
