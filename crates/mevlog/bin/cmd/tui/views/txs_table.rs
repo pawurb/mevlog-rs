@@ -16,8 +16,6 @@ const SELECTED_ROW_STYLE: Style = Style::new()
 
 pub struct TxsTable<'a> {
     items: &'a [MEVTransactionJson],
-    title: Option<String>,
-    show_block_number: bool,
     explorer_url: Option<&'a str>,
 }
 
@@ -25,20 +23,8 @@ impl<'a> TxsTable<'a> {
     pub fn new(items: &'a [MEVTransactionJson]) -> Self {
         Self {
             items,
-            title: None,
-            show_block_number: false,
             explorer_url: None,
         }
-    }
-
-    pub fn with_title(mut self, title: &str) -> Self {
-        self.title = Some(title.to_string());
-        self
-    }
-
-    pub fn with_block_number(mut self) -> Self {
-        self.show_block_number = true;
-        self
     }
 
     pub fn with_explorer_url(mut self, url: Option<&'a str>) -> Self {
@@ -47,26 +33,14 @@ impl<'a> TxsTable<'a> {
     }
 
     pub fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState) {
-        let header_cells: Vec<Cell> = if self.show_block_number {
-            vec![
-                Cell::from("Block"),
-                Cell::from("Index"),
-                Cell::from("Hash"),
-                Cell::from("Signature"),
-                Cell::from("Gas Price"),
-                Cell::from("Gas Cost"),
-                Cell::from("Status"),
-            ]
-        } else {
-            vec![
-                Cell::from("Index"),
-                Cell::from("Hash"),
-                Cell::from("Signature"),
-                Cell::from("Gas Price"),
-                Cell::from("Gas Cost"),
-                Cell::from("Status"),
-            ]
-        };
+        let header_cells: Vec<Cell> = vec![
+            Cell::from("Index"),
+            Cell::from("Hash"),
+            Cell::from("Signature"),
+            Cell::from("Gas Price"),
+            Cell::from("Gas Cost"),
+            Cell::from("Status"),
+        ];
 
         let header = Row::new(header_cells).style(HEADER_STYLE).height(1);
 
@@ -78,11 +52,7 @@ impl<'a> TxsTable<'a> {
                 .header(header)
                 .block(
                     Block::bordered()
-                        .title(
-                            self.title
-                                .clone()
-                                .unwrap_or_else(|| " Transactions ".into()),
-                        )
+                        .title(" Transactions ")
                         .border_set(border::THICK),
                 );
             frame.render_widget(table, area);
@@ -125,61 +95,29 @@ impl<'a> TxsTable<'a> {
                     Style::new().fg(Color::Red)
                 };
 
-                let cells: Vec<Cell> = if self.show_block_number {
-                    vec![
-                        Cell::from(tx.block_number.to_string()).style(Style::new().fg(Color::Cyan)),
-                        Cell::from(tx.index.to_string()).style(Style::new().fg(Color::Yellow)),
-                        Cell::from(tx_hash_short).style(Style::new().fg(Color::Cyan)),
-                        Cell::from(signature).style(Style::new().fg(Color::Red)),
-                        Cell::from(format!("{:.2} gwei", gas_price_gwei)),
-                        Cell::from(gas_cost).style(Style::new().fg(Color::Green)),
-                        Cell::from(status).style(status_style),
-                    ]
-                } else {
-                    vec![
-                        Cell::from(tx.index.to_string()).style(Style::new().fg(Color::Yellow)),
-                        Cell::from(tx_hash_short).style(Style::new().fg(Color::Cyan)),
-                        Cell::from(signature).style(Style::new().fg(Color::Red)),
-                        Cell::from(format!("{:.2} gwei", gas_price_gwei)),
-                        Cell::from(gas_cost).style(Style::new().fg(Color::Green)),
-                        Cell::from(status).style(status_style),
-                    ]
-                };
+                let cells: Vec<Cell> = vec![
+                    Cell::from(tx.index.to_string()).style(Style::new().fg(Color::Yellow)),
+                    Cell::from(tx_hash_short).style(Style::new().fg(Color::Cyan)),
+                    Cell::from(signature).style(Style::new().fg(Color::Red)),
+                    Cell::from(format!("{:.2} gwei", gas_price_gwei)),
+                    Cell::from(gas_cost).style(Style::new().fg(Color::Green)),
+                    Cell::from(status).style(status_style),
+                ];
 
                 Row::new(cells)
             })
             .collect();
 
-        let widths: Vec<Constraint> = if self.show_block_number {
-            vec![
-                Constraint::Length(10),
-                Constraint::Length(6),
-                Constraint::Length(14),
-                Constraint::Fill(1),
-                Constraint::Length(12),
-                Constraint::Length(10),
-                Constraint::Length(6),
-            ]
-        } else {
-            vec![
-                Constraint::Length(6),
-                Constraint::Length(14),
-                Constraint::Fill(1),
-                Constraint::Length(12),
-                Constraint::Length(10),
-                Constraint::Length(6),
-            ]
-        };
+        let widths: Vec<Constraint> = vec![
+            Constraint::Length(6),
+            Constraint::Length(14),
+            Constraint::Fill(1),
+            Constraint::Length(12),
+            Constraint::Length(10),
+            Constraint::Length(6),
+        ];
 
-        let title = if let Some(custom_title) = &self.title {
-            format!(
-                "{} [{}-{} of {}] ",
-                custom_title.trim(),
-                offset + 1,
-                end,
-                total
-            )
-        } else if let Some(tx) = self.items.first() {
+        let title = if let Some(tx) = self.items.first() {
             let block_info = if let Some(explorer) = self.explorer_url {
                 format!(
                     "{}/block/{}",

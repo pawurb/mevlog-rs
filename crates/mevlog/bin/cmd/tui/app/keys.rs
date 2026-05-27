@@ -1,11 +1,9 @@
 //! Keyboard input handling
 
 use crossbeam_channel::Sender;
-use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
-use tui_input::Input;
-use tui_input::backend::crossterm::EventHandler;
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 
-use crate::cmd::tui::app::{App, AppEvent, AppMode, PrimaryTab, TxPopupTab};
+use crate::cmd::tui::app::{App, AppEvent, AppMode, TxPopupTab};
 
 #[hotpath::measure_all]
 impl App {
@@ -37,16 +35,6 @@ impl App {
             return;
         }
 
-        if self.query_popup_open {
-            self.handle_search_keys(key_code);
-            return;
-        }
-
-        if self.search_editing {
-            self.handle_search_keys(key_code);
-            return;
-        }
-
         match key_code {
             KeyCode::Char('n') if !self.tx_popup_open && !self.info_popup_open => {
                 self.open_network_selection();
@@ -56,54 +44,21 @@ impl App {
             KeyCode::Char('2') if self.tx_popup_open => self.tx_popup_tab = TxPopupTab::Transfers,
             KeyCode::Char('3') if self.tx_popup_open => {
                 self.tx_popup_tab = TxPopupTab::Opcodes;
-                if self.active_tab == PrimaryTab::Results {
-                    self.request_results_opcodes_if_needed();
-                } else {
-                    self.request_opcodes_if_needed();
-                }
+                self.request_opcodes_if_needed();
             }
             KeyCode::Char('4') if self.tx_popup_open => {
                 self.tx_popup_tab = TxPopupTab::Traces;
-                if self.active_tab == PrimaryTab::Results {
-                    self.request_results_traces_if_needed();
-                } else {
-                    self.request_traces_if_needed();
-                }
+                self.request_traces_if_needed();
             }
             KeyCode::Char('5') if self.tx_popup_open => {
                 self.tx_popup_tab = TxPopupTab::State;
-                if self.active_tab == PrimaryTab::Results {
-                    self.request_results_state_diff_if_needed();
-                } else {
-                    self.request_state_diff_if_needed();
-                }
+                self.request_state_diff_if_needed();
             }
             KeyCode::Char('t') if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Info => {
-                if self.active_tab == PrimaryTab::Results {
-                    self.request_results_tx_trace();
-                } else {
-                    self.request_tx_trace();
-                }
+                self.request_tx_trace();
             }
 
-            KeyCode::Char('1') => self.switch_to_tab(PrimaryTab::Explore),
-            KeyCode::Char('2') => self.switch_to_tab(PrimaryTab::Search),
-            KeyCode::Char('3') => self.switch_to_tab(PrimaryTab::Results),
-            KeyCode::Tab => self.cycle_tab(),
-
-            _ if self.active_tab == PrimaryTab::Explore => {
-                self.handle_explore_keys(key_code);
-            }
-
-            _ if self.active_tab == PrimaryTab::Search => {
-                self.handle_search_keys(key_code);
-            }
-
-            _ if self.active_tab == PrimaryTab::Results => {
-                self.handle_results_keys(key_code);
-            }
-
-            _ => {}
+            _ => self.handle_explore_keys(key_code),
         }
     }
 
@@ -256,145 +211,6 @@ impl App {
                 KeyCode::Enter | KeyCode::Char('o') => self.confirm_network_selection(),
                 _ => {}
             }
-        }
-    }
-
-    fn handle_search_keys(&mut self, key_code: KeyCode) {
-        const NUM_FIELDS: usize = 12;
-
-        if self.query_popup_open {
-            match key_code {
-                KeyCode::Esc | KeyCode::Char('n') => {
-                    self.query_popup_open = false;
-                }
-                KeyCode::Char('y') => {
-                    self.query_popup_open = false;
-                    self.search_results.clear();
-                    self.results_table_state.select(None);
-                    self.active_tab = PrimaryTab::Results;
-                    self.is_loading = true;
-                    self.execute_search();
-                }
-                _ => {}
-            }
-            return;
-        }
-
-        if self.search_editing {
-            match key_code {
-                KeyCode::Enter | KeyCode::Esc => {
-                    self.search_editing = false;
-                }
-                _ => {
-                    let event = Event::Key(KeyEvent::new(key_code, KeyModifiers::empty()));
-                    let input = match self.search_active_field {
-                        0 => &mut self.filter_limit,
-                        1 => &mut self.filter_txhash,
-                        2 => &mut self.filter_blocks,
-                        3 => &mut self.filter_position,
-                        4 => &mut self.filter_from,
-                        5 => &mut self.filter_to,
-                        6 => &mut self.filter_event,
-                        7 => &mut self.filter_not_event,
-                        8 => &mut self.filter_method,
-                        9 => &mut self.filter_erc20_transfer,
-                        10 => &mut self.filter_tx_cost,
-                        _ => &mut self.filter_gas_price,
-                    };
-                    input.handle_event(&event);
-                }
-            }
-        } else {
-            match key_code {
-                KeyCode::Enter | KeyCode::Char('o') => {
-                    self.search_editing = true;
-                }
-                KeyCode::Down | KeyCode::Char('j') if self.search_active_field < NUM_FIELDS - 1 => {
-                    self.search_active_field += 1;
-                }
-                KeyCode::Up | KeyCode::Char('k') => {
-                    self.search_active_field = self.search_active_field.saturating_sub(1);
-                }
-                KeyCode::Char('s') => {
-                    self.query_popup_open = true;
-                }
-                KeyCode::Char('c') => {
-                    let input = match self.search_active_field {
-                        0 => &mut self.filter_limit,
-                        1 => &mut self.filter_txhash,
-                        2 => &mut self.filter_blocks,
-                        3 => &mut self.filter_position,
-                        4 => &mut self.filter_from,
-                        5 => &mut self.filter_to,
-                        6 => &mut self.filter_event,
-                        7 => &mut self.filter_not_event,
-                        8 => &mut self.filter_method,
-                        9 => &mut self.filter_erc20_transfer,
-                        10 => &mut self.filter_tx_cost,
-                        _ => &mut self.filter_gas_price,
-                    };
-                    *input = Input::default();
-                }
-                _ => {}
-            }
-        }
-    }
-
-    fn handle_results_keys(&mut self, key_code: KeyCode) {
-        match key_code {
-            KeyCode::Char('j') | KeyCode::Down => {
-                self.select_next_result();
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
-                    self.request_results_opcodes_if_needed();
-                }
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
-                    self.request_results_traces_if_needed();
-                }
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
-                    self.request_results_state_diff_if_needed();
-                }
-            }
-            KeyCode::Char('k') | KeyCode::Up => {
-                self.select_previous_result();
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Opcodes {
-                    self.request_results_opcodes_if_needed();
-                }
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
-                    self.request_results_traces_if_needed();
-                }
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
-                    self.request_results_state_diff_if_needed();
-                }
-            }
-            KeyCode::Char('o') if !self.search_results.is_empty() => {
-                self.tx_popup_open = !self.tx_popup_open;
-                if !self.tx_popup_open {
-                    self.tx_popup_scroll = 0;
-                    self.tx_popup_tab = TxPopupTab::default();
-                    self.clear_opcodes();
-                    self.clear_traces();
-                    self.clear_state_diff();
-                }
-            }
-            KeyCode::Esc if self.tx_popup_open => {
-                self.tx_popup_open = false;
-                self.tx_popup_scroll = 0;
-                self.tx_popup_tab = TxPopupTab::default();
-                self.clear_opcodes();
-                self.clear_traces();
-                self.clear_state_diff();
-            }
-            KeyCode::Char('n') if self.tx_popup_open => {
-                self.tx_popup_scroll = self.tx_popup_scroll.saturating_add(1);
-            }
-            KeyCode::Char('m') if self.tx_popup_open => {
-                self.tx_popup_scroll = self.tx_popup_scroll.saturating_sub(1);
-            }
-            KeyCode::Char('c') => {
-                self.search_results.clear();
-                self.results_table_state.select(None);
-            }
-            _ => {}
         }
     }
 }
