@@ -28,8 +28,6 @@ struct GetTransactionParams {
     before: Option<u8>,
     #[schemars(description = "Number of transactions after (older, larger indexes) to include")]
     after: Option<u8>,
-    #[schemars(description = "Reverse the order of transactions")]
-    reverse: Option<bool>,
     #[schemars(description = "Show detailed tx calls info (requires evm_trace)")]
     evm_calls: Option<bool>,
     #[schemars(
@@ -145,9 +143,6 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         if let Some(after) = params.0.after {
             args.push("--after".to_string());
             args.push(after.to_string());
-        }
-        if params.0.reverse == Some(true) {
-            args.push("--reverse".to_string());
         }
         if params.0.evm_calls == Some(true) {
             args.push("--evm-calls".to_string());
