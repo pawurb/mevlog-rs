@@ -3,7 +3,7 @@
 use ratatui::widgets::TableState;
 
 use crate::cmd::tui::{
-    app::{App, AppMode, DEFAULT_CHAINS, PrimaryTab, TxPopupTab},
+    app::{App, AppMode, DEFAULT_CHAINS, TxPopupTab},
     data::{BlockId, DataRequest, TraceMode},
 };
 
@@ -31,30 +31,6 @@ impl App {
             None => 0,
         };
         self.table_state.select(Some(i));
-    }
-
-    pub(crate) fn select_next_result(&mut self) {
-        let count = self.search_results.len();
-        if count == 0 {
-            return;
-        }
-        let i = match self.results_table_state.selected() {
-            Some(i) => (i + 1).min(count - 1),
-            None => 0,
-        };
-        self.results_table_state.select(Some(i));
-    }
-
-    pub(crate) fn select_previous_result(&mut self) {
-        let count = self.search_results.len();
-        if count == 0 {
-            return;
-        }
-        let i = match self.results_table_state.selected() {
-            Some(i) => i.saturating_sub(1),
-            None => 0,
-        };
-        self.results_table_state.select(Some(i));
     }
 
     pub(crate) fn select_next_network(&mut self) {
@@ -224,111 +200,12 @@ impl App {
         self.state_diff_tx_hash = None;
     }
 
-    pub(crate) fn request_results_state_diff_if_needed(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.results_table_state.selected()
-            && let Some(tx) = self.search_results.get(idx)
-        {
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.state_diff = None;
-            self.state_diff_loading = true;
-            self.state_diff_tx_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::StateDiff(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn request_results_opcodes_if_needed(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.results_table_state.selected()
-            && let Some(tx) = self.search_results.get(idx)
-        {
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.opcodes = None;
-            self.opcodes_loading = true;
-            self.opcodes_tx_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::Opcodes(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn request_results_traces_if_needed(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.results_table_state.selected()
-            && let Some(tx) = self.search_results.get(idx)
-        {
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.traces = None;
-            self.traces_loading = true;
-            self.traces_tx_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::Traces(tx_hash, trace_mode, opts));
-        }
-    }
-
     pub(crate) fn request_tx_trace(&mut self) {
         let Some(opts) = self.rpc_opts() else {
             return;
         };
         if let Some(idx) = self.table_state.selected()
             && let Some(tx) = self.items.get(idx)
-        {
-            if tx.full_tx_cost.is_some() {
-                return;
-            }
-
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.tx_trace_loading = true;
-            self.tx_trace_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::TxTrace(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn request_results_tx_trace(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.results_table_state.selected()
-            && let Some(tx) = self.search_results.get(idx)
         {
             if tx.full_tx_cost.is_some() {
                 return;
@@ -365,7 +242,6 @@ impl App {
         self.tx_popup_scroll = 0;
         self.tx_popup_tab = TxPopupTab::default();
         self.selected_chain = None;
-        self.active_tab = PrimaryTab::Explore;
         self.error_message = None;
         self.clear_opcodes();
         self.clear_traces();

@@ -3,23 +3,19 @@
 mod data;
 mod keys;
 mod state;
-mod tabs;
 
 use std::io;
-
-use tracing::info;
 
 use crossbeam_channel::{Receiver, Sender, select};
 use crossterm::event::KeyCode;
 use ratatui::{
     DefaultTerminal, Frame,
-    layout::{Alignment, Constraint, Direction, Flex, Layout, Rect},
+    layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style},
     symbols::border,
     text::{Line, Span},
     widgets::{Block, Clear, Paragraph, TableState, Wrap},
 };
-use tui_input::Input;
 
 use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 
@@ -27,11 +23,11 @@ use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
         BlockId, CallExtract, DataRequest, DataResponse, MEVOpcodeJson, MEVStateDiffJson,
-        MEVTransactionJson, RpcOpts, SearchFilters, TraceMode, worker::spawn_data_worker,
+        MEVTransactionJson, RpcOpts, TraceMode, worker::spawn_data_worker,
     },
     views::{
-        NetworkSelector, SearchView, StatusBar, TabBar, TxsTable, render_info_popup,
-        render_key_bindings, render_tx_popup,
+        NetworkSelector, StatusBar, TxsTable, render_info_popup, render_key_bindings,
+        render_tx_popup,
     },
 };
 
@@ -92,13 +88,6 @@ pub(crate) enum AppMode {
     Main,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum PrimaryTab {
-    Explore,
-    Search,
-    Results,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub(crate) enum TxPopupTab {
     #[default]
@@ -120,8 +109,6 @@ pub struct App {
     pub(crate) table_state: TableState,
     pub(crate) items: Vec<MEVTransactionJson>,
     pub(crate) current_block: Option<u64>,
-    pub(crate) search_results: Vec<MEVTransactionJson>,
-    pub(crate) results_table_state: TableState,
     pub(crate) is_loading: bool,
     pub(crate) loading_block: Option<u64>,
     pub(crate) error_message: Option<String>,
@@ -140,7 +127,6 @@ pub struct App {
     pub(crate) chain_id: Option<u64>,
     pub(crate) rpc_timeout_ms: u64,
     pub(crate) block_timeout_ms: u64,
-    pub(crate) active_tab: PrimaryTab,
     pub(crate) selected_chain: Option<ChainEntryJson>,
     #[allow(dead_code)]
     state_tx: Sender<AppEvent>,
@@ -160,21 +146,6 @@ pub struct App {
     pub(crate) trace_mode: Option<TraceMode>,
     pub(crate) info_popup_open: bool,
     pub(crate) rpc_refreshing: bool,
-    pub(crate) filter_blocks: Input,
-    pub(crate) filter_position: Input,
-    pub(crate) filter_from: Input,
-    pub(crate) filter_to: Input,
-    pub(crate) filter_event: Input,
-    pub(crate) filter_not_event: Input,
-    pub(crate) filter_method: Input,
-    pub(crate) filter_erc20_transfer: Input,
-    pub(crate) filter_tx_cost: Input,
-    pub(crate) filter_gas_price: Input,
-    pub(crate) filter_limit: Input,
-    pub(crate) filter_txhash: Input,
-    pub(crate) search_active_field: usize,
-    pub(crate) search_editing: bool,
-    pub(crate) query_popup_open: bool,
 }
 
 #[hotpath::measure_all]
@@ -242,8 +213,6 @@ impl App {
             }),
             items,
             current_block,
-            search_results: Vec::new(),
-            results_table_state: TableState::default(),
             is_loading: mode == AppMode::Main,
             loading_block: None,
             error_message: None,
@@ -262,7 +231,6 @@ impl App {
             chain_id,
             rpc_timeout_ms,
             block_timeout_ms,
-            active_tab: PrimaryTab::Explore,
             selected_chain,
             state_tx,
             opcodes: None,
@@ -281,21 +249,6 @@ impl App {
             trace_mode: None,
             info_popup_open: false,
             rpc_refreshing,
-            filter_blocks: Input::default(),
-            filter_position: Input::default(),
-            filter_from: Input::default(),
-            filter_to: Input::default(),
-            filter_event: Input::default(),
-            filter_not_event: Input::default(),
-            filter_method: Input::default(),
-            filter_erc20_transfer: Input::default(),
-            filter_tx_cost: Input::default(),
-            filter_gas_price: Input::default(),
-            filter_limit: Input::default(),
-            filter_txhash: Input::default(),
-            search_active_field: 0,
-            search_editing: false,
-            query_popup_open: false,
         }
     }
 
@@ -340,16 +293,12 @@ impl App {
                     frame,
                     chunks[1],
                     &self.mode,
-                    None,
                     self.search_popup_open,
                     false,
                     TxPopupTab::default(),
                     false,
                     false,
                     self.can_return_to_main(),
-                    false,
-                    true,
-                    false,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -360,118 +309,76 @@ impl App {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
                     .constraints([
-                        Constraint::Length(1), // Tab bar (no border)
                         Constraint::Length(3), // Status bar
                         Constraint::Min(0),    // Content area
                         Constraint::Length(3), // Key bindings footer
                     ])
                     .split(frame.area());
 
-                TabBar::new(self.active_tab).render(chunks[0], frame);
-
-                let mut status_bar = StatusBar::new(
+                StatusBar::new(
                     self.selected_chain.as_ref(),
                     self.current_block,
                     self.is_loading,
                     self.loading_block,
                     self.trace_mode.as_ref(),
-                );
-                if self.active_tab == PrimaryTab::Results {
-                    status_bar = status_bar.hide_block();
+                )
+                .render(chunks[0], frame);
+
+                let explorer_url = self
+                    .selected_chain
+                    .as_ref()
+                    .and_then(|c| c.explorer_url.as_deref());
+                TxsTable::new(&self.items)
+                    .with_explorer_url(explorer_url)
+                    .render(chunks[1], frame, &mut self.table_state);
+
+                if self.tx_popup_open
+                    && let Some(idx) = self.table_state.selected()
+                    && let Some(tx) = self.items.get(idx)
+                {
+                    let explorer_url = self
+                        .selected_chain
+                        .as_ref()
+                        .and_then(|c| c.explorer_url.clone());
+                    render_tx_popup(
+                        tx,
+                        frame.area(),
+                        frame,
+                        self.tx_popup_scroll,
+                        self.tx_popup_tab,
+                        explorer_url.as_deref(),
+                        self.opcodes.as_deref(),
+                        self.opcodes_loading,
+                        self.traces.as_deref(),
+                        self.traces_loading,
+                        self.state_diff.as_ref(),
+                        self.state_diff_loading,
+                        self.tx_trace_loading,
+                    );
                 }
-                status_bar.render(chunks[1], frame);
 
-                match self.active_tab {
-                    PrimaryTab::Explore => {
-                        let explorer_url = self
-                            .selected_chain
-                            .as_ref()
-                            .and_then(|c| c.explorer_url.as_deref());
-                        TxsTable::new(&self.items)
-                            .with_explorer_url(explorer_url)
-                            .render(chunks[2], frame, &mut self.table_state);
-
-                        if self.tx_popup_open
-                            && let Some(idx) = self.table_state.selected()
-                            && let Some(tx) = self.items.get(idx)
-                        {
-                            let explorer_url = self
-                                .selected_chain
-                                .as_ref()
-                                .and_then(|c| c.explorer_url.clone());
-                            render_tx_popup(
-                                tx,
-                                frame.area(),
-                                frame,
-                                self.tx_popup_scroll,
-                                self.tx_popup_tab,
-                                explorer_url.as_deref(),
-                                self.opcodes.as_deref(),
-                                self.opcodes_loading,
-                                self.traces.as_deref(),
-                                self.traces_loading,
-                                self.state_diff.as_ref(),
-                                self.state_diff_loading,
-                                self.tx_trace_loading,
-                            );
-                        }
-
-                        if self.block_input_popup_open {
-                            self.render_block_input_popup(frame);
-                        } else if self.info_popup_open {
-                            render_info_popup(
-                                frame.area(),
-                                frame,
-                                self.selected_chain.as_ref(),
-                                self.rpc_url.as_deref(),
-                                self.rpc_refreshing,
-                            );
-                        }
-                    }
-                    PrimaryTab::Search => {
-                        SearchView::new(
-                            &[
-                                &self.filter_limit,
-                                &self.filter_txhash,
-                                &self.filter_blocks,
-                                &self.filter_position,
-                                &self.filter_from,
-                                &self.filter_to,
-                                &self.filter_event,
-                                &self.filter_not_event,
-                                &self.filter_method,
-                                &self.filter_erc20_transfer,
-                                &self.filter_tx_cost,
-                                &self.filter_gas_price,
-                            ],
-                            self.search_active_field,
-                            self.search_editing,
-                        )
-                        .render(chunks[2], frame);
-
-                        if self.query_popup_open {
-                            self.render_query_popup(frame);
-                        }
-                    }
-                    PrimaryTab::Results => {
-                        self.render_results_tab(chunks[2], frame);
-                    }
+                if self.block_input_popup_open {
+                    self.render_block_input_popup(frame);
+                } else if self.info_popup_open {
+                    render_info_popup(
+                        frame.area(),
+                        frame,
+                        self.selected_chain.as_ref(),
+                        self.rpc_url.as_deref(),
+                        self.rpc_refreshing,
+                    );
                 }
 
                 render_key_bindings(
                     frame,
-                    chunks[3],
+                    chunks[2],
                     &self.mode,
-                    Some(self.active_tab),
                     false,
                     self.tx_popup_open,
                     self.tx_popup_tab,
                     self.block_input_popup_open,
                     self.info_popup_open,
                     false,
-                    self.query_popup_open,
-                    self.search_results.is_empty(),
-                    self.search_editing,
                 );
 
                 if let Some(error_msg) = &self.error_message {
@@ -484,13 +391,9 @@ impl App {
     }
 
     fn render_loading_popup(&self, frame: &mut Frame) {
-        let text = if self.active_tab == PrimaryTab::Results {
-            "Searching...".to_string()
-        } else {
-            match self.loading_block {
-                Some(block) => format!("Loading block {}...", block),
-                None => "Loading latest block...".to_string(),
-            }
+        let text = match self.loading_block {
+            Some(block) => format!("Loading block {}...", block),
+            None => "Loading latest block...".to_string(),
         };
 
         let popup_area = centered_rect(text.len() as u16 + 4, 3, frame.area());
@@ -597,20 +500,6 @@ impl App {
                     self.request_state_diff_if_needed();
                 }
             }
-            DataResponse::SearchResults(txs) => {
-                let count = txs.len();
-                info!(count, "received search results");
-                self.search_results = txs;
-                self.active_tab = PrimaryTab::Results;
-                self.results_table_state
-                    .select(if count > 0 { Some(0) } else { None });
-                self.tx_popup_open = false;
-                self.tx_popup_scroll = 0;
-                self.is_loading = false;
-                self.clear_opcodes();
-                self.clear_traces();
-                self.clear_state_diff();
-            }
             DataResponse::Opcodes(tx_hash, opcodes) => {
                 if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
                     self.opcodes = Some(opcodes);
@@ -636,12 +525,7 @@ impl App {
                     let tx = self
                         .items
                         .iter_mut()
-                        .find(|t| t.tx_hash.to_string() == tx_hash)
-                        .or_else(|| {
-                            self.search_results
-                                .iter_mut()
-                                .find(|t| t.tx_hash.to_string() == tx_hash)
-                        });
+                        .find(|t| t.tx_hash.to_string() == tx_hash);
                     if let Some(tx) = tx {
                         tx.coinbase_transfer = traced_tx.coinbase_transfer;
                         tx.display_coinbase_transfer = traced_tx.display_coinbase_transfer;
@@ -690,165 +574,6 @@ impl App {
 
     pub(crate) fn exit(&mut self) {
         self.exit = true;
-    }
-
-    pub(crate) fn display_search_command(&self) -> String {
-        let txhash = self.filter_txhash.value();
-        if !txhash.is_empty() {
-            return format!("mevlog tx {}", txhash);
-        }
-
-        let mut parts = vec!["mevlog search".to_string()];
-
-        let blocks = self.filter_blocks.value();
-        let blocks = if blocks.is_empty() { "latest" } else { blocks };
-        parts.push(format!("--blocks {}", blocks));
-
-        let filters: [(&Input, &str); 10] = [
-            (&self.filter_limit, "--limit"),
-            (&self.filter_position, "--position"),
-            (&self.filter_from, "--from"),
-            (&self.filter_to, "--to"),
-            (&self.filter_event, "--event"),
-            (&self.filter_not_event, "--not-event"),
-            (&self.filter_method, "--method"),
-            (&self.filter_erc20_transfer, "--erc20-transfer"),
-            (&self.filter_tx_cost, "--tx-cost"),
-            (&self.filter_gas_price, "--gas-price"),
-        ];
-
-        for (input, flag) in filters {
-            let value = input.value();
-            if !value.is_empty() {
-                parts.push(format!("{} {}", flag, value));
-            }
-        }
-
-        parts.join(" ")
-    }
-
-    fn build_search_filters(&self) -> SearchFilters {
-        fn non_empty(s: &str) -> Option<String> {
-            if s.is_empty() {
-                None
-            } else {
-                Some(s.to_string())
-            }
-        }
-
-        let blocks = self.filter_blocks.value();
-        let blocks = if blocks.is_empty() {
-            "latest".to_string()
-        } else {
-            blocks.to_string()
-        };
-
-        SearchFilters {
-            blocks,
-            position: non_empty(self.filter_position.value()),
-            from: non_empty(self.filter_from.value()),
-            to: non_empty(self.filter_to.value()),
-            event: non_empty(self.filter_event.value()),
-            not_event: non_empty(self.filter_not_event.value()),
-            method: non_empty(self.filter_method.value()),
-            erc20_transfer: non_empty(self.filter_erc20_transfer.value()),
-            tx_cost: non_empty(self.filter_tx_cost.value()),
-            gas_price: non_empty(self.filter_gas_price.value()),
-            limit: non_empty(self.filter_limit.value()),
-            txhash: non_empty(self.filter_txhash.value()),
-        }
-    }
-
-    pub(crate) fn execute_search(&mut self) {
-        if let Some(opts) = self.rpc_opts() {
-            let filters = self.build_search_filters();
-            let _ = self.data_req_tx.send(DataRequest::Search(filters, opts));
-        }
-    }
-
-    fn render_query_popup(&self, frame: &mut Frame) {
-        let command = self.display_search_command();
-        let area = frame.area();
-        let popup_width = 80.min(area.width.saturating_sub(4));
-        let inner_width = popup_width.saturating_sub(2);
-        let cmd_lines = (command.len() as u16).div_ceil(inner_width).max(1);
-        let popup_height = (cmd_lines + 4).min(area.height.saturating_sub(4));
-        let x = (area.width.saturating_sub(popup_width)) / 2;
-        let y = (area.height.saturating_sub(popup_height)) / 2;
-
-        let popup_area = Rect {
-            x: area.x + x,
-            y: area.y + y,
-            width: popup_width,
-            height: popup_height,
-        };
-
-        frame.render_widget(Clear, popup_area);
-
-        let block = Block::bordered()
-            .border_set(border::DOUBLE)
-            .title(" Search Command ");
-
-        let inner_area = block.inner(popup_area);
-        frame.render_widget(block, popup_area);
-
-        let text = vec![
-            Line::from(Span::styled(command, Style::default().fg(Color::Yellow))),
-            Line::from(""),
-            Line::from(vec![
-                Span::raw("Execute query? "),
-                Span::styled("[y]", Style::default().fg(Color::Green)),
-                Span::raw("/"),
-                Span::styled("[n]", Style::default().fg(Color::Red)),
-            ]),
-        ];
-
-        let paragraph = Paragraph::new(text).wrap(Wrap { trim: false });
-        frame.render_widget(paragraph, inner_area);
-    }
-
-    fn render_results_tab(&mut self, area: Rect, frame: &mut Frame) {
-        if self.search_results.is_empty() {
-            let placeholder = Paragraph::new("Run search query to see results")
-                .style(Style::default().fg(Color::DarkGray))
-                .alignment(Alignment::Center)
-                .block(
-                    Block::bordered()
-                        .title(" Results ")
-                        .border_set(border::THICK),
-                );
-            frame.render_widget(placeholder, area);
-        } else {
-            TxsTable::new(&self.search_results)
-                .with_title(" Search Results ")
-                .with_block_number()
-                .render(area, frame, &mut self.results_table_state);
-
-            if self.tx_popup_open
-                && let Some(idx) = self.results_table_state.selected()
-                && let Some(tx) = self.search_results.get(idx)
-            {
-                let explorer_url = self
-                    .selected_chain
-                    .as_ref()
-                    .and_then(|c| c.explorer_url.clone());
-                render_tx_popup(
-                    tx,
-                    frame.area(),
-                    frame,
-                    self.tx_popup_scroll,
-                    self.tx_popup_tab,
-                    explorer_url.as_deref(),
-                    self.opcodes.as_deref(),
-                    self.opcodes_loading,
-                    self.traces.as_deref(),
-                    self.traces_loading,
-                    self.state_diff.as_ref(),
-                    self.state_diff_loading,
-                    self.tx_trace_loading,
-                );
-            }
-        }
     }
 }
 

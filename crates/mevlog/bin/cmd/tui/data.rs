@@ -52,7 +52,6 @@ impl SearchFilters {
 pub(crate) enum DataRequest {
     Block(BlockId, RpcOpts),
     Tx(String, RpcOpts),
-    Search(SearchFilters, RpcOpts),
     Chains(Option<String>),
     ChainInfo(String),
     Opcodes(String, TraceMode, RpcOpts),
@@ -73,7 +72,6 @@ pub(crate) enum BlockId {
 #[derive(Debug)]
 pub(crate) enum DataResponse {
     Block(u64, Vec<MEVTransactionJson>),
-    SearchResults(Vec<MEVTransactionJson>),
     Chains(Vec<ChainEntryJson>),
     ChainInfo(ChainEntryJson),
     Opcodes(String, Vec<MEVOpcodeJson>),
