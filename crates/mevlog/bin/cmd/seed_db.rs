@@ -8,7 +8,7 @@ use clap::Parser;
 use eyre::Result;
 use mevlog::{
     misc::{
-        database::{init_sqlite_db, sqlite_conn, sqlite_truncate_wal},
+        database::{init_sigs_db, sigs_conn, sqlite_truncate_wal},
         rpc_urls::get_all_chains,
     },
     models::sigs::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
@@ -22,8 +22,8 @@ impl SeedDBArgs {
     #[allow(dead_code)]
     pub async fn run(&self) -> Result<()> {
         println!("Seeding db");
-        init_sqlite_db(None).await?;
-        let sqlite = sqlite_conn(None).await?;
+        init_sigs_db(None).await?;
+        let sqlite = sigs_conn(None).await?;
 
         tracing::info!("Seeding database");
 
