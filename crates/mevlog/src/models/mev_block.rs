@@ -10,7 +10,7 @@ use eyre::Result;
 use foundry_fork_db::SharedBackend;
 use revm::{
     database::CacheDB,
-    primitives::{FixedBytes, TxKind, U256},
+    primitives::{FixedBytes, TxKind},
 };
 use sqlx::SqlitePool;
 use tracing::error;
@@ -18,7 +18,7 @@ use tracing::error;
 use super::{
     mev_log::MEVLog,
     mev_transaction::{MEVTransaction, ReceiptData},
-    txs_filter::{AddressFilter, TxsFilter},
+    txs_filter::TxsFilter,
 };
 use crate::{
     GenericProvider,
@@ -27,10 +27,10 @@ use crate::{
         coinbase_bribe::{TraceData, find_coinbase_transfer},
         ens_utils::ENSLookup,
         revm_tracing::{
-            RevmBlockContext, init_revm_db, revm_commit_tx, revm_touching_accounts, revm_tx_calls,
-            revm_tx_opcodes, revm_tx_state_diff,
+            RevmBlockContext, init_revm_db, revm_commit_tx, revm_tx_calls, revm_tx_opcodes,
+            revm_tx_state_diff,
         },
-        rpc_tracing::{rpc_touching_accounts, rpc_tx_calls, rpc_tx_opcodes, rpc_tx_state_diff},
+        rpc_tracing::{rpc_tx_calls, rpc_tx_opcodes, rpc_tx_state_diff},
         shared_init::{OutputFormat, SharedOpts, TraceMode},
     },
     models::{
@@ -147,18 +147,14 @@ impl MEVBlock {
 
         let revm_transactions: HashMap<u64, TxData> = match trace_mode {
             Some(TraceMode::Revm) => {
-                let range = match position_range {
-                    Some(range) => range,
-                    None => {
-                        eyre::bail!("--evm-trace revm mode requires --position argument");
-                    }
-                };
+                // Without a position range, replay/trace the whole block.
+                let max_index = position_range.map(|range| range.to as usize);
 
                 txs_data
                     .iter()
                     .enumerate()
                     .filter_map(|(tx_index, tx_data)| {
-                        if tx_index <= range.to as usize {
+                        if max_index.is_none_or(|max| tx_index <= max) {
                             Some((tx_index as u64, tx_data.clone()))
                         } else {
                             None
@@ -239,49 +235,10 @@ impl MEVBlock {
                 }
             };
 
-            match &filter.tx_from {
-                Some(AddressFilter::Address(from_addr)) if &mev_tx.from() != from_addr => {
-                    continue;
-                }
-                Some(AddressFilter::ENSName(ens_name))
-                    if mev_tx.from_ens_name() != Some(ens_name) =>
-                {
-                    continue;
-                }
-                Some(AddressFilter::CreateCall) => {
-                    eyre::bail!("CREATE query works only for --to filter");
-                }
-                _ => {}
-            }
-
-            match &filter.tx_to {
-                Some(AddressFilter::Address(to_addr)) if mev_tx.to() != Some(*to_addr) => {
-                    continue;
-                }
-                Some(AddressFilter::ENSName(ens_name))
-                    if mev_tx.to_ens_name() != Some(ens_name) =>
-                {
-                    continue;
-                }
-                Some(AddressFilter::CreateCall) if mev_tx.to().is_some() => {
-                    continue;
-                }
-                _ => {}
-            }
-
-            if let Some(value_filter) = &filter.value
-                && !value_filter.matches(mev_tx.value())
-            {
-                continue;
-            }
-
             self.mev_transactions.insert(tx_index, mev_tx);
         }
 
         self.ingest_logs(filter, logs_data).await?;
-
-        // first exclude txs based non-tracing filters
-        self.non_trace_filter_txs(filter).await?;
 
         match shared_opts.evm_trace {
             Some(TraceMode::RPC) => self.trace_txs_rpc(filter, sqlite, provider).await?,
@@ -308,16 +265,6 @@ impl MEVBlock {
                 .mev_transactions
                 .get_mut(&tx_index)
                 .expect("Tx not found");
-            let tx_hash = mev_tx.tx_hash;
-
-            if let Some(touched) = &filter.touching {
-                let touching = rpc_touching_accounts(tx_hash, provider).await?;
-
-                if !touching.contains(touched) {
-                    self.mev_transactions.remove(&tx_index);
-                    continue;
-                }
-            }
 
             let calls = rpc_tx_calls(mev_tx.tx_hash, provider).await?;
 
@@ -357,10 +304,6 @@ impl MEVBlock {
             );
 
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
-
-            if filter.tracing_should_exclude(mev_tx) {
-                self.mev_transactions.remove(&tx_index);
-            }
         }
 
         Ok(())
@@ -398,22 +341,6 @@ impl MEVBlock {
                 revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
                 continue;
             };
-
-            if let Some(touched) = &filter.touching {
-                let touching = revm_touching_accounts(
-                    mev_tx.tx_hash,
-                    &mev_tx.inner,
-                    &self.revm_context,
-                    revm_db,
-                )?;
-
-                if !touching.contains(touched) {
-                    self.mev_transactions.remove(&tx_index);
-
-                    revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
-                    continue;
-                }
-            }
 
             let calls = revm_tx_calls(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
 
@@ -458,10 +385,6 @@ impl MEVBlock {
 
             mev_tx.coinbase_transfer = Some(coinbase_transfer);
 
-            if filter.tracing_should_exclude(mev_tx) {
-                self.mev_transactions.remove(&tx_index);
-            }
-
             revm_commit_tx(tx_data.tx_hash, &tx_data.req, &self.revm_context, revm_db)?;
         }
 
@@ -488,65 +411,6 @@ impl MEVBlock {
                 tx.add_log(mev_log);
             }
         }
-        Ok(())
-    }
-
-    async fn non_trace_filter_txs(&mut self, filter: &TxsFilter) -> Result<()> {
-        if filter.failed {
-            self.mev_transactions.retain(|_, tx| !tx.receipt.success);
-        }
-
-        if let Some(tx_cost) = &filter.tx_cost {
-            self.mev_transactions
-                .retain(|_, tx| tx_cost.matches(U256::from(tx.gas_tx_cost())));
-        }
-
-        if let Some(effective_gas_price) = &filter.gas_price {
-            self.mev_transactions
-                .retain(|_, tx| effective_gas_price.matches(tx.effective_gas_price()));
-        }
-
-        self.mev_transactions.retain(|_, tx| {
-            filter.events.iter().all(|event_query| {
-                tx.logs()
-                    .iter()
-                    .any(|log| event_query.matches(&log.signature.signature, &log.source()))
-            })
-        });
-
-        self.mev_transactions.retain(|_, tx| {
-            !filter.not_events.iter().any(|not_event_query| {
-                tx.logs()
-                    .iter()
-                    .any(|log| not_event_query.matches(&log.signature.signature, &log.source()))
-            })
-        });
-
-        if let Some(method_query) = &filter.match_method {
-            self.mev_transactions.retain(|_, tx| {
-                let signature_match = method_query.matches(&tx.signature);
-
-                let signature_hash_match = match &tx.signature_hash {
-                    Some(hash) => method_query.matches(hash),
-                    None => false,
-                };
-
-                signature_match || signature_hash_match
-            });
-        }
-
-        self.mev_transactions.retain(|_, tx| {
-            filter.erc20_transfers.iter().all(|transfer_query| {
-                tx.logs().iter().any(|log| {
-                    log.is_erc20_transfer()
-                        && log
-                            .signature
-                            .amount
-                            .is_some_and(|amount| transfer_query.matches(&log.source(), &amount))
-                })
-            })
-        });
-
         Ok(())
     }
 

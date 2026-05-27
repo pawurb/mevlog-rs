@@ -178,12 +178,7 @@ impl FromStr for PositionRange {
 
 #[cfg(test)]
 mod tests {
-    use revm::primitives::Address;
-
     use super::*;
-    use crate::models::txs_filter::{EventQuery, SignatureQuery};
-
-    pub const PEPE: &str = "0x6982508145454ce325ddbe47a25d4ec3d2311933";
 
     #[test]
     fn test_single_position() {
@@ -197,55 +192,5 @@ mod tests {
         let range = PositionRange::from_str("999:1200").unwrap();
         assert_eq!(range.from, 999);
         assert_eq!(range.to, 1200);
-    }
-
-    #[test]
-    fn test_valid_signature_and_address() {
-        let input = &format!("Transfer(address,uint256)|{PEPE}");
-        let query = EventQuery::from_str(input).unwrap();
-
-        assert_eq!(
-            query.signature.unwrap().to_string(),
-            "Transfer(address,uint256)"
-        );
-        assert_eq!(query.address.unwrap(), PEPE.parse::<Address>().unwrap());
-    }
-
-    #[test]
-    fn test_valid_address_only() {
-        let query = EventQuery::from_str(PEPE).unwrap();
-
-        assert_eq!(query.address.unwrap(), PEPE.parse::<Address>().unwrap());
-        assert!(query.signature.is_none());
-    }
-
-    #[test]
-    fn test_valid_signature_only() {
-        let input = "Transfer(address,uint256)";
-        let query = EventQuery::from_str(input).unwrap();
-
-        assert_eq!(
-            query.signature.unwrap().to_string(),
-            "Transfer(address,uint256)"
-        );
-        assert!(query.address.is_none());
-    }
-
-    #[test]
-    fn test_invalid_address_with_signature() {
-        let input = "Transfer(address,uint256)|0x123";
-        let result = EventQuery::from_str(input);
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_valid_regexp() {
-        let input = "/Transfer/";
-        let query = SignatureQuery::from_str(input).unwrap();
-
-        match query {
-            SignatureQuery::Regex(regex) => assert_eq!(regex.as_str(), "Transfer"),
-            _ => panic!("Expected regex"),
-        }
     }
 }
