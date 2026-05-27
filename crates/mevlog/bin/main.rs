@@ -46,7 +46,7 @@ pub struct MLArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum MLSubcommand {
-    #[command(about = "Find txs matching filter conditions", alias = "s")]
+    #[command(about = "Collect txs within a block range", alias = "s")]
     Search(Box<SearchArgs>),
     #[command(about = "Print transaction info", alias = "t")]
     Tx(TxArgs),

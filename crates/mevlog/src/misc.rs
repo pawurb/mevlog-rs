@@ -5,7 +5,6 @@ pub mod data_fetch;
 pub mod database;
 pub mod db_actions;
 pub mod ens_utils;
-pub mod eth_unit_parser;
 #[cfg(feature = "tui")]
 pub mod opcode_color;
 pub mod parquet_utils;

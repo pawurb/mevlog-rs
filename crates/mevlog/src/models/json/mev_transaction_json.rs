@@ -216,42 +216,6 @@ pub struct SearchQueryParams {
     pub command: &'static str,
     pub blocks: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub limit: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort_dir: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub from: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub to: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub position: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub touching: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub event: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub not_event: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub method: Option<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub calls: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tx_cost: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub real_tx_cost: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gas_price: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub real_gas_price: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
-    #[serde(skip_serializing_if = "is_false")]
-    pub failed: bool,
-    #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub erc20_transfer: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub evm_trace: Option<TraceMode>,
     #[serde(skip_serializing_if = "is_false")]
     pub evm_calls: bool,
