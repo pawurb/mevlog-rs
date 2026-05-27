@@ -7,7 +7,6 @@ on:
       - 'crates/mevlog/**'
       - 'Cargo.lock'
   pull_request:
-    branches: [ main ]
     paths:
       - 'crates/mevlog/**'
       - 'Cargo.lock'

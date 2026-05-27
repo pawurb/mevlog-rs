@@ -11,9 +11,7 @@ use reqwest::Client;
 use ruzstd::decoding::StreamingDecoder;
 use sqlx::SqlitePool;
 
-use crate::misc::database::{
-    SIGS_DB_SCHEMA_VERSION, default_sigs_db_path, sigs_conn, sigs_db_file_name,
-};
+use crate::misc::database::{SIGS_DB_SCHEMA_VERSION, default_sigs_db_path, sigs_db_file_name};
 
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 
@@ -124,16 +122,13 @@ pub async fn download_db_file() -> Result<()> {
 
     fs::remove_file(&zst_path).map_err(|e| eyre!("Failed to remove .zst file: {}", e))?;
 
-    let sqlite = sigs_conn(None).await?;
-    ensure_database_indexes(&sqlite).await?;
-
     Ok(())
 }
 
 async fn ensure_database_indexes(sqlite: &SqlitePool) -> Result<()> {
     let indexes_to_check = [
-        ("events_signature_hash_index", "events", "signature_hash"),
-        ("methods_signature_hash_index", "methods", "signature_hash"),
+        ("methods_hash_4_index", "methods", "signature_hash_4"),
+        ("events_hash_32_index", "events", "signature_hash_32"),
     ];
 
     for (index_name, table_name, column_name) in indexes_to_check {

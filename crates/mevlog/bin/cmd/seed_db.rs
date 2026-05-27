@@ -1,11 +1,13 @@
 use std::{
     collections::HashMap,
-    io::{BufRead, BufReader},
-    path::Path,
+    io::Write,
+    path::{Path, PathBuf},
 };
 
+use arrow::array::{Array, BinaryArray, StringArray};
 use clap::Parser;
-use eyre::Result;
+use eyre::{OptionExt, Result};
+use futures_util::StreamExt;
 use mevlog::{
     misc::{
         database::{init_sigs_db, sigs_conn, sqlite_truncate_wal},
@@ -13,26 +15,56 @@ use mevlog::{
     },
     models::sigs::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
 };
+use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use tracing::info;
 
+const SOURCIFY_BASE_URL: &str = "https://export.sourcify.dev";
+// Signature dictionary: maps each signature to its text plus 4-byte selector
+// and 32-byte hash. Has no type information.
+const SIGNATURES_PREFIX: &str = "v2/signatures/";
+// Per-compilation signatures: maps a 32-byte hash to its type (function /
+// event / error). Has no signature text. Joined with the dictionary above on
+// the 32-byte hash to learn whether each signature is a method or an event.
+const COMPILED_PREFIX: &str = "v2/compiled_contracts_signatures/";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SigType {
+    Method,
+    Event,
+    Both,
+}
+
 #[derive(Debug, Parser)]
-pub struct SeedDBArgs {}
+pub struct SeedDBArgs {
+    /// Path of the SQLite database file to create
+    #[arg(long)]
+    pub output_path: PathBuf,
+}
 
 impl SeedDBArgs {
     #[allow(dead_code)]
     pub async fn run(&self) -> Result<()> {
-        println!("Seeding db");
-        init_sigs_db(None).await?;
-        let sqlite = sigs_conn(None).await?;
+        let db_url = self.output_path.to_string_lossy().into_owned();
+        println!("Seeding db at {db_url}");
 
-        tracing::info!("Seeding database");
+        let seed_signatures = std::env::var("SEED_SIGNATURES").unwrap_or_default() == "true";
+
+        if seed_signatures {
+            info!("Rebuilding database from scratch");
+            remove_db_at(&self.output_path)?;
+        }
+
+        init_sigs_db(Some(db_url.clone())).await?;
+        let sqlite = sigs_conn(Some(db_url)).await?;
+
+        info!("Seeding database");
 
         self.seed_chains(&sqlite).await?;
 
-        if std::env::var("SEED_SIGNATURES").unwrap_or_default() == "true" {
+        if seed_signatures {
             self.seed_signatures(&sqlite).await?;
         } else {
-            tracing::info!("SEED_SIGNATURES not set to true, skipping signature seeding");
+            info!("SEED_SIGNATURES not set to true, skipping signature seeding");
         }
 
         info!("Truncating WAL");
@@ -59,7 +91,6 @@ impl SeedDBArgs {
                 tracing::info!("Processed {} chains", total_processed);
             }
 
-            // Skip if chain already exists
             if DBChain::exists(chain.chain_id as i64, sqlite).await? {
                 continue;
             }
@@ -93,67 +124,116 @@ impl SeedDBArgs {
     }
 
     async fn seed_signatures(&self, sqlite: &sqlx::SqlitePool) -> Result<()> {
-        tracing::info!("Seeding signatures from OpenChain API");
+        info!("Seeding signatures from Sourcify export");
 
-        let signatures_file = self.get_or_download_signatures_file().await?;
+        // Pass 1: learn the type of every signature hash from the
+        // compiled-contracts export.
+        let compiled_files = self
+            .download_files(COMPILED_PREFIX, "mevlog_sourcify_compiled")
+            .await?;
+        let type_map = build_type_map(&compiled_files)?;
+        info!("Built type map with {} signature hashes", type_map.len());
 
-        tracing::info!("Processing signature data from local file");
+        // Pass 2: join the signature dictionary (text + hashes) against the
+        // type map and insert each signature into the matching table.
+        let signature_files = self
+            .download_files(SIGNATURES_PREFIX, "mevlog_sourcify_sigs")
+            .await?;
 
-        // Count total lines first
-        let file_for_count = std::fs::File::open(&signatures_file)?;
-        let reader_for_count = BufReader::new(file_for_count);
-        let total_lines = reader_for_count.lines().count();
-
-        tracing::info!("Total signature lines to process: {}", total_lines);
-
-        let file = std::fs::File::open(&signatures_file)?;
-        let reader = BufReader::new(file);
-
-        let mut line_count = 0;
+        let batch_size = 5000;
         let mut batch_count = 0;
-        let batch_size = 1000;
+        let mut total_rows = 0u64;
+        let mut method_rows = 0u64;
+        let mut event_rows = 0u64;
+        let mut skipped_rows = 0u64;
 
-        // Start first transaction
         let mut tx = sqlite.begin().await?;
 
-        for (i, line) in reader.lines().enumerate() {
-            let line = line?;
-            let Some((signature_hash, signature)) = line.split_once(',') else {
-                continue;
-            };
+        for path in &signature_files {
+            info!("Processing signatures from {}", path.display());
 
-            if i % 10000 == 0 {
-                tracing::info!("Processing signature line {}/{}", i, total_lines);
+            let file = std::fs::File::open(path)?;
+            let builder = ParquetRecordBatchReaderBuilder::try_new(file)?;
+            let schema = builder.schema().clone();
+
+            let idx_hash_4 = schema.index_of("signature_hash_4")?;
+            let idx_hash_32 = schema.index_of("signature_hash_32")?;
+            let idx_signature = schema.index_of("signature")?;
+
+            let reader = builder.with_batch_size(8192).build()?;
+
+            for batch in reader {
+                let batch = batch?;
+
+                let col_hash_4 = batch
+                    .column(idx_hash_4)
+                    .as_any()
+                    .downcast_ref::<BinaryArray>()
+                    .ok_or_eyre("signature_hash_4 column is not BinaryArray")?;
+                let col_hash_32 = batch
+                    .column(idx_hash_32)
+                    .as_any()
+                    .downcast_ref::<BinaryArray>()
+                    .ok_or_eyre("signature_hash_32 column is not BinaryArray")?;
+                let col_signature = batch
+                    .column(idx_signature)
+                    .as_any()
+                    .downcast_ref::<StringArray>()
+                    .ok_or_eyre("signature column is not StringArray")?;
+
+                for row in 0..batch.num_rows() {
+                    if col_signature.is_null(row)
+                        || col_hash_4.is_null(row)
+                        || col_hash_32.is_null(row)
+                    {
+                        continue;
+                    }
+
+                    let hash_32 = col_hash_32.value(row);
+                    let Some(key) = hash_key(hash_32) else {
+                        continue;
+                    };
+
+                    // Skip signatures whose type we couldn't determine.
+                    let Some(sig_type) = type_map.get(&key).copied() else {
+                        skipped_rows += 1;
+                        continue;
+                    };
+
+                    let signature = col_signature.value(row).to_string();
+
+                    if matches!(sig_type, SigType::Method | SigType::Both) {
+                        let method = DBMethod {
+                            signature_hash_4: col_hash_4.value(row).to_vec(),
+                            signature: signature.clone(),
+                        };
+                        let _ = method.save(&mut *tx).await;
+                        method_rows += 1;
+                        batch_count += 1;
+                    }
+
+                    if matches!(sig_type, SigType::Event | SigType::Both) {
+                        let event = DBEvent {
+                            signature_hash_32: hash_32.to_vec(),
+                            signature,
+                        };
+                        let _ = event.save(&mut *tx).await;
+                        event_rows += 1;
+                        batch_count += 1;
+                    }
+
+                    if batch_count >= batch_size {
+                        tx.commit().await?;
+                        tx = sqlite.begin().await?;
+                        batch_count = 0;
+                    }
+
+                    total_rows += 1;
+                    if total_rows.is_multiple_of(100_000) {
+                        info!("Processed {} signature rows", total_rows);
+                    }
+                }
             }
-
-            if signature_hash.len() == 10 {
-                let method = DBMethod {
-                    signature_hash: signature_hash.to_string(),
-                    signature: signature.to_string(),
-                };
-
-                let _ = method.save(&mut *tx).await;
-                batch_count += 1;
-            }
-
-            if signature_hash.len() == 66 {
-                let event = DBEvent {
-                    signature_hash: signature_hash.to_string(),
-                    signature: signature.to_string(),
-                };
-
-                let _ = event.save(&mut *tx).await;
-                batch_count += 1;
-            }
-
-            // Commit transaction every batch_size inserts
-            if batch_count >= batch_size {
-                tx.commit().await?;
-                tx = sqlite.begin().await?;
-                batch_count = 0;
-            }
-
-            line_count += 1;
         }
 
         // Commit any remaining items in the final batch
@@ -161,41 +241,178 @@ impl SeedDBArgs {
             tx.commit().await?;
         }
 
-        tracing::info!("Processed {} signature lines", line_count);
+        info!(
+            "Processed {} signatures: {} methods, {} events, {} skipped (no type)",
+            total_rows, method_rows, event_rows, skipped_rows
+        );
 
         Ok(())
     }
 
-    async fn get_or_download_signatures_file(&self) -> Result<String> {
-        let today = chrono::Utc::now().format("%Y-%m-%d");
-        let signatures_file = format!("/tmp/signatures_{today}.csv");
+    async fn download_files(&self, prefix: &str, sub_dir: &str) -> Result<Vec<PathBuf>> {
+        let dir = std::env::temp_dir().join(sub_dir);
+        std::fs::create_dir_all(&dir)?;
 
-        if Path::new(&signatures_file).exists() {
-            tracing::info!("Using existing signatures file: {}", signatures_file);
-            return Ok(signatures_file);
+        let listing_url = format!("{SOURCIFY_BASE_URL}/?prefix={prefix}");
+        info!("Fetching file listing from: {}", listing_url);
+        let body = reqwest::get(&listing_url)
+            .await?
+            .error_for_status()?
+            .text()
+            .await?;
+
+        let keys = parse_listing_keys(&body);
+        if keys.is_empty() {
+            eyre::bail!("No parquet files found in Sourcify listing for {prefix}");
+        }
+        info!("Found {} parquet files for {}", keys.len(), prefix);
+
+        let total = keys.len();
+        let mut paths = Vec::with_capacity(total);
+        for (idx, key) in keys.iter().enumerate() {
+            let file_name = key.rsplit('/').next().unwrap_or(key);
+            let dest = dir.join(file_name);
+
+            // Reuse already-downloaded files between runs.
+            if dest.exists() && std::fs::metadata(&dest)?.len() > 0 {
+                info!("[{}/{}] Using cached {}", idx + 1, total, dest.display());
+                paths.push(dest);
+                continue;
+            }
+
+            let url = format!("{SOURCIFY_BASE_URL}/{key}");
+            info!("[{}/{}] Downloading {}", idx + 1, total, url);
+
+            // Download to a temp file first so an interrupted run never leaves a
+            // truncated file that a later run would treat as a valid cache hit.
+            let part = dir.join(format!("{file_name}.part"));
+            let response = reqwest::get(&url).await?.error_for_status()?;
+            let mut file = std::fs::File::create(&part)?;
+            let mut stream = response.bytes_stream();
+
+            while let Some(chunk) = stream.next().await {
+                file.write_all(&chunk?)?;
+            }
+            file.flush()?;
+            std::fs::rename(&part, &dest)?;
+
+            paths.push(dest);
         }
 
-        let url = "https://api.openchain.xyz/signature-database/v1/export";
-        tracing::info!("Downloading signatures database from: {}", url);
-
-        let response = reqwest::get(url).await?;
-        let mut file = std::fs::File::create(&signatures_file)?;
-        let mut stream = response.bytes_stream();
-
-        use std::io::Write;
-
-        use futures_util::StreamExt;
-
-        while let Some(chunk) = stream.next().await {
-            let chunk = chunk?;
-            file.write_all(&chunk)?;
-        }
-
-        file.flush()?;
-        tracing::info!("Downloaded signature database to: {}", signatures_file);
-
-        Ok(signatures_file)
+        Ok(paths)
     }
+}
+
+/// Streams the compiled-contracts parquet files and records, per 32-byte
+/// signature hash, whether it is used as a function selector, an event topic,
+/// or both. Rows with type `error` (and any other unknown type) are ignored.
+fn build_type_map(files: &[PathBuf]) -> Result<HashMap<[u8; 32], SigType>> {
+    let mut type_map: HashMap<[u8; 32], SigType> = HashMap::new();
+    let mut total_rows = 0u64;
+
+    for path in files {
+        info!("Reading signature types from {}", path.display());
+
+        let file = std::fs::File::open(path)?;
+        let builder = ParquetRecordBatchReaderBuilder::try_new(file)?;
+        let schema = builder.schema().clone();
+
+        let idx_hash_32 = schema.index_of("signature_hash_32")?;
+        let idx_type = schema.index_of("signature_type")?;
+
+        let reader = builder.with_batch_size(8192).build()?;
+
+        for batch in reader {
+            let batch = batch?;
+
+            let col_hash_32 = batch
+                .column(idx_hash_32)
+                .as_any()
+                .downcast_ref::<BinaryArray>()
+                .ok_or_eyre("signature_hash_32 column is not BinaryArray")?;
+            let col_type = batch
+                .column(idx_type)
+                .as_any()
+                .downcast_ref::<StringArray>()
+                .ok_or_eyre("signature_type column is not StringArray")?;
+
+            for row in 0..batch.num_rows() {
+                if col_hash_32.is_null(row) || col_type.is_null(row) {
+                    continue;
+                }
+
+                let new_type = match col_type.value(row) {
+                    "function" => SigType::Method,
+                    "event" => SigType::Event,
+                    _ => continue,
+                };
+
+                let Some(key) = hash_key(col_hash_32.value(row)) else {
+                    continue;
+                };
+
+                type_map
+                    .entry(key)
+                    .and_modify(|existing| {
+                        if *existing != new_type {
+                            *existing = SigType::Both;
+                        }
+                    })
+                    .or_insert(new_type);
+
+                total_rows += 1;
+                if total_rows.is_multiple_of(1_000_000) {
+                    info!(
+                        "Scanned {} type rows ({} distinct hashes)",
+                        total_rows,
+                        type_map.len()
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(type_map)
+}
+
+fn hash_key(bytes: &[u8]) -> Option<[u8; 32]> {
+    bytes.try_into().ok()
+}
+
+fn remove_db_at(path: &Path) -> Result<()> {
+    for suffix in ["", "-wal", "-shm", "-journal"] {
+        let target = if suffix.is_empty() {
+            path.to_path_buf()
+        } else {
+            PathBuf::from(format!("{}{suffix}", path.display()))
+        };
+
+        if target.exists() {
+            std::fs::remove_file(&target)?;
+            info!("Removed {}", target.display());
+        }
+    }
+
+    Ok(())
+}
+
+fn parse_listing_keys(xml: &str) -> Vec<String> {
+    let mut keys = Vec::new();
+    let mut rest = xml;
+
+    while let Some(start) = rest.find("<Key>") {
+        let after = &rest[start + "<Key>".len()..];
+        let Some(end) = after.find("</Key>") else {
+            break;
+        };
+        let key = &after[..end];
+        if key.ends_with(".parquet") {
+            keys.push(key.to_string());
+        }
+        rest = &after[end + "</Key>".len()..];
+    }
+
+    keys
 }
 
 // Gas token/USD price oracle

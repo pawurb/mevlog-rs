@@ -1,5 +1,7 @@
 /target
 *.db
+*.db-shm
+*.db-wal
 cache/
 out/
 backup.sh

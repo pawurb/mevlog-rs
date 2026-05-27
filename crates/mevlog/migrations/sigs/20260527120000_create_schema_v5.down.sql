@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS chains;
+DROP INDEX IF EXISTS events_hash_32_index;
+DROP TABLE IF EXISTS events;
+DROP INDEX IF EXISTS methods_hash_4_index;
+DROP TABLE IF EXISTS methods;
