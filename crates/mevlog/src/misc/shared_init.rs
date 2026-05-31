@@ -6,9 +6,7 @@ use alloy::{
     transports::layers::RetryBackoffLayer,
 };
 use eyre::{Result, bail};
-use revm::primitives::Address;
 use sqlx::SqlitePool;
-use tokio::sync::mpsc::UnboundedSender;
 use tracing::debug;
 
 use crate::{
@@ -26,7 +24,6 @@ use crate::{
 use crate::{
     misc::{
         config::Config,
-        ens_utils::start_ens_lookup_worker,
         rpc_urls::get_chain_info,
         symbol_utils::{ERC20SymbolLookupWorker, start_symbols_lookup_worker},
     },
@@ -36,7 +33,6 @@ use crate::{
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub txs: SqlitePool,
-    pub ens_lookup_worker: UnboundedSender<Address>,
     pub symbols_lookup_worker: ERC20SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub chain: Arc<EVMChain>,
@@ -124,7 +120,6 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     txs::init_db(txs_db_url.clone(), resolved.chain_id).await?;
     let txs = txs::conn(txs_db_url, resolved.chain_id).await?;
 
-    let ens_lookup_worker = start_ens_lookup_worker(&resolved.rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
 
     let db_chain = Chain::find(resolved.chain_id as i64, &sqlite)
@@ -135,7 +130,6 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     Ok(SharedDeps {
         sqlite,
         txs,
-        ens_lookup_worker,
         symbols_lookup_worker,
         provider: resolved.provider,
         chain,

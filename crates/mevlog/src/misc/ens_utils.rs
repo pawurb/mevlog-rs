@@ -1,15 +1,10 @@
-use std::{borrow::Cow, collections::HashMap, path::PathBuf, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 
 use alloy::{primitives::Keccak256, sol};
 use eyre::{Result, bail};
 use revm::primitives::{Address, B256, address};
-use tokio::sync::{
-    RwLock,
-    mpsc::{self, UnboundedSender},
-};
 
-use super::shared_init::init_provider;
-use crate::{GenericProvider, misc::symbol_utils::CachedEntry, models::evm_chain::EVMChain};
+use crate::{GenericProvider, models::evm_chain::EVMChain};
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
@@ -22,99 +17,42 @@ sol! {
 }
 
 const ENS_LOOKUP: Address = address!("0x80800fB4e3c77a25638aF8607f5274541831CF07");
-const MISSING_NAME: &str = "N";
 
-static ENS_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<Address, CachedEntry>>> =
-    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+// The ENS lookup oracle is only deployed on Ethereum mainnet.
+const ENS_CHAIN_ID: u64 = 1;
 
 #[derive(Debug)]
 pub enum ENSLookup {
     Sync,
-    Async(UnboundedSender<Address>),
-    OnlyCached,
     Disabled,
 }
 
-#[hotpath::measure_all(future = true)]
 impl ENSLookup {
-    pub async fn lookup_mode(
-        ens_query: Option<String>,
-        ens_lookup_worker: UnboundedSender<Address>,
-        chain: &EVMChain,
-        ens_enabled: bool,
-        provider: &Arc<GenericProvider>,
-    ) -> Result<ENSLookup> {
-        if chain.chain_id != 1 {
-            return Ok(ENSLookup::Disabled);
-        }
-
-        if let Some(ens_query) = ens_query
-            && !known_ens_name(&ens_query).await
-        {
-            let addr = ens_addr_lookup(ens_query.clone(), provider).await?;
-            let Some(addr) = addr else {
-                bail!("{ens_query} is not a registered ENS name");
-            };
-
-            write_ens_cache(addr, Some(ens_query)).await?;
-        };
-
-        if !ens_enabled {
-            return Ok(ENSLookup::OnlyCached);
-        }
-
-        Ok(ENSLookup::Async(ens_lookup_worker))
-    }
-}
-
-pub async fn ens_lookup_async(
-    target: Address,
-    ens_sender: &UnboundedSender<Address>,
-) -> Result<Option<String>> {
-    match read_ens_cache(target).await? {
-        CachedEntry::Known(name) => Ok(Some(name)),
-        CachedEntry::KnownEmpty => Ok(None),
-        CachedEntry::Unknown => {
-            ens_sender.send(target)?;
-            Ok(None)
+    pub fn lookup_mode(chain: &EVMChain, ens_enabled: bool) -> ENSLookup {
+        if ens_enabled && chain.chain_id == ENS_CHAIN_ID {
+            ENSLookup::Sync
+        } else {
+            ENSLookup::Disabled
         }
     }
 }
 
-pub async fn ens_lookup_only_cached(target: Address) -> Result<Option<String>> {
-    match read_ens_cache(target).await? {
-        CachedEntry::Known(name) => Ok(Some(name)),
-        CachedEntry::KnownEmpty => Ok(None),
-        CachedEntry::Unknown => Ok(None),
+/// Returns an error if ENS resolution is not available on the given chain.
+pub fn ensure_ens_supported(chain_id: u64) -> Result<()> {
+    if chain_id != ENS_CHAIN_ID {
+        bail!("ENS resolution is only supported on Ethereum mainnet (chain ID {ENS_CHAIN_ID})");
     }
+    Ok(())
 }
 
-pub async fn known_ens_name(name: &str) -> bool {
-    cacache::read(&ens_cache_dir(), name).await.is_ok()
-}
-
-pub async fn ens_lookup_sync(
-    target: Address,
-    provider: &Arc<GenericProvider>,
-) -> Result<Option<String>> {
-    match read_ens_cache(target).await? {
-        CachedEntry::Known(name) => Ok(Some(name)),
-        CachedEntry::KnownEmpty => Ok(None),
-        CachedEntry::Unknown => {
-            let name = ens_name_lookup(target, provider).await?;
-            write_ens_cache(target, name.clone()).await?;
-            Ok(name)
-        }
-    }
-}
-
-async fn ens_addr_lookup(
-    target: String,
+/// Forward resolution: ENS name -> address.
+pub async fn ens_addr_lookup(
+    name: &str,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<Address>> {
-    let bytes = namehash(&target);
+    let node = namehash(name);
     let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
-    let addr = ens_lookup.getAddressForNode(bytes).call().await?;
+    let addr = ens_lookup.getAddressForNode(node).call().await?;
 
     if addr.is_zero() {
         Ok(None)
@@ -123,7 +61,8 @@ async fn ens_addr_lookup(
     }
 }
 
-async fn ens_name_lookup(
+/// Reverse resolution: address -> ENS name.
+pub async fn ens_name_lookup(
     target: Address,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<String>> {
@@ -133,105 +72,6 @@ async fn ens_name_lookup(
     let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
     let name = ens_lookup.getNameForNode(node).call().await?;
     Ok(if name.is_empty() { None } else { Some(name) })
-}
-
-#[hotpath::measure(log = true, future = true)]
-async fn read_ens_cache(target: Address) -> Result<CachedEntry> {
-    {
-        let cache = ENS_MEMORY_CACHE.read().await;
-        if let Some(entry) = cache.get(&target) {
-            return Ok(entry.clone());
-        }
-    }
-
-    match cacache::read(&ens_cache_dir(), target.to_string()).await {
-        Ok(bytes) => {
-            let name = String::from_utf8(bytes)
-                .map_err(|e| eyre::eyre!("Invalid UTF-8 in cache: {}", e))?;
-            let entry = if name.len() == 1 {
-                CachedEntry::KnownEmpty
-            } else {
-                CachedEntry::Known(name)
-            };
-
-            {
-                let mut cache = ENS_MEMORY_CACHE.write().await;
-                cache.insert(target, entry.clone());
-            }
-
-            Ok(entry)
-        }
-        Err(_) => {
-            {
-                let mut cache = ENS_MEMORY_CACHE.write().await;
-                cache.insert(target, CachedEntry::Unknown);
-            }
-            Ok(CachedEntry::Unknown)
-        }
-    }
-}
-
-async fn write_ens_cache(target: Address, name: Option<String>) -> Result<()> {
-    if let Some(name) = &name {
-        cacache::write(&ens_cache_dir(), name.to_string(), "T").await?;
-    };
-
-    let name_record = match &name {
-        Some(name) => name.as_str(),
-        None => MISSING_NAME,
-    };
-
-    let entry = match &name {
-        Some(name) => CachedEntry::Known(name.clone()),
-        None => CachedEntry::KnownEmpty,
-    };
-
-    {
-        let mut cache = ENS_MEMORY_CACHE.write().await;
-        cache.insert(target, entry);
-    }
-
-    match cacache::write(&ens_cache_dir(), target.to_string(), name_record.as_bytes()).await {
-        Ok(_) => (),
-        Err(e) => {
-            tracing::error!("Error writing ENS cache: {}", e);
-        }
-    };
-    Ok(())
-}
-
-#[allow(unused_mut)]
-pub fn start_ens_lookup_worker(rpc_url: &str) -> mpsc::UnboundedSender<Address> {
-    let (tx, mut rx) = hotpath::channel!(mpsc::unbounded_channel::<Address>(), log = true);
-
-    let rpc_url = rpc_url.to_string();
-    tokio::spawn(async move {
-        let provider = init_provider(&rpc_url).await.unwrap();
-        let provider = Arc::new(provider);
-
-        while let Some(target) = rx.recv().await {
-            let name = match ens_name_lookup(target, &provider).await {
-                Ok(name) => name,
-                Err(e) => {
-                    tracing::error!("Error looking up ENS name: {}", e);
-                    continue;
-                }
-            };
-            match write_ens_cache(target, name.clone()).await {
-                Ok(_) => (),
-                Err(e) => {
-                    tracing::error!("Error writing ENS cache: {}", e);
-                    continue;
-                }
-            }
-        }
-    });
-
-    tx
-}
-
-fn ens_cache_dir() -> PathBuf {
-    home::home_dir().unwrap().join(".mevlog/.ens-cache")
 }
 
 // source https://github.com/foundry-rs/foundry/blob/0a2ad0034dded199812bc9a97ea96f59f9b87354/crates/common/src/ens.rs#L168
@@ -269,4 +109,40 @@ pub fn namehash(name: &str) -> B256 {
 
 pub fn reverse_address(addr: &Address) -> String {
     format!("{addr:x}.{ENS_REVERSE_REGISTRAR_DOMAIN}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn namehash_empty_is_zero() {
+        assert_eq!(namehash(""), B256::ZERO);
+    }
+
+    #[test]
+    fn namehash_known_vectors() {
+        // Canonical ENS namehash values.
+        assert_eq!(
+            namehash("eth"),
+            "0x93cdeb708b7545dc668eb9280176169d1c33cfd8ed6f04690a0bcc88a93fc4ae"
+                .parse::<B256>()
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn reverse_address_format() {
+        let addr = address!("0xd8da6bf26964af9d7eed9e03e53415d37aa96045");
+        assert_eq!(
+            reverse_address(&addr),
+            "d8da6bf26964af9d7eed9e03e53415d37aa96045.addr.reverse"
+        );
+    }
+
+    #[test]
+    fn ensure_ens_supported_rejects_non_mainnet() {
+        assert!(ensure_ens_supported(1).is_ok());
+        assert!(ensure_ens_supported(8453).is_err());
+    }
 }
