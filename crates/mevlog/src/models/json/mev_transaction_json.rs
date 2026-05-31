@@ -226,33 +226,6 @@ pub struct QueryParams {
     pub evm_state_diff: bool,
 }
 
-#[derive(Serialize)]
-pub struct TxQueryParams {
-    pub command: &'static str,
-    pub tx_hash: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub before: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub after: Option<u8>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub evm_trace: Option<TraceMode>,
-    #[serde(skip_serializing_if = "is_false")]
-    pub evm_calls: bool,
-    #[serde(skip_serializing_if = "is_false")]
-    pub evm_ops: bool,
-    #[serde(skip_serializing_if = "is_false")]
-    pub evm_state_diff: bool,
-}
-
-#[derive(Serialize)]
-pub struct ResponseEnvelopeJson<'a, Q: Serialize> {
-    pub result: Vec<MEVTransactionJsonOutput<'a>>,
-    pub result_count: usize,
-    pub duration: String,
-    pub chain: &'a ChainInfoNoRpcsJson,
-    pub query: Q,
-}
-
 pub fn format_duration(ns: u64) -> String {
     if ns < 1_000 {
         format!("{} ns", ns)
@@ -262,35 +235,6 @@ pub fn format_duration(ns: u64) -> String {
         format!("{:.2} ms", ns as f64 / 1_000_000.0)
     } else {
         format!("{:.2} s", ns as f64 / 1_000_000_000.0)
-    }
-}
-
-pub fn serialize_json_response<Q: Serialize>(
-    transactions: &[MEVTransactionJson],
-    opts: JsonSerializeOpts,
-    pretty: bool,
-    chain: &ChainInfoNoRpcsJson,
-    duration_ns: u64,
-    query: Q,
-) -> serde_json::Result<String> {
-    let output: Vec<_> = transactions
-        .iter()
-        .map(|transaction| MEVTransactionJsonOutput { transaction, opts })
-        .collect();
-
-    let result_count = output.len();
-    let envelope = ResponseEnvelopeJson {
-        result: output,
-        result_count,
-        duration: format_duration(duration_ns),
-        chain,
-        query,
-    };
-
-    if pretty {
-        serde_json::to_string_pretty(&envelope)
-    } else {
-        serde_json::to_string(&envelope)
     }
 }
 
