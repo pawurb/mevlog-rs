@@ -146,7 +146,7 @@ async fn ensure_database_indexes(sqlite: &SqlitePool) -> Result<()> {
 
             println!("Creating index: {create_index_sql}");
 
-            sqlx::query(&create_index_sql)
+            sqlx::query(sqlx::AssertSqlSafe(create_index_sql))
                 .execute(sqlite)
                 .await
                 .map_err(|e| eyre!("Failed to create index {}: {}", index_name, e))?;

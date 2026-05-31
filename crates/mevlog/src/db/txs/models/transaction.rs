@@ -180,7 +180,7 @@ impl Transaction {
              ORDER BY block_number DESC, tx_index ASC"
         );
 
-        let rows = sqlx::query(&sql).fetch_all(conn).await?;
+        let rows = sqlx::query(sqlx::AssertSqlSafe(sql)).fetch_all(conn).await?;
         rows.iter().map(Self::from_row).collect()
     }
 
