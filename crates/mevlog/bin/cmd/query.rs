@@ -3,7 +3,10 @@ use std::time::Instant;
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
-    db::txs::models::transaction::{Transaction, TransactionJson},
+    db::txs::models::{
+        log::Log,
+        transaction::{Transaction, TransactionJson},
+    },
     misc::{
         args_parsing::BlocksRange,
         data_fetch::fetch_blocks_batch,
@@ -122,8 +125,18 @@ impl QueryArgs {
                     }
                 }
 
-                // Persist this chunk. `chunk` (not just blocks with txs) is passed so
-                // empty blocks are still recorded in `indexed_blocks`.
+                let mut chunk_logs: Vec<Log> = vec![];
+                for &block_number in chunk {
+                    if let Some(logs) = batch_data.logs_by_block.get(&block_number) {
+                        chunk_logs.extend(logs.iter().map(|l| Log::from_mev_log(block_number, l)));
+                    }
+                }
+
+                // Persist logs before txs: `save_batch` marks the chunk's blocks
+                // as indexed, so a block is only flagged once its logs have landed.
+                // `chunk` (not just blocks with txs) is passed so empty blocks are
+                // still recorded in `indexed_blocks`.
+                Log::save_batch(&chunk_logs, &deps.txs).await?;
                 Transaction::save_batch(&chunk_txs, chunk, &deps.txs).await?;
             }
         }

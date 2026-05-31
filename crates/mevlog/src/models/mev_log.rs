@@ -16,6 +16,8 @@ pub struct MEVLog {
     pub topics: Vec<FixedBytes<32>>,
     pub data: Vec<u8>,
     pub tx_index: u64,
+    pub log_index: u64,
+    pub tx_hash: FixedBytes<32>,
 }
 
 #[hotpath::measure_all(future = true)]
@@ -69,12 +71,19 @@ impl MEVLog {
         })
         .collect::<Vec<_>>();
         let tx_index = get_string_value(1).parse()?;
+        let log_index = get_string_value(2).parse()?;
+        let tx_hash_str = get_string_value(3);
+        let tx_hash = FixedBytes::<32>::from_slice(&hex::decode(
+            tx_hash_str.strip_prefix("0x").unwrap_or(&tx_hash_str),
+        )?);
         let log = Self {
             source,
             signature,
             topics: topics.clone(),
             data: data.clone(),
             tx_index,
+            log_index,
+            tx_hash,
         };
 
         if log.is_erc20_transfer() {
@@ -94,6 +103,8 @@ impl MEVLog {
                     topics,
                     data,
                     tx_index,
+                    log_index,
+                    tx_hash,
                 },
                 block_number,
             ));

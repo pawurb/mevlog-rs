@@ -104,12 +104,17 @@ pub mod tests {
         .map(|b| b as u64)
         .collect();
 
+        let logs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM logs")
+            .fetch_one(&conn)
+            .await?;
+
         assert_eq!(indexed, expected, "indexed_blocks mismatch");
         assert_eq!(tx_blocks, expected, "transaction blocks mismatch");
         assert_eq!(
             indexed, tx_blocks,
             "indexed_blocks vs transactions mismatch"
         );
+        assert_eq!(logs_count, 3868, "logs count mismatch");
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())
