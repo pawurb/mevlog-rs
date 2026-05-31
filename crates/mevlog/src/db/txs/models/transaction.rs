@@ -111,8 +111,7 @@ impl Transaction {
             i64::try_from(self.gas_price),
             i64::try_from(self.max_fee_per_gas),
             i64::try_from(self.max_priority_fee_per_gas),
-        )
-        else {
+        ) else {
             tracing::warn!(
                 "Skipping tx 0x{}: gas price exceeds i64::MAX, cannot store",
                 hex::encode(self.tx_hash)
