@@ -20,6 +20,7 @@ use mevlog::{
     },
 };
 use revm::primitives::{FixedBytes, TxKind, U256};
+use tracing::info;
 
 #[derive(Debug, clap::Parser)]
 pub struct QueryArgs {
@@ -98,12 +99,32 @@ impl QueryArgs {
         let new_blocks = missing.len() as u64;
         let cached_blocks = block_range.size().saturating_sub(new_blocks);
 
-        for (run_start, run_end) in contiguous_ranges(&missing) {
+        info!(
+            "Blocks: {} cached, {} to fetch ({} total)",
+            cached_blocks,
+            new_blocks,
+            block_range.size()
+        );
+
+        let ranges = contiguous_ranges(&missing);
+        let total_batches: usize = ranges
+            .iter()
+            .map(|(s, e)| ((e - s + 1) as usize).div_ceil(self.batch_size))
+            .sum();
+        let mut batch_idx = 0;
+
+        for (run_start, run_end) in ranges {
             let run_blocks: Vec<u64> = (run_start..=run_end).collect();
 
             for chunk in run_blocks.chunks(self.batch_size) {
                 let start_block = *chunk.first().unwrap();
                 let end_block = *chunk.last().unwrap();
+
+                batch_idx += 1;
+                info!(
+                    "Fetching blocks {}-{} (batch {}/{})",
+                    start_block, end_block, batch_idx, total_batches
+                );
 
                 let batch_data = fetch_blocks_batch(
                     start_block,

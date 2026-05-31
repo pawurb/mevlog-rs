@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::collections::HashSet;
 
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
@@ -115,13 +115,13 @@ impl Transaction {
         .bind(self.nonce as i64)
         .bind(self.from_address.as_slice())
         .bind(self.to_address.as_ref().map(|a| a.as_slice()))
-        .bind(self.value.to_string())
+        .bind(self.value.to_be_bytes_trimmed_vec())
         .bind(self.gas_limit as i64)
         .bind(self.gas_used as i64)
-        .bind(self.effective_gas_price.to_string())
-        .bind(self.gas_price.to_string())
-        .bind(self.max_fee_per_gas.to_string())
-        .bind(self.max_priority_fee_per_gas.to_string())
+        .bind(self.effective_gas_price as i64)
+        .bind(self.gas_price as i64)
+        .bind(self.max_fee_per_gas as i64)
+        .bind(self.max_priority_fee_per_gas as i64)
         .bind(self.transaction_type.map(|t| t as i64))
         .bind(self.success)
         .bind(self.signature_hash.as_ref().map(|s| s.as_slice()))
@@ -180,7 +180,9 @@ impl Transaction {
              ORDER BY block_number DESC, tx_index ASC"
         );
 
-        let rows = sqlx::query(sqlx::AssertSqlSafe(sql)).fetch_all(conn).await?;
+        let rows = sqlx::query(sqlx::AssertSqlSafe(sql))
+            .fetch_all(conn)
+            .await?;
         rows.iter().map(Self::from_row).collect()
     }
 
@@ -191,13 +193,13 @@ impl Transaction {
         let nonce: i64 = row.try_get("nonce")?;
         let from_address: Vec<u8> = row.try_get("from_address")?;
         let to_address: Option<Vec<u8>> = row.try_get("to_address")?;
-        let value: String = row.try_get("value")?;
+        let value: Vec<u8> = row.try_get("value")?;
         let gas_limit: i64 = row.try_get("gas_limit")?;
         let gas_used: i64 = row.try_get("gas_used")?;
-        let effective_gas_price: String = row.try_get("effective_gas_price")?;
-        let gas_price: String = row.try_get("gas_price")?;
-        let max_fee_per_gas: String = row.try_get("max_fee_per_gas")?;
-        let max_priority_fee_per_gas: String = row.try_get("max_priority_fee_per_gas")?;
+        let effective_gas_price: i64 = row.try_get("effective_gas_price")?;
+        let gas_price: i64 = row.try_get("gas_price")?;
+        let max_fee_per_gas: i64 = row.try_get("max_fee_per_gas")?;
+        let max_priority_fee_per_gas: i64 = row.try_get("max_priority_fee_per_gas")?;
         let transaction_type: Option<i64> = row.try_get("transaction_type")?;
         let success: bool = row.try_get("success")?;
         let signature_hash: Option<Vec<u8>> = row.try_get("signature_hash")?;
@@ -210,13 +212,13 @@ impl Transaction {
             nonce: nonce as u64,
             from_address: Address::from_slice(&from_address),
             to_address: to_address.map(|b| Address::from_slice(&b)),
-            value: U256::from_str(&value)?,
+            value: U256::from_be_slice(&value),
             gas_limit: gas_limit as u64,
             gas_used: gas_used as u64,
-            effective_gas_price: effective_gas_price.parse()?,
-            gas_price: gas_price.parse()?,
-            max_fee_per_gas: max_fee_per_gas.parse()?,
-            max_priority_fee_per_gas: max_priority_fee_per_gas.parse()?,
+            effective_gas_price: effective_gas_price as u128,
+            gas_price: gas_price as u128,
+            max_fee_per_gas: max_fee_per_gas as u128,
+            max_priority_fee_per_gas: max_priority_fee_per_gas as u128,
             transaction_type: transaction_type.map(|t| t as u8),
             success,
             signature_hash: signature_hash.map(|b| FixedBytes::<4>::from_slice(&b)),
