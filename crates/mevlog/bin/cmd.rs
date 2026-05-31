@@ -4,7 +4,6 @@ pub mod debug_available;
 pub mod query;
 #[cfg(feature = "tui")]
 pub mod tui;
-pub mod tx;
 pub mod update_db;
 
 #[cfg(feature = "mcp")]

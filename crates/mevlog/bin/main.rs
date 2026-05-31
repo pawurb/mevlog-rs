@@ -8,7 +8,7 @@ use cmd::seed_db::SeedDBArgs;
 use cmd::tui::TuiArgs;
 use cmd::{
     chain_info::ChainInfoArgs, chains::ChainsArgs, debug_available::DebugAvailableArgs,
-    query::QueryArgs, tx::TxArgs, update_db::UpdateDBArgs,
+    query::QueryArgs, update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -48,8 +48,6 @@ pub struct MLArgs {
 pub enum MLSubcommand {
     #[command(about = "Query txs within a block range", alias = "q")]
     Query(Box<QueryArgs>),
-    #[command(about = "Print transaction info", alias = "t")]
-    Tx(TxArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
     #[command(about = "List all available chains from ChainList")]
@@ -123,9 +121,6 @@ async fn execute(root_args: MLArgs) -> Result<()> {
     }
 
     match root_args.cmd {
-        ML::Tx(args) => {
-            args.run(root_args.format).await?;
-        }
         ML::Query(args) => {
             args.run(root_args.format).await?;
         }
