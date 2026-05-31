@@ -3,4 +3,9 @@
  
 ![TUI sample](mevlog-tui-sample.png)
 
-MAJOR REWRITE IN PROGRESS
+> ⚠️ **MAJOR REWRITE IN PROGRESS**
+>
+> The `main` branch is undergoing a massive rewrite and is currently unstable.
+>
+> - For the last stable code, see the [`stable` branch](https://github.com/pawurb/mevlog-rs/tree/stable).
+> - For the current stable release, see [mevlog on crates.io](https://crates.io/crates/mevlog).
