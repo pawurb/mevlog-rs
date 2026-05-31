@@ -67,6 +67,8 @@ impl SeedDBArgs {
             info!("SEED_SIGNATURES not set to true, skipping signature seeding");
         }
 
+        // Indexes are not created here to keep the CDN-uploaded DB small; they
+        // are built on first CLI use via `check_and_create_indexes`.
         info!("Truncating WAL");
         sqlite_truncate_wal(&sqlite).await?;
 
