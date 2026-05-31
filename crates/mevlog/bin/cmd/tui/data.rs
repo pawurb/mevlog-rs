@@ -23,7 +23,7 @@ pub(crate) struct RpcOpts {
 }
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct SearchFilters {
+pub(crate) struct QueryFilters {
     pub blocks: String,
     pub position: Option<String>,
     pub from: Option<String>,
@@ -38,7 +38,7 @@ pub(crate) struct SearchFilters {
     pub txhash: Option<String>,
 }
 
-impl SearchFilters {
+impl QueryFilters {
     pub fn from_blocks(blocks: impl Into<String>) -> Self {
         Self {
             blocks: blocks.into(),

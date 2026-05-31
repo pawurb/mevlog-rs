@@ -13,7 +13,7 @@ use tokio::{
 };
 use tracing::debug;
 
-use crate::cmd::tui::data::{MEVTransactionJson, SearchFilters, mevlog_cmd};
+use crate::cmd::tui::data::{MEVTransactionJson, QueryFilters, mevlog_cmd};
 
 #[derive(Deserialize)]
 struct ErrorResponse {
@@ -27,7 +27,7 @@ struct Envelope<T> {
 
 #[hotpath::measure(future = true)]
 pub async fn fetch_txs(
-    filters: &SearchFilters,
+    filters: &QueryFilters,
     rpc_url: Option<String>,
     chain_id: Option<u64>,
 ) -> Result<Vec<MEVTransactionJson>> {
@@ -40,7 +40,7 @@ pub async fn fetch_txs(
             .arg("--format")
             .arg("json");
     } else {
-        cmd.arg("search")
+        cmd.arg("query")
             .arg("-b")
             .arg(&filters.blocks)
             .arg("--logs")
@@ -137,7 +137,7 @@ pub async fn fetch_txs(
 
     match result {
         Ok(txs) => txs,
-        Err(_) => eyre::bail!("mevlog search timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog query timed out after 120 seconds"),
     }
 }
 

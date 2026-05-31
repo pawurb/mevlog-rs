@@ -68,7 +68,7 @@ async fn populate_mainnet_cache() -> Result<()> {
 
         let start = measure_start("mevlog latest");
         let _resp = match Command::new(mevlog_cmd_path())
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("latest")
             .arg("--rpc-url")
@@ -78,7 +78,7 @@ async fn populate_mainnet_cache() -> Result<()> {
         {
             Ok(resp) => resp,
             Err(e) => {
-                error!("Failed to run mevlog search latest: {}", &e);
+                error!("Failed to run mevlog query latest: {}", &e);
                 continue;
             }
         };

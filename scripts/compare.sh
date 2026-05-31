@@ -9,7 +9,7 @@ if [ "$ORIGINAL_REF" = "HEAD" ]; then
     ORIGINAL_REF=$(git rev-parse HEAD)
 fi
 
-BENCH_CMD="cargo run -p mevlog --features hotpath,hotpath-alloc --release --bin mevlog search -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000"
+BENCH_CMD="cargo run -p mevlog --features hotpath,hotpath-alloc --release --bin mevlog query -b 23263469:23263489 --chain-id 1 --skip-verify-chain-id --native-token-price 5000"
 
 run_bench() {
     local ref="$1"

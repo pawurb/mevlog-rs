@@ -53,7 +53,7 @@ struct GetTransactionParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-struct SearchTransactionsParams {
+struct QueryTransactionsParams {
     #[schemars(
         description = "Block range: 'latest', a block number like '22030899', or a range like '22030800:22030900'"
     )]
@@ -174,21 +174,21 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = r#"Collect Ethereum transactions within a block range.
+    #[tool(description = r#"Query Ethereum transactions within a block range.
 
 Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. Optionally enable tracing (evm_trace) to include internal calls, opcodes, and state changes.
 
 Block range examples: 'latest' (latest block), '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks)."#)]
-    async fn search_transactions(
+    async fn query_transactions(
         &self,
-        params: Parameters<SearchTransactionsParams>,
+        params: Parameters<QueryTransactionsParams>,
     ) -> Result<CallToolResult, McpError> {
         debug!(
             blocks = %params.0.blocks,
             evm_trace = ?params.0.evm_trace,
-            "MCP search_transactions request"
+            "MCP query_transactions request"
         );
-        let mut args = vec!["search".to_string(), "-b".to_string(), params.0.blocks];
+        let mut args = vec!["query".to_string(), "-b".to_string(), params.0.blocks];
         if let Some(evm_trace) = params.0.evm_trace {
             args.push("--evm-trace".to_string());
             args.push(evm_trace);
@@ -367,7 +367,7 @@ impl ServerHandler for MevlogMcpServer {
                 Implementation::new("mevlog", env!("CARGO_PKG_VERSION")),
             )
             .with_instructions(
-                "mevlog MCP server. Provides tools for Ethereum transaction analysis, searching, and chain information.",
+                "mevlog MCP server. Provides tools for Ethereum transaction analysis, querying, and chain information.",
             )
     }
 }
@@ -523,7 +523,7 @@ mod tests {
     fn build_cli_args_keeps_conn_flags_after_subcommand_args() {
         let server = crate::mcp_server::MevlogMcpServer::new("http://localhost:8545".into(), 1);
         let mut args = vec![
-            "search".to_string(),
+            "query".to_string(),
             "-b".to_string(),
             "10:latest".to_string(),
         ];
@@ -535,7 +535,7 @@ mod tests {
             vec![
                 "--format".to_string(),
                 "json".to_string(),
-                "search".to_string(),
+                "query".to_string(),
                 "-b".to_string(),
                 "10:latest".to_string(),
                 "--rpc-url".to_string(),
