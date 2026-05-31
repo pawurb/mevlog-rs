@@ -3,19 +3,20 @@ use std::time::Instant;
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
+    db::txs::models::transaction::{Transaction, TransactionJson},
     misc::{
         args_parsing::BlocksRange,
         data_fetch::fetch_blocks_batch,
-        ens_utils::ENSLookup,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
     models::{
-        json::mev_transaction_json::{SearchQueryParams, serialize_json_response},
-        mev_block::{PreFetchedBlockData, generate_block},
+        json::mev_transaction_json::{SearchQueryParams, serialize_query_response},
+        mev_block::TxData,
     },
 };
+use revm::primitives::{FixedBytes, TxKind, U256};
 
 #[derive(Debug, clap::Parser)]
 pub struct SearchArgs {
@@ -58,15 +59,6 @@ impl SearchArgs {
             }
         }
 
-        let ens_lookup = ENSLookup::lookup_mode(
-            None,
-            deps.ens_lookup_worker,
-            &deps.chain,
-            self.shared_opts.ens,
-            &deps.provider,
-        )
-        .await?;
-
         let symbols_lookup = ERC20SymbolsLookup::lookup_mode(
             deps.symbols_lookup_worker,
             self.shared_opts.erc20_symbols,
@@ -94,7 +86,7 @@ impl SearchArgs {
         }
 
         let start_time = Instant::now();
-        let mut mev_blocks = vec![];
+        let mut txs: Vec<Transaction> = vec![];
         let blocks: Vec<u64> = (block_range.from..=block_range.to).rev().collect();
 
         for chunk in blocks.chunks(self.batch_size) {
@@ -111,45 +103,18 @@ impl SearchArgs {
             .await?;
 
             for &block_number in chunk {
-                let pre_fetched = PreFetchedBlockData {
-                    txs_data: batch_data
-                        .txs_by_block
-                        .get(&block_number)
-                        .cloned()
-                        .unwrap_or_default(),
-                    logs_data: batch_data
-                        .logs_by_block
-                        .get(&block_number)
-                        .cloned()
-                        .unwrap_or_default(),
+                let Some(txs_data) = batch_data.txs_by_block.get(&block_number) else {
+                    continue;
                 };
 
-                let json_opts = self.shared_opts.json_serialize_opts();
-                let mev_block = generate_block(
-                    &deps.provider,
-                    &deps.sqlite,
-                    block_number,
-                    &ens_lookup,
-                    None,
-                    false,
-                    &self.shared_opts,
-                    &deps.chain,
-                    &deps.rpc_url,
-                    native_token_price,
-                    json_opts.include_logs,
-                    pre_fetched,
-                )
-                .await?;
-
-                mev_blocks.push(mev_block);
+                for (tx_index, tx_data) in txs_data.iter().enumerate() {
+                    txs.push(build_transaction(block_number, tx_index as u64, tx_data));
+                }
             }
         }
 
-        let json_opts = self.shared_opts.json_serialize_opts();
-        let transactions_json: Vec<_> = mev_blocks
-            .iter()
-            .flat_map(|block| block.transactions_json())
-            .collect();
+        let transactions_json: Vec<TransactionJson> =
+            txs.iter().map(TransactionJson::from).collect();
 
         let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
         chain_info.native_token_price = native_token_price;
@@ -166,15 +131,8 @@ impl SearchArgs {
         let pretty = matches!(format, OutputFormat::JsonPretty);
         println!(
             "{}",
-            serialize_json_response(
-                &transactions_json,
-                json_opts,
-                pretty,
-                &chain_info,
-                duration_ns,
-                query,
-            )
-            .unwrap()
+            serialize_query_response(&transactions_json, pretty, &chain_info, duration_ns, query,)
+                .unwrap()
         );
 
         // Allow async ENS and erc20 symbols lookups to catch up
@@ -183,5 +141,46 @@ impl SearchArgs {
         }
 
         Ok(())
+    }
+}
+
+/// Builds a barebones [`Transaction`] record from fetched RPC data.
+///
+/// No SQLite insert and no signature resolution yet — the method signature is
+/// left unset and only the 4-byte selector is captured from the calldata.
+fn build_transaction(block_number: u64, tx_index: u64, tx_data: &TxData) -> Transaction {
+    let req = &tx_data.req;
+
+    let to_address = match req.to {
+        Some(TxKind::Call(address)) => Some(address),
+        // `TxKind::Create` or an unset target → contract creation.
+        _ => None,
+    };
+
+    let signature_hash = req
+        .input
+        .input
+        .as_ref()
+        .filter(|input| input.len() >= 4)
+        .map(|input| FixedBytes::<4>::from_slice(&input[..4]));
+
+    Transaction {
+        block_number,
+        tx_index,
+        tx_hash: tx_data.tx_hash,
+        nonce: req.nonce.unwrap_or(0),
+        from_address: req.from.expect("tx `from` address missing"),
+        to_address,
+        value: req.value.unwrap_or(U256::ZERO),
+        gas_limit: req.gas.unwrap_or(0),
+        gas_used: tx_data.receipt.gas_used,
+        effective_gas_price: tx_data.receipt.effective_gas_price,
+        gas_price: req.gas_price.unwrap_or(0),
+        max_fee_per_gas: req.max_fee_per_gas.unwrap_or(0),
+        max_priority_fee_per_gas: req.max_priority_fee_per_gas.unwrap_or(0),
+        transaction_type: req.transaction_type,
+        success: tx_data.receipt.success,
+        signature_hash,
+        signature: None,
     }
 }
