@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize, Serializer, ser::SerializeStruct};
 
 use crate::{
     ChainInfoNoRpcsJson,
+    db::txs::models::transaction::TransactionJson,
     misc::{shared_init::TraceMode, utils::ToU128},
     models::{
         json::{
@@ -281,6 +282,39 @@ pub fn serialize_json_response<Q: Serialize>(
     let envelope = ResponseEnvelopeJson {
         result: output,
         result_count,
+        duration: format_duration(duration_ns),
+        chain,
+        query,
+    };
+
+    if pretty {
+        serde_json::to_string_pretty(&envelope)
+    } else {
+        serde_json::to_string(&envelope)
+    }
+}
+
+#[derive(Serialize)]
+struct QueryResponseEnvelopeJson<'a, Q: Serialize> {
+    result: &'a [TransactionJson],
+    result_count: usize,
+    duration: String,
+    chain: &'a ChainInfoNoRpcsJson,
+    query: Q,
+}
+
+/// Serializes barebones [`TransactionJson`] rows (no logs/traces) into the
+/// standard response envelope used by the SQLite-backed query path.
+pub fn serialize_query_response<Q: Serialize>(
+    transactions: &[TransactionJson],
+    pretty: bool,
+    chain: &ChainInfoNoRpcsJson,
+    duration_ns: u64,
+    query: Q,
+) -> serde_json::Result<String> {
+    let envelope = QueryResponseEnvelopeJson {
+        result: transactions,
+        result_count: transactions.len(),
         duration: format_duration(duration_ns),
         chain,
         query,
