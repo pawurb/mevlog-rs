@@ -24,8 +24,9 @@ futures-util = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["time", "env-filter"] }
 time = { workspace = true, features = ["local-offset"] }
 tracing = { workspace = true }
-sqlx = { version = "0.8", default-features = false, features = [
-  "runtime-tokio-rustls",
+sqlx = { version = "0.9", default-features = false, features = [
+  "runtime-tokio",
+  "tls-rustls",
   "sqlite",
   "macros",
   "migrate",
