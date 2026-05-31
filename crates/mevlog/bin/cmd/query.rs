@@ -102,15 +102,22 @@ impl QueryArgs {
             )
             .await?;
 
+            let mut chunk_txs: Vec<Transaction> = vec![];
             for &block_number in chunk {
                 let Some(txs_data) = batch_data.txs_by_block.get(&block_number) else {
                     continue;
                 };
 
                 for (tx_index, tx_data) in txs_data.iter().enumerate() {
-                    txs.push(build_transaction(block_number, tx_index as u64, tx_data));
+                    chunk_txs.push(build_transaction(block_number, tx_index as u64, tx_data));
                 }
             }
+
+            // Persist this chunk. `chunk` (not just blocks with txs) is passed so
+            // empty blocks are still recorded in `indexed_blocks`.
+            Transaction::save_batch(&chunk_txs, chunk, &deps.txs).await?;
+
+            txs.extend(chunk_txs);
         }
 
         let transactions_json: Vec<TransactionJson> =
