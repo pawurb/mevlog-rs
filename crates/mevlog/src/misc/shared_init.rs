@@ -13,10 +13,13 @@ use tracing::debug;
 
 use crate::{
     GenericProvider,
-    db::sigs::{
-        self,
-        actions::{check_and_create_indexes, download_file, file_exists},
-        models::chain::Chain,
+    db::{
+        sigs::{
+            self,
+            actions::{check_and_create_indexes, download_file, file_exists},
+            models::chain::Chain,
+        },
+        txs,
     },
     models::evm_chain::EVMChain,
 };
@@ -32,6 +35,7 @@ use crate::{
 
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
+    pub txs: SqlitePool,
     pub ens_lookup_worker: UnboundedSender<Address>,
     pub symbols_lookup_worker: ERC20SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
@@ -108,6 +112,10 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
 
     let sqlite = sigs::conn(None).await?;
     check_and_create_indexes(&sqlite).await?;
+
+    txs::init_db(None, resolved.chain_id).await?;
+    let txs = txs::conn(None, resolved.chain_id).await?;
+
     let ens_lookup_worker = start_ens_lookup_worker(&resolved.rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
 
@@ -118,6 +126,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
 
     Ok(SharedDeps {
         sqlite,
+        txs,
         ens_lookup_worker,
         symbols_lookup_worker,
         provider: resolved.provider,

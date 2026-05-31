@@ -1,5 +1,3 @@
--- Add up migration script here
-
 CREATE TABLE transactions (
     block_number BIGINT NOT NULL,
     tx_index BIGINT NOT NULL,
@@ -16,10 +14,13 @@ CREATE TABLE transactions (
     max_priority_fee_per_gas TEXT NOT NULL,
     transaction_type BIGINT,
     success BOOLEAN NOT NULL,
-    chain_id BIGINT NOT NULL,
     signature_hash BLOB,
     signature TEXT
 );
 
-CREATE INDEX idx_transactions_chain_block ON transactions (chain_id, block_number);
-CREATE UNIQUE INDEX idx_transactions_chain_hash ON transactions (chain_id, tx_hash);
+CREATE INDEX idx_transactions_block ON transactions (block_number);
+CREATE UNIQUE INDEX idx_transactions_hash ON transactions (tx_hash);
+
+CREATE TABLE indexed_blocks (
+    block_number INTEGER PRIMARY KEY NOT NULL
+);
