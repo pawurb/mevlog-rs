@@ -11,7 +11,6 @@ use mevlog::{
         args_parsing::BlocksRange,
         data_fetch::fetch_blocks_batch,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
-        symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
     models::json::mev_transaction_json::{QueryParams, serialize_query_response},
@@ -58,11 +57,6 @@ impl QueryArgs {
                 bail!("'--evm-state-diff' is supported only with --evm-trace [rpc|revm] enabled")
             }
         }
-
-        let symbols_lookup = ERC20SymbolsLookup::lookup_mode(
-            deps.symbols_lookup_worker,
-            self.shared_opts.erc20_symbols,
-        );
 
         let native_token_price = get_native_token_price(
             &deps.chain,
@@ -122,14 +116,8 @@ impl QueryArgs {
                     start_block, end_block, batch_idx, total_batches
                 );
 
-                let batch_data = fetch_blocks_batch(
-                    start_block,
-                    end_block,
-                    &deps.chain,
-                    &deps.sqlite,
-                    &symbols_lookup,
-                )
-                .await?;
+                let batch_data =
+                    fetch_blocks_batch(start_block, end_block, &deps.chain, &deps.sqlite).await?;
 
                 let mut chunk_txs: Vec<Transaction> = vec![];
                 for &block_number in chunk {
@@ -191,11 +179,6 @@ impl QueryArgs {
             )
             .unwrap()
         );
-
-        // Allow async ENS and erc20 symbols lookups to catch up
-        if self.shared_opts.erc20_symbols || self.shared_opts.ens {
-            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-        }
 
         Ok(())
     }

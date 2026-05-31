@@ -28,11 +28,11 @@ pub fn render_info_tab(
 fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
-    let from_display = tx.from_ens.clone().unwrap_or_else(|| tx.from.to_string());
+    let from_display = tx.from.to_string();
 
     let to_display = tx
         .to
-        .map(|addr| tx.to_ens.clone().unwrap_or_else(|| addr.to_string()))
+        .map(|addr| addr.to_string())
         .unwrap_or_else(|| "CREATE".to_string());
 
     lines.push(build_label_value_line("From:", &from_display));

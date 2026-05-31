@@ -11,5 +11,4 @@ pub mod rpc_capability;
 pub mod rpc_tracing;
 pub mod rpc_urls;
 pub mod shared_init;
-pub mod symbol_utils;
 pub mod utils;

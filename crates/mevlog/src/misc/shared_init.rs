@@ -22,18 +22,13 @@ use crate::{
     models::evm_chain::EVMChain,
 };
 use crate::{
-    misc::{
-        config::Config,
-        rpc_urls::get_chain_info,
-        symbol_utils::{ERC20SymbolLookupWorker, start_symbols_lookup_worker},
-    },
+    misc::{config::Config, rpc_urls::get_chain_info},
     models::json::mev_transaction_json::JsonSerializeOpts,
 };
 
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub txs: SqlitePool,
-    pub symbols_lookup_worker: ERC20SymbolLookupWorker,
     pub provider: Arc<GenericProvider>,
     pub chain: Arc<EVMChain>,
     pub rpc_url: String,
@@ -120,8 +115,6 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     txs::init_db(txs_db_url.clone(), resolved.chain_id).await?;
     let txs = txs::conn(txs_db_url, resolved.chain_id).await?;
 
-    let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
-
     let db_chain = Chain::find(resolved.chain_id as i64, &sqlite)
         .await?
         .unwrap_or(Chain::unknown(resolved.chain_id as i64));
@@ -130,7 +123,6 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     Ok(SharedDeps {
         sqlite,
         txs,
-        symbols_lookup_worker,
         provider: resolved.provider,
         chain,
         rpc_url: resolved.rpc_url,
@@ -180,12 +172,6 @@ pub struct SharedOpts {
 
     #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
     pub erc20_transfer_amount: bool,
-
-    #[arg(long, help = "Enable ENS domains lookup")]
-    pub ens: bool,
-
-    #[arg(long, help = "Enable ERC20 symbols lookup")]
-    pub erc20_symbols: bool,
 
     #[arg(long, help = "Include event logs in output")]
     pub logs: bool,

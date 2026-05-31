@@ -4,7 +4,7 @@ use alloy::{primitives::Keccak256, sol};
 use eyre::{Result, bail};
 use revm::primitives::{Address, B256, address};
 
-use crate::{GenericProvider, models::evm_chain::EVMChain};
+use crate::GenericProvider;
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
@@ -20,22 +20,6 @@ const ENS_LOOKUP: Address = address!("0x80800fB4e3c77a25638aF8607f5274541831CF07
 
 // The ENS lookup oracle is only deployed on Ethereum mainnet.
 const ENS_CHAIN_ID: u64 = 1;
-
-#[derive(Debug)]
-pub enum ENSLookup {
-    Sync,
-    Disabled,
-}
-
-impl ENSLookup {
-    pub fn lookup_mode(chain: &EVMChain, ens_enabled: bool) -> ENSLookup {
-        if ens_enabled && chain.chain_id == ENS_CHAIN_ID {
-            ENSLookup::Sync
-        } else {
-            ENSLookup::Disabled
-        }
-    }
-}
 
 /// Returns an error if ENS resolution is not available on the given chain.
 pub fn ensure_ens_supported(chain_id: u64) -> Result<()> {
