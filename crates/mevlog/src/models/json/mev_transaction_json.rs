@@ -298,6 +298,8 @@ pub fn serialize_json_response<Q: Serialize>(
 struct QueryResponseEnvelopeJson<'a, Q: Serialize> {
     result: &'a [TransactionJson],
     result_count: usize,
+    cached_blocks: u64,
+    new_blocks: u64,
     duration: String,
     chain: &'a ChainInfoNoRpcsJson,
     query: Q,
@@ -310,11 +312,15 @@ pub fn serialize_query_response<Q: Serialize>(
     pretty: bool,
     chain: &ChainInfoNoRpcsJson,
     duration_ns: u64,
+    cached_blocks: u64,
+    new_blocks: u64,
     query: Q,
 ) -> serde_json::Result<String> {
     let envelope = QueryResponseEnvelopeJson {
         result: transactions,
         result_count: transactions.len(),
+        cached_blocks,
+        new_blocks,
         duration: format_duration(duration_ns),
         chain,
         query,

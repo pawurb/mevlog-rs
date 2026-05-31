@@ -86,39 +86,55 @@ impl QueryArgs {
         }
 
         let start_time = Instant::now();
-        let mut txs: Vec<Transaction> = vec![];
-        let blocks: Vec<u64> = (block_range.from..=block_range.to).rev().collect();
 
-        for chunk in blocks.chunks(self.batch_size) {
-            let start_block = *chunk.iter().min().unwrap();
-            let end_block = *chunk.iter().max().unwrap();
+        // Only fetch blocks that are not already in the local store. Indexed
+        // blocks (including empty ones, tracked in `indexed_blocks`) are skipped.
+        let missing =
+            Transaction::missing_blocks(block_range.from, block_range.to, &deps.txs).await?;
 
-            let batch_data = fetch_blocks_batch(
-                start_block,
-                end_block,
-                &deps.chain,
-                &deps.sqlite,
-                &symbols_lookup,
-            )
-            .await?;
+        let new_blocks = missing.len() as u64;
+        let cached_blocks = block_range.size().saturating_sub(new_blocks);
 
-            let mut chunk_txs: Vec<Transaction> = vec![];
-            for &block_number in chunk {
-                let Some(txs_data) = batch_data.txs_by_block.get(&block_number) else {
-                    continue;
-                };
+        for (run_start, run_end) in contiguous_ranges(&missing) {
+            let run_blocks: Vec<u64> = (run_start..=run_end).collect();
 
-                for (tx_index, tx_data) in txs_data.iter().enumerate() {
-                    chunk_txs.push(build_transaction(block_number, tx_index as u64, tx_data));
+            for chunk in run_blocks.chunks(self.batch_size) {
+                let start_block = *chunk.first().unwrap();
+                let end_block = *chunk.last().unwrap();
+
+                let batch_data = fetch_blocks_batch(
+                    start_block,
+                    end_block,
+                    &deps.chain,
+                    &deps.sqlite,
+                    &symbols_lookup,
+                )
+                .await?;
+
+                let mut chunk_txs: Vec<Transaction> = vec![];
+                for &block_number in chunk {
+                    let Some(txs_data) = batch_data.txs_by_block.get(&block_number) else {
+                        continue;
+                    };
+
+                    for (tx_index, tx_data) in txs_data.iter().enumerate() {
+                        chunk_txs.push(build_transaction(block_number, tx_index as u64, tx_data));
+                    }
                 }
+
+                // Persist this chunk. `chunk` (not just blocks with txs) is passed so
+                // empty blocks are still recorded in `indexed_blocks`.
+                Transaction::save_batch(&chunk_txs, chunk, &deps.txs).await?;
             }
-
-            // Persist this chunk. `chunk` (not just blocks with txs) is passed so
-            // empty blocks are still recorded in `indexed_blocks`.
-            Transaction::save_batch(&chunk_txs, chunk, &deps.txs).await?;
-
-            txs.extend(chunk_txs);
         }
+
+        // Read the full requested range back from the local store so that
+        // previously indexed blocks are included alongside the freshly fetched ones.
+        let where_sql = format!(
+            "block_number BETWEEN {} AND {}",
+            block_range.from, block_range.to
+        );
+        let txs = Transaction::query_where(&where_sql, &deps.txs).await?;
 
         let transactions_json: Vec<TransactionJson> =
             txs.iter().map(TransactionJson::from).collect();
@@ -138,8 +154,16 @@ impl QueryArgs {
         let pretty = matches!(format, OutputFormat::JsonPretty);
         println!(
             "{}",
-            serialize_query_response(&transactions_json, pretty, &chain_info, duration_ns, query,)
-                .unwrap()
+            serialize_query_response(
+                &transactions_json,
+                pretty,
+                &chain_info,
+                duration_ns,
+                cached_blocks,
+                new_blocks,
+                query,
+            )
+            .unwrap()
         );
 
         // Allow async ENS and erc20 symbols lookups to catch up
@@ -149,6 +173,21 @@ impl QueryArgs {
 
         Ok(())
     }
+}
+
+/// Collapses a sorted, deduplicated list of block numbers into contiguous
+/// `(start, end)` inclusive ranges so each gap is fetched as a single batch.
+fn contiguous_ranges(blocks: &[u64]) -> Vec<(u64, u64)> {
+    let mut ranges: Vec<(u64, u64)> = vec![];
+
+    for &block in blocks {
+        match ranges.last_mut() {
+            Some(last) if block == last.1 + 1 => last.1 = block,
+            _ => ranges.push((block, block)),
+        }
+    }
+
+    ranges
 }
 
 /// Builds a barebones [`Transaction`] record from fetched RPC data.
