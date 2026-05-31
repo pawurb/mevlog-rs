@@ -43,7 +43,7 @@ impl MEVLog {
         let first_topic = get_string_value(5);
         let data = get_string_value(9);
 
-        let signature_str = DBEvent::find_by_hash(&first_topic, sqlite).await?;
+        let signature_str = DBEvent::find_by_topic(&first_topic, sqlite).await?;
         let data = hex::decode(data.strip_prefix("0x").unwrap_or(&data))?;
         let source: Address = get_string_value(4).parse()?;
         let signature = MEVLogSignature::new(source, signature_str.clone(), symbols_lookup).await?;
