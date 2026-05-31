@@ -2,7 +2,7 @@ use alloy_chains::NamedChain;
 use eyre::Result;
 use revm::primitives::Address;
 
-use crate::models::sigs::db_chain::DBChain;
+use crate::db::sigs::models::chain::Chain;
 
 #[derive(Debug, Clone)]
 pub struct EVMChain {
@@ -17,7 +17,7 @@ pub struct EVMChain {
 
 #[hotpath::measure_all]
 impl EVMChain {
-    pub fn new(db_chain: DBChain, rpc_url: String) -> Result<Self> {
+    pub fn new(db_chain: Chain, rpc_url: String) -> Result<Self> {
         Ok(Self {
             chain_id: db_chain.id as u64,
             name: db_chain.name,

@@ -13,14 +13,16 @@ use tracing::debug;
 
 use crate::{
     GenericProvider,
-    misc::db_actions::download_db_file,
-    models::{evm_chain::EVMChain, sigs::db_chain::DBChain},
+    db::sigs::{
+        self,
+        actions::{check_and_create_indexes, download_file, file_exists},
+        models::chain::Chain,
+    },
+    models::evm_chain::EVMChain,
 };
 use crate::{
     misc::{
         config::Config,
-        database::sigs_conn,
-        db_actions::{check_and_create_indexes, db_file_exists},
         ens_utils::start_ens_lookup_worker,
         rpc_urls::get_chain_info,
         symbol_utils::{ERC20SymbolLookupWorker, start_symbols_lookup_worker},
@@ -98,20 +100,20 @@ pub async fn resolve_conn(conn_opts: &ConnOpts) -> Result<ResolvedConn> {
 pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let resolved = resolve_conn(conn_opts).await?;
 
-    if !db_file_exists() {
+    if !file_exists() {
         let _ = std::fs::create_dir_all(config_path());
         println!("Database file missing");
-        download_db_file().await?;
+        download_file().await?;
     }
 
-    let sqlite = sigs_conn(None).await?;
+    let sqlite = sigs::conn(None).await?;
     check_and_create_indexes(&sqlite).await?;
     let ens_lookup_worker = start_ens_lookup_worker(&resolved.rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
 
-    let db_chain = DBChain::find(resolved.chain_id as i64, &sqlite)
+    let db_chain = Chain::find(resolved.chain_id as i64, &sqlite)
         .await?
-        .unwrap_or(DBChain::unknown(resolved.chain_id as i64));
+        .unwrap_or(Chain::unknown(resolved.chain_id as i64));
     let chain = Arc::new(EVMChain::new(db_chain, resolved.rpc_url.clone())?);
 
     Ok(SharedDeps {

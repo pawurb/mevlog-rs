@@ -9,11 +9,14 @@ use clap::Parser;
 use eyre::{OptionExt, Result};
 use futures_util::StreamExt;
 use mevlog::{
-    misc::{
-        database::{init_sigs_db, sigs_conn, sqlite_truncate_wal},
-        rpc_urls::get_all_chains,
+    db::{
+        shared::truncate_wal,
+        sigs::{
+            self,
+            models::{chain::Chain, event::Event, method::Method},
+        },
     },
-    models::sigs::{db_chain::DBChain, db_event::DBEvent, db_method::DBMethod},
+    misc::rpc_urls::get_all_chains,
 };
 use parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder;
 use tracing::info;
@@ -54,8 +57,8 @@ impl SeedDBArgs {
             remove_db_at(&self.output_path)?;
         }
 
-        init_sigs_db(Some(db_url.clone())).await?;
-        let sqlite = sigs_conn(Some(db_url)).await?;
+        sigs::init_db(Some(db_url.clone())).await?;
+        let sqlite = sigs::conn(Some(db_url)).await?;
 
         info!("Seeding database");
 
@@ -68,9 +71,9 @@ impl SeedDBArgs {
         }
 
         // Indexes are not created here to keep the CDN-uploaded DB small; they
-        // are built on first CLI use via `check_and_create_indexes`.
+        // are built on first CLI use via `sigs::actions::check_and_create_indexes`.
         info!("Truncating WAL");
-        sqlite_truncate_wal(&sqlite).await?;
+        truncate_wal(&sqlite).await?;
 
         info!("Finished seeding database");
 
@@ -93,14 +96,14 @@ impl SeedDBArgs {
                 tracing::info!("Processed {} chains", total_processed);
             }
 
-            if DBChain::exists(chain.chain_id as i64, sqlite).await? {
+            if Chain::exists(chain.chain_id as i64, sqlite).await? {
                 continue;
             }
 
             let explorer_url = chain.explorers.first().map(|e| e.url.clone());
             let currency_symbol = chain.native_currency.symbol;
 
-            let db_chain = DBChain {
+            let db_chain = Chain {
                 id: chain.chain_id as i64,
                 name: chain.name,
                 explorer_url,
@@ -205,7 +208,7 @@ impl SeedDBArgs {
                     let signature = col_signature.value(row).to_string();
 
                     if matches!(sig_type, SigType::Method | SigType::Both) {
-                        let method = DBMethod {
+                        let method = Method {
                             signature_hash_4: col_hash_4.value(row).to_vec(),
                             signature: signature.clone(),
                         };
@@ -215,7 +218,7 @@ impl SeedDBArgs {
                     }
 
                     if matches!(sig_type, SigType::Event | SigType::Both) {
-                        let event = DBEvent {
+                        let event = Event {
                             signature_hash_32: hash_32.to_vec(),
                             signature,
                         };

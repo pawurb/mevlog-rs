@@ -4,10 +4,8 @@ use eyre::Result;
 use sqlx::Row;
 use tokio::sync::RwLock;
 
-use super::find_signature;
-
 #[derive(Debug)]
-pub struct DBMethod {
+pub struct Method {
     pub signature_hash_4: Vec<u8>,
     pub signature: String,
 }
@@ -16,7 +14,7 @@ static SELECTOR_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Opt
     std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
 
 #[hotpath::measure_all(future = true)]
-impl DBMethod {
+impl Method {
     pub async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM methods")
             .fetch_one(conn)
@@ -30,14 +28,26 @@ impl DBMethod {
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {
-        find_signature(
-            "methods",
-            "signature_hash_4",
-            &SELECTOR_SIG_MEMORY_CACHE,
-            signature_hash,
-            conn,
-        )
-        .await
+        let key = signature_hash.trim_start_matches("0x").to_ascii_lowercase();
+
+        if let Some(cached) = SELECTOR_SIG_MEMORY_CACHE.read().await.get(&key).cloned() {
+            return Ok(cached);
+        }
+
+        let signature_hash_bytes = hex::decode(&key).expect("Invalid hex");
+
+        let found: Option<String> =
+            sqlx::query_scalar("SELECT signature FROM methods WHERE signature_hash_4 = ? LIMIT 1")
+                .bind(signature_hash_bytes)
+                .fetch_optional(conn)
+                .await?;
+
+        SELECTOR_SIG_MEMORY_CACHE
+            .write()
+            .await
+            .insert(key, found.clone());
+
+        Ok(found)
     }
 
     pub async fn save<'c, E>(&self, executor: E) -> Result<()>
@@ -62,10 +72,10 @@ impl DBMethod {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::models::sigs::db_event::test::setup_test_db;
+    use crate::db::sigs::models::event::test::setup_test_db;
 
-    fn method(hash_4_hex: &str, signature: &str) -> DBMethod {
-        DBMethod {
+    fn method(hash_4_hex: &str, signature: &str) -> Method {
+        Method {
             signature_hash_4: hex::decode(hash_4_hex).unwrap(),
             signature: signature.to_string(),
         }
@@ -78,12 +88,12 @@ pub mod test {
         let swap = method("022c0d9f", "swap(uint256,uint256,address,bytes)");
         swap.save(&conn).await?;
 
-        assert_eq!(DBMethod::count(&conn).await?, 1);
+        assert_eq!(Method::count(&conn).await?, 1);
 
-        let found = DBMethod::find_by_selector("0x022c0d9f", &conn).await?;
+        let found = Method::find_by_selector("0x022c0d9f", &conn).await?;
         assert_eq!(found.unwrap(), "swap(uint256,uint256,address,bytes)");
 
-        let missing = DBMethod::find_by_selector("0xdeadbeef", &conn).await?;
+        let missing = Method::find_by_selector("0xdeadbeef", &conn).await?;
         assert!(missing.is_none());
 
         Ok(())
@@ -98,11 +108,11 @@ pub mod test {
         transfer.save(&mut *tx).await?;
 
         // Before commit, count is 0 from outside the transaction.
-        assert_eq!(DBMethod::count(&conn).await?, 0);
+        assert_eq!(Method::count(&conn).await?, 0);
 
         tx.commit().await?;
 
-        assert_eq!(DBMethod::count(&conn).await?, 1);
+        assert_eq!(Method::count(&conn).await?, 1);
 
         Ok(())
     }
