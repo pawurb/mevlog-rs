@@ -8,6 +8,7 @@ backup.sh
 deploy.sh
 .cryo/
 *.parquet
+!crates/mevlog/tests/fixtures/**/*.parquet
 log/
 certs/
 crates/mevlog-backend/assets/

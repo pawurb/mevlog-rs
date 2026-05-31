@@ -113,8 +113,16 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     let sqlite = sigs::conn(None).await?;
     check_and_create_indexes(&sqlite).await?;
 
-    txs::init_db(None, resolved.chain_id).await?;
-    let txs = txs::conn(None, resolved.chain_id).await?;
+    // `--txs-db-dir` overrides only the directory; the filename keeps the
+    // `mevlog-txs-v{N}-{chain_id}.db` convention.
+    let txs_db_url = conn_opts.txs_db_dir.as_ref().map(|dir| {
+        PathBuf::from(dir)
+            .join(txs::db_file_name(txs::SCHEMA_VERSION, resolved.chain_id))
+            .to_string_lossy()
+            .into_owned()
+    });
+    txs::init_db(txs_db_url.clone(), resolved.chain_id).await?;
+    let txs = txs::conn(txs_db_url, resolved.chain_id).await?;
 
     let ens_lookup_worker = start_ens_lookup_worker(&resolved.rpc_url);
     let symbols_lookup_worker = start_symbols_lookup_worker(&resolved.rpc_url);
@@ -230,6 +238,12 @@ pub struct ConnOpts {
 
     #[arg(long, help = "Skip verifying --chain-id with data from --rpc-url")]
     pub skip_verify_chain_id: bool,
+
+    #[arg(
+        long,
+        help = "Override the directory holding the per-chain transactions SQLite DB (mainly for tests); filename stays mevlog-txs-v{N}-{chain_id}.db"
+    )]
+    pub txs_db_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]

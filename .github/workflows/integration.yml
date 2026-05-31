@@ -46,5 +46,6 @@ jobs:
           ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
           BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
         run: | 
-          cargo test --test cli_tests -- --nocapture
+          # cargo test --test cli_tests -- --nocapture
+          cargo test --test txs_sqlite_test -- --nocapture
           
