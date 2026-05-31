@@ -300,7 +300,7 @@ pub async fn extract_signature(
             if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {
                 sig_overwrite.clone()
             } else {
-                let sig_str = DBMethod::find_by_hash(&sig, sqlite).await?;
+                let sig_str = DBMethod::find_by_selector(&sig, sqlite).await?;
                 sig_str.unwrap_or(UNKNOWN.to_string())
             }
         }

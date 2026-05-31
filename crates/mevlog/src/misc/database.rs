@@ -9,10 +9,10 @@ use tracing::info;
 
 use super::shared_init::config_path;
 
-// Signatures database (events, methods, chains). Shipped as a prebuilt file
+// Signatures database (signatures, chains). Shipped as a prebuilt file
 // downloaded from the CDN, so its migrations live in `migrations/sigs`.
 static SIGS_MIGRATOR: Migrator = sqlx::migrate!("migrations/sigs");
-pub const SIGS_DB_SCHEMA_VERSION: u64 = 4;
+pub const SIGS_DB_SCHEMA_VERSION: u64 = 5;
 
 // Transactions database (locally built tx store). Its migrations live in
 // `migrations/txs` and are applied independently from the signatures database.

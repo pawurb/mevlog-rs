@@ -62,7 +62,7 @@ pub enum MLSubcommand {
     #[command(about = "Start MCP server")]
     Mcp(McpArgs),
     #[cfg(feature = "seed-db")]
-    #[command(about = "[Dev] Seed signatures database from source file")]
+    #[command(about = "[Dev] Seed signatures database from the Sourcify export")]
     SeedDB(SeedDBArgs),
     #[cfg(feature = "tui")]
     #[command(about = "Run TUI")]
