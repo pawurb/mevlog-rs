@@ -40,10 +40,6 @@ struct GetTransactionParams {
     evm_state_diff: Option<bool>,
     #[schemars(description = "Display amounts in ERC20 Transfer event logs")]
     erc20_transfer_amount: Option<bool>,
-    #[schemars(description = "Enable ENS name resolution for addresses")]
-    ens: Option<bool>,
-    #[schemars(description = "Enable ERC20 token symbol resolution")]
-    erc20_symbols: Option<bool>,
     #[schemars(description = "Include event logs in output")]
     logs: Option<bool>,
     #[schemars(
@@ -72,10 +68,6 @@ struct QueryTransactionsParams {
     evm_state_diff: Option<bool>,
     #[schemars(description = "Display amounts in ERC20 Transfer event logs")]
     erc20_transfer_amount: Option<bool>,
-    #[schemars(description = "Enable ENS name resolution for addresses")]
-    ens: Option<bool>,
-    #[schemars(description = "Enable ERC20 token symbol resolution")]
-    erc20_symbols: Option<bool>,
     #[schemars(description = "Include event logs in output")]
     logs: Option<bool>,
     #[schemars(
@@ -156,12 +148,6 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         if params.0.erc20_transfer_amount == Some(true) {
             args.push("--erc20-transfer-amount".to_string());
         }
-        if params.0.ens == Some(true) {
-            args.push("--ens".to_string());
-        }
-        if params.0.erc20_symbols == Some(true) {
-            args.push("--erc20-symbols".to_string());
-        }
         if params.0.logs == Some(true) {
             args.push("--logs".to_string());
         }
@@ -204,12 +190,6 @@ Block range examples: 'latest' (latest block), '22030899' (single block), '22030
         }
         if params.0.erc20_transfer_amount == Some(true) {
             args.push("--erc20-transfer-amount".to_string());
-        }
-        if params.0.ens == Some(true) {
-            args.push("--ens".to_string());
-        }
-        if params.0.erc20_symbols == Some(true) {
-            args.push("--erc20-symbols".to_string());
         }
         if params.0.logs == Some(true) {
             args.push("--logs".to_string());

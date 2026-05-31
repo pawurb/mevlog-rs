@@ -25,9 +25,7 @@ pub struct MEVTransactionJson {
     pub tx_hash: FixedBytes<32>,
     pub index: u64,
     pub from: Address,
-    pub from_ens: Option<String>,
     pub to: Option<Address>,
-    pub to_ens: Option<String>,
     pub nonce: u64,
     pub value: String,
     pub display_value: String,
@@ -72,9 +70,7 @@ impl From<&MEVTransaction> for MEVTransactionJson {
             tx_hash: tx.tx_hash,
             index: tx.index,
             from: tx.from(),
-            from_ens: tx.from_ens_name().map(|s| s.to_string()),
             to,
-            to_ens: tx.to_ens_name().map(|s| s.to_string()),
             nonce: tx.nonce,
             value: tx.value().to_string(),
             coinbase_transfer: tx.coinbase_transfer.map(|amt| amt.to_string()),
@@ -144,7 +140,7 @@ impl Serialize for MEVTransactionJsonOutput<'_> {
         S: Serializer,
     {
         let tx = self.transaction;
-        let mut output = serializer.serialize_struct("MEVTransactionJson", 22)?;
+        let mut output = serializer.serialize_struct("MEVTransactionJson", 20)?;
 
         output.serialize_field("block_number", &tx.block_number)?;
         output.serialize_field("signature", &tx.signature)?;
@@ -152,9 +148,7 @@ impl Serialize for MEVTransactionJsonOutput<'_> {
         output.serialize_field("tx_hash", &tx.tx_hash)?;
         output.serialize_field("index", &tx.index)?;
         output.serialize_field("from", &tx.from)?;
-        output.serialize_field("from_ens", &tx.from_ens)?;
         output.serialize_field("to", &tx.to)?;
-        output.serialize_field("to_ens", &tx.to_ens)?;
         output.serialize_field("nonce", &tx.nonce)?;
         output.serialize_field("value", &tx.value)?;
         output.serialize_field("display_value", &tx.display_value)?;
@@ -292,9 +286,7 @@ mod tests {
             "tx_hash",
             "index",
             "from",
-            "from_ens",
             "to",
-            "to_ens",
             "nonce",
             "value",
             "display_value",
@@ -320,7 +312,6 @@ mod tests {
                 logs: vec![MEVLogJson {
                     source: Address::ZERO,
                     signature: "Transfer(address,address,uint256)".to_string(),
-                    symbol: None,
                     amount: None,
                     topics: vec![],
                     data: "00".to_string(),
@@ -337,9 +328,7 @@ mod tests {
             tx_hash: FixedBytes::ZERO,
             index: 0,
             from: Address::ZERO,
-            from_ens: None,
             to: Some(Address::ZERO),
-            to_ens: None,
             nonce: 0,
             value: "0".to_string(),
             display_value: "0 ETH".to_string(),

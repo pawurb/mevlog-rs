@@ -6,8 +6,6 @@ use sqlx::SqlitePool;
 use crate::db::txs::models::transaction::Transaction;
 use crate::models::{evm_chain::EVMChain, mev_block::BatchedBlockData, mev_log::MEVLog};
 
-use crate::misc::symbol_utils::ERC20SymbolsLookup;
-
 fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
     home::home_dir().unwrap().join(format!(
         ".mevlog/.cryo-cache/{}",
@@ -167,7 +165,6 @@ pub async fn fetch_blocks_batch(
     end_block: u64,
     chain: &EVMChain,
     sqlite: &SqlitePool,
-    symbols_lookup: &ERC20SymbolsLookup,
 ) -> Result<BatchedBlockData> {
     if which::which("cryo").is_err() {
         eyre::bail!(
@@ -198,8 +195,7 @@ pub async fn fetch_blocks_batch(
     let txs_by_block =
         parse_batch_txs_from_files(&tx_files, start_block, end_block, sqlite).await?;
     let logs_by_block =
-        parse_batch_logs_from_files(&log_files, start_block, end_block, sqlite, symbols_lookup)
-            .await?;
+        parse_batch_logs_from_files(&log_files, start_block, end_block, sqlite).await?;
 
     Ok(BatchedBlockData {
         txs_by_block,
@@ -242,7 +238,6 @@ async fn parse_batch_logs_from_files(
     start_block: u64,
     end_block: u64,
     sqlite: &SqlitePool,
-    symbols_lookup: &ERC20SymbolsLookup,
 ) -> Result<HashMap<u64, Vec<MEVLog>>> {
     let mut logs_by_block: HashMap<u64, Vec<MEVLog>> = HashMap::new();
 
@@ -256,7 +251,7 @@ async fn parse_batch_logs_from_files(
 
             for row_idx in 0..batch.num_rows() {
                 let (mev_log, block_number) =
-                    MEVLog::from_parquet_row(&batch, row_idx, symbols_lookup, sqlite).await?;
+                    MEVLog::from_parquet_row(&batch, row_idx, sqlite).await?;
 
                 if block_number >= start_block && block_number <= end_block {
                     logs_by_block.entry(block_number).or_default().push(mev_log);

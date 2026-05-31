@@ -17,11 +17,7 @@ use super::{
 };
 use crate::db::sigs::models::method::Method;
 use crate::{
-    GenericProvider,
-    misc::{
-        ens_utils::ENSLookup,
-        utils::{ETH_TRANSFER, UNKNOWN, wei_to_eth},
-    },
+    misc::utils::{ETH_TRANSFER, UNKNOWN, wei_to_eth},
     models::evm_chain::EVMChain,
 };
 
@@ -52,7 +48,6 @@ pub struct MEVTransaction {
     pub inner: TransactionRequest,
     log_groups: Vec<MEVLogGroup>,
     source: MEVAddress,
-    target: Option<MEVAddress>,
     pub to: TxKind,
     pub nonce: u64,
     pub coinbase_transfer: Option<U256>,
@@ -78,8 +73,6 @@ impl MEVTransaction {
         tx_hash: FixedBytes<32>,
         index: u64,
         sqlite: &SqlitePool,
-        ens_lookup: &ENSLookup,
-        provider: &Arc<GenericProvider>,
         top_metadata: bool,
         show_calls: bool,
         show_logs: bool,
@@ -89,14 +82,9 @@ impl MEVTransaction {
         let (signature_hash, signature) =
             extract_signature(tx_req.input.input.as_ref(), index, tx_req.to, sqlite).await?;
 
-        let mev_address =
-            MEVAddress::new(tx_req.from.expect("TX from missing"), ens_lookup, provider).await?;
+        let mev_address = MEVAddress::new(tx_req.from.expect("TX from missing"));
 
         let to_kind = tx_req.to.unwrap_or(TxKind::Create);
-        let target = match to_kind {
-            TxKind::Call(address) => Some(MEVAddress::new(address, ens_lookup, provider).await?),
-            TxKind::Create => None,
-        };
 
         Ok(Self {
             block_number,
@@ -109,7 +97,6 @@ impl MEVTransaction {
             signature,
             signature_hash,
             source: mev_address,
-            target,
             to: to_kind,
             inner: tx_req.clone(),
             coinbase_transfer: None,
@@ -145,14 +132,6 @@ impl MEVTransaction {
                 ));
             }
         }
-    }
-
-    pub fn from_ens_name(&self) -> Option<&str> {
-        self.source.ens_name()
-    }
-
-    pub fn to_ens_name(&self) -> Option<&str> {
-        self.target.as_ref().and_then(|t| t.ens_name())
     }
 
     pub fn from(&self) -> Address {

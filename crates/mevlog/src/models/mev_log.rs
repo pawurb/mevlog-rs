@@ -4,10 +4,7 @@ use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::SqlitePool;
 
 use super::mev_log_signature::MEVLogSignature;
-use crate::{
-    db::sigs::models::event::Event,
-    misc::{parquet_utils::get_parquet_string_value, symbol_utils::ERC20SymbolsLookup},
-};
+use crate::{db::sigs::models::event::Event, misc::parquet_utils::get_parquet_string_value};
 
 #[derive(Debug, Clone)]
 pub struct MEVLog {
@@ -37,7 +34,6 @@ impl MEVLog {
     pub async fn from_parquet_row(
         batch: &RecordBatch,
         row_idx: usize,
-        symbols_lookup: &ERC20SymbolsLookup,
         sqlite: &SqlitePool,
     ) -> Result<(Self, u64)> {
         let get_string_value =
@@ -51,7 +47,7 @@ impl MEVLog {
         let signature_str = Event::find_by_topic(&first_topic, sqlite).await?;
         let data = hex::decode(data.strip_prefix("0x").unwrap_or(&data))?;
         let source: Address = get_string_value(4).parse()?;
-        let signature = MEVLogSignature::new(source, signature_str.clone(), symbols_lookup).await?;
+        let signature = MEVLogSignature::new(signature_str.clone());
 
         let topics = [
             get_string_value(5),

@@ -81,10 +81,7 @@ fn build_transfers_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
 
                 let amount_display = log.amount.clone().unwrap_or_else(|| "?".to_string());
 
-                let token_display = log
-                    .symbol
-                    .clone()
-                    .unwrap_or_else(|| token_address.to_string());
+                let token_display = token_address.to_string();
 
                 append_transfer_lines(
                     &mut lines,
