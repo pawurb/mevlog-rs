@@ -98,6 +98,27 @@ impl Transaction {
     where
         E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
     {
+        // SQLite INTEGER is signed 64-bit. Gas prices are modeled as u128, so a
+        // value above i64::MAX would wrap when stored and read back corrupted.
+        // Skip such txs rather than persist a bogus gas price.
+        let (
+            Ok(effective_gas_price),
+            Ok(gas_price),
+            Ok(max_fee_per_gas),
+            Ok(max_priority_fee_per_gas),
+        ) = (
+            i64::try_from(self.effective_gas_price),
+            i64::try_from(self.gas_price),
+            i64::try_from(self.max_fee_per_gas),
+            i64::try_from(self.max_priority_fee_per_gas),
+        ) else {
+            tracing::warn!(
+                "Skipping tx 0x{}: gas price exceeds i64::MAX, cannot store",
+                hex::encode(self.tx_hash)
+            );
+            return Ok(());
+        };
+
         sqlx::query(
             r#"
             INSERT INTO transactions (
@@ -118,10 +139,10 @@ impl Transaction {
         .bind(self.value.to_be_bytes_trimmed_vec())
         .bind(self.gas_limit as i64)
         .bind(self.gas_used as i64)
-        .bind(self.effective_gas_price as i64)
-        .bind(self.gas_price as i64)
-        .bind(self.max_fee_per_gas as i64)
-        .bind(self.max_priority_fee_per_gas as i64)
+        .bind(effective_gas_price)
+        .bind(gas_price)
+        .bind(max_fee_per_gas)
+        .bind(max_priority_fee_per_gas)
         .bind(self.transaction_type.map(|t| t as i64))
         .bind(self.success)
         .bind(self.signature_hash.as_ref().map(|s| s.as_slice()))
