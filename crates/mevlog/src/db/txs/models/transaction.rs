@@ -10,10 +10,11 @@ use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool, sqlite::SqliteRow};
 
 use crate::{
-    db::sigs::models::method::Method,
-    misc::{parquet_utils::get_parquet_string_value, utils::ETH_TRANSFER},
+    db::sigs::models::method::Method, misc::parquet_utils::get_parquet_string_value,
     models::mev_transaction::find_sig_overwrite,
 };
+
+const UNKNOWN_SIGNATURE: &str = "?";
 
 /// Basic SQLite-backed transaction record.
 ///
@@ -334,13 +335,15 @@ pub async fn extract_signature(
     let signature = match signature_hash {
         Some(hash) => {
             let sig = format!("0x{}", hex::encode(hash));
-            if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {
+            let resolved = if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {
                 Some(sig_overwrite)
             } else {
                 Method::find_by_selector(&sig, sqlite).await?
-            }
+            };
+            Some(resolved.unwrap_or_else(|| UNKNOWN_SIGNATURE.to_string()))
         }
-        None => Some(ETH_TRANSFER.to_string()),
+        // No calldata: plain ETH transfer
+        None => None,
     };
 
     Ok((signature_hash, signature))
