@@ -8,7 +8,8 @@ use cmd::seed_db::SeedDBArgs;
 use cmd::tui::TuiArgs;
 use cmd::{
     chain_info::ChainInfoArgs, chains::ChainsArgs, debug_available::DebugAvailableArgs,
-    query::QueryArgs, update_db::UpdateDBArgs,
+    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, query::QueryArgs,
+    update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -56,6 +57,10 @@ pub enum MLSubcommand {
     ChainInfo(ChainInfoArgs),
     #[command(about = "Check if RPC supports debug tracing")]
     DebugAvailable(DebugAvailableArgs),
+    #[command(about = "Resolve an ENS name to an address")]
+    EnsResolve(EnsResolveArgs),
+    #[command(about = "Reverse-resolve an address to an ENS name")]
+    EnsLookup(EnsLookupArgs),
     #[cfg(feature = "mcp")]
     #[command(about = "Start MCP server")]
     Mcp(McpArgs),
@@ -135,6 +140,12 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         }
         ML::DebugAvailable(args) => {
             args.run().await?;
+        }
+        ML::EnsResolve(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::EnsLookup(args) => {
+            args.run(root_args.format).await?;
         }
         #[cfg(feature = "mcp")]
         ML::Mcp(args) => {

@@ -70,10 +70,6 @@ uuid = { version = "1", features = ["v4", "js"] }
 name = "mevlog"
 path = "bin/main.rs"
 
-[[example]]
-name = "find_ens_name"
-path = "examples/find_ens_name.rs"
-
 [features]
 default = []
 seed-db = []
