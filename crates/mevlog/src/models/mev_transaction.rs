@@ -4,10 +4,7 @@ use std::{
     sync::Arc,
 };
 
-use alloy::{
-    rlp::Encodable,
-    rpc::types::{AccessList, TransactionInput, TransactionRequest},
-};
+use alloy::{rlp::Encodable, rpc::types::TransactionRequest};
 use bigdecimal::{BigDecimal, ToPrimitive};
 use eyre::Result;
 use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
@@ -15,15 +12,14 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 use super::{
-    mev_address::MEVAddress, mev_block::TxData, mev_log::MEVLog, mev_log_group::MEVLogGroup,
-    mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff,
+    mev_address::MEVAddress, mev_log::MEVLog, mev_log_group::MEVLogGroup, mev_opcode::MEVOpcode,
+    mev_state_diff::MEVStateDiff,
 };
 use crate::db::sigs::models::method::Method;
 use crate::{
     GenericProvider,
     misc::{
         ens_utils::ENSLookup,
-        parquet_utils::get_parquet_string_value,
         utils::{ETH_TRANSFER, UNKNOWN, wei_to_eth},
     },
     models::evm_chain::EVMChain,
@@ -71,78 +67,8 @@ pub struct MEVTransaction {
     pub show_state_diff: bool,
 }
 
-// Parquet row:
-// block_number 0
-// transaction_index 1
-// transaction_hash 2
-// nonce 3
-// from_address 4
-// to_address 5
-// value_binary 6
-// value_string 7
-// value_f64 8
-// input 9
-// gas_limit 10
-// gas_used 11
-// gas_price 12
-// transaction_type 13
-// max_priority_fee_per_gas 14
-// max_fee_per_gas 15
-// success 16
-// n_input_bytes 17
-// n_input_zero_bytes 18
-// n_input_nonzero_bytes 19
-// chain_id 20
 #[hotpath::measure_all(future = true)]
 impl MEVTransaction {
-    pub async fn tx_data_from_parquet_row(
-        batch: &arrow::record_batch::RecordBatch,
-        row_idx: usize,
-    ) -> Result<(TxData, u64)> {
-        let get_string_value =
-            |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
-
-        let block_number = get_string_value(0).parse::<u64>().unwrap();
-
-        let to_address_str = get_string_value(5);
-        let to_address = if to_address_str == "0x" || to_address_str.is_empty() {
-            TxKind::Create
-        } else {
-            TxKind::Call(Address::from_str(&to_address_str).unwrap())
-        };
-
-        let tx_hash_str = get_string_value(2);
-        let tx_hash = FixedBytes::from_str(&tx_hash_str).unwrap();
-
-        let inner = TransactionRequest {
-            from: Some(Address::from_str(&get_string_value(4)).unwrap()),
-            to: Some(to_address),
-            input: TransactionInput::new(Bytes::from_str(&get_string_value(9)).unwrap()),
-            gas_price: Some(get_string_value(12).parse::<u128>().unwrap()),
-            gas: Some(get_string_value(10).parse::<u64>().unwrap()),
-            value: Some(U256::from_str(&get_string_value(7)).unwrap()),
-            nonce: Some(get_string_value(3).parse::<u64>().unwrap()),
-            chain_id: Some(get_string_value(20).parse::<u64>().unwrap()),
-            max_fee_per_gas: Some(get_string_value(15).parse::<u128>().unwrap_or(0)),
-            max_priority_fee_per_gas: Some(get_string_value(14).parse::<u128>().unwrap_or(0)),
-            access_list: Some(AccessList::from(vec![])),
-            ..Default::default()
-        };
-
-        Ok((
-            TxData {
-                req: inner,
-                tx_hash,
-                receipt: ReceiptData {
-                    success: get_string_value(16).parse::<bool>().unwrap(),
-                    effective_gas_price: get_string_value(12).parse::<u128>().unwrap(),
-                    gas_used: get_string_value(11).parse::<u64>().unwrap(),
-                },
-            },
-            block_number,
-        ))
-    }
-
     pub async fn new(
         native_token_price: Option<f64>,
         chain: Arc<EVMChain>,

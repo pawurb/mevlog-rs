@@ -14,12 +14,8 @@ use mevlog::{
         symbol_utils::ERC20SymbolsLookup,
         utils::get_native_token_price,
     },
-    models::{
-        json::mev_transaction_json::{QueryParams, serialize_query_response},
-        mev_block::TxData,
-    },
+    models::json::mev_transaction_json::{QueryParams, serialize_query_response},
 };
-use revm::primitives::{FixedBytes, TxKind, U256};
 use tracing::info;
 
 #[derive(Debug, clap::Parser)]
@@ -137,12 +133,8 @@ impl QueryArgs {
 
                 let mut chunk_txs: Vec<Transaction> = vec![];
                 for &block_number in chunk {
-                    let Some(txs_data) = batch_data.txs_by_block.get(&block_number) else {
-                        continue;
-                    };
-
-                    for (tx_index, tx_data) in txs_data.iter().enumerate() {
-                        chunk_txs.push(build_transaction(block_number, tx_index as u64, tx_data));
+                    if let Some(txs) = batch_data.txs_by_block.get(&block_number) {
+                        chunk_txs.extend(txs.iter().cloned());
                     }
                 }
 
@@ -222,45 +214,4 @@ fn contiguous_ranges(blocks: &[u64]) -> Vec<(u64, u64)> {
     }
 
     ranges
-}
-
-/// Builds a barebones [`Transaction`] record from fetched RPC data.
-///
-/// No SQLite insert and no signature resolution yet — the method signature is
-/// left unset and only the 4-byte selector is captured from the calldata.
-fn build_transaction(block_number: u64, tx_index: u64, tx_data: &TxData) -> Transaction {
-    let req = &tx_data.req;
-
-    let to_address = match req.to {
-        Some(TxKind::Call(address)) => Some(address),
-        // `TxKind::Create` or an unset target → contract creation.
-        _ => None,
-    };
-
-    let signature_hash = req
-        .input
-        .input
-        .as_ref()
-        .filter(|input| input.len() >= 4)
-        .map(|input| FixedBytes::<4>::from_slice(&input[..4]));
-
-    Transaction {
-        block_number,
-        tx_index,
-        tx_hash: tx_data.tx_hash,
-        nonce: req.nonce.unwrap_or(0),
-        from_address: req.from.expect("tx `from` address missing"),
-        to_address,
-        value: req.value.unwrap_or(U256::ZERO),
-        gas_limit: req.gas.unwrap_or(0),
-        gas_used: tx_data.receipt.gas_used,
-        effective_gas_price: tx_data.receipt.effective_gas_price,
-        gas_price: req.gas_price.unwrap_or(0),
-        max_fee_per_gas: req.max_fee_per_gas.unwrap_or(0),
-        max_priority_fee_per_gas: req.max_priority_fee_per_gas.unwrap_or(0),
-        transaction_type: req.transaction_type,
-        success: tx_data.receipt.success,
-        signature_hash,
-        signature: None,
-    }
 }

@@ -25,6 +25,7 @@ use super::{
 };
 use crate::{
     GenericProvider,
+    db::txs::models::transaction::Transaction,
     misc::{
         coinbase_bribe::{TraceData, find_coinbase_transfer},
         ens_utils::ENSLookup,
@@ -57,7 +58,7 @@ pub struct PreFetchedBlockData {
 }
 
 pub struct BatchedBlockData {
-    pub txs_by_block: HashMap<u64, Vec<TxData>>,
+    pub txs_by_block: HashMap<u64, Vec<Transaction>>,
     pub logs_by_block: HashMap<u64, Vec<MEVLog>>,
 }
 

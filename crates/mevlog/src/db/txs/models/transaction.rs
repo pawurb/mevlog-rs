@@ -1,9 +1,19 @@
 use std::collections::HashSet;
 
+use std::str::FromStr;
+
+use alloy::rlp::Encodable;
+use arrow::record_batch::RecordBatch;
 use eyre::Result;
-use revm::primitives::{Address, FixedBytes, U256};
+use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool, sqlite::SqliteRow};
+
+use crate::{
+    db::sigs::models::method::Method,
+    misc::{parquet_utils::get_parquet_string_value, utils::ETH_TRANSFER},
+    models::mev_transaction::find_sig_overwrite,
+};
 
 /// Basic SQLite-backed transaction record.
 ///
@@ -85,6 +95,64 @@ impl From<&Transaction> for TransactionJson {
 
 #[hotpath::measure_all(future = true)]
 impl Transaction {
+    // Parquet columns: 0 block_number, 1 transaction_index, 2 transaction_hash,
+    // 3 nonce, 4 from_address, 5 to_address, 7 value_string, 9 input,
+    // 10 gas_limit, 11 gas_used, 12 gas_price, 13 transaction_type,
+    // 14 max_priority_fee_per_gas, 15 max_fee_per_gas, 16 success.
+    pub async fn from_parquet_row(
+        batch: &RecordBatch,
+        row_idx: usize,
+        sqlite: &SqlitePool,
+    ) -> Result<(Transaction, u64)> {
+        let get = |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+
+        let block_number = get(0).parse::<u64>().unwrap();
+        let tx_index = get(1).parse::<u64>().unwrap();
+        let tx_hash = FixedBytes::<32>::from_str(&get(2)).unwrap();
+        let nonce = get(3).parse::<u64>().unwrap();
+        let from_address = Address::from_str(&get(4)).unwrap();
+
+        let to_str = get(5);
+        let to = if to_str == "0x" || to_str.is_empty() {
+            TxKind::Create
+        } else {
+            TxKind::Call(Address::from_str(&to_str).unwrap())
+        };
+
+        let input = Bytes::from_str(&get(9)).unwrap();
+        let (signature_hash, signature) =
+            extract_signature(Some(&input), tx_index, Some(to), sqlite).await?;
+
+        let to_address = match to {
+            TxKind::Call(address) => Some(address),
+            TxKind::Create => Some(calculate_create_address(nonce, from_address)),
+        };
+
+        let gas_price = get(12).parse::<u128>().unwrap();
+
+        let tx = Transaction {
+            block_number,
+            tx_index,
+            tx_hash,
+            nonce,
+            from_address,
+            to_address,
+            value: U256::from_str(&get(7)).unwrap(),
+            gas_limit: get(10).parse::<u64>().unwrap(),
+            gas_used: get(11).parse::<u64>().unwrap(),
+            effective_gas_price: gas_price,
+            gas_price,
+            max_fee_per_gas: get(15).parse::<u128>().unwrap_or(0),
+            max_priority_fee_per_gas: get(14).parse::<u128>().unwrap_or(0),
+            transaction_type: get(13).parse::<u8>().ok(),
+            success: get(16).parse::<bool>().unwrap(),
+            signature_hash,
+            signature,
+        };
+
+        Ok((tx, block_number))
+    }
+
     pub async fn count(conn: &SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM transactions")
             .fetch_one(conn)
@@ -111,7 +179,8 @@ impl Transaction {
             i64::try_from(self.gas_price),
             i64::try_from(self.max_fee_per_gas),
             i64::try_from(self.max_priority_fee_per_gas),
-        ) else {
+        )
+        else {
             tracing::warn!(
                 "Skipping tx 0x{}: gas price exceeds i64::MAX, cannot store",
                 hex::encode(self.tx_hash)
@@ -246,6 +315,43 @@ impl Transaction {
             signature,
         })
     }
+}
+
+pub async fn extract_signature(
+    input: Option<&Bytes>,
+    index: u64,
+    to: Option<TxKind>,
+    sqlite: &SqlitePool,
+) -> Result<(Option<FixedBytes<4>>, Option<String>)> {
+    if to == Some(TxKind::Create) || to.is_none() {
+        return Ok((None, Some("CREATE()".to_string())));
+    }
+
+    let signature_hash = input
+        .filter(|i| i.len() >= 4)
+        .map(|i| FixedBytes::<4>::from_slice(&i[..4]));
+
+    let signature = match signature_hash {
+        Some(hash) => {
+            let sig = format!("0x{}", hex::encode(hash));
+            if let Some(sig_overwrite) = find_sig_overwrite(&sig, index) {
+                Some(sig_overwrite)
+            } else {
+                Method::find_by_selector(&sig, sqlite).await?
+            }
+        }
+        None => Some(ETH_TRANSFER.to_string()),
+    };
+
+    Ok((signature_hash, signature))
+}
+
+pub fn calculate_create_address(nonce: u64, from: Address) -> Address {
+    let mut out = Vec::new();
+    let list: [&dyn Encodable; 2] = [&from, &U256::from(nonce)];
+    alloy::rlp::encode_list::<_, dyn Encodable>(&list, &mut out);
+    let keccak = keccak256(&out);
+    Address::from_slice(&keccak[12..])
 }
 
 #[cfg(test)]

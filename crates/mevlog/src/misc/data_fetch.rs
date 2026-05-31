@@ -3,12 +3,8 @@ use std::{collections::HashMap, path::PathBuf, process::Command};
 use eyre::Result;
 use sqlx::SqlitePool;
 
-use crate::models::{
-    evm_chain::EVMChain,
-    mev_block::{BatchedBlockData, TxData},
-    mev_log::MEVLog,
-    mev_transaction::MEVTransaction,
-};
+use crate::db::txs::models::transaction::Transaction;
+use crate::models::{evm_chain::EVMChain, mev_block::BatchedBlockData, mev_log::MEVLog};
 
 use crate::misc::symbol_utils::ERC20SymbolsLookup;
 
@@ -199,7 +195,8 @@ pub async fn fetch_blocks_batch(
     let log_ranges = scan_cached_ranges(chain, "logs");
     let log_files = collect_files_for_range(&log_ranges, start_block, end_block);
 
-    let txs_by_block = parse_batch_txs_from_files(&tx_files, start_block, end_block).await?;
+    let txs_by_block =
+        parse_batch_txs_from_files(&tx_files, start_block, end_block, sqlite).await?;
     let logs_by_block =
         parse_batch_logs_from_files(&log_files, start_block, end_block, sqlite, symbols_lookup)
             .await?;
@@ -214,8 +211,9 @@ async fn parse_batch_txs_from_files(
     files: &[PathBuf],
     start_block: u64,
     end_block: u64,
-) -> Result<HashMap<u64, Vec<TxData>>> {
-    let mut txs_by_block: HashMap<u64, Vec<TxData>> = HashMap::new();
+    sqlite: &SqlitePool,
+) -> Result<HashMap<u64, Vec<Transaction>>> {
+    let mut txs_by_block: HashMap<u64, Vec<Transaction>> = HashMap::new();
 
     for file_path in files {
         let file = std::fs::File::open(file_path)?;
@@ -226,11 +224,11 @@ async fn parse_batch_txs_from_files(
             let batch = batch_result?;
 
             for row_idx in 0..batch.num_rows() {
-                let (tx_data, block_number) =
-                    MEVTransaction::tx_data_from_parquet_row(&batch, row_idx).await?;
+                let (tx, block_number) =
+                    Transaction::from_parquet_row(&batch, row_idx, sqlite).await?;
 
                 if block_number >= start_block && block_number <= end_block {
-                    txs_by_block.entry(block_number).or_default().push(tx_data);
+                    txs_by_block.entry(block_number).or_default().push(tx);
                 }
             }
         }
