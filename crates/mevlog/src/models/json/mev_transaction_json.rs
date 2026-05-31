@@ -213,7 +213,7 @@ fn is_false(v: &bool) -> bool {
 }
 
 #[derive(Serialize)]
-pub struct SearchQueryParams {
+pub struct QueryParams {
     pub command: &'static str,
     pub blocks: String,
     #[serde(skip_serializing_if = "Option::is_none")]

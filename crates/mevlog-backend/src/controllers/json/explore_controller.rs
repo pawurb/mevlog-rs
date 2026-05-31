@@ -29,7 +29,7 @@ pub async fn explore(
     let chain_id = params.chain_id.unwrap_or(1);
 
     let mut cmd = AsyncCommand::new(mevlog_cmd_path());
-    cmd.arg("search")
+    cmd.arg("query")
         .arg("-b")
         .arg(
             params

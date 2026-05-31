@@ -8,7 +8,7 @@ use cmd::seed_db::SeedDBArgs;
 use cmd::tui::TuiArgs;
 use cmd::{
     chain_info::ChainInfoArgs, chains::ChainsArgs, debug_available::DebugAvailableArgs,
-    search::SearchArgs, tx::TxArgs, update_db::UpdateDBArgs,
+    query::QueryArgs, tx::TxArgs, update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -46,8 +46,8 @@ pub struct MLArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum MLSubcommand {
-    #[command(about = "Collect txs within a block range", alias = "s")]
-    Search(Box<SearchArgs>),
+    #[command(about = "Query txs within a block range", alias = "q")]
+    Query(Box<QueryArgs>),
     #[command(about = "Print transaction info", alias = "t")]
     Tx(TxArgs),
     #[command(about = "Update signatures database")]
@@ -126,7 +126,7 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ML::Tx(args) => {
             args.run(root_args.format).await?;
         }
-        ML::Search(args) => {
+        ML::Query(args) => {
             args.run(root_args.format).await?;
         }
         ML::UpdateDB(args) => {
@@ -164,12 +164,12 @@ mod tests {
     use clap::Parser;
 
     #[test]
-    fn search_subcommand_accepts_conn_flags_after_subcommand_name() {
+    fn query_subcommand_accepts_conn_flags_after_subcommand_name() {
         let parsed = MLArgs::try_parse_from([
             "mevlog",
             "--format",
             "json",
-            "search",
+            "query",
             "-b",
             "10:latest",
             "--rpc-url",
@@ -177,11 +177,11 @@ mod tests {
             "--chain-id",
             "1",
         ])
-        .expect("search args should parse");
+        .expect("query args should parse");
 
         match parsed.cmd {
-            MLSubcommand::Search(_) => {}
-            other => panic!("expected search command, got {other:?}"),
+            MLSubcommand::Query(_) => {}
+            other => panic!("expected query command, got {other:?}"),
         }
     }
 }

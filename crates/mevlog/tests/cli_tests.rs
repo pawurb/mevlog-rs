@@ -8,16 +8,24 @@ pub mod tests {
         vec!["rpc".to_string(), "revm".to_string()]
     }
 
-    // cargo run --bin mevlog search -b 22045570 -p 0 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty
+    // NOTE: The tests below are commented out because they rely on the filtering
+    // DSL flags (`-p`/`--position`, `--touching`, `--from`, `--to`, `--sort`,
+    // `--sort-dir`, `--limit`, `--erc20-transfer`) that were removed when the
+    // `search` command was renamed to `query` and slimmed down to barebones
+    // `TransactionJson` output. They will be reimplemented once the SQLite-backed
+    // query/filter layer lands.
+
+    /*
+    // cargo run --bin mevlog query -b 22045570 -p 0 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty
     #[test]
-    fn test_cli_search() -> Result<()> {
+    fn test_cli_query() -> Result<()> {
         for tracing_mode in tracing_modes() {
             let cmd = Command::new("cargo")
                 .env("RUST_LOG", "off")
                 .arg("run")
                 .arg("--bin")
                 .arg("mevlog")
-                .arg("search")
+                .arg("query")
                 .arg("-b")
                 .arg("22045570")
                 .arg("-p")
@@ -43,6 +51,7 @@ pub mod tests {
 
         Ok(())
     }
+    */
 
     // cargo run --bin mevlog tx 0x06fed3f7dc71194fe3c2fd379ef1e8aaa850354454ea9dd526364a4e24853660 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty
     #[test]
@@ -77,7 +86,8 @@ pub mod tests {
         Ok(())
     }
 
-    // cargo run --bin mevlog search -b 33410345 -p 0 --rpc-url $BASE_RPC_URL --format json-pretty
+    /*
+    // cargo run --bin mevlog query -b 33410345 -p 0 --rpc-url $BASE_RPC_URL --format json-pretty
     #[test]
     fn test_sig_overwrite() {
         let cmd = Command::new("cargo")
@@ -85,7 +95,7 @@ pub mod tests {
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("33410345")
             .arg("-p")
@@ -106,17 +116,19 @@ pub mod tests {
             );
         }
     }
+    */
 
-    // cargo run --bin mevlog search -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty --touching 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
+    /*
+    // cargo run --bin mevlog query -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --evm-trace rpc --format json-pretty --touching 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640
     #[test]
-    fn test_cli_search_touching() {
+    fn test_cli_query_touching() {
         for tracing_mode in tracing_modes() {
             let cmd = Command::new("cargo")
                 .env("RUST_LOG", "off")
                 .arg("run")
                 .arg("--bin")
                 .arg("mevlog")
-                .arg("search")
+                .arg("query")
                 .arg("-b")
                 .arg("22045570")
                 .arg("-p")
@@ -148,16 +160,18 @@ pub mod tests {
             );
         }
     }
+    */
 
-    // cargo run --bin mevlog search -b 23070298 -p 0:8 --from jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
+    /*
+    // cargo run --bin mevlog query -b 23070298 -p 0:8 --from jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
     #[test]
-    fn test_cli_search_from_ens() {
+    fn test_cli_query_from_ens() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("23070298")
             .arg("-p")
@@ -185,16 +199,18 @@ pub mod tests {
             );
         }
     }
+    */
 
-    // cargo run --bin mevlog search -b 16733027 --to jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
+    /*
+    // cargo run --bin mevlog query -b 16733027 --to jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
     #[test]
-    fn test_cli_search_to_ens() {
+    fn test_cli_query_to_ens() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("16733027")
             .arg("--to")
@@ -220,17 +236,19 @@ pub mod tests {
             );
         }
     }
+    */
 
-    // cargo run --bin mevlog search -b 23070298 -p 2 --from jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
+    /*
+    // cargo run --bin mevlog query -b 23070298 -p 2 --from jaredfromsubway.eth --format json-pretty --ens --rpc-url $ETH_RPC_URL
     #[test]
-    fn test_cli_search_symbols_cache() {
+    fn test_cli_query_symbols_cache() {
         // Populate symbols cache
         let _ = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("23070298")
             .arg("-p")
@@ -251,7 +269,7 @@ pub mod tests {
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("23070298")
             .arg("-p")
@@ -276,16 +294,18 @@ pub mod tests {
             );
         }
     }
+    */
 
-    // cargo run --bin mevlog search -b 22045570 -p 0:50 --rpc-url $ETH_RPC_URL --format json-pretty --sort gas-price --limit 1
+    /*
+    // cargo run --bin mevlog query -b 22045570 -p 0:50 --rpc-url $ETH_RPC_URL --format json-pretty --sort gas-price --limit 1
     #[test]
-    fn test_cli_search_sort_limit() {
+    fn test_cli_query_sort_limit() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("22045570")
             .arg("-p")
@@ -311,16 +331,18 @@ pub mod tests {
             );
         }
     }
+    */
 
-    // cargo run --bin mevlog search -b 22045570 -p 0:50 --rpc-url $ETH_RPC_URL --format json-pretty --sort gas-price --sort-dir asc --limit 1
+    /*
+    // cargo run --bin mevlog query -b 22045570 -p 0:50 --rpc-url $ETH_RPC_URL --format json-pretty --sort gas-price --sort-dir asc --limit 1
     #[test]
-    fn test_cli_search_sort_limit_asc() {
+    fn test_cli_query_sort_limit_asc() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("22045570")
             .arg("-p")
@@ -348,6 +370,7 @@ pub mod tests {
             );
         }
     }
+    */
 
     // cargo run --bin mevlog chain-info --chain-id 1 --format json-pretty --skip-urls
     #[test]
@@ -422,15 +445,15 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 0 --rpc-url $ETH_RPC_URL --format json-pretty
+    // cargo run --bin mevlog query -b 0 --rpc-url $ETH_RPC_URL --format json-pretty
     #[test]
-    fn test_cli_format_search() {
+    fn test_cli_format_query() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("0")
             .arg("--rpc-url")
@@ -450,15 +473,16 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog search -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --format json-pretty
+    /*
+    // cargo run --bin mevlog query -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --format json-pretty
     #[test]
-    fn test_cli_format_search_position_range() {
+    fn test_cli_format_query_position_range() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("22045570")
             .arg("-p")
@@ -480,6 +504,7 @@ pub mod tests {
             .expect("result should be an array");
         assert_eq!(txs.len(), 4);
     }
+    */
 
     // cargo run --bin mevlog tx 0x7138e07de04d486f99f0117de27026272f33786a5aeeffc0913aef7951dfb1c8 --rpc-url $ETH_RPC_URL --format json-pretty
     #[test]
@@ -521,15 +546,16 @@ pub mod tests {
         );
     }
 
-    // cargo run --bin mevlog search -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
+    /*
+    // cargo run --bin mevlog query -b 23305021:23305023 --rpc-url $ETH_RPC_URL --format json-pretty --sort 'erc20Transfer|0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
     #[test]
-    fn test_cli_format_search_erc20_transfer() {
+    fn test_cli_format_query_erc20_transfer() {
         let cmd = Command::new("cargo")
             .env("RUST_LOG", "off")
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("-b")
             .arg("23305021:23305023")
             .arg("--rpc-url")
@@ -557,8 +583,10 @@ pub mod tests {
             "Expected logs to be omitted by default in json format.\n\nGot:\n{output}",
         );
     }
+    */
 
-    // cargo run --bin mevlog search --to 0x9008D19f58AAbD9eD0D60971565AA8510560ab41 -b 23632775:23632875 --sort 'erc20Transfer|0x6982508145454ce325ddbe47a25d4ec3d2311933' --limit 1 --chain-id 1 --format json --rpc-url $ETH_RPC_URL
+    /*
+    // cargo run --bin mevlog query --to 0x9008D19f58AAbD9eD0D60971565AA8510560ab41 -b 23632775:23632875 --sort 'erc20Transfer|0x6982508145454ce325ddbe47a25d4ec3d2311933' --limit 1 --chain-id 1 --format json --rpc-url $ETH_RPC_URL
     #[test]
     fn test_cli_erc20_transfer_filters() {
         let cmd = Command::new("cargo")
@@ -566,7 +594,7 @@ pub mod tests {
             .arg("run")
             .arg("--bin")
             .arg("mevlog")
-            .arg("search")
+            .arg("query")
             .arg("--to")
             .arg("0x9008D19f58AAbD9eD0D60971565AA8510560ab41")
             .arg("-b")
@@ -591,6 +619,7 @@ pub mod tests {
             .expect("result should be an array");
         assert!(txs.is_empty(), "Expected empty txs array, got:\n{output}");
     }
+    */
 
     // cargo run --bin mevlog tx 0x71b78307c2e604576efe962cc49e1b64f69409aac5eef0466302add48fe25b0e --rpc-url $ETH_RPC_URL --evm-ops --evm-trace revm --format json-pretty
     #[test]

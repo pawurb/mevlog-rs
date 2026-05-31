@@ -12,14 +12,14 @@ use mevlog::{
         utils::get_native_token_price,
     },
     models::{
-        json::mev_transaction_json::{SearchQueryParams, serialize_query_response},
+        json::mev_transaction_json::{QueryParams, serialize_query_response},
         mev_block::TxData,
     },
 };
 use revm::primitives::{FixedBytes, TxKind, U256};
 
 #[derive(Debug, clap::Parser)]
-pub struct SearchArgs {
+pub struct QueryArgs {
     #[arg(short = 'b', long, help_heading = "Block number or range to collect (e.g., '22030899', 'latest', '22030800:22030900' '50:latest', '50:'", num_args(1..))]
     blocks: String,
 
@@ -43,7 +43,7 @@ pub struct SearchArgs {
     batch_size: usize,
 }
 
-impl SearchArgs {
+impl QueryArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
@@ -119,8 +119,8 @@ impl SearchArgs {
         let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
         chain_info.native_token_price = native_token_price;
         let duration_ns = start_time.elapsed().as_nanos() as u64;
-        let query = SearchQueryParams {
-            command: "search",
+        let query = QueryParams {
+            command: "query",
             blocks: self.blocks.clone(),
             evm_trace: self.shared_opts.evm_trace.clone(),
             evm_calls: self.shared_opts.evm_calls,
