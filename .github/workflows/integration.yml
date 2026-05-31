@@ -37,7 +37,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.mevlog
-          gh release download sqlite-db-release -p mevlog-sqlite-v4.db -D ~/.mevlog --repo ${{ github.repository }}
+          gh release download sqlite-db-v5-release -p mevlog-sqlite-v5.db -D ~/.mevlog --repo ${{ github.repository }}
       - name: Check 
         run: | 
           cargo check 
