@@ -5,7 +5,7 @@ use revm::primitives::{Address, FixedBytes, U256};
 /// Holds only the core transaction + receipt fields. Logs/events and EVM traces
 /// are intentionally excluded and will be stored in separate tables later.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DBTransaction {
+pub struct Transaction {
     pub block_number: u64,
     pub tx_index: u64,
     pub tx_hash: FixedBytes<32>,

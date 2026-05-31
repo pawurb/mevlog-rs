@@ -3,8 +3,11 @@ use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::SqlitePool;
 
-use super::{mev_log_signature::MEVLogSignature, sigs::db_event::DBEvent};
-use crate::misc::{parquet_utils::get_parquet_string_value, symbol_utils::ERC20SymbolsLookup};
+use super::mev_log_signature::MEVLogSignature;
+use crate::{
+    db::sigs::models::event::Event,
+    misc::{parquet_utils::get_parquet_string_value, symbol_utils::ERC20SymbolsLookup},
+};
 
 #[derive(Debug, Clone)]
 pub struct MEVLog {
@@ -43,7 +46,7 @@ impl MEVLog {
         let first_topic = get_string_value(5);
         let data = get_string_value(9);
 
-        let signature_str = DBEvent::find_by_topic(&first_topic, sqlite).await?;
+        let signature_str = Event::find_by_topic(&first_topic, sqlite).await?;
         let data = hex::decode(data.strip_prefix("0x").unwrap_or(&data))?;
         let source: Address = get_string_value(4).parse()?;
         let signature = MEVLogSignature::new(source, signature_str.clone(), symbols_lookup).await?;

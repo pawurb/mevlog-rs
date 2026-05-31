@@ -11,19 +11,19 @@ use reqwest::Client;
 use ruzstd::decoding::StreamingDecoder;
 use sqlx::SqlitePool;
 
-use crate::misc::database::{SIGS_DB_SCHEMA_VERSION, default_sigs_db_path, sigs_db_file_name};
+use crate::db::sigs::{SCHEMA_VERSION, db_file_name, default_db_path};
 
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 
-pub fn db_file_exists() -> bool {
-    default_sigs_db_path().exists()
+pub fn file_exists() -> bool {
+    default_db_path().exists()
 }
 
-pub async fn remove_db_files() -> Result<()> {
-    let path = default_sigs_db_path();
+pub async fn remove_files() -> Result<()> {
+    let path = default_db_path();
 
     if path.exists() {
-        let str_path = default_sigs_db_path().to_string_lossy().into_owned();
+        let str_path = default_db_path().to_string_lossy().into_owned();
         let pattern = format!("{str_path}*");
         for entry in glob::glob(&pattern).expect("Failed to read glob pattern") {
             match entry {
@@ -42,10 +42,10 @@ pub async fn remove_db_files() -> Result<()> {
     Ok(())
 }
 
-pub async fn download_db_file() -> Result<()> {
-    let url = db_file_url();
+pub async fn download_file() -> Result<()> {
+    let url = file_url();
     let client = Client::new();
-    let db_path = default_sigs_db_path().to_string_lossy().into_owned();
+    let db_path = default_db_path().to_string_lossy().into_owned();
 
     let zst_path = format!("{db_path}.zst");
 
@@ -159,16 +159,16 @@ async fn ensure_database_indexes(sqlite: &SqlitePool) -> Result<()> {
 }
 
 pub async fn check_and_create_indexes(sqlite: &SqlitePool) -> Result<()> {
-    if !db_file_exists() {
+    if !file_exists() {
         eyre::bail!("Database file does not exist")
     }
 
     ensure_database_indexes(sqlite).await
 }
 
-fn db_file_url() -> String {
+fn file_url() -> String {
     format!(
         "https://d39my35jed0oxi.cloudfront.net/{}.zst",
-        sigs_db_file_name(SIGS_DB_SCHEMA_VERSION)
+        db_file_name(SCHEMA_VERSION)
     )
 }

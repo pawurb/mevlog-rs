@@ -2,8 +2,6 @@ pub mod args_parsing;
 pub mod coinbase_bribe;
 pub mod config;
 pub mod data_fetch;
-pub mod database;
-pub mod db_actions;
 pub mod ens_utils;
 #[cfg(feature = "tui")]
 pub mod opcode_color;
