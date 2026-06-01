@@ -304,6 +304,45 @@ pub mod tests {
         Ok(())
     }
 
+    // Sum of all tx `value`s across blocks 25215353..=25215357, as a 32-byte
+    // big-endian blob.
+    const EXPECTED_VALUE_SUM: &str =
+        "0x0000000000000000000000000000000000000000000000104ad26530a649aca2";
+
+    #[tokio::test]
+    async fn test_query_u256_sum_of_tx_values() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        // Index the range and sum the `value` column via the custom u256_sum
+        // SQLite aggregate registered on the rusqlite read connection.
+        let sum_out = run_query(
+            &rpc_url,
+            &tmp_dir,
+            Some("SELECT u256_sum(value) AS total FROM transactions"),
+            "json",
+        );
+        assert!(
+            sum_out.status.success(),
+            "sum query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&sum_out.stdout),
+            String::from_utf8_lossy(&sum_out.stderr),
+        );
+        let sum_env: QueryResponse = serde_json::from_slice(&sum_out.stdout)?;
+        assert_eq!(sum_env.result_count, 1, "sum should return a single row");
+        assert_eq!(
+            sum_env.result[0]["total"], EXPECTED_VALUE_SUM,
+            "u256_sum(value) mismatch"
+        );
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
     #[tokio::test]
     async fn test_query_reports_cached_blocks_on_repeat_run() -> Result<()> {
         let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");

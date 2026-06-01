@@ -1,8 +1,9 @@
 use std::collections::HashSet;
 
+use evm_sqlite::register_functions;
 use eyre::{Result, bail};
+use rusqlite::{Connection, OpenFlags, types::ValueRef};
 use serde_json::{Map, Value};
-use sqlx::{Column, Executor, Row, SqlSafeStr, SqlitePool, Statement, TypeInfo, ValueRef};
 
 /// Result of a raw SQL query: the selected column names (in `SELECT` order) plus
 /// one JSON object per row. Columns are carried separately so tabular consumers
@@ -13,26 +14,26 @@ pub struct QueryResult {
     pub rows: Vec<Value>,
 }
 
-/// Runs a user-provided SQL statement and serializes each result row into a
-/// JSON object keyed by column name. `pool` must be read-only (`txs_read`).
-pub async fn run_raw_query(sql: &str, pool: &SqlitePool) -> Result<QueryResult> {
-    let rows = sqlx::query(sqlx::AssertSqlSafe(sql.to_string()))
-        .fetch_all(pool)
-        .await?;
+/// Runs a user-provided SQL statement against the read-only txs DB and
+/// serializes each result row into a JSON object keyed by column name.
+///
+/// Uses a read-only `rusqlite` connection rather than `sqlx` so the custom
+/// `u256_sum` SQL function is available to the query.
+pub fn run_raw_query(sql: &str, db_path: &str) -> Result<QueryResult> {
+    // Accept both `sqlite://<path>` URLs and bare filesystem paths.
+    let filename = db_path
+        .strip_prefix("sqlite://")
+        .or_else(|| db_path.strip_prefix("sqlite:"))
+        .unwrap_or(db_path);
 
-    let columns: Vec<String> = match rows.first() {
-        Some(row) => row.columns().iter().map(|c| c.name().to_string()).collect(),
-        // No rows came back, so recover the schema from the prepared statement.
-        None => {
-            let stmt = pool
-                .prepare(sqlx::AssertSqlSafe(sql.to_string()).into_sql_str())
-                .await?;
-            stmt.columns()
-                .iter()
-                .map(|c| c.name().to_string())
-                .collect()
-        }
-    };
+    let conn = Connection::open_with_flags(
+        filename,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
+    )?;
+    register_functions(&conn)?;
+
+    let mut stmt = conn.prepare(sql)?;
+    let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
 
     // Rows are keyed by column name, so duplicate names would silently collapse
     // (last value wins). Reject them instead of emitting corrupt output.
@@ -41,26 +42,21 @@ pub async fn run_raw_query(sql: &str, pool: &SqlitePool) -> Result<QueryResult> 
         bail!("query returns duplicate column name `{dup}`; alias columns to make them unique");
     }
 
-    let mut out = Vec::with_capacity(rows.len());
-    for row in &rows {
-        let mut obj = Map::with_capacity(row.columns().len());
-        for (i, col) in row.columns().iter().enumerate() {
-            let raw = row.try_get_raw(i)?;
-            let value = if raw.is_null() {
-                Value::Null
-            } else {
-                match raw.type_info().name() {
-                    "INTEGER" => Value::from(row.try_get::<i64, _>(i)?),
-                    "REAL" => Value::from(row.try_get::<f64, _>(i)?),
-                    "TEXT" => Value::from(row.try_get::<String, _>(i)?),
-                    // BLOB and anything else: emit raw bytes as 0x-hex.
-                    _ => {
-                        let bytes: Vec<u8> = row.try_get(i)?;
-                        Value::from(format!("0x{}", hex::encode(bytes)))
-                    }
-                }
+    let col_count = columns.len();
+    let mut out = Vec::new();
+    let mut rows = stmt.query([])?;
+    while let Some(row) = rows.next()? {
+        let mut obj = Map::with_capacity(col_count);
+        for (i, col) in columns.iter().enumerate() {
+            let value = match row.get_ref(i)? {
+                ValueRef::Null => Value::Null,
+                ValueRef::Integer(n) => Value::from(n),
+                ValueRef::Real(f) => Value::from(f),
+                ValueRef::Text(t) => Value::from(String::from_utf8_lossy(t).into_owned()),
+                // BLOB (addresses, hashes, u256 BLOBs): emit raw bytes as 0x-hex.
+                ValueRef::Blob(b) => Value::from(format!("0x{}", hex::encode(b))),
             };
-            obj.insert(col.name().to_string(), value);
+            obj.insert(col.clone(), value);
         }
         out.push(Value::Object(obj));
     }
@@ -100,14 +96,13 @@ mod test {
 
     #[tokio::test]
     async fn raw_query_encodes_blobs_as_hex_and_ints_as_numbers() -> Result<()> {
-        let (write, read, _cl) = setup_test_db_rw().await;
+        let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
         let result = run_raw_query(
             "SELECT block_number, tx_hash, from_address, signature FROM transactions",
-            &read,
-        )
-        .await?;
+            &path,
+        )?;
 
         assert_eq!(
             result.columns,
@@ -125,14 +120,13 @@ mod test {
 
     #[tokio::test]
     async fn raw_query_returns_columns_when_no_rows_match() -> Result<()> {
-        let (write, read, _cl) = setup_test_db_rw().await;
+        let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
         let result = run_raw_query(
             "SELECT block_number, tx_hash FROM transactions WHERE 1 = 0",
-            &read,
-        )
-        .await?;
+            &path,
+        )?;
 
         assert!(result.rows.is_empty());
         assert_eq!(result.columns, ["block_number", "tx_hash"]);
@@ -142,12 +136,10 @@ mod test {
 
     #[tokio::test]
     async fn raw_query_rejects_duplicate_column_names() -> Result<()> {
-        let (write, read, _cl) = setup_test_db_rw().await;
+        let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
-        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &read)
-            .await
-            .unwrap_err();
+        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path).unwrap_err();
         assert!(err.to_string().contains("duplicate column name `x`"));
 
         Ok(())
@@ -155,10 +147,10 @@ mod test {
 
     #[tokio::test]
     async fn raw_query_supports_projection_and_aggregates() -> Result<()> {
-        let (write, read, _cl) = setup_test_db_rw().await;
+        let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &read).await?;
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path)?;
         assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
@@ -166,7 +158,7 @@ mod test {
 
     #[tokio::test]
     async fn raw_query_rejects_mutating_statements() -> Result<()> {
-        let (write, read, _cl) = setup_test_db_rw().await;
+        let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
         for stmt in [
@@ -174,14 +166,12 @@ mod test {
             "UPDATE transactions SET nonce = 0",
             "DROP TABLE transactions",
         ] {
-            let err = run_raw_query(stmt, &read).await;
+            let err = run_raw_query(stmt, &path);
             assert!(err.is_err(), "expected `{stmt}` to be rejected");
         }
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &read).await?;
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path)?;
         assert_eq!(result.rows[0]["n"], json!(1));
-
-        Transaction::save_batch(&[sample_tx()], &[101], &write).await?;
 
         Ok(())
     }

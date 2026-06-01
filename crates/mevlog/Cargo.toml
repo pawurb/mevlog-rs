@@ -31,6 +31,8 @@ sqlx = { version = "0.9", default-features = false, features = [
   "macros",
   "migrate",
 ] }
+rusqlite = { version = "0.37", features = ["bundled", "functions"] }
+evm-sqlite = "0.1"
 home = "0.5"
 toml = "0.8"
 glob = { workspace = true }
