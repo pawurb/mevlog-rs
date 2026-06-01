@@ -1,13 +1,43 @@
-use eyre::Result;
+use std::collections::HashSet;
+
+use eyre::{Result, bail};
 use serde_json::{Map, Value};
-use sqlx::{Column, Row, SqlitePool, TypeInfo, ValueRef};
+use sqlx::{Column, Executor, Row, SqlSafeStr, SqlitePool, TypeInfo, ValueRef};
+
+/// Result of a raw SQL query: the selected column names (in `SELECT` order) plus
+/// one JSON object per row. Columns are carried separately so tabular consumers
+/// can render headers even when no rows are returned.
+#[derive(Debug)]
+pub struct QueryResult {
+    pub columns: Vec<String>,
+    pub rows: Vec<Value>,
+}
 
 /// Runs a user-provided SQL statement and serializes each result row into a
 /// JSON object keyed by column name. `pool` must be read-only (`txs_read`).
-pub async fn run_raw_query(sql: &str, pool: &SqlitePool) -> Result<Vec<Value>> {
+pub async fn run_raw_query(sql: &str, pool: &SqlitePool) -> Result<QueryResult> {
     let rows = sqlx::query(sqlx::AssertSqlSafe(sql.to_string()))
         .fetch_all(pool)
         .await?;
+
+    let columns: Vec<String> = match rows.first() {
+        Some(row) => row.columns().iter().map(|c| c.name().to_string()).collect(),
+        // No rows came back, so recover the schema from the prepared statement.
+        None => pool
+            .describe(sqlx::AssertSqlSafe(sql.to_string()).into_sql_str())
+            .await?
+            .columns()
+            .iter()
+            .map(|c| c.name().to_string())
+            .collect(),
+    };
+
+    // Rows are keyed by column name, so duplicate names would silently collapse
+    // (last value wins). Reject them instead of emitting corrupt output.
+    let mut seen = HashSet::with_capacity(columns.len());
+    if let Some(dup) = columns.iter().find(|c| !seen.insert(c.as_str())) {
+        bail!("query returns duplicate column name `{dup}`; alias columns to make them unique");
+    }
 
     let mut out = Vec::with_capacity(rows.len());
     for row in &rows {
@@ -33,7 +63,7 @@ pub async fn run_raw_query(sql: &str, pool: &SqlitePool) -> Result<Vec<Value>> {
         out.push(Value::Object(obj));
     }
 
-    Ok(out)
+    Ok(QueryResult { columns, rows: out })
 }
 
 #[cfg(test)]
@@ -71,14 +101,18 @@ mod test {
         let (write, read, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
-        let rows = run_raw_query(
+        let result = run_raw_query(
             "SELECT block_number, tx_hash, from_address, signature FROM transactions",
             &read,
         )
         .await?;
 
-        assert_eq!(rows.len(), 1);
-        let row = &rows[0];
+        assert_eq!(
+            result.columns,
+            ["block_number", "tx_hash", "from_address", "signature"]
+        );
+        assert_eq!(result.rows.len(), 1);
+        let row = &result.rows[0];
         assert_eq!(row["block_number"], json!(100));
         assert_eq!(row["tx_hash"], json!(format!("0x{}", "aa".repeat(32))));
         assert_eq!(row["from_address"], json!(format!("0x{}", "11".repeat(20))));
@@ -88,12 +122,42 @@ mod test {
     }
 
     #[tokio::test]
+    async fn raw_query_returns_columns_when_no_rows_match() -> Result<()> {
+        let (write, read, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+
+        let result = run_raw_query(
+            "SELECT block_number, tx_hash FROM transactions WHERE 1 = 0",
+            &read,
+        )
+        .await?;
+
+        assert!(result.rows.is_empty());
+        assert_eq!(result.columns, ["block_number", "tx_hash"]);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_rejects_duplicate_column_names() -> Result<()> {
+        let (write, read, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+
+        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &read)
+            .await
+            .unwrap_err();
+        assert!(err.to_string().contains("duplicate column name `x`"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn raw_query_supports_projection_and_aggregates() -> Result<()> {
         let (write, read, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
 
-        let rows = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &read).await?;
-        assert_eq!(rows[0]["n"], json!(1));
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &read).await?;
+        assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
     }
@@ -112,8 +176,8 @@ mod test {
             assert!(err.is_err(), "expected `{stmt}` to be rejected");
         }
 
-        let rows = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &read).await?;
-        assert_eq!(rows[0]["n"], json!(1));
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &read).await?;
+        assert_eq!(result.rows[0]["n"], json!(1));
 
         Transaction::save_batch(&[sample_tx()], &[101], &write).await?;
 
