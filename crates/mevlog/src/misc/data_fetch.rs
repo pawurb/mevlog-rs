@@ -4,7 +4,12 @@ use eyre::Result;
 use sqlx::SqlitePool;
 
 use crate::db::txs::models::transaction::Transaction;
-use crate::models::{evm_chain::EVMChain, mev_block::BatchedBlockData, mev_log::MEVLog};
+use crate::models::{evm_chain::EVMChain, mev_log::MEVLog};
+
+pub struct BatchedBlockData {
+    pub txs_by_block: HashMap<u64, Vec<Transaction>>,
+    pub logs_by_block: HashMap<u64, Vec<MEVLog>>,
+}
 
 fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
     home::home_dir().unwrap().join(format!(
