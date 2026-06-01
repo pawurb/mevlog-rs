@@ -3,9 +3,9 @@ use std::time::Instant;
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
-    db::txs::models::{
-        log::Log,
-        transaction::{Transaction, TransactionJson},
+    db::txs::{
+        models::{log::Log, transaction::Transaction},
+        raw_query::run_raw_query,
     },
     misc::{
         args_parsing::BlocksRange,
@@ -13,7 +13,7 @@ use mevlog::{
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         utils::get_native_token_price,
     },
-    models::json::mev_transaction_json::{QueryParams, serialize_query_response},
+    models::json::query_response::{QueryParams, serialize_query_response},
 };
 use tracing::info;
 
@@ -40,6 +40,16 @@ pub struct QueryArgs {
         default_value = "100"
     )]
     batch_size: usize,
+
+    #[arg(
+        long,
+        help = "Custom read-only SQL to run against the local txs DB \
+                (tables: transactions, logs, indexed_blocks). When omitted, all \
+                txs in the block range are returned. Blob columns (addresses, \
+                hashes) are output as 0x-hex; addresses/hashes in predicates must \
+                be given as blob literals, e.g. WHERE from_address = X'1111...1111'"
+    )]
+    sql: Option<String>,
 }
 
 impl QueryArgs {
@@ -142,43 +152,44 @@ impl QueryArgs {
             }
         }
 
-        // Read the full requested range back from the local store so that
-        // previously indexed blocks are included alongside the freshly fetched ones.
-        let where_sql = format!(
-            "block_number BETWEEN {} AND {}",
-            block_range.from, block_range.to
-        );
-        let txs = Transaction::query_where(&where_sql, &deps.txs).await?;
-
-        let transactions_json: Vec<TransactionJson> =
-            txs.iter().map(TransactionJson::from).collect();
-
         let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
         chain_info.native_token_price = native_token_price;
         let duration_ns = start_time.elapsed().as_nanos() as u64;
+        let pretty = matches!(format, OutputFormat::JsonPretty);
+
+        // Default to reading the full requested range back from the local store so
+        // previously indexed blocks are included alongside freshly fetched ones.
+        let sql = self.sql.clone().unwrap_or_else(|| {
+            format!(
+                "SELECT * FROM transactions \
+                 WHERE block_number BETWEEN {} AND {} \
+                 ORDER BY block_number DESC, tx_index ASC",
+                block_range.from, block_range.to
+            )
+        });
+        let rows = run_raw_query(&sql, &deps.txs_read).await?;
+
         let query = QueryParams {
             command: "query",
             blocks: self.blocks.clone(),
+            sql: Some(sql),
             evm_trace: self.shared_opts.evm_trace.clone(),
             evm_calls: self.shared_opts.evm_calls,
             evm_ops: self.shared_opts.evm_ops,
             evm_state_diff: self.shared_opts.evm_state_diff,
         };
 
-        let pretty = matches!(format, OutputFormat::JsonPretty);
-        println!(
-            "{}",
-            serialize_query_response(
-                &transactions_json,
-                pretty,
-                &chain_info,
-                duration_ns,
-                cached_blocks,
-                new_blocks,
-                query,
-            )
-            .unwrap()
-        );
+        let output = serialize_query_response(
+            &rows,
+            pretty,
+            &chain_info,
+            duration_ns,
+            cached_blocks,
+            new_blocks,
+            query,
+        )?;
+
+        println!("{output}");
 
         Ok(())
     }

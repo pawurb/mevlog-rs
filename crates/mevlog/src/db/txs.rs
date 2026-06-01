@@ -1,4 +1,5 @@
 pub mod models;
+pub mod raw_query;
 
 use std::path::PathBuf;
 
@@ -16,8 +17,8 @@ pub async fn init_db(db_url: Option<String>, chain_id: u64) -> Result<()> {
     shared::init_db(db_url, default_db_path(chain_id), &MIGRATOR).await
 }
 
-pub async fn conn(db_url: Option<String>, chain_id: u64) -> Result<SqlitePool> {
-    shared::conn(db_url, default_db_path(chain_id)).await
+pub async fn conn(db_url: Option<String>, chain_id: u64, read_only: bool) -> Result<SqlitePool> {
+    shared::conn(db_url, default_db_path(chain_id), read_only).await
 }
 
 pub fn db_file_name(schema_version: u64, chain_id: u64) -> String {

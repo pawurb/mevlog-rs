@@ -26,6 +26,8 @@ use crate::{
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub txs: SqlitePool,
+    /// Read-only pool over `txs`, used for user-supplied `--sql`.
+    pub txs_read: SqlitePool,
     pub provider: Arc<GenericProvider>,
     pub chain: Arc<EVMChain>,
     pub rpc_url: String,
@@ -110,7 +112,8 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
             .into_owned()
     });
     txs::init_db(txs_db_url.clone(), resolved.chain_id).await?;
-    let txs = txs::conn(txs_db_url, resolved.chain_id).await?;
+    let txs = txs::conn(txs_db_url.clone(), resolved.chain_id, false).await?;
+    let txs_read = txs::conn(txs_db_url, resolved.chain_id, true).await?;
 
     let db_chain = Chain::find(resolved.chain_id as i64, &sqlite)
         .await?
@@ -120,6 +123,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     Ok(SharedDeps {
         sqlite,
         txs,
+        txs_read,
         provider: resolved.provider,
         chain,
         rpc_url: resolved.rpc_url,

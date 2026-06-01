@@ -107,7 +107,12 @@ pub mod tests {
             String::from_utf8_lossy(&output.stderr),
         );
 
-        let conn = txs::conn(Some(db_path.to_string_lossy().into_owned()), CHAIN_ID).await?;
+        let conn = txs::conn(
+            Some(db_path.to_string_lossy().into_owned()),
+            CHAIN_ID,
+            false,
+        )
+        .await?;
 
         let expected: Vec<u64> = (FROM_BLOCK..=TO_BLOCK).collect();
 

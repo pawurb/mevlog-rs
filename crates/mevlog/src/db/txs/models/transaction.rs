@@ -6,7 +6,6 @@ use alloy::rlp::Encodable;
 use arrow::record_batch::RecordBatch;
 use eyre::Result;
 use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
-use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool, sqlite::SqliteRow};
 
 use crate::{db::sigs::models::method::Method, misc::parquet_utils::get_parquet_string_value};
@@ -40,55 +39,6 @@ pub struct Transaction {
     pub signature_hash: Option<FixedBytes<4>>,
     /// `None` when the method signature could not be resolved.
     pub signature: Option<String>,
-}
-
-/// JSON-serializable view of a [`Transaction`].
-///
-/// Hashes and addresses are hex-encoded (via alloy's `Serialize`), while the
-/// 256-bit `value` is stringified to avoid lossy JSON number handling.
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct TransactionJson {
-    pub block_number: u64,
-    pub tx_index: u64,
-    pub tx_hash: FixedBytes<32>,
-    pub nonce: u64,
-    pub from: Address,
-    pub to: Option<Address>,
-    pub value: String,
-    pub gas_limit: u64,
-    pub gas_used: u64,
-    pub effective_gas_price: u128,
-    pub gas_price: u128,
-    pub max_fee_per_gas: u128,
-    pub max_priority_fee_per_gas: u128,
-    pub transaction_type: Option<u8>,
-    pub success: bool,
-    pub signature_hash: Option<String>,
-    pub signature: Option<String>,
-}
-
-impl From<&Transaction> for TransactionJson {
-    fn from(tx: &Transaction) -> Self {
-        Self {
-            block_number: tx.block_number,
-            tx_index: tx.tx_index,
-            tx_hash: tx.tx_hash,
-            nonce: tx.nonce,
-            from: tx.from_address,
-            to: tx.to_address,
-            value: tx.value.to_string(),
-            gas_limit: tx.gas_limit,
-            gas_used: tx.gas_used,
-            effective_gas_price: tx.effective_gas_price,
-            gas_price: tx.gas_price,
-            max_fee_per_gas: tx.max_fee_per_gas,
-            max_priority_fee_per_gas: tx.max_priority_fee_per_gas,
-            transaction_type: tx.transaction_type,
-            success: tx.success,
-            signature_hash: tx.signature_hash.map(|s| format!("0x{}", hex::encode(s))),
-            signature: tx.signature.clone(),
-        }
-    }
 }
 
 #[hotpath::measure_all(future = true)]
@@ -373,6 +323,12 @@ pub mod test {
     use crate::db::txs::{conn, init_db};
 
     pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
+        let (write, _read, cleaner) = setup_test_db_rw().await;
+        (write, cleaner)
+    }
+
+    /// Returns a writable and a read-only pool over the same file.
+    pub async fn setup_test_db_rw() -> (SqlitePool, SqlitePool, SqliteCleaner) {
         let uuid = Uuid::new_v4();
         let db_path = format!("/tmp/{uuid}-mevlog-txs-test.db");
         let db_url = format!("sqlite://{db_path}");
@@ -390,12 +346,14 @@ pub mod test {
             db_uuid: uuid.to_string(),
         };
 
-        (
-            conn(Some(db_url), 1)
-                .await
-                .expect("Failed to connect to db"),
-            cleaner,
-        )
+        let write = conn(Some(db_url.clone()), 1, false)
+            .await
+            .expect("Failed to connect to db");
+        let read = conn(Some(db_url), 1, true)
+            .await
+            .expect("Failed to open read-only connection");
+
+        (write, read, cleaner)
     }
 
     pub struct SqliteCleaner {
@@ -467,23 +425,6 @@ pub mod test {
 
         assert_eq!(Transaction::count(&conn).await?, 1);
         Ok(())
-    }
-
-    #[test]
-    fn transaction_json_encodes_hex_and_stringifies_value() {
-        let tx = sample_tx(100, 3, 0xaa);
-        let json = TransactionJson::from(&tx);
-        let value = serde_json::to_value(&json).expect("serialize");
-
-        assert_eq!(value["block_number"], 100);
-        assert_eq!(value["tx_index"], 3);
-        assert_eq!(value["tx_hash"], format!("0x{}", "aa".repeat(32)));
-        assert_eq!(value["from"], format!("0x{}", "11".repeat(20)));
-        assert_eq!(value["to"], format!("0x{}", "22".repeat(20)));
-        // U256 value serialized as a string, not a JSON number.
-        assert_eq!(value["value"], "1000000000000000000");
-        assert_eq!(value["signature_hash"], "0xa9059cbb");
-        assert_eq!(value["signature"], "transfer(address,uint256)");
     }
 
     #[tokio::test]

@@ -4,6 +4,7 @@ use eyre::Result;
 use sqlx::{
     Sqlite, SqlitePool,
     migrate::{MigrateDatabase, Migrator},
+    sqlite::SqliteConnectOptions,
 };
 use tracing::info;
 
@@ -44,9 +45,24 @@ pub async fn init_db(
     Ok(())
 }
 
-pub async fn conn(db_url: Option<String>, default_path: PathBuf) -> Result<SqlitePool> {
+pub async fn conn(
+    db_url: Option<String>,
+    default_path: PathBuf,
+    read_only: bool,
+) -> Result<SqlitePool> {
     let db_url = resolve_url(db_url, default_path);
-    match SqlitePool::connect(&db_url).await {
+    // Accept both `sqlite://<path>` URLs and bare filesystem paths.
+    let filename = db_url
+        .strip_prefix("sqlite://")
+        .or_else(|| db_url.strip_prefix("sqlite:"))
+        .unwrap_or(&db_url);
+
+    let opts = SqliteConnectOptions::new()
+        .filename(filename)
+        .read_only(read_only)
+        .create_if_missing(false);
+
+    match SqlitePool::connect_with(opts).await {
         Ok(sqlite) => Ok(sqlite),
         Err(error) => eyre::bail!("Error connecting to db: {}", error),
     }

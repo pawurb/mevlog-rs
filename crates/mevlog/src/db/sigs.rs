@@ -18,7 +18,7 @@ pub async fn init_db(db_url: Option<String>) -> Result<()> {
 }
 
 pub async fn conn(db_url: Option<String>) -> Result<SqlitePool> {
-    shared::conn(db_url, default_db_path()).await
+    shared::conn(db_url, default_db_path(), false).await
 }
 
 pub fn db_file_name(schema_version: u64) -> String {
