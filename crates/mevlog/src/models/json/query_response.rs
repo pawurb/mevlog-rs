@@ -1,6 +1,6 @@
 use comfy_table::Table;
 use eyre::Result;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::{ChainInfoNoRpcsJson, misc::shared_init::TraceMode};
@@ -52,19 +52,18 @@ fn is_false(v: &bool) -> bool {
     !v
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
-    pub command: &'static str,
     pub blocks: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sql: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub evm_trace: Option<TraceMode>,
-    #[serde(skip_serializing_if = "is_false")]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub evm_calls: bool,
-    #[serde(skip_serializing_if = "is_false")]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub evm_ops: bool,
-    #[serde(skip_serializing_if = "is_false")]
+    #[serde(default, skip_serializing_if = "is_false")]
     pub evm_state_diff: bool,
 }
 
@@ -80,31 +79,32 @@ pub fn format_duration(ns: u64) -> String {
     }
 }
 
-#[derive(Serialize)]
-struct QueryResponseEnvelopeJson<'a, Q: Serialize> {
-    result: &'a [serde_json::Value],
-    result_count: usize,
-    cached_blocks: u64,
-    new_blocks: u64,
-    duration: String,
-    chain: &'a ChainInfoNoRpcsJson,
-    query: Q,
+/// Standard response envelope emitted by the SQLite-backed query path.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QueryResponse {
+    pub result: Vec<Value>,
+    pub result_count: usize,
+    pub cached_blocks: u64,
+    pub new_blocks: u64,
+    pub duration: String,
+    pub chain: ChainInfoNoRpcsJson,
+    pub query: QueryParams,
 }
 
-/// Serializes generic SQL result rows into the standard response envelope used by
-/// the SQLite-backed query path.
-pub fn serialize_query_response<Q: Serialize>(
-    results: &[serde_json::Value],
+/// Serializes SQL result rows into the standard response envelope used by the
+/// SQLite-backed query path.
+pub fn serialize_query_response(
+    results: Vec<Value>,
     pretty: bool,
-    chain: &ChainInfoNoRpcsJson,
+    chain: ChainInfoNoRpcsJson,
     duration_ns: u64,
     cached_blocks: u64,
     new_blocks: u64,
-    query: Q,
+    query: QueryParams,
 ) -> serde_json::Result<String> {
-    let envelope = QueryResponseEnvelopeJson {
-        result: results,
+    let envelope = QueryResponse {
         result_count: results.len(),
+        result: results,
         cached_blocks,
         new_blocks,
         duration: format_duration(duration_ns),

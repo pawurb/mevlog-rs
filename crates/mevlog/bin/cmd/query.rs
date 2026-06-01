@@ -183,7 +183,6 @@ impl QueryArgs {
             OutputFormat::Json | OutputFormat::JsonPretty => {
                 let pretty = matches!(format, OutputFormat::JsonPretty);
                 let query = QueryParams {
-                    command: "query",
                     blocks: self.blocks.clone(),
                     sql: Some(sql),
                     evm_trace: self.shared_opts.evm_trace.clone(),
@@ -193,9 +192,9 @@ impl QueryArgs {
                 };
 
                 let output = serialize_query_response(
-                    &result.rows,
+                    result.rows,
                     pretty,
-                    &chain_info,
+                    chain_info,
                     duration_ns,
                     cached_blocks,
                     new_blocks,

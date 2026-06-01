@@ -7,18 +7,14 @@ pub mod tests {
     };
 
     use eyre::Result;
-    use mevlog::db::txs::{
-        self,
-        models::{log::Log, transaction::Transaction},
+    use mevlog::{
+        db::txs::{
+            self,
+            models::{log::Log, transaction::Transaction},
+        },
+        models::json::query_response::QueryResponse,
     };
-    use serde::Deserialize;
     use uuid::Uuid;
-
-    #[derive(Deserialize)]
-    struct QueryResponse {
-        cached_blocks: u64,
-        new_blocks: u64,
-    }
 
     const CHAIN_ID: u64 = 1;
     const FROM_BLOCK: u64 = 25215353;
@@ -56,31 +52,24 @@ pub mod tests {
         }
     }
 
-    fn run_query(rpc_url: &str, tmp_dir: &Path) -> Output {
-        Command::new("cargo")
+    fn run_query(rpc_url: &str, tmp_dir: &Path, sql: Option<&str>, format: &str) -> Output {
+        let mut command = Command::new("cargo");
+        command
             .env("RUST_LOG", "off")
-            .args([
-                "run",
-                "--bin",
-                "mevlog",
-                "--",
-                "query",
-                "-b",
-                &format!("{FROM_BLOCK}:{TO_BLOCK}"),
-                "--chain-id",
-                &CHAIN_ID.to_string(),
-                "--rpc-url",
-                rpc_url,
-                "--skip-verify-chain-id",
-                "--native-token-price",
-                "1",
-                "--txs-db-dir",
-                &tmp_dir.to_string_lossy(),
-                "--format",
-                "json",
-            ])
-            .output()
-            .expect("failed to execute CLI")
+            .args(["run", "--bin", "mevlog", "--", "query"])
+            .args(["-b", &format!("{FROM_BLOCK}:{TO_BLOCK}")])
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--rpc-url", rpc_url])
+            .arg("--skip-verify-chain-id")
+            .args(["--native-token-price", "1"])
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", format]);
+
+        if let Some(sql) = sql {
+            command.args(["--sql", sql]);
+        }
+
+        command.output().expect("failed to execute CLI")
     }
 
     #[tokio::test]
@@ -98,7 +87,7 @@ pub mod tests {
             fs::remove_file(&p).ok();
         }
 
-        let output = run_query(&rpc_url, &tmp_dir);
+        let output = run_query(&rpc_url, &tmp_dir, None, "json");
 
         assert!(
             output.status.success(),
@@ -140,10 +129,6 @@ pub mod tests {
 
         assert_eq!(indexed, expected, "indexed_blocks mismatch");
         assert_eq!(tx_blocks, expected, "transaction blocks mismatch");
-        assert_eq!(
-            indexed, tx_blocks,
-            "indexed_blocks vs transactions mismatch"
-        );
         assert_eq!(logs_count, 3868, "logs count mismatch");
 
         let txs = Transaction::query_where(&format!("tx_hash = x'{TX_HASH}'"), &conn).await?;
@@ -188,6 +173,138 @@ pub mod tests {
     }
 
     #[tokio::test]
+    async fn test_query_custom_sql_csv_exact_output() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_query(
+            &rpc_url,
+            &tmp_dir,
+            Some("SELECT * FROM transactions ORDER BY block_number ASC, tx_index ASC LIMIT 1"),
+            "csv",
+        );
+
+        assert!(
+            output.status.success(),
+            "query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        let expected = "block_number,tx_index,tx_hash,nonce,from_address,to_address,value,gas_limit,gas_used,effective_gas_price,gas_price,max_fee_per_gas,max_priority_fee_per_gas,transaction_type,success,signature_hash,signature\n\
+            25215353,0,0xdfe463a0a9fdd80ec3de153fef56e9f57ac7437ac7d7ab7276014017b8bc19e5,7366,0xf34f8b87f3db3b3a664289b4b063b507535eced1,0x80a64c6d7f12c47b7c66c5b4e20e72bc1fcd5d9e,0x0000000000000000000000000000000000000000000000000000000000000000,336986,157961,3133334821,3133334821,3191972299,3000000000,2,1,0x3d0e3ec5,\"swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256,address)\"\n";
+
+        assert_eq!(stdout, expected, "csv output mismatch");
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_custom_sql_json_envelope() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let sql = "SELECT * FROM transactions ORDER BY block_number ASC, tx_index ASC LIMIT 1";
+        let output = run_query(&rpc_url, &tmp_dir, Some(sql), "json");
+
+        assert!(
+            output.status.success(),
+            "query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert_eq!(envelope.result.len(), 1, "result array length mismatch");
+        assert_eq!(
+            envelope.query.sql.as_deref(),
+            Some(sql),
+            "echoed sql mismatch"
+        );
+        assert_eq!(
+            envelope.query.blocks,
+            format!("{FROM_BLOCK}:{TO_BLOCK}"),
+            "echoed blocks mismatch"
+        );
+        assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
+        assert!(!envelope.duration.is_empty(), "duration should be present");
+
+        let row = &envelope.result[0];
+        assert_eq!(row["block_number"], 25215353, "row block_number mismatch");
+        assert_eq!(row["tx_index"], 0, "row tx_index mismatch");
+        assert_eq!(
+            row["tx_hash"], "0xdfe463a0a9fdd80ec3de153fef56e9f57ac7437ac7d7ab7276014017b8bc19e5",
+            "row tx_hash mismatch"
+        );
+        assert_eq!(
+            row["value"], "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "row value mismatch"
+        );
+        assert_eq!(
+            row["signature"],
+            "swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256,address)",
+            "row signature mismatch"
+        );
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_custom_sql_table_exact_output() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_query(
+            &rpc_url,
+            &tmp_dir,
+            Some(
+                "SELECT block_number, tx_index, signature FROM transactions \
+                 ORDER BY block_number ASC, tx_index ASC LIMIT 1",
+            ),
+            "table",
+        );
+
+        assert!(
+            output.status.success(),
+            "query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        let expected = "\
++--------------+----------+-------------------------------------------------------------------------------------------------------+
+| block_number | tx_index | signature                                                                                             |
++=================================================================================================================================+
+| 25215353     | 0        | swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256,address) |
++--------------+----------+-------------------------------------------------------------------------------------------------------+";
+
+        assert_eq!(stdout.trim_end(), expected, "table output mismatch");
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn test_query_reports_cached_blocks_on_repeat_run() -> Result<()> {
         let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
 
@@ -198,7 +315,7 @@ pub mod tests {
 
         let total_blocks = TO_BLOCK - FROM_BLOCK + 1;
 
-        let first = run_query(&rpc_url, &tmp_dir);
+        let first = run_query(&rpc_url, &tmp_dir, None, "json");
         assert!(
             first.status.success(),
             "first query failed: {}",
@@ -208,7 +325,7 @@ pub mod tests {
         assert_eq!(first_json.cached_blocks, 0, "first run cached_blocks");
         assert_eq!(first_json.new_blocks, total_blocks, "first run new_blocks");
 
-        let second = run_query(&rpc_url, &tmp_dir);
+        let second = run_query(&rpc_url, &tmp_dir, None, "json");
         assert!(
             second.status.success(),
             "second query failed: {}",
