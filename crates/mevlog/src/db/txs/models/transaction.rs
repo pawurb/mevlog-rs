@@ -9,10 +9,7 @@ use revm::primitives::{Address, Bytes, FixedBytes, TxKind, U256, keccak256};
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool, sqlite::SqliteRow};
 
-use crate::{
-    db::sigs::models::method::Method, misc::parquet_utils::get_parquet_string_value,
-    models::mev_transaction::find_sig_overwrite,
-};
+use crate::{db::sigs::models::method::Method, misc::parquet_utils::get_parquet_string_value};
 
 const UNKNOWN_SIGNATURE: &str = "?";
 
@@ -355,6 +352,14 @@ pub fn calculate_create_address(nonce: u64, from: Address) -> Address {
     alloy::rlp::encode_list::<_, dyn Encodable>(&list, &mut out);
     let keccak = keccak256(&out);
     Address::from_slice(&keccak[12..])
+}
+
+// Common signatures, that are duplicate and mismatched in the database
+pub fn find_sig_overwrite(signature: &str, tx_index: u64) -> Option<String> {
+    if signature == "0x098999be" && tx_index == 0 {
+        return Some("setL1BlockValuesIsthmus()".to_string());
+    }
+    None
 }
 
 #[cfg(test)]

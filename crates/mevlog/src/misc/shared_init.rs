@@ -9,6 +9,7 @@ use eyre::{Result, bail};
 use sqlx::SqlitePool;
 use tracing::debug;
 
+use crate::misc::{config::Config, rpc_urls::get_chain_info};
 use crate::{
     GenericProvider,
     db::{
@@ -20,10 +21,6 @@ use crate::{
         txs,
     },
     models::evm_chain::EVMChain,
-};
-use crate::{
-    misc::{config::Config, rpc_urls::get_chain_info},
-    models::json::mev_transaction_json::JsonSerializeOpts,
 };
 
 pub struct SharedDeps {
@@ -181,17 +178,6 @@ pub struct SharedOpts {
         help = "Provide native token price in USD instead of reading it from price oracle"
     )]
     pub native_token_price: Option<f64>,
-}
-
-impl SharedOpts {
-    pub fn json_serialize_opts(&self) -> JsonSerializeOpts {
-        JsonSerializeOpts {
-            include_logs: self.logs,
-            include_evm_calls: self.evm_calls,
-            include_evm_opcodes: self.evm_ops,
-            include_evm_state_diff: self.evm_state_diff,
-        }
-    }
 }
 
 #[derive(Clone, Debug, clap::Parser)]

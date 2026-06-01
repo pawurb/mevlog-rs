@@ -20,6 +20,10 @@ pub const GWEI: U256 = uint!(1_000_000_000_U256);
 pub const GWEI_U128: u128 = 1_000_000_000_u128;
 pub const GWEI_F64: f64 = 1_000_000_000_f64;
 
+pub fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {
+    format!("{}-{}", chain.name, block_number)
+}
+
 sol! {
     #[sol(rpc)]
     contract IPriceOracle {

@@ -26,9 +26,9 @@ use revm::{
 use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 
 use super::shared_init::TraceMode;
+use super::utils::block_cache_key;
 use crate::models::{
     evm_chain::EVMChain,
-    mev_block::block_cache_key,
     mev_opcode::MEVOpcode,
     mev_state_diff::{MEVStateDiff, u256_to_option_b256},
 };
