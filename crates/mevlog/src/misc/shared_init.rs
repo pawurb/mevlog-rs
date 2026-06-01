@@ -26,8 +26,9 @@ use crate::{
 pub struct SharedDeps {
     pub sqlite: SqlitePool,
     pub txs: SqlitePool,
-    /// Read-only pool over `txs`, used for user-supplied `--sql`.
-    pub txs_read: SqlitePool,
+    /// File path of the `txs` DB, used by `run_raw_query` to open a read-only
+    /// `rusqlite` connection for `--sql` queries.
+    pub txs_read_path: String,
     pub provider: Arc<GenericProvider>,
     pub chain: Arc<EVMChain>,
     pub rpc_url: String,
@@ -113,7 +114,11 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     });
     txs::init_db(txs_db_url.clone(), resolved.chain_id).await?;
     let txs = txs::conn(txs_db_url.clone(), resolved.chain_id, false).await?;
-    let txs_read = txs::conn(txs_db_url, resolved.chain_id, true).await?;
+    let txs_read_path = txs_db_url.unwrap_or_else(|| {
+        txs::default_db_path(resolved.chain_id)
+            .to_string_lossy()
+            .into_owned()
+    });
 
     let db_chain = Chain::find(resolved.chain_id as i64, &sqlite)
         .await?
@@ -123,7 +128,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     Ok(SharedDeps {
         sqlite,
         txs,
-        txs_read,
+        txs_read_path,
         provider: resolved.provider,
         chain,
         rpc_url: resolved.rpc_url,

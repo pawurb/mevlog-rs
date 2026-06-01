@@ -168,7 +168,7 @@ impl QueryArgs {
                 block_range.from, block_range.to
             )
         });
-        let result = run_raw_query(&sql, &deps.txs_read).await?;
+        let result = run_raw_query(&sql, &deps.txs_read_path)?;
 
         match format {
             OutputFormat::Csv | OutputFormat::Table => {

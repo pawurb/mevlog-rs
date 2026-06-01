@@ -323,12 +323,13 @@ pub mod test {
     use crate::db::txs::{conn, init_db};
 
     pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
-        let (write, _read, cleaner) = setup_test_db_rw().await;
+        let (write, _path, cleaner) = setup_test_db_rw().await;
         (write, cleaner)
     }
 
-    /// Returns a writable and a read-only pool over the same file.
-    pub async fn setup_test_db_rw() -> (SqlitePool, SqlitePool, SqliteCleaner) {
+    /// Returns a writable pool plus the on-disk path of the same file. The path
+    /// is what the read-only `rusqlite`-backed `run_raw_query` consumes.
+    pub async fn setup_test_db_rw() -> (SqlitePool, String, SqliteCleaner) {
         let uuid = Uuid::new_v4();
         let db_path = format!("/tmp/{uuid}-mevlog-txs-test.db");
         let db_url = format!("sqlite://{db_path}");
@@ -349,11 +350,8 @@ pub mod test {
         let write = conn(Some(db_url.clone()), 1, false)
             .await
             .expect("Failed to connect to db");
-        let read = conn(Some(db_url), 1, true)
-            .await
-            .expect("Failed to open read-only connection");
 
-        (write, read, cleaner)
+        (write, db_path, cleaner)
     }
 
     pub struct SqliteCleaner {
