@@ -48,6 +48,8 @@ arrow = { version = "56", features = ["chrono-tz"] }
 parquet = { version = "56", features = ["arrow"] }
 bigdecimal = "0.4"
 html-escape = "0.2"
+csv = "1"
+comfy-table = "7"
 which = "7"
 alloy-chains = "0.2"
 console-subscriber = { version = "0.4", optional = true }

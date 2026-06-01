@@ -38,7 +38,7 @@ pub struct MLArgs {
 
     #[arg(
         long,
-        help = "Output format ('json', 'json-pretty')",
+        help = "Output format ('json', 'json-pretty', 'csv', 'table'); 'csv' and 'table' are query-only",
         default_value = "json-pretty",
         global = true
     )]
@@ -106,12 +106,13 @@ fn print_error(e: &eyre::Error, format: &OutputFormat) {
         })
     };
 
+    // Errors are not tabular; csv/table fall back to compact JSON on stderr.
     match format {
-        OutputFormat::Json => {
-            eprintln!("{}", serde_json::to_string(&error_json).unwrap());
-        }
         OutputFormat::JsonPretty => {
             eprintln!("{}", serde_json::to_string_pretty(&error_json).unwrap());
+        }
+        OutputFormat::Json | OutputFormat::Csv | OutputFormat::Table => {
+            eprintln!("{}", serde_json::to_string(&error_json).unwrap());
         }
     }
 }

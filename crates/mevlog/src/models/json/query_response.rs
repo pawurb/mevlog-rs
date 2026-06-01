@@ -1,6 +1,52 @@
+use comfy_table::Table;
+use eyre::Result;
 use serde::Serialize;
+use serde_json::Value;
 
 use crate::{ChainInfoNoRpcsJson, misc::shared_init::TraceMode};
+
+/// Renders a single cell value as a flat string: strings as-is (blob columns
+/// are already 0x-hex), null as empty, everything else via its JSON form.
+fn cell(value: Option<&Value>) -> String {
+    match value {
+        None | Some(Value::Null) => String::new(),
+        Some(Value::String(s)) => s.clone(),
+        Some(v) => v.to_string(),
+    }
+}
+
+fn row_record(columns: &[String], row: &Value) -> Vec<String> {
+    let obj = row.as_object();
+    columns
+        .iter()
+        .map(|col| cell(obj.and_then(|o| o.get(col))))
+        .collect()
+}
+
+/// Serializes query result rows as CSV (header + one line per row).
+pub fn rows_to_csv(columns: &[String], rows: &[Value]) -> Result<String> {
+    let mut writer = csv::Writer::from_writer(vec![]);
+    writer.write_record(columns)?;
+
+    for row in rows {
+        writer.write_record(row_record(columns, row))?;
+    }
+
+    let bytes = writer.into_inner().map_err(|e| eyre::eyre!(e))?;
+    Ok(String::from_utf8(bytes)?)
+}
+
+/// Renders query result rows as a pretty ASCII table.
+pub fn rows_to_table(columns: &[String], rows: &[Value]) -> String {
+    let mut table = Table::new();
+    table.set_header(columns);
+
+    for row in rows {
+        table.add_row(row_record(columns, row));
+    }
+
+    table.to_string()
+}
 
 fn is_false(v: &bool) -> bool {
     !v
@@ -70,5 +116,80 @@ pub fn serialize_query_response<Q: Serialize>(
         serde_json::to_string_pretty(&envelope)
     } else {
         serde_json::to_string(&envelope)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use serde_json::json;
+
+    use super::*;
+
+    fn sample_columns() -> Vec<String> {
+        [
+            "block_number",
+            "tx_hash",
+            "signature",
+            "success",
+            "to_address",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+    }
+
+    fn sample_rows() -> Vec<Value> {
+        vec![
+            json!({
+                "block_number": 100,
+                "tx_hash": "0xaa",
+                "signature": "transfer(address,uint256)",
+                "success": true,
+                "to_address": Value::Null,
+            }),
+            json!({
+                "block_number": 101,
+                "tx_hash": "0xbb",
+                "signature": "swap, exact",
+                "success": false,
+                "to_address": "0x22",
+            }),
+        ]
+    }
+
+    #[test]
+    fn csv_writes_header_and_rows() {
+        let csv = rows_to_csv(&sample_columns(), &sample_rows()).unwrap();
+        let lines: Vec<&str> = csv.lines().collect();
+
+        assert_eq!(
+            lines[0],
+            "block_number,tx_hash,signature,success,to_address"
+        );
+        // Null renders empty; the signature contains a comma so the csv writer
+        // quotes it.
+        assert_eq!(lines[1], "100,0xaa,\"transfer(address,uint256)\",true,");
+        assert_eq!(lines[2], "101,0xbb,\"swap, exact\",false,0x22");
+    }
+
+    #[test]
+    fn csv_with_no_rows_still_writes_the_header() {
+        let csv = rows_to_csv(&sample_columns(), &[]).unwrap();
+        assert_eq!(csv, "block_number,tx_hash,signature,success,to_address\n");
+    }
+
+    #[test]
+    fn table_contains_headers_and_values() {
+        let table = rows_to_table(&sample_columns(), &sample_rows());
+        assert!(table.contains("block_number"));
+        assert!(table.contains("transfer(address,uint256)"));
+        assert!(table.contains("0xbb"));
+    }
+
+    #[test]
+    fn table_with_no_rows_still_contains_headers() {
+        let table = rows_to_table(&sample_columns(), &[]);
+        assert!(table.contains("block_number"));
+        assert!(table.contains("to_address"));
     }
 }

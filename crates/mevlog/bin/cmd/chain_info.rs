@@ -90,6 +90,9 @@ impl ChainInfoArgs {
             OutputFormat::JsonPretty => {
                 println!("{}", serde_json::to_string_pretty(&info)?);
             }
+            OutputFormat::Csv | OutputFormat::Table => {
+                eyre::bail!("'csv' and 'table' formats are only supported by the query command")
+            }
         }
         Ok(())
     }
@@ -101,6 +104,9 @@ impl ChainInfoArgs {
             }
             OutputFormat::JsonPretty => {
                 println!("{}", serde_json::to_string_pretty(&info)?);
+            }
+            OutputFormat::Csv | OutputFormat::Table => {
+                eyre::bail!("'csv' and 'table' formats are only supported by the query command")
             }
         }
         Ok(())

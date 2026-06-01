@@ -13,7 +13,9 @@ use mevlog::{
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         utils::get_native_token_price,
     },
-    models::json::query_response::{QueryParams, serialize_query_response},
+    models::json::query_response::{
+        QueryParams, rows_to_csv, rows_to_table, serialize_query_response,
+    },
 };
 use tracing::info;
 
@@ -155,7 +157,6 @@ impl QueryArgs {
         let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
         chain_info.native_token_price = native_token_price;
         let duration_ns = start_time.elapsed().as_nanos() as u64;
-        let pretty = matches!(format, OutputFormat::JsonPretty);
 
         // Default to reading the full requested range back from the local store so
         // previously indexed blocks are included alongside freshly fetched ones.
@@ -167,29 +168,43 @@ impl QueryArgs {
                 block_range.from, block_range.to
             )
         });
-        let rows = run_raw_query(&sql, &deps.txs_read).await?;
+        let result = run_raw_query(&sql, &deps.txs_read).await?;
 
-        let query = QueryParams {
-            command: "query",
-            blocks: self.blocks.clone(),
-            sql: Some(sql),
-            evm_trace: self.shared_opts.evm_trace.clone(),
-            evm_calls: self.shared_opts.evm_calls,
-            evm_ops: self.shared_opts.evm_ops,
-            evm_state_diff: self.shared_opts.evm_state_diff,
-        };
+        match format {
+            OutputFormat::Csv | OutputFormat::Table => {
+                // Tabular formats emit only the result rows, no envelope metadata.
+                let output = if matches!(format, OutputFormat::Csv) {
+                    rows_to_csv(&result.columns, &result.rows)?
+                } else {
+                    rows_to_table(&result.columns, &result.rows)
+                };
+                print!("{output}");
+            }
+            OutputFormat::Json | OutputFormat::JsonPretty => {
+                let pretty = matches!(format, OutputFormat::JsonPretty);
+                let query = QueryParams {
+                    command: "query",
+                    blocks: self.blocks.clone(),
+                    sql: Some(sql),
+                    evm_trace: self.shared_opts.evm_trace.clone(),
+                    evm_calls: self.shared_opts.evm_calls,
+                    evm_ops: self.shared_opts.evm_ops,
+                    evm_state_diff: self.shared_opts.evm_state_diff,
+                };
 
-        let output = serialize_query_response(
-            &rows,
-            pretty,
-            &chain_info,
-            duration_ns,
-            cached_blocks,
-            new_blocks,
-            query,
-        )?;
+                let output = serialize_query_response(
+                    &result.rows,
+                    pretty,
+                    &chain_info,
+                    duration_ns,
+                    cached_blocks,
+                    new_blocks,
+                    query,
+                )?;
 
-        println!("{output}");
+                println!("{output}");
+            }
+        }
 
         Ok(())
     }

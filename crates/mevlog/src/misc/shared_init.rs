@@ -249,6 +249,8 @@ impl FromStr for TraceMode {
 pub enum OutputFormat {
     Json,
     JsonPretty,
+    Csv,
+    Table,
 }
 
 impl FromStr for OutputFormat {
@@ -258,6 +260,8 @@ impl FromStr for OutputFormat {
         match s {
             "json" => Ok(Self::Json),
             "json-pretty" => Ok(Self::JsonPretty),
+            "csv" => Ok(Self::Csv),
+            "table" => Ok(Self::Table),
             _ => Err(eyre::eyre!("Invalid output format")),
         }
     }
