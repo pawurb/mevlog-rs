@@ -153,7 +153,7 @@ impl Transaction {
         .bind(self.nonce as i64)
         .bind(self.from_address.as_slice())
         .bind(self.to_address.as_ref().map(|a| a.as_slice()))
-        .bind(self.value.to_be_bytes_trimmed_vec())
+        .bind(self.value.to_be_bytes::<32>().to_vec())
         .bind(self.gas_limit as i64)
         .bind(self.gas_used as i64)
         .bind(effective_gas_price)
