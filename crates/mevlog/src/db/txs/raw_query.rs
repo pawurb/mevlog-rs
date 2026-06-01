@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use eyre::{Result, bail};
 use serde_json::{Map, Value};
-use sqlx::{Column, Executor, Row, SqlSafeStr, SqlitePool, TypeInfo, ValueRef};
+use sqlx::{Column, Executor, Row, SqlSafeStr, SqlitePool, Statement, TypeInfo, ValueRef};
 
 /// Result of a raw SQL query: the selected column names (in `SELECT` order) plus
 /// one JSON object per row. Columns are carried separately so tabular consumers
@@ -23,13 +23,15 @@ pub async fn run_raw_query(sql: &str, pool: &SqlitePool) -> Result<QueryResult> 
     let columns: Vec<String> = match rows.first() {
         Some(row) => row.columns().iter().map(|c| c.name().to_string()).collect(),
         // No rows came back, so recover the schema from the prepared statement.
-        None => pool
-            .describe(sqlx::AssertSqlSafe(sql.to_string()).into_sql_str())
-            .await?
-            .columns()
-            .iter()
-            .map(|c| c.name().to_string())
-            .collect(),
+        None => {
+            let stmt = pool
+                .prepare(sqlx::AssertSqlSafe(sql.to_string()).into_sql_str())
+                .await?;
+            stmt.columns()
+                .iter()
+                .map(|c| c.name().to_string())
+                .collect()
+        }
     };
 
     // Rows are keyed by column name, so duplicate names would silently collapse
