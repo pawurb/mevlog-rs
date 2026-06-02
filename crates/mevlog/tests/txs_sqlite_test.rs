@@ -53,6 +53,16 @@ pub mod tests {
     }
 
     fn run_query(rpc_url: &str, tmp_dir: &Path, sql: Option<&str>, format: &str) -> Output {
+        run_query_with_price(rpc_url, tmp_dir, sql, format, "1")
+    }
+
+    fn run_query_with_price(
+        rpc_url: &str,
+        tmp_dir: &Path,
+        sql: Option<&str>,
+        format: &str,
+        native_token_price: &str,
+    ) -> Output {
         let mut command = Command::new("cargo");
         command
             .env("RUST_LOG", "off")
@@ -61,7 +71,7 @@ pub mod tests {
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
             .arg("--skip-verify-chain-id")
-            .args(["--native-token-price", "1"])
+            .args(["--native-token-price", native_token_price])
             .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
             .args(["--format", format]);
 
@@ -337,6 +347,119 @@ pub mod tests {
         assert_eq!(
             sum_env.result[0]["total"], EXPECTED_VALUE_SUM,
             "u256_sum(value) mismatch"
+        );
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    // vitalik.eth, resolved via the ENS lookup oracle on mainnet.
+    const VITALIK_ENS: &str = "vitalik.eth";
+    const VITALIK_ADDR: &str = "0xd8da6bf26964af9d7eed9e03e53415d37aa96045";
+
+    #[tokio::test]
+    async fn test_query_resolves_ens_macro() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        // {RESOLVE_ENS("vitalik.eth")} is substituted with the resolved address as a
+        // blob literal before the SQL runs; selecting it back renders as 0x-hex.
+        let output = run_query(
+            &rpc_url,
+            &tmp_dir,
+            Some(&format!(
+                "SELECT {{RESOLVE_ENS(\"{VITALIK_ENS}\")}} AS addr"
+            )),
+            "json",
+        );
+        assert!(
+            output.status.success(),
+            "ens query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert_eq!(
+            envelope.result[0]["addr"], VITALIK_ADDR,
+            "resolved ENS address mismatch"
+        );
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_substitutes_latest_block_macro() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        // {LATEST_BLOCK()} is replaced with the current chain head (fetched via
+        // RPC) before the SQL runs; the value is dynamic, so assert it's an integer.
+        let output = run_query(
+            &rpc_url,
+            &tmp_dir,
+            Some("SELECT {LATEST_BLOCK()} AS block"),
+            "json",
+        );
+        assert!(
+            output.status.success(),
+            "latest block query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert!(
+            envelope.result[0]["block"].is_u64(),
+            "latest block should be an integer, got {}",
+            envelope.result[0]["block"]
+        );
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_query_substitutes_native_token_price_macro() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        // {NATIVE_TOKEN_PRICE()} is replaced with the --native-token-price value
+        // before the SQL runs; a decimal price round-trips as a JSON number.
+        let output = run_query_with_price(
+            &rpc_url,
+            &tmp_dir,
+            Some("SELECT {NATIVE_TOKEN_PRICE()} AS price"),
+            "json",
+            "2500.5",
+        );
+        assert!(
+            output.status.success(),
+            "price query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert_eq!(
+            envelope.result[0]["price"], 2500.5,
+            "native token price mismatch"
         );
 
         fs::remove_dir_all(&tmp_dir).ok();

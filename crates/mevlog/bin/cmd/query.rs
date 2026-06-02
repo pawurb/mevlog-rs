@@ -11,6 +11,7 @@ use mevlog::{
         args_parsing::BlocksRange,
         data_fetch::fetch_blocks_batch,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
+        sql_macros::substitute_sql_macros,
         utils::get_native_token_price,
     },
     models::json::query_response::{
@@ -49,7 +50,13 @@ pub struct QueryArgs {
                 (tables: transactions, logs, indexed_blocks). When omitted, all \
                 txs in the block range are returned. Blob columns (addresses, \
                 hashes) are output as 0x-hex; addresses/hashes in predicates must \
-                be given as blob literals, e.g. WHERE from_address = X'1111...1111'"
+                be given as blob literals, e.g. WHERE from_address = X'1111...1111'. \
+                Macros must be wrapped in braces. {LATEST_BLOCK()} expands to the chain's \
+                current latest block number (fetched via RPC), e.g. WHERE block_number > \
+                {LATEST_BLOCK()} - 100. {NATIVE_TOKEN_PRICE()} expands to the native token's \
+                USD price (from --native-token-price or a Chainlink oracle). \
+                {RESOLVE_ENS(\"name.eth\")} expands to the resolved address as a blob literal \
+                (Ethereum mainnet only), e.g. WHERE from_address = {RESOLVE_ENS(\"vitalik.eth\")}"
     )]
     sql: Option<String>,
 }
@@ -168,6 +175,13 @@ impl QueryArgs {
                 block_range.from, block_range.to
             )
         });
+        let sql = substitute_sql_macros(
+            &sql,
+            &deps.provider,
+            deps.chain.chain_id,
+            native_token_price,
+        )
+        .await?;
         let result = run_raw_query(&sql, &deps.txs_read_path)?;
 
         match format {
