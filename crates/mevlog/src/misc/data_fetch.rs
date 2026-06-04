@@ -3,12 +3,13 @@ use std::{collections::HashMap, path::PathBuf, process::Command};
 use eyre::Result;
 use sqlx::SqlitePool;
 
-use crate::db::txs::models::transaction::Transaction;
+use crate::db::txs::models::{block::Block, transaction::Transaction};
 use crate::models::{evm_chain::EVMChain, mev_log::MEVLog};
 
 pub struct BatchedBlockData {
     pub txs_by_block: HashMap<u64, Vec<Transaction>>,
     pub logs_by_block: HashMap<u64, Vec<MEVLog>>,
+    pub blocks_by_block: HashMap<u64, Block>,
 }
 
 fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
@@ -191,20 +192,32 @@ pub async fn fetch_blocks_batch(
         run_cryo_batch("logs", *gap_start, *gap_end, chain)?;
     }
 
+    let block_ranges = scan_cached_ranges(chain, "blocks");
+    let block_coverage = analyze_coverage(&block_ranges, start_block, end_block);
+
+    for (gap_start, gap_end) in &block_coverage.missing_ranges {
+        run_cryo_batch("blocks", *gap_start, *gap_end, chain)?;
+    }
+
     let tx_ranges = scan_cached_ranges(chain, "transactions");
     let tx_files = collect_files_for_range(&tx_ranges, start_block, end_block);
 
     let log_ranges = scan_cached_ranges(chain, "logs");
     let log_files = collect_files_for_range(&log_ranges, start_block, end_block);
 
+    let block_ranges = scan_cached_ranges(chain, "blocks");
+    let block_files = collect_files_for_range(&block_ranges, start_block, end_block);
+
     let txs_by_block =
         parse_batch_txs_from_files(&tx_files, start_block, end_block, sqlite).await?;
     let logs_by_block =
         parse_batch_logs_from_files(&log_files, start_block, end_block, sqlite).await?;
+    let blocks_by_block = parse_batch_blocks_from_files(&block_files, start_block, end_block)?;
 
     Ok(BatchedBlockData {
         txs_by_block,
         logs_by_block,
+        blocks_by_block,
     })
 }
 
@@ -266,6 +279,34 @@ async fn parse_batch_logs_from_files(
     }
 
     Ok(logs_by_block)
+}
+
+fn parse_batch_blocks_from_files(
+    files: &[PathBuf],
+    start_block: u64,
+    end_block: u64,
+) -> Result<HashMap<u64, Block>> {
+    let mut blocks_by_block: HashMap<u64, Block> = HashMap::new();
+
+    for file_path in files {
+        let file = std::fs::File::open(file_path)?;
+        let builder = parquet::arrow::arrow_reader::ParquetRecordBatchReaderBuilder::try_new(file)?;
+        let reader = builder.build()?;
+
+        for batch_result in reader {
+            let batch = batch_result?;
+
+            for row_idx in 0..batch.num_rows() {
+                let (block, block_number) = Block::from_parquet_row(&batch, row_idx)?;
+
+                if block_number >= start_block && block_number <= end_block {
+                    blocks_by_block.insert(block_number, block);
+                }
+            }
+        }
+    }
+
+    Ok(blocks_by_block)
 }
 
 #[cfg(test)]

@@ -115,14 +115,13 @@ pub mod tests {
 
         let expected: Vec<u64> = (FROM_BLOCK..=TO_BLOCK).collect();
 
-        let indexed: Vec<u64> = sqlx::query_scalar::<_, i64>(
-            "SELECT block_number FROM indexed_blocks ORDER BY block_number",
-        )
-        .fetch_all(&conn)
-        .await?
-        .into_iter()
-        .map(|b| b as u64)
-        .collect();
+        let indexed: Vec<u64> =
+            sqlx::query_scalar::<_, i64>("SELECT block_number FROM blocks ORDER BY block_number")
+                .fetch_all(&conn)
+                .await?
+                .into_iter()
+                .map(|b| b as u64)
+                .collect();
 
         let tx_blocks: Vec<u64> = sqlx::query_scalar::<_, i64>(
             "SELECT DISTINCT block_number FROM transactions ORDER BY block_number",
@@ -137,7 +136,7 @@ pub mod tests {
             .fetch_one(&conn)
             .await?;
 
-        assert_eq!(indexed, expected, "indexed_blocks mismatch");
+        assert_eq!(indexed, expected, "blocks table mismatch");
         assert_eq!(tx_blocks, expected, "transaction blocks mismatch");
         assert_eq!(logs_count, 3868, "logs count mismatch");
 
