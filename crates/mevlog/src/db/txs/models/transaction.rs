@@ -37,6 +37,10 @@ pub struct Transaction {
     pub signature_hash: Option<FixedBytes<4>>,
     /// `None` when the method signature could not be resolved.
     pub signature: Option<String>,
+    /// Direct ETH paid to the block coinbase by this tx's call traces, as a
+    /// U256. `None` = not traced (no `--evm-trace`, or the trace failed);
+    /// `Some(0)` = traced, no coinbase payment; `Some(n)` = the bribe amount.
+    pub coinbase_transfer: Option<U256>,
 }
 
 #[hotpath::measure_all(future = true)]
@@ -94,6 +98,7 @@ impl Transaction {
             success: get(16).parse::<bool>().unwrap(),
             signature_hash,
             signature,
+            coinbase_transfer: None,
         };
 
         Ok((tx, block_number))
@@ -140,8 +145,8 @@ impl Transaction {
                 block_number, tx_index, tx_hash, nonce, from_address, to_address,
                 value, gas_limit, gas_used, effective_gas_price, gas_price,
                 max_fee_per_gas, max_priority_fee_per_gas, transaction_type,
-                success, signature_hash, signature
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                success, coinbase_transfer, signature_hash, signature
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(tx_hash) DO NOTHING
             "#,
         )
@@ -160,6 +165,10 @@ impl Transaction {
         .bind(max_priority_fee_per_gas)
         .bind(self.transaction_type.map(|t| t as i64))
         .bind(self.success)
+        .bind(
+            self.coinbase_transfer
+                .map(|v| v.to_be_bytes::<32>().to_vec()),
+        )
         .bind(self.signature_hash.as_ref().map(|s| s.as_slice()))
         .bind(self.signature.as_deref())
         .execute(executor)
@@ -173,6 +182,27 @@ impl Transaction {
 
         for tx in txs {
             tx.save(&mut *db_tx).await?;
+        }
+
+        db_tx.commit().await?;
+        Ok(())
+    }
+
+    /// Backfills `coinbase_transfer` for already-stored txs, keyed by tx hash. A
+    /// traced tx with no coinbase payment is written as `Some(0)`, so a stored
+    /// `NULL` always means "never traced".
+    pub async fn update_coinbase_transfers(
+        values: &[(FixedBytes<32>, U256)],
+        conn: &SqlitePool,
+    ) -> Result<()> {
+        let mut db_tx = conn.begin().await?;
+
+        for (tx_hash, value) in values {
+            sqlx::query("UPDATE transactions SET coinbase_transfer = ? WHERE tx_hash = ?")
+                .bind(value.to_be_bytes::<32>().to_vec())
+                .bind(tx_hash.as_slice())
+                .execute(&mut *db_tx)
+                .await?;
         }
 
         db_tx.commit().await?;
@@ -209,6 +239,7 @@ impl Transaction {
         let success: bool = row.try_get("success")?;
         let signature_hash: Option<Vec<u8>> = row.try_get("signature_hash")?;
         let signature: Option<String> = row.try_get("signature")?;
+        let coinbase_transfer: Option<Vec<u8>> = row.try_get("coinbase_transfer")?;
 
         Ok(Transaction {
             block_number: block_number as u64,
@@ -228,6 +259,7 @@ impl Transaction {
             success,
             signature_hash: signature_hash.map(|b| FixedBytes::<4>::from_slice(&b)),
             signature,
+            coinbase_transfer: coinbase_transfer.map(|b| U256::from_be_slice(&b)),
         })
     }
 }
@@ -361,6 +393,7 @@ pub mod test {
             success: true,
             signature_hash: Some(FixedBytes::<4>::from([0xa9, 0x05, 0x9c, 0xbb])),
             signature: Some("transfer(address,uint256)".to_string()),
+            coinbase_transfer: None,
         }
     }
 
@@ -376,6 +409,27 @@ pub mod test {
         let found = Transaction::query_where("block_number = 100", &conn).await?;
         assert_eq!(found.len(), 1);
         assert_eq!(found[0], tx);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn coinbase_transfer_roundtrips() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+
+        // None = not traced, Some(n) = traced coinbase payment.
+        let mut untraced = sample_tx(100, 0, 0xaa);
+        untraced.coinbase_transfer = None;
+        let mut bribed = sample_tx(100, 1, 0xbb);
+        bribed.coinbase_transfer = Some(U256::from(123_456_789u64));
+
+        Transaction::save_batch(&[untraced.clone(), bribed.clone()], &conn).await?;
+
+        let found = Transaction::query_where("block_number = 100", &conn).await?;
+        assert_eq!(found.len(), 2);
+        // query_where orders by tx_index ASC.
+        assert_eq!(found[0].coinbase_transfer, None);
+        assert_eq!(found[1].coinbase_transfer, Some(U256::from(123_456_789u64)));
 
         Ok(())
     }

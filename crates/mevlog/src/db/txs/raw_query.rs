@@ -91,6 +91,7 @@ mod test {
             success: true,
             signature_hash: Some(FixedBytes::<4>::from([0xa9, 0x05, 0x9c, 0xbb])),
             signature: Some("transfer(address,uint256)".to_string()),
+            coinbase_transfer: None,
         }
     }
 

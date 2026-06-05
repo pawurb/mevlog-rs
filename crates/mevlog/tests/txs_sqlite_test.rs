@@ -206,8 +206,8 @@ pub mod tests {
 
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        let expected = "block_number,tx_index,tx_hash,nonce,from_address,to_address,value,gas_limit,gas_used,effective_gas_price,gas_price,max_fee_per_gas,max_priority_fee_per_gas,transaction_type,success,signature_hash,signature\n\
-            25215353,0,0xdfe463a0a9fdd80ec3de153fef56e9f57ac7437ac7d7ab7276014017b8bc19e5,7366,0xf34f8b87f3db3b3a664289b4b063b507535eced1,0x80a64c6d7f12c47b7c66c5b4e20e72bc1fcd5d9e,0x0000000000000000000000000000000000000000000000000000000000000000,336986,157961,3133334821,3133334821,3191972299,3000000000,2,1,0x3d0e3ec5,\"swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256,address)\"\n";
+        let expected = "block_number,tx_index,tx_hash,nonce,from_address,to_address,value,gas_limit,gas_used,effective_gas_price,gas_price,max_fee_per_gas,max_priority_fee_per_gas,transaction_type,success,coinbase_transfer,signature_hash,signature\n\
+            25215353,0,0xdfe463a0a9fdd80ec3de153fef56e9f57ac7437ac7d7ab7276014017b8bc19e5,7366,0xf34f8b87f3db3b3a664289b4b063b507535eced1,0x80a64c6d7f12c47b7c66c5b4e20e72bc1fcd5d9e,0x0000000000000000000000000000000000000000000000000000000000000000,336986,157961,3133334821,3133334821,3191972299,3000000000,2,1,,0x3d0e3ec5,\"swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256,address)\"\n";
 
         assert_eq!(stdout, expected, "csv output mismatch");
 

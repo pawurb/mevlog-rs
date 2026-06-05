@@ -14,6 +14,7 @@ CREATE TABLE transactions (
     max_priority_fee_per_gas BIGINT NOT NULL,
     transaction_type BIGINT,
     success BOOLEAN NOT NULL,
+    coinbase_transfer BLOB,
     signature_hash BLOB,
     signature TEXT
 );

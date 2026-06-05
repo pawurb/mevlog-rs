@@ -12,4 +12,5 @@ pub mod rpc_tracing;
 pub mod rpc_urls;
 pub mod shared_init;
 pub mod sql_macros;
+pub mod tx_tracing;
 pub mod utils;

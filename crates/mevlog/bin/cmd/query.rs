@@ -12,6 +12,7 @@ use mevlog::{
         data_fetch::fetch_blocks_batch,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         sql_macros::substitute_sql_macros,
+        tx_tracing::backfill_coinbase_transfers,
         utils::get_native_token_price,
     },
     models::json::query_response::{
@@ -166,6 +167,20 @@ impl QueryArgs {
                 Transaction::save_batch(&chunk_txs, &deps.txs).await?;
                 Block::save_batch(&chunk_blocks, &deps.txs).await?;
             }
+        }
+
+        // Backfill direct coinbase payments for any untraced txs in range. Runs
+        // over the local store, so it also covers blocks indexed earlier without
+        // --evm-trace.
+        if let Some(mode) = &self.shared_opts.evm_trace {
+            backfill_coinbase_transfers(
+                block_range.from,
+                block_range.to,
+                mode,
+                &deps.provider,
+                &deps.txs,
+            )
+            .await?;
         }
 
         let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
