@@ -97,7 +97,7 @@ mod test {
     #[tokio::test]
     async fn raw_query_encodes_blobs_as_hex_and_ints_as_numbers() -> Result<()> {
         let (write, path, _cl) = setup_test_db_rw().await;
-        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
 
         let result = run_raw_query(
             "SELECT block_number, tx_hash, from_address, signature FROM transactions",
@@ -121,7 +121,7 @@ mod test {
     #[tokio::test]
     async fn raw_query_returns_columns_when_no_rows_match() -> Result<()> {
         let (write, path, _cl) = setup_test_db_rw().await;
-        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
 
         let result = run_raw_query(
             "SELECT block_number, tx_hash FROM transactions WHERE 1 = 0",
@@ -137,7 +137,7 @@ mod test {
     #[tokio::test]
     async fn raw_query_rejects_duplicate_column_names() -> Result<()> {
         let (write, path, _cl) = setup_test_db_rw().await;
-        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
 
         let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path).unwrap_err();
         assert!(err.to_string().contains("duplicate column name `x`"));
@@ -148,7 +148,7 @@ mod test {
     #[tokio::test]
     async fn raw_query_supports_projection_and_aggregates() -> Result<()> {
         let (write, path, _cl) = setup_test_db_rw().await;
-        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
 
         let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path)?;
         assert_eq!(result.rows[0]["n"], json!(1));
@@ -159,7 +159,7 @@ mod test {
     #[tokio::test]
     async fn raw_query_rejects_mutating_statements() -> Result<()> {
         let (write, path, _cl) = setup_test_db_rw().await;
-        Transaction::save_batch(&[sample_tx()], &[100], &write).await?;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
 
         for stmt in [
             "DELETE FROM transactions",

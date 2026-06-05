@@ -20,9 +20,16 @@ CREATE TABLE transactions (
 
 CREATE UNIQUE INDEX idx_transactions_hash ON transactions (tx_hash);
 
-CREATE TABLE indexed_blocks (
-    block_number INTEGER PRIMARY KEY NOT NULL
+CREATE TABLE blocks (
+    block_number INTEGER PRIMARY KEY NOT NULL,
+    block_hash BLOB NOT NULL,
+    miner BLOB NOT NULL,
+    gas_used BIGINT NOT NULL,
+    timestamp BIGINT NOT NULL,
+    base_fee_per_gas BIGINT
 );
+
+CREATE INDEX idx_blocks_timestamp ON blocks (timestamp);
 
 CREATE TABLE logs (
     block_number BIGINT NOT NULL,

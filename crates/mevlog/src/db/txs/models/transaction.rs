@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use std::str::FromStr;
 
 use alloy::rlp::Encodable;
@@ -170,46 +168,15 @@ impl Transaction {
         Ok(())
     }
 
-    pub async fn mark_indexed<'c, E>(block_number: u64, executor: E) -> Result<()>
-    where
-        E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
-    {
-        sqlx::query(
-            "INSERT INTO indexed_blocks (block_number) VALUES (?) \
-             ON CONFLICT(block_number) DO NOTHING",
-        )
-        .bind(block_number as i64)
-        .execute(executor)
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn save_batch(txs: &[Transaction], blocks: &[u64], conn: &SqlitePool) -> Result<()> {
+    pub async fn save_batch(txs: &[Transaction], conn: &SqlitePool) -> Result<()> {
         let mut db_tx = conn.begin().await?;
 
         for tx in txs {
             tx.save(&mut *db_tx).await?;
         }
-        for &block in blocks {
-            Self::mark_indexed(block, &mut *db_tx).await?;
-        }
 
         db_tx.commit().await?;
         Ok(())
-    }
-
-    pub async fn missing_blocks(from: u64, to: u64, conn: &SqlitePool) -> Result<Vec<u64>> {
-        let existing: Vec<i64> = sqlx::query_scalar(
-            "SELECT block_number FROM indexed_blocks WHERE block_number BETWEEN ? AND ?",
-        )
-        .bind(from as i64)
-        .bind(to as i64)
-        .fetch_all(conn)
-        .await?;
-
-        let indexed: HashSet<u64> = existing.into_iter().map(|b| b as u64).collect();
-        Ok((from..=to).filter(|b| !indexed.contains(b)).collect())
     }
 
     pub async fn query_where(where_sql: &str, conn: &SqlitePool) -> Result<Vec<Transaction>> {
@@ -402,7 +369,7 @@ pub mod test {
         let (conn, _cl) = setup_test_db().await;
 
         let tx = sample_tx(100, 0, 0xaa);
-        Transaction::save_batch(std::slice::from_ref(&tx), &[100], &conn).await?;
+        Transaction::save_batch(std::slice::from_ref(&tx), &conn).await?;
 
         assert_eq!(Transaction::count(&conn).await?, 1);
 
@@ -418,24 +385,10 @@ pub mod test {
         let (conn, _cl) = setup_test_db().await;
 
         let tx = sample_tx(100, 0, 0xaa);
-        Transaction::save_batch(std::slice::from_ref(&tx), &[100], &conn).await?;
-        Transaction::save_batch(std::slice::from_ref(&tx), &[100], &conn).await?;
+        Transaction::save_batch(std::slice::from_ref(&tx), &conn).await?;
+        Transaction::save_batch(std::slice::from_ref(&tx), &conn).await?;
 
         assert_eq!(Transaction::count(&conn).await?, 1);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn missing_blocks_excludes_indexed() -> Result<()> {
-        let (conn, _cl) = setup_test_db().await;
-
-        // Block 101 has no txs but is still marked indexed.
-        Transaction::save_batch(&[], &[101], &conn).await?;
-        Transaction::save_batch(&[sample_tx(103, 0, 0xbb)], &[103], &conn).await?;
-
-        let missing = Transaction::missing_blocks(100, 104, &conn).await?;
-        assert_eq!(missing, vec![100, 102, 104]);
-
         Ok(())
     }
 }

@@ -1,3 +1,3 @@
 DROP TABLE logs;
-DROP TABLE indexed_blocks;
+DROP TABLE blocks;
 DROP TABLE transactions;

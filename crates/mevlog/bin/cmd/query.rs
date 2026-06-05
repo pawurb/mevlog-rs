@@ -4,7 +4,7 @@ use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
     db::txs::{
-        models::{log::Log, transaction::Transaction},
+        models::{block::Block, log::Log, transaction::Transaction},
         raw_query::run_raw_query,
     },
     misc::{
@@ -47,7 +47,7 @@ pub struct QueryArgs {
     #[arg(
         long,
         help = "Custom read-only SQL to run against the local txs DB \
-                (tables: transactions, logs, indexed_blocks). When omitted, all \
+                (tables: transactions, logs, blocks). When omitted, all \
                 txs in the block range are returned. Blob columns (addresses, \
                 hashes) are output as 0x-hex; addresses/hashes in predicates must \
                 be given as blob literals, e.g. WHERE from_address = X'1111...1111'. \
@@ -101,9 +101,8 @@ impl QueryArgs {
         let start_time = Instant::now();
 
         // Only fetch blocks that are not already in the local store. Indexed
-        // blocks (including empty ones, tracked in `indexed_blocks`) are skipped.
-        let missing =
-            Transaction::missing_blocks(block_range.from, block_range.to, &deps.txs).await?;
+        // blocks (including empty ones, tracked by the `blocks` table) are skipped.
+        let missing = Block::missing_blocks(block_range.from, block_range.to, &deps.txs).await?;
 
         let new_blocks = missing.len() as u64;
         let cached_blocks = block_range.size().saturating_sub(new_blocks);
@@ -152,12 +151,20 @@ impl QueryArgs {
                     }
                 }
 
-                // Persist logs before txs: `save_batch` marks the chunk's blocks
-                // as indexed, so a block is only flagged once its logs have landed.
-                // `chunk` (not just blocks with txs) is passed so empty blocks are
-                // still recorded in `indexed_blocks`.
+                let mut chunk_blocks: Vec<Block> = vec![];
+                for &block_number in chunk {
+                    if let Some(block) = batch_data.blocks_by_block.get(&block_number) {
+                        chunk_blocks.push(block.clone());
+                    }
+                }
+
+                // Persist blocks last: inserting a `blocks` row marks the block as
+                // indexed, so a block is only flagged once its txs and logs have
+                // landed. Every block in `chunk` (including empty ones) yields a
+                // block row, so empty blocks are still recorded as indexed.
                 Log::save_batch(&chunk_logs, &deps.txs).await?;
-                Transaction::save_batch(&chunk_txs, chunk, &deps.txs).await?;
+                Transaction::save_batch(&chunk_txs, &deps.txs).await?;
+                Block::save_batch(&chunk_blocks, &deps.txs).await?;
             }
         }
 
