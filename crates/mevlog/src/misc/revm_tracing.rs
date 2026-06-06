@@ -369,8 +369,6 @@ pub async fn revm_opcodes_for_tx(
     Ok(vec![])
 }
 
-/// Replays the block up to `tx_hash` and returns its parity call traces.
-/// Mirrors [`revm_opcodes_for_tx`] but extracts calls instead of opcodes.
 pub async fn revm_calls_for_tx(
     tx_hash: FixedBytes<32>,
     block_number: u64,
