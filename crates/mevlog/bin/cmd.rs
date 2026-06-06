@@ -10,6 +10,7 @@ pub mod query;
 pub mod state_diff;
 #[cfg(feature = "tui")]
 pub mod tui;
+pub mod tx;
 pub mod update_db;
 
 #[cfg(feature = "mcp")]

@@ -82,6 +82,21 @@ pub mod tests {
         command.output().expect("failed to execute CLI")
     }
 
+    fn run_tx(rpc_url: &str, tmp_dir: &Path, tx_hash: &str, native_token_price: &str) -> Output {
+        Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .args(["run", "--bin", "mevlog", "--", "tx", tx_hash])
+            .arg("--logs")
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--rpc-url", rpc_url])
+            .arg("--skip-verify-chain-id")
+            .args(["--native-token-price", native_token_price])
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", "json"])
+            .output()
+            .expect("failed to execute CLI")
+    }
+
     #[tokio::test]
     async fn test_query_indexes_txs_into_sqlite() -> Result<()> {
         let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
@@ -498,6 +513,75 @@ pub mod tests {
             "second run cached_blocks"
         );
         assert_eq!(second_json.new_blocks, 0, "second run new_blocks");
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_tx_command_returns_exact_payload() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_tx(&rpc_url, &tmp_dir, TX_HASH, "2500.5");
+
+        assert!(
+            output.status.success(),
+            "tx failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+
+        // No --evm-trace, so coinbase/full-cost fields are null. USD fields use
+        // the supplied --native-token-price (2500.5). With --logs, the single
+        // ERC20 Transfer log is embedded.
+        let expected = serde_json::json!({
+            "block_number": 25215353,
+            "tx_index": 2,
+            "tx_hash": "0xa03753bac3008c6fe05ed2f95045995632db4bd332426e9b823b3a73d0dd8594",
+            "from": "0x142f11cfb8a7bf975565a875ffe425c1216af7b6",
+            "to": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+            "nonce": 12,
+            "signature": "transfer(address,uint256)",
+            "signature_hash": "0xa9059cbb",
+            "success": true,
+            "value": "0",
+            "display_value": "0.000000",
+            "gas_used": 63209,
+            "gas_price": 2233334825u64,
+            "display_gas_price": "2.23",
+            "tx_cost": 141166860953425u64,
+            "display_tx_cost": "0.000141",
+            "display_tx_cost_usd": "$0.35",
+            "coinbase_transfer": null,
+            "display_coinbase_transfer": null,
+            "display_coinbase_transfer_usd": null,
+            "full_tx_cost": null,
+            "display_full_tx_cost": null,
+            "display_full_tx_cost_usd": null,
+            "logs": [
+                {
+                    "log_index": 6,
+                    "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                    "signature": "Transfer(address,address,uint256)",
+                    "topics": [
+                        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+                        "0x000000000000000000000000142f11cfb8a7bf975565a875ffe425c1216af7b6",
+                        "0x0000000000000000000000000f4d84b3c4a344c573b640a2f085b1f92013eedd"
+                    ],
+                    "data": "0x000000000000000000000000000000000000000000000000000000002f9fc5c0",
+                    "erc20_amount": "799000000"
+                }
+            ]
+        });
+
+        assert_eq!(payload, expected, "tx payload mismatch");
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())

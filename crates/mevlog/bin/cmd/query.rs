@@ -3,13 +3,9 @@ use std::time::Instant;
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
-    db::txs::{
-        models::{block::Block, log::Log, transaction::Transaction},
-        raw_query::run_raw_query,
-    },
+    db::txs::{indexing::index_block_range, raw_query::run_raw_query},
     misc::{
         args_parsing::BlocksRange,
-        data_fetch::fetch_blocks_batch,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
         sql_macros::substitute_sql_macros,
         tx_tracing::backfill_coinbase_transfers,
@@ -19,7 +15,6 @@ use mevlog::{
         QueryParams, rows_to_csv, rows_to_table, serialize_query_response,
     },
 };
-use tracing::info;
 
 #[derive(Debug, clap::Parser)]
 pub struct QueryArgs {
@@ -103,71 +98,8 @@ impl QueryArgs {
 
         // Only fetch blocks that are not already in the local store. Indexed
         // blocks (including empty ones, tracked by the `blocks` table) are skipped.
-        let missing = Block::missing_blocks(block_range.from, block_range.to, &deps.txs).await?;
-
-        let new_blocks = missing.len() as u64;
-        let cached_blocks = block_range.size().saturating_sub(new_blocks);
-
-        info!(
-            "Blocks: {} cached, {} to fetch ({} total)",
-            cached_blocks,
-            new_blocks,
-            block_range.size()
-        );
-
-        let ranges = contiguous_ranges(&missing);
-        let total_batches: usize = ranges
-            .iter()
-            .map(|(s, e)| ((e - s + 1) as usize).div_ceil(self.batch_size))
-            .sum();
-        let mut batch_idx = 0;
-
-        for (run_start, run_end) in ranges {
-            let run_blocks: Vec<u64> = (run_start..=run_end).collect();
-
-            for chunk in run_blocks.chunks(self.batch_size) {
-                let start_block = *chunk.first().unwrap();
-                let end_block = *chunk.last().unwrap();
-
-                batch_idx += 1;
-                info!(
-                    "Fetching blocks {}-{} (batch {}/{})",
-                    start_block, end_block, batch_idx, total_batches
-                );
-
-                let batch_data =
-                    fetch_blocks_batch(start_block, end_block, &deps.chain, &deps.sqlite).await?;
-
-                let mut chunk_txs: Vec<Transaction> = vec![];
-                for &block_number in chunk {
-                    if let Some(txs) = batch_data.txs_by_block.get(&block_number) {
-                        chunk_txs.extend(txs.iter().cloned());
-                    }
-                }
-
-                let mut chunk_logs: Vec<Log> = vec![];
-                for &block_number in chunk {
-                    if let Some(logs) = batch_data.logs_by_block.get(&block_number) {
-                        chunk_logs.extend(logs.iter().map(|l| Log::from_mev_log(block_number, l)));
-                    }
-                }
-
-                let mut chunk_blocks: Vec<Block> = vec![];
-                for &block_number in chunk {
-                    if let Some(block) = batch_data.blocks_by_block.get(&block_number) {
-                        chunk_blocks.push(block.clone());
-                    }
-                }
-
-                // Persist blocks last: inserting a `blocks` row marks the block as
-                // indexed, so a block is only flagged once its txs and logs have
-                // landed. Every block in `chunk` (including empty ones) yields a
-                // block row, so empty blocks are still recorded as indexed.
-                Log::save_batch(&chunk_logs, &deps.txs).await?;
-                Transaction::save_batch(&chunk_txs, &deps.txs).await?;
-                Block::save_batch(&chunk_blocks, &deps.txs).await?;
-            }
-        }
+        let (cached_blocks, new_blocks) =
+            index_block_range(block_range.from, block_range.to, self.batch_size, &deps).await?;
 
         // Backfill direct coinbase payments for any untraced txs in range. Runs
         // over the local store, so it also covers blocks indexed earlier without
@@ -245,19 +177,4 @@ impl QueryArgs {
 
         Ok(())
     }
-}
-
-/// Collapses a sorted, deduplicated list of block numbers into contiguous
-/// `(start, end)` inclusive ranges so each gap is fetched as a single batch.
-fn contiguous_ranges(blocks: &[u64]) -> Vec<(u64, u64)> {
-    let mut ranges: Vec<(u64, u64)> = vec![];
-
-    for &block in blocks {
-        match ranges.last_mut() {
-            Some(last) if block == last.1 + 1 => last.1 = block,
-            _ => ranges.push((block, block)),
-        }
-    }
-
-    ranges
 }

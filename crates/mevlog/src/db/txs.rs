@@ -1,3 +1,4 @@
+pub mod indexing;
 pub mod models;
 pub mod raw_query;
 
