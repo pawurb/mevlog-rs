@@ -55,7 +55,10 @@ pub enum MLSubcommand {
     Chains(ChainsArgs),
     #[command(about = "Show detailed chain information")]
     ChainInfo(ChainInfoArgs),
-    #[command(about = "Compute a tx's direct ETH payment to its block's coinbase")]
+    #[command(
+        name = "evm-coinbase-transfer",
+        about = "Compute a tx's direct ETH payment to its block's coinbase"
+    )]
     CoinbaseTransfer(CoinbaseTransferArgs),
     #[command(about = "Check if RPC supports debug tracing")]
     DebugAvailable(DebugAvailableArgs),

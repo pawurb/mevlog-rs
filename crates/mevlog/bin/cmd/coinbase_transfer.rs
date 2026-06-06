@@ -39,7 +39,7 @@ impl CoinbaseTransferArgs {
             OutputFormat::JsonPretty => println!("{}", serde_json::to_string_pretty(&transfer)?),
             OutputFormat::Table => println!("{transfer}"),
             OutputFormat::Csv => {
-                eyre::bail!("'csv' format is not supported by the coinbase-transfer command")
+                eyre::bail!("'csv' format is not supported by the evm-coinbase-transfer command")
             }
         }
 
