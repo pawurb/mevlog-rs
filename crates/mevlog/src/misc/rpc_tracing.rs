@@ -1,4 +1,7 @@
-use std::{collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use alloy::{
     primitives::{B256, TxHash},
@@ -9,10 +12,13 @@ use alloy::{
     },
 };
 use eyre::Result;
-use revm::primitives::Address;
+use revm::primitives::{Address, FixedBytes, U256};
+use tracing::{debug, info, warn};
 
 use crate::{
     GenericProvider,
+    db::txs::models::{block::Block, transaction::Transaction},
+    misc::coinbase_bribe::{TraceData, find_coinbase_transfer},
     models::{mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff},
 };
 
@@ -212,4 +218,58 @@ pub async fn rpc_tx_state_diff(
     }
 
     Ok(state_diff)
+}
+
+// Traces each untraced tx independently; coinbase comes from the `blocks` table.
+pub(crate) async fn backfill_rpc(
+    untraced: &[Transaction],
+    provider: &Arc<GenericProvider>,
+    txs: &sqlx::SqlitePool,
+) -> Result<Vec<(FixedBytes<32>, U256)>> {
+    let (from, to) = block_bounds(untraced);
+    let blocks = Block::query_where(&format!("block_number BETWEEN {from} AND {to}"), txs).await?;
+    let coinbase_by_block: HashMap<u64, Address> =
+        blocks.iter().map(|b| (b.block_number, b.miner)).collect();
+
+    let to_trace: Vec<(FixedBytes<32>, Address)> = untraced
+        .iter()
+        .filter_map(|tx| {
+            coinbase_by_block
+                .get(&tx.block_number)
+                .map(|cb| (tx.tx_hash, *cb))
+        })
+        .collect();
+
+    let total = to_trace.len();
+    info!("Tracing coinbase payments for {} txs (rpc)", total);
+
+    let mut updates: Vec<(FixedBytes<32>, U256)> = Vec::new();
+    for (n, (tx_hash, coinbase)) in to_trace.into_iter().enumerate() {
+        debug!("Tracing {}/{} (0x{})", n + 1, total, hex::encode(tx_hash));
+        match rpc_tx_calls(tx_hash, provider).await {
+            Ok(frames) => {
+                let traces: Vec<TraceData> = frames.into_iter().map(Into::into).collect();
+                updates.push((tx_hash, find_coinbase_transfer(coinbase, traces)));
+            }
+            Err(e) => {
+                warn!(
+                    "coinbase_transfer trace failed for 0x{}: {}",
+                    hex::encode(tx_hash),
+                    e
+                );
+            }
+        }
+    }
+
+    Ok(updates)
+}
+
+fn block_bounds(txs: &[Transaction]) -> (u64, u64) {
+    let mut min = u64::MAX;
+    let mut max = 0;
+    for tx in txs {
+        min = min.min(tx.block_number);
+        max = max.max(tx.block_number);
+    }
+    (min, max)
 }

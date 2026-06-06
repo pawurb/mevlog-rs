@@ -1,5 +1,6 @@
 pub mod chain_info;
 pub mod chains;
+pub mod coinbase_transfer;
 pub mod debug_available;
 pub mod ens_lookup;
 pub mod ens_resolve;
