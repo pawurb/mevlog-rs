@@ -81,12 +81,12 @@ pub async fn rpc_affected_addresses(
         }
     };
 
-    let diff_traces = match trace {
-        GethTrace::PreStateTracer(PreStateFrame::Diff(DiffMode { post: frame, .. })) => frame,
+    let (pre, post) = match trace {
+        GethTrace::PreStateTracer(PreStateFrame::Diff(DiffMode { pre, post })) => (pre, post),
         _ => unreachable!(),
     };
 
-    Ok(diff_traces.keys().copied().collect())
+    Ok(pre.keys().chain(post.keys()).copied().collect())
 }
 
 #[hotpath::measure(log = true, future = true)]
