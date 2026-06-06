@@ -37,6 +37,7 @@ else
     echo "npm not found, skipping React build"
 fi
 
+mkdir -p "$ASSETS_FOLDER"
 rm -f "$ASSETS_FOLDER"/*
 echo "Assets folder cleaned"
 copy_file "$SCRIPTS_FOLDER" "scripts.js" "$SCRIPTS_SUFFIX"
