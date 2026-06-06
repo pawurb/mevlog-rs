@@ -8,7 +8,7 @@ use alloy::{
     consensus::BlockHeader,
     eips::{BlockId, BlockNumberOrTag, calc_blob_gasprice, eip2930::AccessList},
     network::{AnyNetwork, AnyRpcBlock},
-    primitives::{Bytes, address},
+    primitives::address,
     providers::{Provider, ProviderBuilder},
     rpc::types::{
         AccessList as AlloyAccessList, TransactionRequest,
@@ -18,11 +18,8 @@ use alloy::{
 use eyre::Result;
 use foundry_fork_db::{BlockchainDb, SharedBackend, cache::BlockchainDbMeta};
 use revm::{
-    Context, ExecuteCommitEvm, ExecuteEvm, InspectEvm, MainBuilder, MainContext,
-    context::{
-        BlockEnv, TransactTo, TxEnv,
-        result::{ExecutionResult, Output},
-    },
+    Context, ExecuteCommitEvm, InspectEvm, MainBuilder, MainContext,
+    context::{BlockEnv, TransactTo, TxEnv},
     context_interface::block::BlobExcessGasAndPrice,
     database::CacheDB,
     primitives::{Address, FixedBytes, TxKind, U256},
@@ -234,7 +231,7 @@ pub(crate) async fn backfill_revm(
     Ok(())
 }
 
-pub fn revm_touching_accounts(
+pub fn revm_affected_addresses(
     _tx_hash: FixedBytes<32>,
     tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
@@ -256,7 +253,7 @@ pub fn revm_touching_accounts(
     let res = match evm.inspect_tx(tx_env) {
         Ok(res) => res,
         Err(e) => {
-            tracing::warn!("revm_touching_accounts failed. {:?}", e);
+            tracing::warn!("revm_affected_addresses failed. {:?}", e);
             return Ok(HashSet::new());
         }
     };
@@ -264,41 +261,40 @@ pub fn revm_touching_accounts(
     Ok(res.state.keys().cloned().collect())
 }
 
-fn _revm_call_tx(
+pub async fn revm_affected_addresses_for_tx(
     tx_hash: FixedBytes<32>,
-    tx_req: &TransactionRequest,
-    block_context: &RevmBlockContext,
-    cache_db: &mut CacheDB<SharedBackend>,
-) -> Result<Bytes> {
-    let mut evm = Context::mainnet().with_db(cache_db);
-    evm.modify_block(|block| {
-        apply_block_env(block, block_context);
-    });
-    evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req, block_context);
-    });
-    let mut evm = evm.build_mainnet();
+    block_number: u64,
+    provider: &Arc<GenericProvider>,
+    rpc_url: &str,
+    chain: &EVMChain,
+) -> Result<HashSet<Address>> {
+    let any_provider = ProviderBuilder::new()
+        .network::<AnyNetwork>()
+        .connect_http(rpc_url.parse()?);
+    let block = get_cached_revm_block(&any_provider, chain, block_number).await?;
+    let block_context = RevmBlockContext::new(&block);
 
-    let tx_env = evm.tx.clone();
-    let ref_tx = match evm.transact(tx_env) {
-        Ok(tx) => tx,
-        Err(e) => {
-            eyre::bail!("_revm_call_tx {tx_hash} failed. {:?}", e);
-        }
-    };
-    let result = ref_tx.result;
-
-    let value = match result {
-        ExecutionResult::Success {
-            output: Output::Call(value),
-            ..
-        } => value,
-        result => {
-            eyre::bail!("_revm_call_tx {tx_hash} failed: {result:?}");
-        }
+    let ordered: Vec<FixedBytes<32>> = block.transactions.hashes().collect();
+    let Some(last_index) = ordered.iter().position(|h| h == &tx_hash) else {
+        eyre::bail!("Transaction {tx_hash} not found in block {block_number}");
     };
 
-    Ok(value)
+    let parent_block = block_number.saturating_sub(1);
+    let mut cache_db = init_revm_db(parent_block, &Some(TraceMode::Revm), rpc_url, chain)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Failed to initialize Revm fork DB"))?;
+
+    for current_hash in ordered.into_iter().take(last_index + 1) {
+        let tx_req = fetch_tx_request(current_hash, provider).await?;
+
+        if current_hash == tx_hash {
+            return revm_affected_addresses(tx_hash, &tx_req, &block_context, &mut cache_db);
+        }
+
+        revm_commit_tx(current_hash, &tx_req, &block_context, &mut cache_db)?;
+    }
+
+    Ok(HashSet::new())
 }
 
 pub fn revm_tx_calls(

@@ -53,7 +53,7 @@ pub async fn rpc_tx_calls(
 }
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn rpc_touching_accounts(
+pub async fn rpc_affected_addresses(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
 ) -> Result<HashSet<Address>> {

@@ -11,8 +11,8 @@ use crate::{
     db::txs::models::transaction::Transaction,
     misc::{
         coinbase_bribe::{TraceData, find_coinbase_transfer},
-        revm_tracing::{backfill_revm, revm_block_traced_calls},
-        rpc_tracing::{backfill_rpc, rpc_tx_calls},
+        revm_tracing::{backfill_revm, revm_affected_addresses_for_tx, revm_block_traced_calls},
+        rpc_tracing::{backfill_rpc, rpc_affected_addresses, rpc_tx_calls},
         shared_init::TraceMode,
         utils::wei_to_eth,
     },
@@ -83,6 +83,27 @@ pub async fn coinbase_transfer_for_tx(
         amount_wei,
         amount_eth: wei_to_eth(amount_wei),
     })
+}
+
+/// Addresses affected by a single tx according to the selected trace backend.
+pub async fn affected_addresses_for_tx(
+    tx_hash: TxHash,
+    mode: &TraceMode,
+    provider: &Arc<GenericProvider>,
+    chain: &EVMChain,
+    rpc_url: &str,
+) -> Result<Vec<Address>> {
+    let addresses = match mode {
+        TraceMode::RPC => rpc_affected_addresses(tx_hash, provider).await?,
+        TraceMode::Revm => {
+            let block_number = tx_block_number(tx_hash, provider).await?;
+            revm_affected_addresses_for_tx(tx_hash, block_number, provider, rpc_url, chain).await?
+        }
+    };
+
+    let mut addresses: Vec<_> = addresses.into_iter().collect();
+    addresses.sort();
+    Ok(addresses)
 }
 
 /// Resolves the beneficiary (coinbase) of the block that mined `tx_hash`.

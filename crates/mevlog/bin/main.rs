@@ -7,9 +7,10 @@ use cmd::seed_db::SeedDBArgs;
 #[cfg(feature = "tui")]
 use cmd::tui::TuiArgs;
 use cmd::{
-    chain_info::ChainInfoArgs, chains::ChainsArgs, coinbase_transfer::CoinbaseTransferArgs,
-    debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
-    query::QueryArgs, update_db::UpdateDBArgs,
+    affected_addresses::AffectedAddressesArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
+    coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
+    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, query::QueryArgs,
+    update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -60,6 +61,11 @@ pub enum MLSubcommand {
         about = "Compute a tx's direct ETH payment to its block's coinbase"
     )]
     CoinbaseTransfer(CoinbaseTransferArgs),
+    #[command(
+        name = "evm-affected-addresses",
+        about = "List addresses affected by a tx"
+    )]
+    AffectedAddresses(AffectedAddressesArgs),
     #[command(about = "Check if RPC supports debug tracing")]
     DebugAvailable(DebugAvailableArgs),
     #[command(about = "Resolve an ENS name to an address")]
@@ -145,6 +151,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::CoinbaseTransfer(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::AffectedAddresses(args) => {
             args.run(root_args.format).await?;
         }
         ML::DebugAvailable(args) => {
