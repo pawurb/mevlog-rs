@@ -1,4 +1,8 @@
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    sync::Arc,
+};
 
 use alloy::{
     consensus::BlockHeader,
@@ -7,7 +11,7 @@ use alloy::{
     primitives::{Bytes, address},
     providers::{Provider, ProviderBuilder},
     rpc::types::{
-        AccessList as AlloyAccessList, Block, TransactionRequest,
+        AccessList as AlloyAccessList, TransactionRequest,
         trace::parity::{TraceType, TransactionTrace},
     },
 };
@@ -27,6 +31,9 @@ use revm_inspectors::tracing::{TracingInspector, TracingInspectorConfig};
 
 use super::shared_init::TraceMode;
 use super::utils::block_cache_key;
+use crate::GenericProvider;
+use crate::db::txs::models::transaction::Transaction;
+use crate::misc::coinbase_bribe::{TraceData, find_coinbase_transfer};
 use crate::models::{
     evm_chain::EVMChain,
     mev_opcode::MEVOpcode,
@@ -87,18 +94,122 @@ pub struct RevmBlockContext {
 }
 
 impl RevmBlockContext {
-    pub fn new(block: &Block) -> Self {
+    pub fn new(block: &AnyRpcBlock) -> Self {
+        let header = &block.header;
         Self {
-            number: block.header.number(),
-            timestamp: block.header.timestamp(),
-            coinbase: block.header.beneficiary,
-            difficulty: block.header.difficulty,
-            gas_limit: U256::from(block.header.gas_limit),
-            basefee: U256::from(block.header.base_fee_per_gas.unwrap_or(0)),
-            excess_blob_gas: block.header.excess_blob_gas,
-            blob_gasprice: block.header.excess_blob_gas.map(calc_blob_gasprice),
+            number: header.number(),
+            timestamp: header.timestamp(),
+            coinbase: header.beneficiary(),
+            difficulty: header.difficulty(),
+            gas_limit: U256::from(header.gas_limit()),
+            basefee: U256::from(header.base_fee_per_gas().unwrap_or(0)),
+            excess_blob_gas: header.excess_blob_gas(),
+            blob_gasprice: header.excess_blob_gas().map(calc_blob_gasprice),
         }
     }
+}
+
+// Per-tx fetch (calldata included), so tracing tx index `n` only fetches `0..=n`.
+async fn fetch_tx_request(
+    tx_hash: FixedBytes<32>,
+    provider: &Arc<GenericProvider>,
+) -> Result<TransactionRequest> {
+    let tx = provider
+        .get_transaction_by_hash(tx_hash)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Transaction {tx_hash} not found"))?;
+
+    Ok(TransactionRequest::from_recovered_transaction(
+        tx.into_recovered(),
+    ))
+}
+
+// Traces `targets` by sequential Revm replay against parent state: fork at
+// block-1, replay in index order up to the last target, committing each tx.
+pub async fn revm_block_traced_calls(
+    block_number: u64,
+    targets: &HashSet<FixedBytes<32>>,
+    provider: &Arc<GenericProvider>,
+    rpc_url: &str,
+    chain: &EVMChain,
+) -> Result<(
+    RevmBlockContext,
+    HashMap<FixedBytes<32>, Vec<TransactionTrace>>,
+)> {
+    // A hashes-only block fetch gives both the header (for the block context) and
+    // the txs in index order, without pulling every tx body.
+    let any_provider = ProviderBuilder::new()
+        .network::<AnyNetwork>()
+        .connect_http(rpc_url.parse()?);
+    let block = get_cached_revm_block(&any_provider, chain, block_number).await?;
+    let block_context = RevmBlockContext::new(&block);
+
+    let ordered: Vec<FixedBytes<32>> = block.transactions.hashes().collect();
+    let mut traced: HashMap<FixedBytes<32>, Vec<TransactionTrace>> = HashMap::new();
+
+    // Replay only as far as the last requested tx; trailing txs are irrelevant.
+    let Some(last_index) = ordered.iter().rposition(|h| targets.contains(h)) else {
+        return Ok((block_context, traced));
+    };
+
+    let parent_block = block_number.saturating_sub(1);
+    let mut cache_db = init_revm_db(parent_block, &Some(TraceMode::Revm), rpc_url, chain)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Failed to initialize Revm fork DB"))?;
+
+    for tx_hash in ordered.into_iter().take(last_index + 1) {
+        let tx_req = fetch_tx_request(tx_hash, provider).await?;
+
+        if targets.contains(&tx_hash) {
+            let calls = revm_tx_calls(tx_hash, &tx_req, &block_context, &mut cache_db)?;
+            traced.insert(tx_hash, calls);
+        }
+
+        // Commit unconditionally so the next tx sees this tx's state changes; a
+        // reverted tx still advances the sender's nonce and pays gas.
+        revm_commit_tx(tx_hash, &tx_req, &block_context, &mut cache_db)?;
+    }
+
+    Ok((block_context, traced))
+}
+
+// Groups untraced txs by block and replays each block once, sharing the fork.
+pub(crate) async fn backfill_revm(
+    untraced: &[Transaction],
+    provider: &Arc<GenericProvider>,
+    chain: &EVMChain,
+    rpc_url: &str,
+) -> Result<Vec<(FixedBytes<32>, U256)>> {
+    let mut by_block: HashMap<u64, HashSet<FixedBytes<32>>> = HashMap::new();
+    for tx in untraced {
+        by_block
+            .entry(tx.block_number)
+            .or_default()
+            .insert(tx.tx_hash);
+    }
+
+    tracing::info!(
+        "Tracing coinbase payments for {} txs across {} blocks (revm)",
+        untraced.len(),
+        by_block.len()
+    );
+
+    let mut updates: Vec<(FixedBytes<32>, U256)> = Vec::new();
+    for (block_number, targets) in by_block {
+        match revm_block_traced_calls(block_number, &targets, provider, rpc_url, chain).await {
+            Ok((ctx, traced)) => {
+                for (tx_hash, calls) in traced {
+                    let traces: Vec<TraceData> = calls.into_iter().map(Into::into).collect();
+                    updates.push((tx_hash, find_coinbase_transfer(ctx.coinbase, traces)));
+                }
+            }
+            Err(e) => {
+                tracing::warn!("coinbase_transfer revm trace failed for block {block_number}: {e}");
+            }
+        }
+    }
+
+    Ok(updates)
 }
 
 pub fn revm_touching_accounts(
@@ -318,24 +429,11 @@ pub fn revm_commit_tx(
     let mut evm = evm.build_mainnet();
 
     let tx_env = evm.tx.clone();
-    let ref_tx = match evm.transact_commit(tx_env) {
-        Ok(tx) => tx,
-        Err(e) => {
-            tracing::warn!("revm_commit_tx {tx_hash} failed. {:?}", e);
-            return Ok(());
-        }
-    };
-
-    match ref_tx {
-        ExecutionResult::Success {
-            output: Output::Call(value),
-            ..
-        } => value,
-        result => {
-            tracing::warn!("revm_commit_tx {tx_hash} failed: {result:?}");
-            return Ok(());
-        }
-    };
+    // Commit regardless of outcome to advance state; `transact_commit` applies
+    // nonce/balance changes even on revert. Only a transact error is worth logging.
+    if let Err(e) = evm.transact_commit(tx_env) {
+        tracing::warn!("revm_commit_tx {tx_hash} failed. {:?}", e);
+    }
 
     Ok(())
 }

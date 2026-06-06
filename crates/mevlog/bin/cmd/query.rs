@@ -178,6 +178,8 @@ impl QueryArgs {
                 block_range.to,
                 mode,
                 &deps.provider,
+                &deps.chain,
+                &deps.rpc_url,
                 &deps.txs,
             )
             .await?;
