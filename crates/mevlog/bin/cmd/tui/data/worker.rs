@@ -17,10 +17,7 @@ use crate::cmd::tui::{
     data::{
         BlockId, DataRequest, DataResponse, QueryFilters,
         chains::fetch_chains,
-        txs::{
-            detect_trace_mode, fetch_opcodes, fetch_state_diff, fetch_traces, fetch_tx_with_trace,
-            fetch_txs,
-        },
+        txs::{detect_trace_mode, fetch_state_diff, fetch_traces, fetch_tx_with_trace, fetch_txs},
     },
 };
 
@@ -30,7 +27,6 @@ enum RequestKey {
     Tx,
     Chains,
     ChainInfo,
-    Opcodes,
     Traces,
     StateDiff,
     TxTrace,
@@ -45,7 +41,6 @@ impl DataRequest {
             DataRequest::Tx(..) => RequestKey::Tx,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
-            DataRequest::Opcodes(..) => RequestKey::Opcodes,
             DataRequest::Traces(..) => RequestKey::Traces,
             DataRequest::StateDiff(..) => RequestKey::StateDiff,
             DataRequest::TxTrace(..) => RequestKey::TxTrace,
@@ -141,32 +136,6 @@ pub(crate) fn spawn_data_worker(
                 }
 
                 DataRequest::Tx(_tx_hash, _opts) => rt.spawn(async move { todo!() }),
-
-                DataRequest::Opcodes(tx_hash, trace_mode, opts) => {
-                    info!(%tx_hash, ?trace_mode, "fetching opcodes");
-                    let tx = event_tx.clone();
-                    let hash = tx_hash.clone();
-                    rt.spawn(async move {
-                        match fetch_opcodes(
-                            &hash,
-                            Some(opts.rpc_url),
-                            Some(opts.chain_id),
-                            trace_mode,
-                        )
-                        .await
-                        {
-                            Ok(opcodes) => {
-                                debug!(tx_hash = %hash, count = opcodes.len(), "fetched opcodes");
-                                let _ =
-                                    tx.send(AppEvent::Data(DataResponse::Opcodes(hash, opcodes)));
-                            }
-                            Err(e) => {
-                                error!(tx_hash = %hash, error = %e, "failed to fetch opcodes");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
-                            }
-                        }
-                    })
-                }
 
                 DataRequest::Traces(tx_hash, trace_mode, opts) => {
                     info!(%tx_hash, ?trace_mode, "fetching traces");

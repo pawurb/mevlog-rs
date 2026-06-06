@@ -297,6 +297,78 @@ pub async fn revm_affected_addresses_for_tx(
     Ok(HashSet::new())
 }
 
+pub async fn revm_state_diff_for_tx(
+    tx_hash: FixedBytes<32>,
+    block_number: u64,
+    provider: &Arc<GenericProvider>,
+    rpc_url: &str,
+    chain: &EVMChain,
+) -> Result<MEVStateDiff> {
+    let any_provider = ProviderBuilder::new()
+        .network::<AnyNetwork>()
+        .connect_http(rpc_url.parse()?);
+    let block = get_cached_revm_block(&any_provider, chain, block_number).await?;
+    let block_context = RevmBlockContext::new(&block);
+
+    let ordered: Vec<FixedBytes<32>> = block.transactions.hashes().collect();
+    let Some(last_index) = ordered.iter().position(|h| h == &tx_hash) else {
+        eyre::bail!("Transaction {tx_hash} not found in block {block_number}");
+    };
+
+    let parent_block = block_number.saturating_sub(1);
+    let mut cache_db = init_revm_db(parent_block, &Some(TraceMode::Revm), rpc_url, chain)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Failed to initialize Revm fork DB"))?;
+
+    for current_hash in ordered.into_iter().take(last_index + 1) {
+        let tx_req = fetch_tx_request(current_hash, provider).await?;
+
+        if current_hash == tx_hash {
+            return revm_tx_state_diff(tx_hash, &tx_req, &block_context, &mut cache_db);
+        }
+
+        revm_commit_tx(current_hash, &tx_req, &block_context, &mut cache_db)?;
+    }
+
+    Ok(MEVStateDiff::new())
+}
+
+pub async fn revm_opcodes_for_tx(
+    tx_hash: FixedBytes<32>,
+    block_number: u64,
+    provider: &Arc<GenericProvider>,
+    rpc_url: &str,
+    chain: &EVMChain,
+) -> Result<Vec<MEVOpcode>> {
+    let any_provider = ProviderBuilder::new()
+        .network::<AnyNetwork>()
+        .connect_http(rpc_url.parse()?);
+    let block = get_cached_revm_block(&any_provider, chain, block_number).await?;
+    let block_context = RevmBlockContext::new(&block);
+
+    let ordered: Vec<FixedBytes<32>> = block.transactions.hashes().collect();
+    let Some(last_index) = ordered.iter().position(|h| h == &tx_hash) else {
+        eyre::bail!("Transaction {tx_hash} not found in block {block_number}");
+    };
+
+    let parent_block = block_number.saturating_sub(1);
+    let mut cache_db = init_revm_db(parent_block, &Some(TraceMode::Revm), rpc_url, chain)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Failed to initialize Revm fork DB"))?;
+
+    for current_hash in ordered.into_iter().take(last_index + 1) {
+        let tx_req = fetch_tx_request(current_hash, provider).await?;
+
+        if current_hash == tx_hash {
+            return revm_tx_opcodes(tx_hash, &tx_req, &block_context, &mut cache_db);
+        }
+
+        revm_commit_tx(current_hash, &tx_req, &block_context, &mut cache_db)?;
+    }
+
+    Ok(vec![])
+}
+
 pub fn revm_tx_calls(
     tx_hash: FixedBytes<32>,
     tx_req: &TransactionRequest,

@@ -110,36 +110,6 @@ impl App {
         }
     }
 
-    pub(crate) fn request_opcodes_if_needed(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.table_state.selected()
-            && let Some(tx) = self.items.get(idx)
-        {
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.opcodes_tx_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.opcodes = None;
-            self.opcodes_loading = true;
-            self.opcodes_tx_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::Opcodes(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn clear_opcodes(&mut self) {
-        self.opcodes = None;
-        self.opcodes_loading = false;
-        self.opcodes_tx_hash = None;
-    }
-
     pub(crate) fn request_traces_if_needed(&mut self) {
         let Some(opts) = self.rpc_opts() else {
             return;
@@ -243,7 +213,6 @@ impl App {
         self.tx_popup_tab = TxPopupTab::default();
         self.selected_chain = None;
         self.error_message = None;
-        self.clear_opcodes();
         self.clear_traces();
         self.clear_state_diff();
         self.clear_tx_trace();

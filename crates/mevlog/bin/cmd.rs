@@ -6,6 +6,7 @@ pub mod debug_available;
 pub mod ens_lookup;
 pub mod ens_resolve;
 pub mod query;
+pub mod state_diff;
 #[cfg(feature = "tui")]
 pub mod tui;
 pub mod update_db;
