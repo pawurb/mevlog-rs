@@ -2906,7 +2906,7 @@ dependencies = [
 [[package]]
 name = "evm-sqlite"
 version = "0.1.0"
-source = "git+https://github.com/pawurb/evm-sqlite-rs?branch=main#48a9ab0c52593cafe9fbdda64ec5575ee9561037"
+source = "git+https://github.com/pawurb/evm-sqlite-rs#a0b58f2515696f8b993aecfbf4fe15a0554985de"
 dependencies = [
  "ruint",
  "rusqlite",

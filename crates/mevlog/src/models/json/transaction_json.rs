@@ -1,16 +1,15 @@
-use revm::primitives::{Address, FixedBytes, U256};
-use serde::{Deserialize, Serialize};
+use revm::primitives::{Address, FixedBytes};
+use serde::{Deserialize, Deserializer, Serialize};
 
-use crate::{
-    db::txs::models::transaction::Transaction,
-    misc::utils::{ETH_TRANSFER, GWEI_F64, wei_to_eth},
-    models::json::log_json::LogJson,
-};
+use crate::models::json::log_json::LogJson;
 
-/// JSON representation of a single transaction.
+/// JSON representation of a single transaction; the deserialization contract for
+/// the `mevlog tx` output (rendered by [`tx_display_query`]).
 ///
 /// USD fields are populated only when a native token price is available;
 /// coinbase/full-cost fields only when the tx was traced.
+///
+/// [`tx_display_query`]: crate::db::txs::display_sql::tx_display_query
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct TransactionJson {
     pub block_number: u64,
@@ -21,6 +20,8 @@ pub struct TransactionJson {
     pub nonce: u64,
     pub signature: String,
     pub signature_hash: Option<String>,
+    /// SQLite has no boolean type, so `success` arrives as `0`/`1`.
+    #[serde(deserialize_with = "bool_from_int")]
     pub success: bool,
 
     /// Raw value in wei as a decimal string.
@@ -54,74 +55,20 @@ pub struct TransactionJson {
     pub logs: Vec<LogJson>,
 }
 
-impl TransactionJson {
-    pub fn from_record(tx: &Transaction, native_token_price: Option<f64>) -> Self {
-        let tx_cost: u128 = (tx.gas_used as u128) * tx.effective_gas_price;
-        let tx_cost_u256 = U256::from(tx_cost);
-
-        let (coinbase_transfer, display_coinbase_transfer, display_coinbase_transfer_usd) =
-            match tx.coinbase_transfer {
-                Some(cb) => (
-                    Some(cb.to_string()),
-                    Some(fmt_eth(cb)),
-                    fmt_usd_opt(cb, native_token_price),
-                ),
-                None => (None, None, None),
-            };
-
-        let (full_tx_cost, display_full_tx_cost, display_full_tx_cost_usd) =
-            match tx.coinbase_transfer {
-                Some(cb) => {
-                    let full = tx_cost_u256 + cb;
-                    (
-                        Some(full.to_string()),
-                        Some(fmt_eth(full)),
-                        fmt_usd_opt(full, native_token_price),
-                    )
-                }
-                None => (None, None, None),
-            };
-
-        Self {
-            block_number: tx.block_number,
-            tx_index: tx.tx_index,
-            tx_hash: tx.tx_hash,
-            from: tx.from_address,
-            to: tx.to_address,
-            nonce: tx.nonce,
-            signature: tx
-                .signature
-                .clone()
-                .unwrap_or_else(|| ETH_TRANSFER.to_string()),
-            signature_hash: tx.signature_hash.map(|h| format!("0x{}", hex::encode(h))),
-            success: tx.success,
-            value: tx.value.to_string(),
-            display_value: fmt_eth(tx.value),
-            gas_used: tx.gas_used,
-            gas_price: tx.effective_gas_price,
-            display_gas_price: fmt_gwei(tx.effective_gas_price),
-            tx_cost: tx_cost.to_string(),
-            display_tx_cost: fmt_eth(tx_cost_u256),
-            display_tx_cost_usd: fmt_usd_opt(tx_cost_u256, native_token_price),
-            coinbase_transfer,
-            display_coinbase_transfer,
-            display_coinbase_transfer_usd,
-            full_tx_cost,
-            display_full_tx_cost,
-            display_full_tx_cost_usd,
-            logs: Vec::new(),
-        }
+/// Accepts a JSON boolean or the `0`/`1` integer SQLite stores for booleans.
+fn bool_from_int<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum BoolOrInt {
+        Bool(bool),
+        Int(i64),
     }
-}
 
-fn fmt_eth(wei: U256) -> String {
-    format!("{:.6}", wei_to_eth(wei))
-}
-
-fn fmt_gwei(wei: u128) -> String {
-    format!("{:.2}", wei as f64 / GWEI_F64)
-}
-
-fn fmt_usd_opt(wei: U256, native_token_price: Option<f64>) -> Option<String> {
-    native_token_price.map(|price| format!("${:.2}", wei_to_eth(wei) * price))
+    Ok(match BoolOrInt::deserialize(deserializer)? {
+        BoolOrInt::Bool(b) => b,
+        BoolOrInt::Int(n) => n != 0,
+    })
 }

@@ -1,9 +1,13 @@
 use revm::primitives::{Address, FixedBytes};
 use serde::{Deserialize, Serialize};
 
-use crate::db::txs::models::log::Log;
-
 /// JSON representation of a single log/event row.
+///
+/// Deserialization contract for the logs embedded in `mevlog tx --logs`, which
+/// are rendered in SQL (see [`logs_display_query`]); `topic0..topic3` are folded
+/// into `topics` by the command.
+///
+/// [`logs_display_query`]: crate::db::txs::display_sql::logs_display_query
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LogJson {
     pub log_index: u64,
@@ -15,17 +19,4 @@ pub struct LogJson {
     pub data: String,
     /// Decoded ERC20 transfer amount as a decimal string, `None` for non-transfer logs.
     pub erc20_amount: Option<String>,
-}
-
-impl LogJson {
-    pub fn from_record(log: &Log) -> Self {
-        Self {
-            log_index: log.log_index,
-            address: log.address,
-            signature: log.signature.clone(),
-            topics: log.topics.clone(),
-            data: format!("0x{}", hex::encode(&log.data)),
-            erc20_amount: log.erc20_amount.map(|a| a.to_string()),
-        }
-    }
 }
