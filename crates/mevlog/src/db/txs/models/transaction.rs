@@ -188,24 +188,20 @@ impl Transaction {
         Ok(())
     }
 
-    /// Backfills `coinbase_transfer` for already-stored txs, keyed by tx hash. A
-    /// traced tx with no coinbase payment is written as `Some(0)`, so a stored
-    /// `NULL` always means "never traced".
-    pub async fn update_coinbase_transfers(
-        values: &[(FixedBytes<32>, U256)],
+    /// Backfills `coinbase_transfer` for a single already-stored tx, committed on
+    /// its own so backfill progress survives an interrupt mid-range. A traced tx
+    /// with no coinbase payment is written as `Some(0)`, so a stored `NULL` always
+    /// means "never traced".
+    pub async fn update_coinbase_transfer(
+        tx_hash: FixedBytes<32>,
+        value: U256,
         conn: &SqlitePool,
     ) -> Result<()> {
-        let mut db_tx = conn.begin().await?;
-
-        for (tx_hash, value) in values {
-            sqlx::query("UPDATE transactions SET coinbase_transfer = ? WHERE tx_hash = ?")
-                .bind(value.to_be_bytes::<32>().to_vec())
-                .bind(tx_hash.as_slice())
-                .execute(&mut *db_tx)
-                .await?;
-        }
-
-        db_tx.commit().await?;
+        sqlx::query("UPDATE transactions SET coinbase_transfer = ? WHERE tx_hash = ?")
+            .bind(value.to_be_bytes::<32>().to_vec())
+            .bind(tx_hash.as_slice())
+            .execute(conn)
+            .await?;
         Ok(())
     }
 

@@ -109,7 +109,6 @@ impl RevmBlockContext {
     }
 }
 
-// Per-tx fetch (calldata included), so tracing tx index `n` only fetches `0..=n`.
 async fn fetch_tx_request(
     tx_hash: FixedBytes<32>,
     provider: &Arc<GenericProvider>,
@@ -126,12 +125,18 @@ async fn fetch_tx_request(
 
 // Traces `targets` by sequential Revm replay against parent state: fork at
 // block-1, replay in index order up to the last target, committing each tx.
+//
+// When `txs` is `Some`, each target's coinbase transfer is written to SQLite the
+// moment its trace completes (mid-replay), so an interrupt keeps prior progress;
+// those targets are then omitted from the returned map. With `None`, nothing is
+// persisted and every target's trace is returned for the caller to consume.
 pub async fn revm_block_traced_calls(
     block_number: u64,
     targets: &HashSet<FixedBytes<32>>,
     provider: &Arc<GenericProvider>,
     rpc_url: &str,
     chain: &EVMChain,
+    txs: Option<&sqlx::SqlitePool>,
 ) -> Result<(
     RevmBlockContext,
     HashMap<FixedBytes<32>, Vec<TransactionTrace>>,
@@ -157,12 +162,27 @@ pub async fn revm_block_traced_calls(
         .await?
         .ok_or_else(|| eyre::eyre!("Failed to initialize Revm fork DB"))?;
 
+    let total = targets.len();
+    let mut done = 0;
     for tx_hash in ordered.into_iter().take(last_index + 1) {
         let tx_req = fetch_tx_request(tx_hash, provider).await?;
 
         if targets.contains(&tx_hash) {
             let calls = revm_tx_calls(tx_hash, &tx_req, &block_context, &mut cache_db)?;
-            traced.insert(tx_hash, calls);
+            match txs {
+                Some(txs) => {
+                    let traces: Vec<TraceData> = calls.into_iter().map(Into::into).collect();
+                    let value = find_coinbase_transfer(block_context.coinbase, traces);
+                    Transaction::update_coinbase_transfer(tx_hash, value, txs).await?;
+                    done += 1;
+                    tracing::info!(
+                        "Committed coinbase_transfer {done}/{total} in block {block_number}"
+                    );
+                }
+                None => {
+                    traced.insert(tx_hash, calls);
+                }
+            }
         }
 
         // Commit unconditionally so the next tx sees this tx's state changes; a
@@ -173,13 +193,13 @@ pub async fn revm_block_traced_calls(
     Ok((block_context, traced))
 }
 
-// Groups untraced txs by block and replays each block once, sharing the fork.
 pub(crate) async fn backfill_revm(
     untraced: &[Transaction],
     provider: &Arc<GenericProvider>,
     chain: &EVMChain,
     rpc_url: &str,
-) -> Result<Vec<(FixedBytes<32>, U256)>> {
+    txs: &sqlx::SqlitePool,
+) -> Result<()> {
     let mut by_block: HashMap<u64, HashSet<FixedBytes<32>>> = HashMap::new();
     for tx in untraced {
         by_block
@@ -188,28 +208,30 @@ pub(crate) async fn backfill_revm(
             .insert(tx.tx_hash);
     }
 
+    let total_txs = untraced.len();
+    let total_blocks = by_block.len();
     tracing::info!(
-        "Tracing coinbase payments for {} txs across {} blocks (revm)",
-        untraced.len(),
-        by_block.len()
+        "Tracing coinbase payments for {total_txs} txs across {total_blocks} blocks (revm)"
     );
 
-    let mut updates: Vec<(FixedBytes<32>, U256)> = Vec::new();
-    for (block_number, targets) in by_block {
-        match revm_block_traced_calls(block_number, &targets, provider, rpc_url, chain).await {
-            Ok((ctx, traced)) => {
-                for (tx_hash, calls) in traced {
-                    let traces: Vec<TraceData> = calls.into_iter().map(Into::into).collect();
-                    updates.push((tx_hash, find_coinbase_transfer(ctx.coinbase, traces)));
-                }
-            }
-            Err(e) => {
-                tracing::warn!("coinbase_transfer revm trace failed for block {block_number}: {e}");
-            }
+    let mut blocks: Vec<_> = by_block.into_iter().collect();
+    blocks.sort_by_key(|(n, _)| *n);
+
+    for (i, (block_number, targets)) in blocks.into_iter().enumerate() {
+        tracing::info!(
+            "Tracing block {block_number} ({}/{total_blocks}) (revm)",
+            i + 1
+        );
+        // Pass the pool so each target commits to SQLite mid-replay, tx by tx.
+        if let Err(e) =
+            revm_block_traced_calls(block_number, &targets, provider, rpc_url, chain, Some(txs))
+                .await
+        {
+            tracing::warn!("coinbase_transfer revm trace failed for block {block_number}: {e}");
         }
     }
 
-    Ok(updates)
+    Ok(())
 }
 
 pub fn revm_touching_accounts(

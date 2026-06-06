@@ -68,7 +68,8 @@ pub async fn coinbase_transfer_for_tx(
             let block_number = tx_block_number(tx_hash, provider).await?;
             let targets = HashSet::from([tx_hash]);
             let (ctx, mut traced) =
-                revm_block_traced_calls(block_number, &targets, provider, rpc_url, chain).await?;
+                revm_block_traced_calls(block_number, &targets, provider, rpc_url, chain, None)
+                    .await?;
             let calls = traced.remove(&tx_hash).unwrap_or_default();
             (ctx.coinbase, calls.into_iter().map(Into::into).collect())
         }
@@ -143,12 +144,10 @@ pub async fn backfill_coinbase_transfers(
         return Ok(());
     }
 
-    let updates = match mode {
+    match mode {
         TraceMode::RPC => backfill_rpc(&untraced, provider, txs).await?,
-        TraceMode::Revm => backfill_revm(&untraced, provider, chain, rpc_url).await?,
-    };
-
-    Transaction::update_coinbase_transfers(&updates, txs).await?;
+        TraceMode::Revm => backfill_revm(&untraced, provider, chain, rpc_url, txs).await?,
+    }
 
     Ok(())
 }

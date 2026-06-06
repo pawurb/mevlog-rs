@@ -12,7 +12,7 @@ use alloy::{
     },
 };
 use eyre::Result;
-use revm::primitives::{Address, FixedBytes, U256};
+use revm::primitives::{Address, FixedBytes};
 use tracing::{debug, info, warn};
 
 use crate::{
@@ -220,12 +220,11 @@ pub async fn rpc_tx_state_diff(
     Ok(state_diff)
 }
 
-// Traces each untraced tx independently; coinbase comes from the `blocks` table.
 pub(crate) async fn backfill_rpc(
     untraced: &[Transaction],
     provider: &Arc<GenericProvider>,
     txs: &sqlx::SqlitePool,
-) -> Result<Vec<(FixedBytes<32>, U256)>> {
+) -> Result<()> {
     let (from, to) = block_bounds(untraced);
     let blocks = Block::query_where(&format!("block_number BETWEEN {from} AND {to}"), txs).await?;
     let coinbase_by_block: HashMap<u64, Address> =
@@ -243,13 +242,20 @@ pub(crate) async fn backfill_rpc(
     let total = to_trace.len();
     info!("Tracing coinbase payments for {} txs (rpc)", total);
 
-    let mut updates: Vec<(FixedBytes<32>, U256)> = Vec::new();
     for (n, (tx_hash, coinbase)) in to_trace.into_iter().enumerate() {
         debug!("Tracing {}/{} (0x{})", n + 1, total, hex::encode(tx_hash));
         match rpc_tx_calls(tx_hash, provider).await {
             Ok(frames) => {
                 let traces: Vec<TraceData> = frames.into_iter().map(Into::into).collect();
-                updates.push((tx_hash, find_coinbase_transfer(coinbase, traces)));
+                let value = find_coinbase_transfer(coinbase, traces);
+                // Commit each tx on its own so an interrupt keeps prior progress.
+                Transaction::update_coinbase_transfer(tx_hash, value, txs).await?;
+                info!(
+                    "Committed coinbase_transfer {}/{} (0x{})",
+                    n + 1,
+                    total,
+                    hex::encode(tx_hash)
+                );
             }
             Err(e) => {
                 warn!(
@@ -261,7 +267,7 @@ pub(crate) async fn backfill_rpc(
         }
     }
 
-    Ok(updates)
+    Ok(())
 }
 
 fn block_bounds(txs: &[Transaction]) -> (u64, u64) {
