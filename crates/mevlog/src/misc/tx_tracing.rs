@@ -151,9 +151,6 @@ pub async fn opcodes_for_tx(
 }
 
 /// Decoded call traces of a single tx according to the selected backend.
-///
-/// Each entry resolves the called method's signature against the signatures DB,
-/// producing the `CallExtract` rows the TUI traces tab renders.
 pub async fn calls_for_tx(
     tx_hash: TxHash,
     mode: &TraceMode,

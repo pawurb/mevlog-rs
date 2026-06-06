@@ -97,7 +97,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
 
     if !file_exists() {
         let _ = std::fs::create_dir_all(config_path());
-        println!("Database file missing");
+        eprintln!("Database file missing");
         download_file().await?;
     }
 
