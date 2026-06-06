@@ -9,8 +9,8 @@ use cmd::tui::TuiArgs;
 use cmd::{
     affected_addresses::AffectedAddressesArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
     coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
-    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, query::QueryArgs,
-    state_diff::StateDiffArgs, update_db::UpdateDBArgs,
+    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, evm_traces::EvmTracesArgs,
+    query::QueryArgs, state_diff::StateDiffArgs, update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -71,6 +71,8 @@ pub enum MLSubcommand {
         about = "Show the storage state diff produced by a tx"
     )]
     StateDiff(StateDiffArgs),
+    #[command(name = "evm-traces", about = "Extract a tx's decoded call traces")]
+    EvmTraces(EvmTracesArgs),
     #[command(about = "Check if RPC supports debug tracing")]
     DebugAvailable(DebugAvailableArgs),
     #[command(about = "Resolve an ENS name to an address")]
@@ -162,6 +164,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::StateDiff(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::EvmTraces(args) => {
             args.run(root_args.format).await?;
         }
         ML::DebugAvailable(args) => {

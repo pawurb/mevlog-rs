@@ -2,26 +2,31 @@ use std::{collections::HashSet, sync::Arc};
 
 use alloy::{
     eips::BlockNumberOrTag, network::ReceiptResponse, primitives::TxHash, providers::Provider,
+    rpc::types::trace::parity::Action,
 };
 use eyre::Result;
-use revm::primitives::{Address, U256};
+use revm::primitives::{Address, TxKind, U256};
+use sqlx::SqlitePool;
 
 use crate::{
     GenericProvider,
-    db::txs::models::transaction::Transaction,
+    db::txs::models::transaction::{Transaction, extract_signature},
     misc::{
         coinbase_bribe::{TraceData, find_coinbase_transfer},
         revm_tracing::{
             backfill_revm, revm_affected_addresses_for_tx, revm_block_traced_calls,
-            revm_opcodes_for_tx, revm_state_diff_for_tx,
+            revm_calls_for_tx, revm_opcodes_for_tx, revm_state_diff_for_tx,
         },
         rpc_tracing::{
             backfill_rpc, rpc_affected_addresses, rpc_tx_calls, rpc_tx_opcodes, rpc_tx_state_diff,
         },
         shared_init::TraceMode,
-        utils::wei_to_eth,
+        utils::{ETH_TRANSFER, wei_to_eth},
     },
-    models::{evm_chain::EVMChain, mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff},
+    models::{
+        evm_chain::EVMChain, mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff,
+        mev_transaction::CallExtract,
+    },
 };
 
 /// Direct ETH a single tx paid to its block's coinbase (miner/validator).
@@ -143,6 +148,70 @@ pub async fn opcodes_for_tx(
             revm_opcodes_for_tx(tx_hash, block_number, provider, rpc_url, chain).await?
         }
     })
+}
+
+/// Decoded call traces of a single tx according to the selected backend.
+///
+/// Each entry resolves the called method's signature against the signatures DB,
+/// producing the `CallExtract` rows the TUI traces tab renders.
+pub async fn calls_for_tx(
+    tx_hash: TxHash,
+    mode: &TraceMode,
+    provider: &Arc<GenericProvider>,
+    chain: &EVMChain,
+    rpc_url: &str,
+    sqlite: &SqlitePool,
+) -> Result<Vec<CallExtract>> {
+    let receipt = provider
+        .get_transaction_receipt(tx_hash)
+        .await?
+        .ok_or_else(|| eyre::eyre!("Transaction 0x{} not found", hex::encode(tx_hash)))?;
+    let tx_index = receipt
+        .transaction_index()
+        .ok_or_else(|| eyre::eyre!("Transaction 0x{} is not mined yet", hex::encode(tx_hash)))?;
+
+    let mut calls = Vec::new();
+    match mode {
+        TraceMode::RPC => {
+            for call in rpc_tx_calls(tx_hash, provider).await? {
+                let Some(to) = call.to else { continue };
+                let (signature_hash, signature) =
+                    extract_signature(Some(&call.input), tx_index, Some(TxKind::Call(to)), sqlite)
+                        .await?;
+                calls.push(CallExtract {
+                    from: call.from,
+                    to,
+                    signature: signature.unwrap_or_else(|| ETH_TRANSFER.to_string()),
+                    signature_hash: signature_hash.map(|h| format!("0x{}", hex::encode(h))),
+                });
+            }
+        }
+        TraceMode::Revm => {
+            let block_number = receipt.block_number().ok_or_else(|| {
+                eyre::eyre!("Transaction 0x{} is not mined yet", hex::encode(tx_hash))
+            })?;
+            for trace in revm_calls_for_tx(tx_hash, block_number, provider, rpc_url, chain).await? {
+                let Action::Call(action) = &trace.action else {
+                    continue;
+                };
+                let (signature_hash, signature) = extract_signature(
+                    Some(&action.input),
+                    tx_index,
+                    Some(TxKind::Call(action.to)),
+                    sqlite,
+                )
+                .await?;
+                calls.push(CallExtract {
+                    from: action.from,
+                    to: action.to,
+                    signature: signature.unwrap_or_else(|| ETH_TRANSFER.to_string()),
+                    signature_hash: signature_hash.map(|h| format!("0x{}", hex::encode(h))),
+                });
+            }
+        }
+    }
+
+    Ok(calls)
 }
 
 /// Resolves the beneficiary (coinbase) of the block that mined `tx_hash`.
