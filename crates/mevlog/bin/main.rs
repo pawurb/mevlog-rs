@@ -7,7 +7,8 @@ use cmd::seed_db::SeedDBArgs;
 #[cfg(feature = "tui")]
 use cmd::tui::TuiArgs;
 use cmd::{
-    affected_addresses::AffectedAddressesArgs, block::BlockArgs, block_txs::BlockTxsArgs,
+    affected_addresses::AffectedAddressesArgs, block::BlockArgs, block_logs::BlockLogsArgs,
+    block_txs::BlockTxsArgs,
     chain_info::ChainInfoArgs, chains::ChainsArgs, coinbase_transfer::CoinbaseTransferArgs,
     debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
     evm_traces::EvmTracesArgs, query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs,
@@ -59,6 +60,8 @@ pub enum MLSubcommand {
     Block(BlockArgs),
     #[command(name = "block-txs", about = "Show a block's transactions")]
     BlockTxs(BlockTxsArgs),
+    #[command(name = "block-logs", about = "Show all logs in a block")]
+    BlockLogs(BlockLogsArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
     #[command(about = "List all available chains from ChainList")]
@@ -167,6 +170,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::BlockTxs(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::BlockLogs(args) => {
             args.run(root_args.format).await?;
         }
         ML::UpdateDB(args) => {

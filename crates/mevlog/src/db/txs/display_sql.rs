@@ -95,3 +95,22 @@ pub fn logs_display_query(where_sql: &str) -> String {
          ORDER BY log_index ASC"
     )
 }
+
+/// Like [`logs_display_query`] but for a whole block: includes `tx_index` so
+/// callers can group the flat log rows by transaction, and orders by
+/// `(tx_index, log_index)` to keep each tx's logs contiguous and in order.
+pub fn block_logs_display_query(where_sql: &str) -> String {
+    format!(
+        "SELECT \
+            tx_index, \
+            log_index, \
+            address, \
+            signature, \
+            topic0, topic1, topic2, topic3, \
+            data, \
+            u256_to_dec(erc20_amount) AS erc20_amount \
+         FROM logs \
+         WHERE {where_sql} \
+         ORDER BY tx_index ASC, log_index ASC"
+    )
+}
