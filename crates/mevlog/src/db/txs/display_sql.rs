@@ -54,8 +54,8 @@ pub fn tx_display_query(where_sql: &str) -> String {
 }
 
 /// Canonical logs `SELECT` for the given `WHERE` clause, projecting the columns
-/// of [`LogJson`]. `topic0..topic3` are returned as separate columns; the caller
-/// folds the non-null ones into the `topics` array.
+/// of [`LogJson`]. `topic0..topic3` are returned as separate columns (`NULL`
+/// when absent), keeping the rows faithful to the echoed SQL.
 pub fn logs_display_query(where_sql: &str) -> String {
     format!(
         "SELECT \

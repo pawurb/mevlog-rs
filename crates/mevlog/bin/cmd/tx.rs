@@ -1,11 +1,12 @@
+use std::time::Instant;
+
 use alloy::{network::ReceiptResponse, primitives::TxHash, providers::Provider};
 use eyre::{Result, bail};
 use mevlog::{
+    ChainInfoNoRpcsJson,
     db::txs::{
-        display_sql::{logs_display_query, tx_display_query},
-        indexing::index_block_range,
-        models::transaction::Transaction,
-        raw_query::run_raw_query,
+        display_sql::tx_display_query, indexing::index_block_range,
+        models::transaction::Transaction, raw_query::run_raw_query,
     },
     misc::{
         shared_init::{ConnOpts, OutputFormat, TraceMode, init_deps},
@@ -13,16 +14,15 @@ use mevlog::{
         tx_tracing::coinbase_transfer_for_tx,
         utils::get_native_token_price,
     },
+    models::json::query_response::{
+        QueryParams, rows_to_csv, rows_to_table, serialize_query_response,
+    },
 };
-use serde_json::Value;
 
 #[derive(Debug, clap::Parser)]
 pub struct TxArgs {
     #[arg(help = "Transaction hash to display")]
     pub tx_hash: TxHash,
-
-    #[arg(long, help = "Embed the transaction's logs in the output")]
-    pub logs: bool,
 
     #[arg(
         long,
@@ -38,6 +38,11 @@ pub struct TxArgs {
 }
 
 impl TxArgs {
+    /// Convenience wrapper around `query`: looks up a single transaction by hash
+    /// and emits it through the same
+    /// [`QueryResponse`](mevlog::models::json::query_response::QueryResponse)
+    /// envelope, with the one matching row in `result`. Use `tx-logs` for the
+    /// transaction's logs.
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 
@@ -52,11 +57,11 @@ impl TxArgs {
         let block_number = receipt
             .block_number()
             .ok_or_else(|| eyre::eyre!("Transaction {} is not mined yet", self.tx_hash))?;
-        let tx_index = receipt
-            .transaction_index()
-            .ok_or_else(|| eyre::eyre!("Transaction {} is not mined yet", self.tx_hash))?;
 
-        index_block_range(block_number, block_number, 1, &deps).await?;
+        let start_time = Instant::now();
+
+        let (cached_blocks, new_blocks) =
+            index_block_range(block_number, block_number, 1, &deps).await?;
 
         if let Some(mode) = &self.evm_trace {
             let coinbase_transfer = coinbase_transfer_for_tx(
@@ -75,6 +80,10 @@ impl TxArgs {
             .await?;
         }
 
+        let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
+        chain_info.native_token_price = native_token_price;
+        let duration_ns = start_time.elapsed().as_nanos() as u64;
+
         let sql = tx_display_query(&format!("tx_hash = X'{}'", hex::encode(self.tx_hash)));
         // Without a price the macro can't resolve, so substitute NULL; the USD
         // columns then render as null rather than erroring.
@@ -90,55 +99,37 @@ impl TxArgs {
             sql.replace(NATIVE_TOKEN_PRICE_MACRO, "NULL")
         };
 
-        let mut tx = run_raw_query(&sql, &deps.txs_read_path)?
-            .rows
-            .into_iter()
-            .next()
-            .ok_or_else(|| eyre::eyre!("Transaction {} not found in local store", self.tx_hash))?;
-
-        if self.logs {
-            let logs_sql = logs_display_query(&format!(
-                "block_number = {block_number} AND tx_index = {tx_index}"
-            ));
-            let logs: Vec<Value> = run_raw_query(&logs_sql, &deps.txs_read_path)?
-                .rows
-                .into_iter()
-                .map(fold_topics)
-                .collect();
-            if let Value::Object(map) = &mut tx {
-                map.insert("logs".to_string(), Value::Array(logs));
-            }
+        let result = run_raw_query(&sql, &deps.txs_read_path)?;
+        if result.rows.is_empty() {
+            bail!("Transaction {} not found in local store", self.tx_hash);
         }
 
         match format {
-            OutputFormat::Json => println!("{}", serde_json::to_string(&tx)?),
-            OutputFormat::JsonPretty => println!("{}", serde_json::to_string_pretty(&tx)?),
-            OutputFormat::Table | OutputFormat::Csv => {
-                bail!("tx supports only json and json-pretty output formats")
+            OutputFormat::Csv => print!("{}", rows_to_csv(&result.columns, &result.rows)?),
+            OutputFormat::Table => print!("{}", rows_to_table(&result.columns, &result.rows)),
+            OutputFormat::Json | OutputFormat::JsonPretty => {
+                let pretty = matches!(format, OutputFormat::JsonPretty);
+                let query = QueryParams {
+                    blocks: block_number.to_string(),
+                    sql: Some(sql),
+                    evm_trace: self.evm_trace.clone(),
+                    evm_calls: false,
+                    evm_ops: false,
+                    evm_state_diff: false,
+                };
+                let output = serialize_query_response(
+                    result.rows,
+                    pretty,
+                    chain_info,
+                    duration_ns,
+                    cached_blocks,
+                    new_blocks,
+                    query,
+                )?;
+                println!("{output}");
             }
         }
 
         Ok(())
     }
-}
-
-/// Folds a log row's `topic0..topic3` columns into a single `topics` array,
-/// keeping the contiguous non-null topics (`topic0` is the event signature
-/// hash). The per-topic columns are dropped from the row.
-fn fold_topics(row: Value) -> Value {
-    let Value::Object(mut map) = row else {
-        return row;
-    };
-
-    let mut topics = Vec::new();
-    let mut ended = false;
-    for key in ["topic0", "topic1", "topic2", "topic3"] {
-        match map.remove(key) {
-            Some(Value::String(topic)) if !ended => topics.push(Value::String(topic)),
-            _ => ended = true,
-        }
-    }
-    map.insert("topics".to_string(), Value::Array(topics));
-
-    Value::Object(map)
 }

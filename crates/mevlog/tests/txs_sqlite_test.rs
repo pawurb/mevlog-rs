@@ -86,11 +86,23 @@ pub mod tests {
         Command::new("cargo")
             .env("RUST_LOG", "off")
             .args(["run", "--bin", "mevlog", "--", "tx", tx_hash])
-            .arg("--logs")
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
             .arg("--skip-verify-chain-id")
             .args(["--native-token-price", native_token_price])
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", "json"])
+            .output()
+            .expect("failed to execute CLI")
+    }
+
+    fn run_tx_logs(rpc_url: &str, tmp_dir: &Path, tx_hash: &str) -> Output {
+        Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .args(["run", "--bin", "mevlog", "--", "tx-logs", tx_hash])
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--rpc-url", rpc_url])
+            .arg("--skip-verify-chain-id")
             .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
             .args(["--format", "json"])
             .output()
@@ -536,11 +548,28 @@ pub mod tests {
             String::from_utf8_lossy(&output.stderr),
         );
 
-        let payload: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+        // tx is a convenience wrapper around query: it emits the same envelope,
+        // with the single matching transaction in `result`.
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert_eq!(envelope.result.len(), 1, "result array length mismatch");
+        assert_eq!(
+            envelope.query.blocks,
+            FROM_BLOCK.to_string(),
+            "echoed blocks mismatch"
+        );
+        assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
+        assert_eq!(
+            envelope.chain.native_token_price,
+            Some(2500.5),
+            "native token price mismatch"
+        );
+
+        let payload = &envelope.result[0];
 
         // No --evm-trace, so coinbase/full-cost fields are null. USD fields use
-        // the supplied --native-token-price (2500.5). With --logs, the single
-        // ERC20 Transfer log is embedded.
+        // the supplied --native-token-price (2500.5). Logs are served by `tx-logs`,
+        // not embedded here.
         let expected = serde_json::json!({
             "block_number": 25215353,
             "tx_index": 2,
@@ -565,24 +594,58 @@ pub mod tests {
             "display_coinbase_transfer_usd": null,
             "full_tx_cost": null,
             "display_full_tx_cost": null,
-            "display_full_tx_cost_usd": null,
-            "logs": [
-                {
-                    "log_index": 6,
-                    "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-                    "signature": "Transfer(address,address,uint256)",
-                    "topics": [
-                        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-                        "0x000000000000000000000000142f11cfb8a7bf975565a875ffe425c1216af7b6",
-                        "0x0000000000000000000000000f4d84b3c4a344c573b640a2f085b1f92013eedd"
-                    ],
-                    "data": "0x000000000000000000000000000000000000000000000000000000002f9fc5c0",
-                    "erc20_amount": "799000000"
-                }
-            ]
+            "display_full_tx_cost_usd": null
         });
 
-        assert_eq!(payload, expected, "tx payload mismatch");
+        assert_eq!(payload, &expected, "tx payload mismatch");
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_tx_logs_command_returns_logs() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_tx_logs(&rpc_url, &tmp_dir, TX_HASH);
+
+        assert!(
+            output.status.success(),
+            "tx-logs failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        // tx-logs is a convenience wrapper around query: it emits the same
+        // envelope, with the transaction's log rows in `result`. Topics are kept
+        // as raw topic0..topic3 columns (NULL when absent), faithful to query.sql.
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert_eq!(
+            envelope.query.blocks,
+            FROM_BLOCK.to_string(),
+            "echoed blocks mismatch"
+        );
+        assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
+
+        let expected = serde_json::json!({
+            "log_index": 6,
+            "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+            "signature": "Transfer(address,address,uint256)",
+            "topic0": "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "topic1": "0x000000000000000000000000142f11cfb8a7bf975565a875ffe425c1216af7b6",
+            "topic2": "0x0000000000000000000000000f4d84b3c4a344c573b640a2f085b1f92013eedd",
+            "topic3": null,
+            "data": "0x000000000000000000000000000000000000000000000000000000002f9fc5c0",
+            "erc20_amount": "799000000"
+        });
+
+        assert_eq!(&envelope.result[0], &expected, "tx-logs payload mismatch");
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())

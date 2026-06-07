@@ -10,7 +10,8 @@ use cmd::{
     affected_addresses::AffectedAddressesArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
     coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
     ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, evm_traces::EvmTracesArgs,
-    query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs, update_db::UpdateDBArgs,
+    query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
+    update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -52,6 +53,8 @@ pub enum MLSubcommand {
     Query(Box<QueryArgs>),
     #[command(about = "Show a single transaction")]
     Tx(TxArgs),
+    #[command(name = "tx-logs", about = "Show a transaction's logs")]
+    TxLogs(TxLogsArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
     #[command(about = "List all available chains from ChainList")]
@@ -151,6 +154,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::TxLogs(args) => {
             args.run(root_args.format).await?;
         }
         ML::UpdateDB(args) => {
