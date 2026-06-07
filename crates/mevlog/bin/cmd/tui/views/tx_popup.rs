@@ -3,8 +3,8 @@ mod state_diff;
 mod traces;
 mod transfers;
 
+use mevlog::models::call_extract::CallExtract;
 use mevlog::models::json::state_diff_json::StateDiffJson;
-use mevlog::models::mev_transaction::CallExtract;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},

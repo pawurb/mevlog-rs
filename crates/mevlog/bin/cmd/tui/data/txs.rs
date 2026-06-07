@@ -3,8 +3,8 @@ use std::{process::Stdio, sync::Arc, time::Duration};
 use eyre::Result;
 use mevlog::misc::rpc_capability::is_debug_trace_available;
 use mevlog::misc::shared_init::{TraceMode, init_provider};
+use mevlog::models::call_extract::CallExtract;
 use mevlog::models::json::state_diff_json::StateDiffJson;
-use mevlog::models::mev_transaction::CallExtract;
 use serde::Deserialize;
 use tokio::{
     io::{AsyncBufReadExt, BufReader},

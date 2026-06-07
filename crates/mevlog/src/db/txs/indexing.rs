@@ -64,7 +64,7 @@ pub async fn index_block_range(
             let mut chunk_logs: Vec<Log> = vec![];
             for &block_number in chunk {
                 if let Some(logs) = batch_data.logs_by_block.get(&block_number) {
-                    chunk_logs.extend(logs.iter().map(|l| Log::from_mev_log(block_number, l)));
+                    chunk_logs.extend(logs.iter().cloned());
                 }
             }
 

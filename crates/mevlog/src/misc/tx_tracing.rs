@@ -21,7 +21,7 @@ use crate::{
         shared_init::TraceMode,
         utils::{ETH_TRANSFER, wei_to_eth},
     },
-    models::{evm_chain::EVMChain, mev_transaction::CallExtract, state_diff::StateDiff},
+    models::{call_extract::CallExtract, evm_chain::EVMChain, state_diff::StateDiff},
 };
 
 /// Direct ETH a single tx paid to its block's coinbase (miner/validator).

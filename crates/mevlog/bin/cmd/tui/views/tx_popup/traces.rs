@@ -1,4 +1,4 @@
-use mevlog::models::mev_transaction::CallExtract;
+use mevlog::models::call_extract::CallExtract;
 use ratatui::{
     Frame,
     layout::Rect,

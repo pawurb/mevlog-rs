@@ -2,10 +2,10 @@ use tokio::process::Command;
 
 pub use mevlog::ChainEntryJson;
 pub use mevlog::misc::shared_init::{TraceMode, mevlog_cmd_path};
+pub use mevlog::models::call_extract::CallExtract;
 pub use mevlog::models::json::log_json::LogJson;
 pub use mevlog::models::json::state_diff_json::StateDiffJson;
 pub use mevlog::models::json::transaction_json::TransactionJson;
-pub use mevlog::models::mev_transaction::CallExtract;
 
 pub(crate) mod chains;
 pub(crate) mod txs;
