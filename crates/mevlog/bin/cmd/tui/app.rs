@@ -4,7 +4,7 @@ mod data;
 mod keys;
 mod state;
 
-use std::io;
+use std::{io, time::Instant};
 
 use crossbeam_channel::{Receiver, Sender, select};
 use crossterm::event::KeyCode;
@@ -139,6 +139,11 @@ pub struct App {
     /// fetched logs are injected into the matching `items` entry's `logs`.
     pub(crate) logs_tx_hash: Option<String>,
     pub(crate) logs_loading: bool,
+    /// Timestamp of a pending `g` press, for detecting the `gg` chord.
+    pub(crate) pending_g: Option<Instant>,
+    /// Max scroll offset of the tx popup's active tab, set during render so `G`
+    /// can jump to the bottom.
+    pub(crate) tx_popup_max_scroll: u16,
     pub(crate) tx_trace_loading: bool,
     pub(crate) tx_trace_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
@@ -241,6 +246,8 @@ impl App {
             state_diff_tx_hash: None,
             logs_tx_hash: None,
             logs_loading: false,
+            pending_g: None,
+            tx_popup_max_scroll: 0,
             tx_trace_loading: false,
             tx_trace_hash: None,
             block_input_popup_open: false,
@@ -333,14 +340,14 @@ impl App {
 
                 if self.tx_popup_open
                     && let Some(idx) = self.table_state.selected()
-                    && let Some(tx) = self.items.get(idx)
+                    && let Some(tx) = self.items.get(idx).cloned()
                 {
                     let explorer_url = self
                         .selected_chain
                         .as_ref()
                         .and_then(|c| c.explorer_url.clone());
-                    render_tx_popup(
-                        tx,
+                    self.tx_popup_max_scroll = render_tx_popup(
+                        &tx,
                         frame.area(),
                         frame,
                         self.tx_popup_scroll,

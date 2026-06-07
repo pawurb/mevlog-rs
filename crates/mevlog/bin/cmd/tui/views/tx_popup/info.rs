@@ -4,7 +4,6 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Paragraph, Wrap},
 };
 
 use crate::cmd::tui::data::TransactionJson;
@@ -18,12 +17,9 @@ pub fn render_info_tab(
     scroll: u16,
     tx_trace_loading: bool,
     logs_loading: bool,
-) {
+) -> u16 {
     let lines = build_tx_lines(tx, tx_trace_loading, logs_loading);
-    let paragraph = Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
-        .scroll((scroll, 0));
-    frame.render_widget(paragraph, area);
+    super::render_scrollable(area, frame, lines, scroll)
 }
 
 fn build_tx_lines(

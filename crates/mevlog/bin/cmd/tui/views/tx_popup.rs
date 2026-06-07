@@ -11,10 +11,28 @@ use ratatui::{
     style::{Color, Modifier, Style},
     symbols::border,
     text::{Line, Span},
-    widgets::{Block, Clear, Paragraph},
+    widgets::{Block, Clear, Paragraph, Wrap},
 };
 
 use crate::cmd::tui::{app::TxPopupTab, data::TransactionJson};
+
+/// Renders `lines` as a wrapped, vertically-scrollable paragraph and returns the
+/// maximum scroll offset (wrapped line count minus visible height). The passed
+/// `scroll` is clamped to that maximum, so callers can implement "scroll to
+/// bottom" by setting scroll to the returned value.
+pub(super) fn render_scrollable(
+    area: Rect,
+    frame: &mut Frame,
+    lines: Vec<Line<'static>>,
+    scroll: u16,
+) -> u16 {
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+    let total = paragraph.line_count(area.width) as u16;
+    let max_scroll = total.saturating_sub(area.height);
+    let paragraph = paragraph.scroll((scroll.min(max_scroll), 0));
+    frame.render_widget(paragraph, area);
+    max_scroll
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn render_tx_popup(
@@ -30,7 +48,7 @@ pub fn render_tx_popup(
     state_diff_loading: bool,
     tx_trace_loading: bool,
     logs_loading: bool,
-) {
+) -> u16 {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
     let x = (area.width.saturating_sub(popup_width)) / 2;

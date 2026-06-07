@@ -13,26 +13,26 @@ pub fn render_state_diff_tab(
     state_diff: Option<&MEVStateDiffJson>,
     is_loading: bool,
     scroll: u16,
-) {
+) -> u16 {
     if is_loading {
         let paragraph =
             Paragraph::new("Loading state diff...").style(Style::default().fg(Color::Yellow));
         frame.render_widget(paragraph, area);
-        return;
+        return 0;
     }
 
     let Some(state_diff) = state_diff else {
         let paragraph =
             Paragraph::new("Loading state diff...").style(Style::default().fg(Color::Yellow));
         frame.render_widget(paragraph, area);
-        return;
+        return 0;
     };
 
     if state_diff.0.is_empty() {
         let paragraph =
             Paragraph::new("No storage changes").style(Style::default().fg(Color::DarkGray));
         frame.render_widget(paragraph, area);
-        return;
+        return 0;
     }
 
     let mut lines: Vec<Line<'static>> = Vec::new();
@@ -67,6 +67,5 @@ pub fn render_state_diff_tab(
         lines.push(Line::raw(""));
     }
 
-    let paragraph = Paragraph::new(lines).scroll((scroll, 0));
-    frame.render_widget(paragraph, area);
+    super::render_scrollable(area, frame, lines, scroll)
 }

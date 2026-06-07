@@ -33,6 +33,21 @@ impl App {
         self.table_state.select(Some(i));
     }
 
+    pub(crate) fn select_first(&mut self) {
+        if self.items.is_empty() {
+            return;
+        }
+        self.table_state.select(Some(0));
+    }
+
+    pub(crate) fn select_last(&mut self) {
+        let count = self.items.len();
+        if count == 0 {
+            return;
+        }
+        self.table_state.select(Some(count - 1));
+    }
+
     pub(crate) fn select_next_network(&mut self) {
         let count = self.available_chains.len();
         if count == 0 {

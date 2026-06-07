@@ -4,7 +4,7 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Paragraph, Wrap},
+    widgets::Paragraph,
 };
 
 pub fn render_traces_tab(
@@ -13,34 +13,30 @@ pub fn render_traces_tab(
     traces: Option<&[CallExtract]>,
     is_loading: bool,
     scroll: u16,
-) {
+) -> u16 {
     if is_loading {
         let paragraph =
             Paragraph::new("Loading traces...").style(Style::default().fg(Color::Yellow));
         frame.render_widget(paragraph, area);
-        return;
+        return 0;
     }
 
     let Some(traces) = traces else {
         let paragraph =
             Paragraph::new("Loading traces...").style(Style::default().fg(Color::Yellow));
         frame.render_widget(paragraph, area);
-        return;
+        return 0;
     };
 
     if traces.is_empty() {
         let paragraph =
             Paragraph::new("No traces found").style(Style::default().fg(Color::DarkGray));
         frame.render_widget(paragraph, area);
-        return;
+        return 0;
     }
 
     let lines = build_traces_lines(traces);
-
-    let paragraph = Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
-        .scroll((scroll, 0));
-    frame.render_widget(paragraph, area);
+    super::render_scrollable(area, frame, lines, scroll)
 }
 
 fn build_traces_lines(traces: &[CallExtract]) -> Vec<Line<'static>> {
