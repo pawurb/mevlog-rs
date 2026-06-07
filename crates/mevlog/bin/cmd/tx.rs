@@ -38,11 +38,6 @@ pub struct TxArgs {
 }
 
 impl TxArgs {
-    /// Convenience wrapper around `query`: looks up a single transaction by hash
-    /// and emits it through the same
-    /// [`QueryResponse`](mevlog::models::json::query_response::QueryResponse)
-    /// envelope, with the one matching row in `result`. Use `tx-logs` for the
-    /// transaction's logs.
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 

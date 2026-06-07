@@ -28,11 +28,6 @@ pub struct BlockArgs {
 }
 
 impl BlockArgs {
-    /// Convenience wrapper around `query`: indexes a single block and emits its
-    /// metadata through the same
-    /// [`QueryResponse`](mevlog::models::json::query_response::QueryResponse)
-    /// envelope, with the one matching block in `result`. Use `block-txs` for the
-    /// block's transactions.
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 

@@ -31,8 +31,6 @@ impl App {
         }
     }
 
-    /// Detects the vim `gg` chord: returns `true` on the second `g` pressed
-    /// within 500ms of the first, otherwise records the press and returns `false`.
     fn handle_g_key(&mut self) -> bool {
         if let Some(last_g) = self.pending_g
             && last_g.elapsed() < Duration::from_millis(500)
@@ -195,8 +193,6 @@ impl App {
             KeyCode::Char('m') if self.tx_popup_open => {
                 self.tx_popup_scroll = self.tx_popup_scroll.saturating_sub(1);
             }
-            // vim-style jump: G to bottom/last, gg to top/first. In the tx popup
-            // this scrolls the content; on the tx list it moves the selection.
             KeyCode::Char('G') => {
                 self.pending_g = None;
                 if self.tx_popup_open {

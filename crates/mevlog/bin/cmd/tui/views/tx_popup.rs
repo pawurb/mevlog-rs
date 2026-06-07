@@ -16,10 +16,7 @@ use ratatui::{
 
 use crate::cmd::tui::{app::TxPopupTab, data::TransactionJson};
 
-/// Renders `lines` as a wrapped, vertically-scrollable paragraph and returns the
-/// maximum scroll offset (wrapped line count minus visible height). The passed
-/// `scroll` is clamped to that maximum, so callers can implement "scroll to
-/// bottom" by setting scroll to the returned value.
+// Renders `lines` scrollable and returns the max scroll offset (clamping `scroll`).
 pub(super) fn render_scrollable(
     area: Rect,
     frame: &mut Frame,

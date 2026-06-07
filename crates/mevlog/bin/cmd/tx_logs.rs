@@ -23,10 +23,6 @@ pub struct TxLogsArgs {
 }
 
 impl TxLogsArgs {
-    /// Convenience wrapper around `query`: resolves the hash's block/index via the
-    /// receipt, indexes that single block, and emits the transaction's logs through
-    /// the same `QueryResponse` envelope. The logs SELECT is echoed in `query.sql`,
-    /// so the envelope fully describes how the rows were fetched.
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
         let deps = init_deps(&self.conn_opts).await?;
 

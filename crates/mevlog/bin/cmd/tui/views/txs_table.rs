@@ -74,8 +74,6 @@ impl<'a> TxsTable<'a> {
                 let tx_hash = tx.tx_hash.to_string();
                 let tx_hash_short = format!("{}...", &tx_hash[..12]);
 
-                // signature is already display-ready from SQL (NULL coalesces to
-                // the "<ETH transfer>" marker).
                 let signature = tx.signature.clone();
 
                 let gas_price_gwei = tx.gas_price as f64 / GWEI_F64;

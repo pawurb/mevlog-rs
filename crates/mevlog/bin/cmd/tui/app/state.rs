@@ -185,9 +185,6 @@ impl App {
         self.state_diff_tx_hash = None;
     }
 
-    /// Fetches the selected tx's logs (via `tx-logs`) unless they were already
-    /// requested for that hash. The result is injected into the matching `items`
-    /// entry's `logs`, which the Info and Transfers tabs render.
     pub(crate) fn request_logs_if_needed(&mut self) {
         let Some(opts) = self.rpc_opts() else {
             return;
