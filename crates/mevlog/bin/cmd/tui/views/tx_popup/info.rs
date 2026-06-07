@@ -7,12 +7,12 @@ use ratatui::{
     widgets::{Paragraph, Wrap},
 };
 
-use crate::cmd::tui::data::MEVTransactionJson;
+use crate::cmd::tui::data::TransactionJson;
 
 const LABEL_WIDTH: usize = 19;
 
 pub fn render_info_tab(
-    tx: &MEVTransactionJson,
+    tx: &TransactionJson,
     area: Rect,
     frame: &mut Frame,
     scroll: u16,
@@ -25,7 +25,7 @@ pub fn render_info_tab(
     frame.render_widget(paragraph, area);
 }
 
-fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
+fn build_tx_lines(tx: &TransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     let from_display = tx.from.to_string();
@@ -93,9 +93,9 @@ fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'
         }
     }
 
-    match tx.full_tx_cost {
+    match tx.full_tx_cost.as_ref().and_then(|c| c.parse::<f64>().ok()) {
         Some(full_cost) if tx.gas_used > 0 => {
-            let real_gas_price = full_cost as f64 / tx.gas_used as f64 / GWEI_F64;
+            let real_gas_price = full_cost / tx.gas_used as f64 / GWEI_F64;
             lines.push(build_label_value_line(
                 "Real Gas Price:",
                 &format!("{:.2} GWEI", real_gas_price),
@@ -112,27 +112,27 @@ fn build_tx_lines(tx: &MEVTransactionJson, tx_trace_loading: bool) -> Vec<Line<'
     if !tx.logs.is_empty() {
         lines.push(Line::from(""));
 
-        let total_logs: usize = tx.logs.iter().map(|g| g.logs.len()).sum();
         lines.push(Line::from(Span::styled(
-            format!("Events ({}):", total_logs),
+            format!("Events ({}):", tx.logs.len()),
             Style::default()
                 .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         )));
 
-        for group in &tx.logs {
+        for log in &tx.logs {
+            let signature = log
+                .signature
+                .clone()
+                .unwrap_or_else(|| "<unknown>".to_string());
             lines.push(Line::from(vec![
                 Span::raw("  "),
-                Span::styled(group.source.to_string(), Style::default().fg(Color::Green)),
+                Span::styled(log.address.to_string(), Style::default().fg(Color::Green)),
             ]));
-
-            for log in &group.logs {
-                lines.push(Line::from(vec![
-                    Span::raw("    "),
-                    Span::styled("emit ", Style::default().fg(Color::Yellow)),
-                    Span::styled(log.signature.clone(), Style::default().fg(Color::Blue)),
-                ]));
-            }
+            lines.push(Line::from(vec![
+                Span::raw("    "),
+                Span::styled("emit ", Style::default().fg(Color::Yellow)),
+                Span::styled(signature, Style::default().fg(Color::Blue)),
+            ]));
         }
     }
 

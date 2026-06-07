@@ -12,7 +12,7 @@ use tokio::{
 };
 use tracing::debug;
 
-use crate::cmd::tui::data::{MEVTransactionJson, mevlog_cmd};
+use crate::cmd::tui::data::{TransactionJson, mevlog_cmd};
 
 #[derive(Deserialize)]
 struct ErrorResponse {
@@ -29,7 +29,7 @@ pub async fn fetch_txs(
     blocks: &str,
     rpc_url: Option<String>,
     chain_id: Option<u64>,
-) -> Result<Vec<MEVTransactionJson>> {
+) -> Result<Vec<TransactionJson>> {
     let mut cmd = mevlog_cmd();
 
     cmd.arg("query")
@@ -74,7 +74,7 @@ pub async fn fetch_txs(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<TransactionJson>>(&line) {
                 let txs = envelope.result;
                 return Ok(txs);
             }
@@ -122,11 +122,10 @@ pub async fn fetch_traces(
 ) -> Result<Vec<CallExtract>> {
     let mut cmd = mevlog_cmd();
 
-    cmd.arg("tx")
+    cmd.arg("evm-traces")
         .arg(tx_hash)
         .arg("--evm-trace")
         .arg(trace_mode.to_string())
-        .arg("--evm-calls")
         .arg("--format")
         .arg("json");
 
@@ -159,13 +158,7 @@ pub async fn fetch_traces(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
-                let txs = envelope.result;
-                let calls = txs
-                    .into_iter()
-                    .next()
-                    .map(|tx| tx.evm_calls)
-                    .unwrap_or_default();
+            if let Ok(calls) = serde_json::from_str::<Vec<CallExtract>>(&line) {
                 return Ok(calls);
             }
 
@@ -186,7 +179,7 @@ pub async fn fetch_traces(
 
     match result {
         Ok(traces) => traces,
-        Err(_) => eyre::bail!("mevlog tx --evm-calls timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog evm-traces timed out after 120 seconds"),
     }
 }
 
@@ -196,14 +189,13 @@ pub async fn fetch_tx_with_trace(
     rpc_url: Option<String>,
     chain_id: Option<u64>,
     trace_mode: TraceMode,
-) -> Result<MEVTransactionJson> {
+) -> Result<TransactionJson> {
     let mut cmd = mevlog_cmd();
 
     cmd.arg("tx")
         .arg(tx_hash)
         .arg("--evm-trace")
         .arg(trace_mode.to_string())
-        .arg("--logs")
         .arg("--format")
         .arg("json");
 
@@ -236,7 +228,7 @@ pub async fn fetch_tx_with_trace(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
+            if let Ok(envelope) = serde_json::from_str::<Envelope<TransactionJson>>(&line) {
                 let txs = envelope.result;
                 if let Some(tx) = txs.into_iter().next() {
                     return Ok(tx);
@@ -274,11 +266,10 @@ pub async fn fetch_state_diff(
 ) -> Result<MEVStateDiffJson> {
     let mut cmd = mevlog_cmd();
 
-    cmd.arg("tx")
+    cmd.arg("evm-state-diff")
         .arg(tx_hash)
         .arg("--evm-trace")
         .arg(trace_mode.to_string())
-        .arg("--evm-state-diff")
         .arg("--format")
         .arg("json");
 
@@ -311,13 +302,7 @@ pub async fn fetch_state_diff(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(envelope) = serde_json::from_str::<Envelope<MEVTransactionJson>>(&line) {
-                let txs = envelope.result;
-                let state_diff = txs
-                    .into_iter()
-                    .next()
-                    .map(|tx| tx.evm_state_diff)
-                    .unwrap_or_default();
+            if let Ok(state_diff) = serde_json::from_str::<MEVStateDiffJson>(&line) {
                 return Ok(state_diff);
             }
 
@@ -338,6 +323,6 @@ pub async fn fetch_state_diff(
 
     match result {
         Ok(state_diff) => state_diff,
-        Err(_) => eyre::bail!("mevlog tx --evm-state-diff timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog evm-state-diff timed out after 120 seconds"),
     }
 }

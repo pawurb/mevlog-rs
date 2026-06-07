@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Cell, HighlightSpacing, Row, Table, TableState},
 };
 
-use crate::cmd::tui::data::MEVTransactionJson;
+use crate::cmd::tui::data::TransactionJson;
 
 const HEADER_STYLE: Style = Style::new().fg(Color::Yellow).add_modifier(Modifier::BOLD);
 const SELECTED_ROW_STYLE: Style = Style::new()
@@ -15,12 +15,12 @@ const SELECTED_ROW_STYLE: Style = Style::new()
     .add_modifier(Modifier::BOLD);
 
 pub struct TxsTable<'a> {
-    items: &'a [MEVTransactionJson],
+    items: &'a [TransactionJson],
     explorer_url: Option<&'a str>,
 }
 
 impl<'a> TxsTable<'a> {
-    pub fn new(items: &'a [MEVTransactionJson]) -> Self {
+    pub fn new(items: &'a [TransactionJson]) -> Self {
         Self {
             items,
             explorer_url: None,
@@ -74,13 +74,9 @@ impl<'a> TxsTable<'a> {
                 let tx_hash = tx.tx_hash.to_string();
                 let tx_hash_short = format!("{}...", &tx_hash[..12]);
 
-                let signature = if tx.signature == "UNKNOWN" {
-                    "<Unknown>".to_string()
-                } else if tx.signature == "ETH_TRANSFER" {
-                    "<ETH transfer>".to_string()
-                } else {
-                    tx.signature.clone()
-                };
+                // signature is already display-ready from SQL (NULL coalesces to
+                // the "<ETH transfer>" marker).
+                let signature = tx.signature.clone();
 
                 let gas_price_gwei = tx.gas_price as f64 / GWEI_F64;
                 let gas_cost = tx
@@ -96,7 +92,7 @@ impl<'a> TxsTable<'a> {
                 };
 
                 let cells: Vec<Cell> = vec![
-                    Cell::from(tx.index.to_string()).style(Style::new().fg(Color::Yellow)),
+                    Cell::from(tx.tx_index.to_string()).style(Style::new().fg(Color::Yellow)),
                     Cell::from(tx_hash_short).style(Style::new().fg(Color::Cyan)),
                     Cell::from(signature).style(Style::new().fg(Color::Red)),
                     Cell::from(format!("{:.2} gwei", gas_price_gwei)),

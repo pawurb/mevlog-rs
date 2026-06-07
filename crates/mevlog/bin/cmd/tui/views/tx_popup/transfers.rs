@@ -7,11 +7,11 @@ use ratatui::{
 };
 use revm::primitives::Address;
 
-use crate::cmd::tui::data::MEVTransactionJson;
+use crate::cmd::tui::data::TransactionJson;
 
 const ERC20_TRANSFER_SIGNATURE: &str = "Transfer(address,address,uint256)";
 
-pub fn render_transfers_tab(tx: &MEVTransactionJson, area: Rect, frame: &mut Frame, scroll: u16) {
+pub fn render_transfers_tab(tx: &TransactionJson, area: Rect, frame: &mut Frame, scroll: u16) {
     let lines = build_transfers_lines(tx);
 
     if lines.is_empty() {
@@ -27,7 +27,7 @@ pub fn render_transfers_tab(tx: &MEVTransactionJson, area: Rect, frame: &mut Fra
     frame.render_widget(paragraph, area);
 }
 
-fn build_transfers_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
+fn build_transfers_lines(tx: &TransactionJson) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
     let mut index = 0usize;
 
@@ -57,13 +57,7 @@ fn build_transfers_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
     let erc20_transfers: Vec<_> = tx
         .logs
         .iter()
-        .flat_map(|group| {
-            group
-                .logs
-                .iter()
-                .filter(|log| log.signature == ERC20_TRANSFER_SIGNATURE)
-                .map(move |log| (group.source, log))
-        })
+        .filter(|log| log.signature.as_deref() == Some(ERC20_TRANSFER_SIGNATURE))
         .collect();
 
     if !erc20_transfers.is_empty() {
@@ -74,14 +68,14 @@ fn build_transfers_lines(tx: &MEVTransactionJson) -> Vec<Line<'static>> {
                 .add_modifier(Modifier::BOLD),
         )));
 
-        for (token_address, log) in erc20_transfers {
+        for log in erc20_transfers {
             if log.topics.len() >= 3 {
                 let from = extract_address_from_topic(&log.topics[1]);
                 let to = extract_address_from_topic(&log.topics[2]);
 
-                let amount_display = log.amount.clone().unwrap_or_else(|| "?".to_string());
+                let amount_display = log.erc20_amount.clone().unwrap_or_else(|| "?".to_string());
 
-                let token_display = token_address.to_string();
+                let token_display = log.address.to_string();
 
                 append_transfer_lines(
                     &mut lines,

@@ -22,8 +22,8 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
-        BlockId, CallExtract, DataRequest, DataResponse, MEVStateDiffJson, MEVTransactionJson,
-        RpcOpts, TraceMode, worker::spawn_data_worker,
+        BlockId, CallExtract, DataRequest, DataResponse, MEVStateDiffJson, RpcOpts, TraceMode,
+        TransactionJson, worker::spawn_data_worker,
     },
     views::{
         NetworkSelector, StatusBar, TxsTable, render_info_popup, render_key_bindings,
@@ -106,7 +106,7 @@ pub(crate) enum AppEvent {
 
 pub struct App {
     pub(crate) table_state: TableState,
-    pub(crate) items: Vec<MEVTransactionJson>,
+    pub(crate) items: Vec<TransactionJson>,
     pub(crate) current_block: Option<u64>,
     pub(crate) is_loading: bool,
     pub(crate) loading_block: Option<u64>,
@@ -146,7 +146,7 @@ pub struct App {
 
 #[hotpath::measure_all]
 impl App {
-    pub fn new(items: Vec<MEVTransactionJson>, conn_opts: &ConnOpts) -> Self {
+    pub fn new(items: Vec<TransactionJson>, conn_opts: &ConnOpts) -> Self {
         let current_block = items.first().map(|tx| tx.block_number);
 
         let (data_req_tx, data_req_rx) =

@@ -14,11 +14,11 @@ use ratatui::{
     widgets::{Block, Clear, Paragraph},
 };
 
-use crate::cmd::tui::{app::TxPopupTab, data::MEVTransactionJson};
+use crate::cmd::tui::{app::TxPopupTab, data::TransactionJson};
 
 #[allow(clippy::too_many_arguments)]
 pub fn render_tx_popup(
-    tx: &MEVTransactionJson,
+    tx: &TransactionJson,
     area: Rect,
     frame: &mut Frame,
     scroll: u16,
@@ -85,7 +85,7 @@ pub fn render_tx_popup(
 fn render_tx_hash_line(
     area: Rect,
     frame: &mut Frame,
-    tx: &MEVTransactionJson,
+    tx: &TransactionJson,
     explorer_url: Option<&str>,
 ) {
     let tx_hash = tx.tx_hash.to_string();

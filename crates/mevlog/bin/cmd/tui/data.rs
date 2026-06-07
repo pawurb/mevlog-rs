@@ -3,7 +3,7 @@ use tokio::process::Command;
 pub use mevlog::ChainEntryJson;
 pub use mevlog::misc::shared_init::{TraceMode, mevlog_cmd_path};
 pub use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
-pub use mevlog::models::json::mev_transaction_json::MEVTransactionJson;
+pub use mevlog::models::json::transaction_json::TransactionJson;
 pub use mevlog::models::mev_transaction::CallExtract;
 
 pub(crate) mod chains;
@@ -44,12 +44,12 @@ pub(crate) enum BlockId {
 #[allow(dead_code, clippy::large_enum_variant)]
 #[derive(Debug)]
 pub(crate) enum DataResponse {
-    Block(u64, Vec<MEVTransactionJson>),
+    Block(u64, Vec<TransactionJson>),
     Chains(Vec<ChainEntryJson>),
     ChainInfo(ChainEntryJson),
     Traces(String, Vec<CallExtract>),
     StateDiff(String, MEVStateDiffJson),
-    TxTraced(String, MEVTransactionJson),
+    TxTraced(String, TransactionJson),
     TraceMode(TraceMode),
     RpcRefreshed(String),
     Error(String),
