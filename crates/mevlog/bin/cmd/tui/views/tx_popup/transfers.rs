@@ -11,15 +11,21 @@ use crate::cmd::tui::data::TransactionJson;
 
 const ERC20_TRANSFER_SIGNATURE: &str = "Transfer(address,address,uint256)";
 
-pub fn render_transfers_tab(tx: &TransactionJson, area: Rect, frame: &mut Frame, scroll: u16) {
-    let lines = build_transfers_lines(tx);
-
-    if lines.is_empty() {
+pub fn render_transfers_tab(
+    tx: &TransactionJson,
+    area: Rect,
+    frame: &mut Frame,
+    scroll: u16,
+    logs_loading: bool,
+) {
+    if logs_loading {
         let paragraph =
-            Paragraph::new("No transfers found").style(Style::default().fg(Color::DarkGray));
+            Paragraph::new("Loading transfers...").style(Style::default().fg(Color::Yellow));
         frame.render_widget(paragraph, area);
         return;
     }
+
+    let lines = build_transfers_lines(tx);
 
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })
@@ -60,33 +66,31 @@ fn build_transfers_lines(tx: &TransactionJson) -> Vec<Line<'static>> {
         .filter(|log| log.signature.as_deref() == Some(ERC20_TRANSFER_SIGNATURE))
         .collect();
 
-    if !erc20_transfers.is_empty() {
-        lines.push(Line::from(Span::styled(
-            format!("ERC20 ({}):", erc20_transfers.len()),
-            Style::default()
-                .fg(Color::Green)
-                .add_modifier(Modifier::BOLD),
-        )));
+    lines.push(Line::from(Span::styled(
+        format!("ERC20 ({}):", erc20_transfers.len()),
+        Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD),
+    )));
 
-        for log in erc20_transfers {
-            if log.topics.len() >= 3 {
-                let from = extract_address_from_topic(&log.topics[1]);
-                let to = extract_address_from_topic(&log.topics[2]);
+    for log in erc20_transfers {
+        if let (Some(topic1), Some(topic2)) = (&log.topic1, &log.topic2) {
+            let from = extract_address_from_topic(topic1);
+            let to = extract_address_from_topic(topic2);
 
-                let amount_display = log.erc20_amount.clone().unwrap_or_else(|| "?".to_string());
+            let amount_display = log.erc20_amount.clone().unwrap_or_else(|| "?".to_string());
 
-                let token_display = log.address.to_string();
+            let token_display = log.address.to_string();
 
-                append_transfer_lines(
-                    &mut lines,
-                    index,
-                    &from.to_string(),
-                    &to.to_string(),
-                    &amount_display,
-                    Some(&token_display),
-                );
-                index += 1;
-            }
+            append_transfer_lines(
+                &mut lines,
+                index,
+                &from.to_string(),
+                &to.to_string(),
+                &amount_display,
+                Some(&token_display),
+            );
+            index += 1;
         }
     }
 

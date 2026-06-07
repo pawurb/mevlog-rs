@@ -29,6 +29,7 @@ pub fn render_tx_popup(
     state_diff: Option<&MEVStateDiffJson>,
     state_diff_loading: bool,
     tx_trace_loading: bool,
+    logs_loading: bool,
 ) {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
@@ -63,14 +64,19 @@ pub fn render_tx_popup(
     render_popup_tab_bar(inner_chunks[1], frame, active_tab);
 
     match active_tab {
-        TxPopupTab::Info => {
-            info::render_info_tab(tx, inner_chunks[3], frame, scroll, tx_trace_loading)
-        }
+        TxPopupTab::Info => info::render_info_tab(
+            tx,
+            inner_chunks[3],
+            frame,
+            scroll,
+            tx_trace_loading,
+            logs_loading,
+        ),
         TxPopupTab::Traces => {
             traces::render_traces_tab(inner_chunks[3], frame, traces, traces_loading, scroll)
         }
         TxPopupTab::Transfers => {
-            transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll)
+            transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll, logs_loading)
         }
         TxPopupTab::State => state_diff::render_state_diff_tab(
             inner_chunks[3],

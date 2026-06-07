@@ -13,7 +13,8 @@ pub mod tests {
             models::{log::Log, transaction::Transaction},
         },
         models::json::{
-            block_json::BlockJson, query_response::QueryResponse, transaction_json::TransactionJson,
+            block_json::BlockJson, log_json::LogJson, query_response::QueryResponse,
+            transaction_json::TransactionJson,
         },
     };
     use uuid::Uuid;
@@ -680,6 +681,24 @@ pub mod tests {
         });
 
         assert_eq!(&envelope.result[0], &expected, "tx-logs payload mismatch");
+
+        // The row must also deserialize into the LogJson contract the TUI consumes.
+        let log: LogJson = serde_json::from_value(envelope.result[0].clone())?;
+        assert_eq!(log.log_index, 6, "log_index mismatch");
+        assert_eq!(
+            log.signature.as_deref(),
+            Some(RESOLVED_LOG_SIGNATURE),
+            "log signature mismatch"
+        );
+        assert!(
+            log.topic1.is_some() && log.topic2.is_some() && log.topic3.is_none(),
+            "ERC20 transfer should have topic1/topic2 set and topic3 empty"
+        );
+        assert_eq!(
+            log.erc20_amount.as_deref(),
+            Some("799000000"),
+            "erc20_amount mismatch"
+        );
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())

@@ -17,15 +17,20 @@ pub fn render_info_tab(
     frame: &mut Frame,
     scroll: u16,
     tx_trace_loading: bool,
+    logs_loading: bool,
 ) {
-    let lines = build_tx_lines(tx, tx_trace_loading);
+    let lines = build_tx_lines(tx, tx_trace_loading, logs_loading);
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })
         .scroll((scroll, 0));
     frame.render_widget(paragraph, area);
 }
 
-fn build_tx_lines(tx: &TransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
+fn build_tx_lines(
+    tx: &TransactionJson,
+    tx_trace_loading: bool,
+    logs_loading: bool,
+) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     let from_display = tx.from.to_string();
@@ -109,7 +114,15 @@ fn build_tx_lines(tx: &TransactionJson, tx_trace_loading: bool) -> Vec<Line<'sta
         }
     }
 
-    if !tx.logs.is_empty() {
+    if logs_loading {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            "Events: Loading...",
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        )));
+    } else {
         lines.push(Line::from(""));
 
         lines.push(Line::from(Span::styled(

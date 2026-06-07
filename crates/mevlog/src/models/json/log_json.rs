@@ -1,11 +1,11 @@
 use revm::primitives::{Address, FixedBytes};
 use serde::{Deserialize, Serialize};
 
-/// JSON representation of a single log/event row.
+/// JSON representation of a single log/event row; the deserialization contract for
+/// the `mevlog tx-logs` output (rendered by [`logs_display_query`]).
 ///
-/// Deserialization contract for the logs embedded in `mevlog tx --logs`, which
-/// are rendered in SQL (see [`logs_display_query`]); `topic0..topic3` are folded
-/// into `topics` by the command.
+/// `topic0..topic3` are kept as separate columns (`None` when absent), faithful to
+/// the echoed SQL; `topic0` is the event signature hash.
 ///
 /// [`logs_display_query`]: crate::db::txs::display_sql::logs_display_query
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -14,7 +14,10 @@ pub struct LogJson {
     pub address: Address,
     /// Resolved event signature, `None` when it could not be resolved.
     pub signature: Option<String>,
-    pub topics: Vec<FixedBytes<32>>,
+    pub topic0: Option<FixedBytes<32>>,
+    pub topic1: Option<FixedBytes<32>>,
+    pub topic2: Option<FixedBytes<32>>,
+    pub topic3: Option<FixedBytes<32>>,
     /// Raw log data as `0x`-hex.
     pub data: String,
     /// Decoded ERC20 transfer amount as a decimal string, `None` for non-transfer logs.

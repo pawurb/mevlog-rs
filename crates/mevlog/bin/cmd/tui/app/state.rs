@@ -170,6 +170,33 @@ impl App {
         self.state_diff_tx_hash = None;
     }
 
+    /// Fetches the selected tx's logs (via `tx-logs`) unless they were already
+    /// requested for that hash. The result is injected into the matching `items`
+    /// entry's `logs`, which the Info and Transfers tabs render.
+    pub(crate) fn request_logs_if_needed(&mut self) {
+        let Some(opts) = self.rpc_opts() else {
+            return;
+        };
+        if let Some(idx) = self.table_state.selected()
+            && let Some(tx) = self.items.get(idx)
+        {
+            let tx_hash = tx.tx_hash.to_string();
+
+            if self.logs_tx_hash.as_ref() == Some(&tx_hash) {
+                return;
+            }
+
+            self.logs_tx_hash = Some(tx_hash.clone());
+            self.logs_loading = true;
+            let _ = self.data_req_tx.send(DataRequest::Logs(tx_hash, opts));
+        }
+    }
+
+    pub(crate) fn clear_logs(&mut self) {
+        self.logs_tx_hash = None;
+        self.logs_loading = false;
+    }
+
     pub(crate) fn request_tx_trace(&mut self) {
         let Some(opts) = self.rpc_opts() else {
             return;

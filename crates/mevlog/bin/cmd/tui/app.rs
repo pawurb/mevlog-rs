@@ -135,6 +135,10 @@ pub struct App {
     pub(crate) state_diff: Option<MEVStateDiffJson>,
     pub(crate) state_diff_loading: bool,
     pub(crate) state_diff_tx_hash: Option<String>,
+    /// Hash of the tx whose logs were last requested, guarding re-fetches; the
+    /// fetched logs are injected into the matching `items` entry's `logs`.
+    pub(crate) logs_tx_hash: Option<String>,
+    pub(crate) logs_loading: bool,
     pub(crate) tx_trace_loading: bool,
     pub(crate) tx_trace_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
@@ -235,6 +239,8 @@ impl App {
             state_diff: None,
             state_diff_loading: false,
             state_diff_tx_hash: None,
+            logs_tx_hash: None,
+            logs_loading: false,
             tx_trace_loading: false,
             tx_trace_hash: None,
             block_input_popup_open: false,
@@ -345,6 +351,7 @@ impl App {
                         self.state_diff.as_ref(),
                         self.state_diff_loading,
                         self.tx_trace_loading,
+                        self.logs_loading,
                     );
                 }
 
@@ -487,6 +494,9 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
                     self.request_state_diff_if_needed();
                 }
+                if self.tx_popup_open {
+                    self.request_logs_if_needed();
+                }
             }
             DataResponse::Traces(tx_hash, traces) => {
                 if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
@@ -498,6 +508,18 @@ impl App {
                 if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
                     self.state_diff = Some(state_diff);
                     self.state_diff_loading = false;
+                }
+            }
+            DataResponse::Logs(tx_hash, logs) => {
+                if self.logs_tx_hash.as_ref() == Some(&tx_hash) {
+                    self.logs_loading = false;
+                    if let Some(tx) = self
+                        .items
+                        .iter_mut()
+                        .find(|t| t.tx_hash.to_string() == tx_hash)
+                    {
+                        tx.logs = logs;
+                    }
                 }
             }
             DataResponse::TxTraced(tx_hash, traced_tx) => {
