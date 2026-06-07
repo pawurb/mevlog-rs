@@ -1,8 +1,9 @@
+use arrow::record_batch::RecordBatch;
 use eyre::Result;
 use revm::primitives::{Address, FixedBytes, U256};
 use sqlx::{Row, SqlitePool, sqlite::SqliteRow};
 
-use crate::{misc::utils::UNKNOWN, models::mev_log::MEVLog};
+use crate::{db::sigs::models::event::Event, misc::parquet_utils::get_parquet_string_value};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Log {
@@ -20,29 +21,57 @@ pub struct Log {
     pub signature: Option<String>,
 }
 
-impl Log {
-    /// Builds a [`Log`] from an already-parsed [`MEVLog`] and its block number.
-    ///
-    /// `erc20_amount` is carried over (already decoded for ERC20 transfers).
-    pub fn from_mev_log(block_number: u64, log: &MEVLog) -> Log {
-        let signature =
-            (log.signature.signature != UNKNOWN).then(|| log.signature.signature.clone());
-
-        Log {
-            block_number,
-            tx_index: log.tx_index,
-            log_index: log.log_index,
-            address: log.source,
-            topics: log.topics.clone(),
-            data: log.data.clone(),
-            erc20_amount: log.signature.amount,
-            signature,
-        }
-    }
-}
-
 #[hotpath::measure_all(future = true)]
 impl Log {
+    // Default cryo `logs` columns: 0 block_number, 1 transaction_index,
+    // 2 log_index, 3 transaction_hash, 4 address, 5 topic0, 6 topic1,
+    // 7 topic2, 8 topic3, 9 data, 10 chain_id.
+    pub async fn from_parquet_row(
+        batch: &RecordBatch,
+        row_idx: usize,
+        sqlite: &SqlitePool,
+    ) -> Result<Log> {
+        let get = |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+
+        let block_number = get(0).parse::<u64>().unwrap();
+        let tx_index = get(1).parse::<u64>().unwrap();
+        let log_index = get(2).parse::<u64>().unwrap();
+        let address = get(4).parse::<Address>().unwrap();
+
+        let signature = Event::find_by_topic(&get(5), sqlite).await?;
+
+        let topics = [get(5), get(6), get(7), get(8)]
+            .iter()
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                FixedBytes::from_slice(&hex::decode(s.strip_prefix("0x").unwrap_or(s)).unwrap())
+            })
+            .collect::<Vec<_>>();
+
+        let data_str = get(9);
+        let data = hex::decode(data_str.strip_prefix("0x").unwrap_or(&data_str)).unwrap();
+
+        let erc20_amount = if signature.as_deref() == Some("Transfer(address,address,uint256)")
+            && data.len() >= 32
+        {
+            let amount_bytes: [u8; 32] = data[..32].try_into().unwrap_or([0; 32]);
+            Some(U256::from_be_bytes(amount_bytes))
+        } else {
+            None
+        };
+
+        Ok(Log {
+            block_number,
+            tx_index,
+            log_index,
+            address,
+            topics,
+            data,
+            erc20_amount,
+            signature,
+        })
+    }
+
     pub async fn count(conn: &SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM logs")
             .fetch_one(conn)

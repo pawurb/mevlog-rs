@@ -3,12 +3,12 @@ use std::{collections::HashMap, path::PathBuf, process::Command};
 use eyre::Result;
 use sqlx::SqlitePool;
 
-use crate::db::txs::models::{block::Block, transaction::Transaction};
-use crate::models::{evm_chain::EVMChain, mev_log::MEVLog};
+use crate::db::txs::models::{block::Block, log::Log, transaction::Transaction};
+use crate::models::evm_chain::EVMChain;
 
 pub struct BatchedBlockData {
     pub txs_by_block: HashMap<u64, Vec<Transaction>>,
-    pub logs_by_block: HashMap<u64, Vec<MEVLog>>,
+    pub logs_by_block: HashMap<u64, Vec<Log>>,
     pub blocks_by_block: HashMap<u64, Block>,
 }
 
@@ -256,8 +256,8 @@ async fn parse_batch_logs_from_files(
     start_block: u64,
     end_block: u64,
     sqlite: &SqlitePool,
-) -> Result<HashMap<u64, Vec<MEVLog>>> {
-    let mut logs_by_block: HashMap<u64, Vec<MEVLog>> = HashMap::new();
+) -> Result<HashMap<u64, Vec<Log>>> {
+    let mut logs_by_block: HashMap<u64, Vec<Log>> = HashMap::new();
 
     for file_path in files {
         let file = std::fs::File::open(file_path)?;
@@ -268,11 +268,11 @@ async fn parse_batch_logs_from_files(
             let batch = batch_result?;
 
             for row_idx in 0..batch.num_rows() {
-                let (mev_log, block_number) =
-                    MEVLog::from_parquet_row(&batch, row_idx, sqlite).await?;
+                let log = Log::from_parquet_row(&batch, row_idx, sqlite).await?;
+                let block_number = log.block_number;
 
                 if block_number >= start_block && block_number <= end_block {
-                    logs_by_block.entry(block_number).or_default().push(mev_log);
+                    logs_by_block.entry(block_number).or_default().push(log);
                 }
             }
         }
