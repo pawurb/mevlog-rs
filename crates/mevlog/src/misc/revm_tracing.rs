@@ -33,7 +33,6 @@ use crate::db::txs::models::transaction::Transaction;
 use crate::misc::coinbase_bribe::{TraceData, find_coinbase_transfer};
 use crate::models::{
     evm_chain::EVMChain,
-    mev_opcode::MEVOpcode,
     mev_state_diff::{MEVStateDiff, u256_to_option_b256},
 };
 
@@ -333,42 +332,6 @@ pub async fn revm_state_diff_for_tx(
     Ok(MEVStateDiff::new())
 }
 
-pub async fn revm_opcodes_for_tx(
-    tx_hash: FixedBytes<32>,
-    block_number: u64,
-    provider: &Arc<GenericProvider>,
-    rpc_url: &str,
-    chain: &EVMChain,
-) -> Result<Vec<MEVOpcode>> {
-    let any_provider = ProviderBuilder::new()
-        .network::<AnyNetwork>()
-        .connect_http(rpc_url.parse()?);
-    let block = get_cached_revm_block(&any_provider, chain, block_number).await?;
-    let block_context = RevmBlockContext::new(&block);
-
-    let ordered: Vec<FixedBytes<32>> = block.transactions.hashes().collect();
-    let Some(last_index) = ordered.iter().position(|h| h == &tx_hash) else {
-        eyre::bail!("Transaction {tx_hash} not found in block {block_number}");
-    };
-
-    let parent_block = block_number.saturating_sub(1);
-    let mut cache_db = init_revm_db(parent_block, &Some(TraceMode::Revm), rpc_url, chain)
-        .await?
-        .ok_or_else(|| eyre::eyre!("Failed to initialize Revm fork DB"))?;
-
-    for current_hash in ordered.into_iter().take(last_index + 1) {
-        let tx_req = fetch_tx_request(current_hash, provider).await?;
-
-        if current_hash == tx_hash {
-            return revm_tx_opcodes(tx_hash, &tx_req, &block_context, &mut cache_db);
-        }
-
-        revm_commit_tx(current_hash, &tx_req, &block_context, &mut cache_db)?;
-    }
-
-    Ok(vec![])
-}
-
 pub async fn revm_calls_for_tx(
     tx_hash: FixedBytes<32>,
     block_number: u64,
@@ -440,55 +403,6 @@ pub fn revm_tx_calls(
     let txs = &full_trace.trace;
 
     Ok(txs.clone())
-}
-
-pub fn revm_tx_opcodes(
-    tx_hash: FixedBytes<32>,
-    tx_req: &TransactionRequest,
-    block_context: &RevmBlockContext,
-    cache_db: &mut CacheDB<SharedBackend>,
-) -> Result<Vec<MEVOpcode>> {
-    let trace_types = HashSet::from_iter([TraceType::VmTrace]);
-    let mut evm = Context::mainnet().with_db(cache_db);
-    evm.modify_block(|block| {
-        apply_block_env(block, block_context);
-    });
-    evm.modify_tx(|tx_env| {
-        apply_tx_env(tx_env, tx_req, block_context);
-    });
-    let mut evm = evm.build_mainnet_with_inspector(TracingInspector::new(
-        TracingInspectorConfig::from_parity_config(&trace_types),
-    ));
-
-    let tx_env = evm.tx.clone();
-    let res = match evm.inspect_tx(tx_env) {
-        Ok(res) => res,
-        Err(e) => {
-            tracing::warn!("revm_tx_opcodes {tx_hash} failed. {:?}", e);
-            return Ok(vec![]);
-        }
-    };
-
-    let full_trace = evm
-        .into_inspector()
-        .into_parity_builder()
-        .into_trace_results(&res.result, &trace_types);
-
-    let mut opcodes = Vec::new();
-
-    if let Some(vm_trace) = &full_trace.vm_trace {
-        for op in &vm_trace.ops {
-            if let Some(op_str) = &op.op {
-                let pc = op.pc;
-                let cost = op.cost;
-                let gas_left = op.ex.as_ref().map(|ex| ex.used).unwrap_or(0);
-
-                opcodes.push(MEVOpcode::new(pc as u64, op_str.clone(), cost, gas_left));
-            }
-        }
-    }
-
-    Ok(opcodes)
 }
 
 pub fn revm_tx_state_diff(

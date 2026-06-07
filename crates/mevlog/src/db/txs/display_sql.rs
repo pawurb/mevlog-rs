@@ -53,6 +53,31 @@ pub fn tx_display_query(where_sql: &str) -> String {
     )
 }
 
+/// Canonical blocks `SELECT` for the given `WHERE` clause, projecting the columns
+/// of [`BlockJson`]: the `blocks` table metadata, the base fee rendered in gwei,
+/// and the block's indexed transaction count.
+///
+/// [`BlockJson`]: crate::models::json::block_json::BlockJson
+pub fn block_display_query(where_sql: &str) -> String {
+    format!(
+        "SELECT \
+            block_number, \
+            block_hash, \
+            miner, \
+            gas_used, \
+            timestamp, \
+            base_fee_per_gas, \
+            format_gwei(base_fee_per_gas) AS display_base_fee_per_gas, \
+            ( \
+                SELECT COUNT(*) FROM transactions \
+                WHERE transactions.block_number = blocks.block_number \
+            ) AS txs_count \
+         FROM blocks \
+         WHERE {where_sql} \
+         ORDER BY block_number DESC"
+    )
+}
+
 /// Canonical logs `SELECT` for the given `WHERE` clause, projecting the columns
 /// of [`LogJson`]. `topic0..topic3` are returned as separate columns (`NULL`
 /// when absent), keeping the rows faithful to the echoed SQL.

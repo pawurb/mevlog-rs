@@ -1,4 +1,6 @@
 pub mod affected_addresses;
+pub mod block;
+pub mod block_txs;
 pub mod chain_info;
 pub mod chains;
 pub mod coinbase_transfer;

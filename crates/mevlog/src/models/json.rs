@@ -1,3 +1,4 @@
+pub mod block_json;
 pub mod log_json;
 pub mod mev_state_diff_json;
 pub mod query_response;

@@ -15,18 +15,13 @@ use crate::{
         coinbase_bribe::{TraceData, find_coinbase_transfer},
         revm_tracing::{
             backfill_revm, revm_affected_addresses_for_tx, revm_block_traced_calls,
-            revm_calls_for_tx, revm_opcodes_for_tx, revm_state_diff_for_tx,
+            revm_calls_for_tx, revm_state_diff_for_tx,
         },
-        rpc_tracing::{
-            backfill_rpc, rpc_affected_addresses, rpc_tx_calls, rpc_tx_opcodes, rpc_tx_state_diff,
-        },
+        rpc_tracing::{backfill_rpc, rpc_affected_addresses, rpc_tx_calls, rpc_tx_state_diff},
         shared_init::TraceMode,
         utils::{ETH_TRANSFER, wei_to_eth},
     },
-    models::{
-        evm_chain::EVMChain, mev_opcode::MEVOpcode, mev_state_diff::MEVStateDiff,
-        mev_transaction::CallExtract,
-    },
+    models::{evm_chain::EVMChain, mev_state_diff::MEVStateDiff, mev_transaction::CallExtract},
 };
 
 /// Direct ETH a single tx paid to its block's coinbase (miner/validator).
@@ -129,23 +124,6 @@ pub async fn state_diff_for_tx(
         TraceMode::Revm => {
             let block_number = tx_block_number(tx_hash, provider).await?;
             revm_state_diff_for_tx(tx_hash, block_number, provider, rpc_url, chain).await?
-        }
-    })
-}
-
-/// Opcode-level trace of a single tx according to the selected backend.
-pub async fn opcodes_for_tx(
-    tx_hash: TxHash,
-    mode: &TraceMode,
-    provider: &Arc<GenericProvider>,
-    chain: &EVMChain,
-    rpc_url: &str,
-) -> Result<Vec<MEVOpcode>> {
-    Ok(match mode {
-        TraceMode::RPC => rpc_tx_opcodes(tx_hash, provider).await?,
-        TraceMode::Revm => {
-            let block_number = tx_block_number(tx_hash, provider).await?;
-            revm_opcodes_for_tx(tx_hash, block_number, provider, rpc_url, chain).await?
         }
     })
 }

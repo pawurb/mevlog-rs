@@ -32,11 +32,7 @@ pub async fn fetch_txs(
 ) -> Result<Vec<TransactionJson>> {
     let mut cmd = mevlog_cmd();
 
-    cmd.arg("query")
-        .arg("-b")
-        .arg(blocks)
-        .arg("--format")
-        .arg("json");
+    cmd.arg("block-txs").arg(blocks).arg("--format").arg("json");
 
     if let Some(rpc_url) = &rpc_url {
         cmd.arg("--rpc-url").arg(rpc_url);
@@ -96,7 +92,7 @@ pub async fn fetch_txs(
 
     match result {
         Ok(txs) => txs,
-        Err(_) => eyre::bail!("mevlog query timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog block-txs timed out after 120 seconds"),
     }
 }
 

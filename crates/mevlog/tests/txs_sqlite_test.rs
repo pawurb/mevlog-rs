@@ -12,7 +12,9 @@ pub mod tests {
             self,
             models::{log::Log, transaction::Transaction},
         },
-        models::json::query_response::QueryResponse,
+        models::json::{
+            block_json::BlockJson, query_response::QueryResponse, transaction_json::TransactionJson,
+        },
     };
     use uuid::Uuid;
 
@@ -103,6 +105,38 @@ pub mod tests {
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
             .arg("--skip-verify-chain-id")
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", "json"])
+            .output()
+            .expect("failed to execute CLI")
+    }
+
+    fn run_block(rpc_url: &str, tmp_dir: &Path, block: &str) -> Output {
+        Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .args(["run", "--bin", "mevlog", "--", "block", block])
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--rpc-url", rpc_url])
+            .arg("--skip-verify-chain-id")
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", "json"])
+            .output()
+            .expect("failed to execute CLI")
+    }
+
+    fn run_block_txs(
+        rpc_url: &str,
+        tmp_dir: &Path,
+        block: &str,
+        native_token_price: &str,
+    ) -> Output {
+        Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .args(["run", "--bin", "mevlog", "--", "block-txs", block])
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--rpc-url", rpc_url])
+            .arg("--skip-verify-chain-id")
+            .args(["--native-token-price", native_token_price])
             .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
             .args(["--format", "json"])
             .output()
@@ -646,6 +680,100 @@ pub mod tests {
         });
 
         assert_eq!(&envelope.result[0], &expected, "tx-logs payload mismatch");
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_block_command_returns_metadata() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_block(&rpc_url, &tmp_dir, &FROM_BLOCK.to_string());
+
+        assert!(
+            output.status.success(),
+            "block failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        // block is a convenience wrapper around query: it emits the same envelope,
+        // with the single block's metadata in `result`.
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(envelope.result_count, 1, "result_count mismatch");
+        assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
+
+        let block: BlockJson = serde_json::from_value(envelope.result[0].clone())?;
+        assert_eq!(block.block_number, FROM_BLOCK, "block_number mismatch");
+        assert!(
+            block.txs_count > 0,
+            "block should have indexed transactions"
+        );
+        // Post-EIP-1559 mainnet block: base fee present and rendered in gwei.
+        assert!(
+            block
+                .display_base_fee_per_gas
+                .as_deref()
+                .is_some_and(|s| s.ends_with(" gwei")),
+            "display_base_fee_per_gas should be rendered in gwei, got {:?}",
+            block.display_base_fee_per_gas
+        );
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_block_txs_command_returns_txs() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_block_txs(&rpc_url, &tmp_dir, &FROM_BLOCK.to_string(), "2500.5");
+
+        assert!(
+            output.status.success(),
+            "block-txs failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        // block-txs is a convenience wrapper around query: it emits the same
+        // envelope, with the block's display-shaped transactions in `result`.
+        let envelope: QueryResponse = serde_json::from_slice(&output.stdout)?;
+        assert!(envelope.result_count > 0, "expected transactions in block");
+        assert_eq!(
+            envelope.query.blocks,
+            FROM_BLOCK.to_string(),
+            "echoed blocks mismatch"
+        );
+
+        let txs: Vec<TransactionJson> = envelope
+            .result
+            .iter()
+            .map(|row| serde_json::from_value(row.clone()))
+            .collect::<std::result::Result<_, _>>()?;
+
+        assert!(
+            txs.iter().all(|tx| tx.block_number == FROM_BLOCK),
+            "all rows should belong to the requested block"
+        );
+
+        let known = txs
+            .iter()
+            .find(|tx| tx.tx_hash.to_string() == format!("0x{TX_HASH}"))
+            .expect("the known transfer tx should be present in the block");
+        assert_eq!(known.tx_index, 2, "known tx index mismatch");
+        assert_eq!(known.signature, TX_SIGNATURE, "known tx signature mismatch");
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())

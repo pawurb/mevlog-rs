@@ -3,13 +3,11 @@ use std::time::Instant;
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
-    db::txs::{
-        display_sql::tx_display_query, indexing::index_block_range, raw_query::run_raw_query,
-    },
+    db::txs::{indexing::index_block_range, raw_query::run_raw_query},
     misc::{
         args_parsing::BlocksRange,
         shared_init::{ConnOpts, OutputFormat, SharedOpts, init_deps},
-        sql_macros::{NATIVE_TOKEN_PRICE_MACRO, substitute_sql_macros},
+        sql_macros::substitute_sql_macros,
         tx_tracing::backfill_coinbase_transfers,
         utils::get_native_token_price,
     },

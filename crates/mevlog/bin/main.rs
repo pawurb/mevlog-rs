@@ -7,11 +7,11 @@ use cmd::seed_db::SeedDBArgs;
 #[cfg(feature = "tui")]
 use cmd::tui::TuiArgs;
 use cmd::{
-    affected_addresses::AffectedAddressesArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
-    coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
-    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, evm_traces::EvmTracesArgs,
-    query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
-    update_db::UpdateDBArgs,
+    affected_addresses::AffectedAddressesArgs, block::BlockArgs, block_txs::BlockTxsArgs,
+    chain_info::ChainInfoArgs, chains::ChainsArgs, coinbase_transfer::CoinbaseTransferArgs,
+    debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
+    evm_traces::EvmTracesArgs, query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs,
+    tx_logs::TxLogsArgs, update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -55,6 +55,10 @@ pub enum MLSubcommand {
     Tx(TxArgs),
     #[command(name = "tx-logs", about = "Show a transaction's logs")]
     TxLogs(TxLogsArgs),
+    #[command(about = "Show a single block's metadata")]
+    Block(BlockArgs),
+    #[command(name = "block-txs", about = "Show a block's transactions")]
+    BlockTxs(BlockTxsArgs),
     #[command(about = "Update signatures database")]
     UpdateDB(UpdateDBArgs),
     #[command(about = "List all available chains from ChainList")]
@@ -157,6 +161,12 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::TxLogs(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::Block(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::BlockTxs(args) => {
             args.run(root_args.format).await?;
         }
         ML::UpdateDB(args) => {
