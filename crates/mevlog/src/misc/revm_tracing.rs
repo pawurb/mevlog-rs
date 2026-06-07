@@ -33,7 +33,7 @@ use crate::db::txs::models::transaction::Transaction;
 use crate::misc::coinbase_bribe::{TraceData, find_coinbase_transfer};
 use crate::models::{
     evm_chain::EVMChain,
-    mev_state_diff::{MEVStateDiff, u256_to_option_b256},
+    state_diff::{StateDiff, u256_to_option_b256},
 };
 
 pub async fn init_revm_db(
@@ -302,7 +302,7 @@ pub async fn revm_state_diff_for_tx(
     provider: &Arc<GenericProvider>,
     rpc_url: &str,
     chain: &EVMChain,
-) -> Result<MEVStateDiff> {
+) -> Result<StateDiff> {
     let any_provider = ProviderBuilder::new()
         .network::<AnyNetwork>()
         .connect_http(rpc_url.parse()?);
@@ -329,7 +329,7 @@ pub async fn revm_state_diff_for_tx(
         revm_commit_tx(current_hash, &tx_req, &block_context, &mut cache_db)?;
     }
 
-    Ok(MEVStateDiff::new())
+    Ok(StateDiff::new())
 }
 
 pub async fn revm_calls_for_tx(
@@ -410,7 +410,7 @@ pub fn revm_tx_state_diff(
     tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
     cache_db: &mut CacheDB<SharedBackend>,
-) -> Result<MEVStateDiff> {
+) -> Result<StateDiff> {
     let trace_types = HashSet::from_iter([TraceType::StateDiff]);
     let mut evm = Context::mainnet().with_db(cache_db);
     evm.modify_block(|block| {
@@ -428,11 +428,11 @@ pub fn revm_tx_state_diff(
         Ok(res) => res,
         Err(e) => {
             tracing::warn!("revm_tx_state_diff {tx_hash} failed. {:?}", e);
-            return Ok(MEVStateDiff::new());
+            return Ok(StateDiff::new());
         }
     };
 
-    let mut state_diff = MEVStateDiff::new();
+    let mut state_diff = StateDiff::new();
 
     for (address, account) in res.state.iter() {
         for (slot, slot_state) in account.storage.iter() {

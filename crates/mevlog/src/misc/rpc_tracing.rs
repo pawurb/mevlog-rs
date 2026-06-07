@@ -19,7 +19,7 @@ use crate::{
     GenericProvider,
     db::txs::models::{block::Block, transaction::Transaction},
     misc::coinbase_bribe::{TraceData, find_coinbase_transfer},
-    models::mev_state_diff::MEVStateDiff,
+    models::state_diff::StateDiff,
 };
 
 #[hotpath::measure(log = true, future = true)]
@@ -101,7 +101,7 @@ fn collect_calls(frame: &CallFrame, result: &mut Vec<CallFrame>) {
 pub async fn rpc_tx_state_diff(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
-) -> Result<MEVStateDiff> {
+) -> Result<StateDiff> {
     let tracing_opts = GethDebugTracingOptions::default();
     let tracing_opts = tracing_opts.with_tracer(GethDebugTracerType::BuiltInTracer(
         GethDebugBuiltInTracerType::PreStateTracer,
@@ -122,7 +122,7 @@ pub async fn rpc_tx_state_diff(
         Ok(trace) => trace,
         Err(e) => {
             tracing::error!("Error tracing tx state diff: {}", e);
-            return Ok(MEVStateDiff::new());
+            return Ok(StateDiff::new());
         }
     };
 
@@ -130,11 +130,11 @@ pub async fn rpc_tx_state_diff(
         GethTrace::PreStateTracer(PreStateFrame::Diff(DiffMode { pre, post })) => (pre, post),
         _ => {
             tracing::warn!("Unexpected trace type for state diff tracing");
-            return Ok(MEVStateDiff::new());
+            return Ok(StateDiff::new());
         }
     };
 
-    let mut state_diff = MEVStateDiff::new();
+    let mut state_diff = StateDiff::new();
 
     let all_addresses: HashSet<_> = pre_state.keys().chain(post_state.keys()).collect();
 

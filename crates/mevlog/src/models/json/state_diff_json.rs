@@ -3,19 +3,19 @@ use std::collections::BTreeMap;
 use alloy::primitives::{Address, B256};
 use serde::{Deserialize, Serialize};
 
-use crate::models::mev_state_diff::MEVStateDiff;
+use crate::models::state_diff::StateDiff;
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
-pub struct MEVStateDiffJson(pub BTreeMap<Address, BTreeMap<B256, [Option<B256>; 2]>>);
+pub struct StateDiffJson(pub BTreeMap<Address, BTreeMap<B256, [Option<B256>; 2]>>);
 
-impl MEVStateDiffJson {
+impl StateDiffJson {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
-impl From<&MEVStateDiff> for MEVStateDiffJson {
-    fn from(state_diff: &MEVStateDiff) -> Self {
+impl From<&StateDiff> for StateDiffJson {
+    fn from(state_diff: &StateDiff) -> Self {
         let mut result = BTreeMap::new();
 
         for (address, changes) in &state_diff.contracts {
@@ -26,6 +26,6 @@ impl From<&MEVStateDiff> for MEVStateDiffJson {
             result.insert(*address, slots);
         }
 
-        MEVStateDiffJson(result)
+        StateDiffJson(result)
     }
 }

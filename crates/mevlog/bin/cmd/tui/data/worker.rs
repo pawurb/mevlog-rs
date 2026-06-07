@@ -18,8 +18,8 @@ use crate::cmd::tui::{
         BlockId, DataRequest, DataResponse,
         chains::fetch_chains,
         txs::{
-            detect_trace_mode, fetch_logs, fetch_state_diff, fetch_traces, fetch_tx_with_trace,
-            fetch_txs,
+            detect_trace_mode, fetch_state_diff, fetch_traces, fetch_tx_with_trace,
+            fetch_txs_with_logs,
         },
     },
 };
@@ -33,7 +33,6 @@ enum RequestKey {
     Traces,
     StateDiff,
     TxTrace,
-    Logs,
     DetectTraceMode,
     RefreshRpc,
 }
@@ -48,7 +47,6 @@ impl DataRequest {
             DataRequest::Traces(..) => RequestKey::Traces,
             DataRequest::StateDiff(..) => RequestKey::StateDiff,
             DataRequest::TxTrace(..) => RequestKey::TxTrace,
-            DataRequest::Logs(..) => RequestKey::Logs,
             DataRequest::DetectTraceMode(_) => RequestKey::DetectTraceMode,
             DataRequest::RefreshRpc(..) => RequestKey::RefreshRpc,
         }
@@ -80,7 +78,7 @@ pub(crate) fn spawn_data_worker(
                     rt.spawn(async move {
                         match timeout(
                             timeout_duration,
-                            fetch_txs("latest", Some(opts.rpc_url), Some(opts.chain_id)),
+                            fetch_txs_with_logs("latest", Some(opts.rpc_url), Some(opts.chain_id)),
                         )
                         .await
                         {
@@ -114,7 +112,11 @@ pub(crate) fn spawn_data_worker(
                     rt.spawn(async move {
                         match timeout(
                             timeout_duration,
-                            fetch_txs(&block.to_string(), Some(opts.rpc_url), Some(opts.chain_id)),
+                            fetch_txs_with_logs(
+                                &block.to_string(),
+                                Some(opts.rpc_url),
+                                Some(opts.chain_id),
+                            ),
                         )
                         .await
                         {
@@ -186,24 +188,6 @@ pub(crate) fn spawn_data_worker(
                             }
                             Err(e) => {
                                 error!(tx_hash = %hash, error = %e, "failed to fetch state diff");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
-                            }
-                        }
-                    })
-                }
-
-                DataRequest::Logs(tx_hash, opts) => {
-                    info!(%tx_hash, "fetching logs");
-                    let tx = event_tx.clone();
-                    let hash = tx_hash.clone();
-                    rt.spawn(async move {
-                        match fetch_logs(&hash, Some(opts.rpc_url), Some(opts.chain_id)).await {
-                            Ok(logs) => {
-                                debug!(tx_hash = %hash, count = logs.len(), "fetched logs");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Logs(hash, logs)));
-                            }
-                            Err(e) => {
-                                error!(tx_hash = %hash, error = %e, "failed to fetch logs");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
                             }
                         }

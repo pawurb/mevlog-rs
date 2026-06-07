@@ -20,11 +20,11 @@ impl StorageSlotChange {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct MEVStateDiff {
+pub struct StateDiff {
     pub contracts: BTreeMap<Address, Vec<StorageSlotChange>>,
 }
 
-impl MEVStateDiff {
+impl StateDiff {
     pub fn new() -> Self {
         Self {
             contracts: BTreeMap::new(),
@@ -47,7 +47,7 @@ impl MEVStateDiff {
     }
 }
 
-pub fn b256_from_u256(value: U256) -> B256 {
+fn b256_from_u256(value: U256) -> B256 {
     B256::from(value.to_be_bytes())
 }
 

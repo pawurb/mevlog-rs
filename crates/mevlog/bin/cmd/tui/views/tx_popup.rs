@@ -3,7 +3,7 @@ mod state_diff;
 mod traces;
 mod transfers;
 
-use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
+use mevlog::models::json::state_diff_json::StateDiffJson;
 use mevlog::models::mev_transaction::CallExtract;
 use ratatui::{
     Frame,
@@ -41,10 +41,9 @@ pub fn render_tx_popup(
     explorer_url: Option<&str>,
     traces: Option<&[CallExtract]>,
     traces_loading: bool,
-    state_diff: Option<&MEVStateDiffJson>,
+    state_diff: Option<&StateDiffJson>,
     state_diff_loading: bool,
     tx_trace_loading: bool,
-    logs_loading: bool,
 ) -> u16 {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
@@ -79,19 +78,14 @@ pub fn render_tx_popup(
     render_popup_tab_bar(inner_chunks[1], frame, active_tab);
 
     match active_tab {
-        TxPopupTab::Info => info::render_info_tab(
-            tx,
-            inner_chunks[3],
-            frame,
-            scroll,
-            tx_trace_loading,
-            logs_loading,
-        ),
+        TxPopupTab::Info => {
+            info::render_info_tab(tx, inner_chunks[3], frame, scroll, tx_trace_loading)
+        }
         TxPopupTab::Traces => {
             traces::render_traces_tab(inner_chunks[3], frame, traces, traces_loading, scroll)
         }
         TxPopupTab::Transfers => {
-            transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll, logs_loading)
+            transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll)
         }
         TxPopupTab::State => state_diff::render_state_diff_tab(
             inner_chunks[3],

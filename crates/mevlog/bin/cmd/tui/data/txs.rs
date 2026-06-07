@@ -3,7 +3,7 @@ use std::{process::Stdio, sync::Arc, time::Duration};
 use eyre::Result;
 use mevlog::misc::rpc_capability::is_debug_trace_available;
 use mevlog::misc::shared_init::{TraceMode, init_provider};
-use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
+use mevlog::models::json::state_diff_json::StateDiffJson;
 use mevlog::models::mev_transaction::CallExtract;
 use serde::Deserialize;
 use tokio::{
@@ -96,15 +96,55 @@ pub async fn fetch_txs(
     }
 }
 
+/// Fetch the txs of a block together with all its logs, attaching each tx's logs
+/// in memory. The block is indexed once by `block-txs`, so the follow-up
+/// `block-logs` call is a local read (no extra RPC). Logs are grouped by
+/// `tx_index`, which avoids the per-tx `tx-logs` RPC the popup used to make on
+/// every selection change.
 #[hotpath::measure(future = true)]
-pub async fn fetch_logs(
-    tx_hash: &str,
+pub async fn fetch_txs_with_logs(
+    blocks: &str,
+    rpc_url: Option<String>,
+    chain_id: Option<u64>,
+) -> Result<Vec<TransactionJson>> {
+    let mut txs = fetch_txs(blocks, rpc_url.clone(), chain_id).await?;
+    if txs.is_empty() {
+        return Ok(txs);
+    }
+
+    // Pin the logs query to the concrete block number we just fetched so a "latest"
+    // request can't race a newly produced block between the two subprocess calls.
+    let block_number = txs[0].block_number;
+    let logs = fetch_block_logs(&block_number.to_string(), rpc_url, chain_id).await?;
+
+    let mut by_tx_index: std::collections::HashMap<u64, Vec<LogJson>> =
+        std::collections::HashMap::new();
+    for log in logs {
+        if let Some(tx_index) = log.tx_index {
+            by_tx_index.entry(tx_index).or_default().push(log);
+        }
+    }
+    for tx in &mut txs {
+        if let Some(logs) = by_tx_index.remove(&tx.tx_index) {
+            tx.logs = logs;
+        }
+    }
+
+    Ok(txs)
+}
+
+#[hotpath::measure(future = true)]
+async fn fetch_block_logs(
+    blocks: &str,
     rpc_url: Option<String>,
     chain_id: Option<u64>,
 ) -> Result<Vec<LogJson>> {
     let mut cmd = mevlog_cmd();
 
-    cmd.arg("tx-logs").arg(tx_hash).arg("--format").arg("json");
+    cmd.arg("block-logs")
+        .arg(blocks)
+        .arg("--format")
+        .arg("json");
 
     if let Some(rpc_url) = &rpc_url {
         cmd.arg("--rpc-url").arg(rpc_url);
@@ -156,7 +196,7 @@ pub async fn fetch_logs(
 
     match result {
         Ok(logs) => logs,
-        Err(_) => eyre::bail!("mevlog tx-logs timed out after 120 seconds"),
+        Err(_) => eyre::bail!("mevlog block-logs timed out after 120 seconds"),
     }
 }
 
@@ -323,7 +363,7 @@ pub async fn fetch_state_diff(
     rpc_url: Option<String>,
     chain_id: Option<u64>,
     trace_mode: TraceMode,
-) -> Result<MEVStateDiffJson> {
+) -> Result<StateDiffJson> {
     let mut cmd = mevlog_cmd();
 
     cmd.arg("evm-state-diff")
@@ -362,7 +402,7 @@ pub async fn fetch_state_diff(
         let mut stderr_reader = BufReader::new(stderr).lines();
 
         if let Some(line) = stdout_reader.next_line().await? {
-            if let Ok(state_diff) = serde_json::from_str::<MEVStateDiffJson>(&line) {
+            if let Ok(state_diff) = serde_json::from_str::<StateDiffJson>(&line) {
                 return Ok(state_diff);
             }
 
@@ -377,7 +417,7 @@ pub async fn fetch_state_diff(
             return Err(eyre::eyre!("{}", line));
         }
 
-        Ok::<_, eyre::Error>(MEVStateDiffJson::default())
+        Ok::<_, eyre::Error>(StateDiffJson::default())
     })
     .await;
 

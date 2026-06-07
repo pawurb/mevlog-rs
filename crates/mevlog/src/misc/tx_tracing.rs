@@ -21,7 +21,7 @@ use crate::{
         shared_init::TraceMode,
         utils::{ETH_TRANSFER, wei_to_eth},
     },
-    models::{evm_chain::EVMChain, mev_state_diff::MEVStateDiff, mev_transaction::CallExtract},
+    models::{evm_chain::EVMChain, mev_transaction::CallExtract, state_diff::StateDiff},
 };
 
 /// Direct ETH a single tx paid to its block's coinbase (miner/validator).
@@ -118,7 +118,7 @@ pub async fn state_diff_for_tx(
     provider: &Arc<GenericProvider>,
     chain: &EVMChain,
     rpc_url: &str,
-) -> Result<MEVStateDiff> {
+) -> Result<StateDiff> {
     Ok(match mode {
         TraceMode::RPC => rpc_tx_state_diff(tx_hash, provider).await?,
         TraceMode::Revm => {

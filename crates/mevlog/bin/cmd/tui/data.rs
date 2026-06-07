@@ -3,7 +3,7 @@ use tokio::process::Command;
 pub use mevlog::ChainEntryJson;
 pub use mevlog::misc::shared_init::{TraceMode, mevlog_cmd_path};
 pub use mevlog::models::json::log_json::LogJson;
-pub use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
+pub use mevlog::models::json::state_diff_json::StateDiffJson;
 pub use mevlog::models::json::transaction_json::TransactionJson;
 pub use mevlog::models::mev_transaction::CallExtract;
 
@@ -32,7 +32,6 @@ pub(crate) enum DataRequest {
     Traces(String, TraceMode, RpcOpts),
     StateDiff(String, TraceMode, RpcOpts),
     TxTrace(String, TraceMode, RpcOpts),
-    Logs(String, RpcOpts),
     DetectTraceMode(String),
     RefreshRpc(u64, u64),
 }
@@ -50,8 +49,7 @@ pub(crate) enum DataResponse {
     Chains(Vec<ChainEntryJson>),
     ChainInfo(ChainEntryJson),
     Traces(String, Vec<CallExtract>),
-    StateDiff(String, MEVStateDiffJson),
-    Logs(String, Vec<LogJson>),
+    StateDiff(String, StateDiffJson),
     TxTraced(String, TransactionJson),
     TraceMode(TraceMode),
     RpcRefreshed(String),

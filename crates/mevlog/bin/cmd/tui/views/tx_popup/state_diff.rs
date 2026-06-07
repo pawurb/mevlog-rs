@@ -1,4 +1,4 @@
-use mevlog::models::json::mev_state_diff_json::MEVStateDiffJson;
+use mevlog::models::json::state_diff_json::StateDiffJson;
 use ratatui::{
     Frame,
     layout::Rect,
@@ -10,7 +10,7 @@ use ratatui::{
 pub fn render_state_diff_tab(
     area: Rect,
     frame: &mut Frame,
-    state_diff: Option<&MEVStateDiffJson>,
+    state_diff: Option<&StateDiffJson>,
     is_loading: bool,
     scroll: u16,
 ) -> u16 {

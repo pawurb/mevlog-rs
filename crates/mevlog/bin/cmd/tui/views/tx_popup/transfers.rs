@@ -3,7 +3,6 @@ use ratatui::{
     layout::Rect,
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::Paragraph,
 };
 use revm::primitives::Address;
 
@@ -16,15 +15,7 @@ pub fn render_transfers_tab(
     area: Rect,
     frame: &mut Frame,
     scroll: u16,
-    logs_loading: bool,
 ) -> u16 {
-    if logs_loading {
-        let paragraph =
-            Paragraph::new("Loading transfers...").style(Style::default().fg(Color::Yellow));
-        frame.render_widget(paragraph, area);
-        return 0;
-    }
-
     let lines = build_transfers_lines(tx);
     super::render_scrollable(area, frame, lines, scroll)
 }

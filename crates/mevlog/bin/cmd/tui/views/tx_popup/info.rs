@@ -16,17 +16,12 @@ pub fn render_info_tab(
     frame: &mut Frame,
     scroll: u16,
     tx_trace_loading: bool,
-    logs_loading: bool,
 ) -> u16 {
-    let lines = build_tx_lines(tx, tx_trace_loading, logs_loading);
+    let lines = build_tx_lines(tx, tx_trace_loading);
     super::render_scrollable(area, frame, lines, scroll)
 }
 
-fn build_tx_lines(
-    tx: &TransactionJson,
-    tx_trace_loading: bool,
-    logs_loading: bool,
-) -> Vec<Line<'static>> {
+fn build_tx_lines(tx: &TransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     let from_display = tx.from.to_string();
@@ -110,15 +105,7 @@ fn build_tx_lines(
         }
     }
 
-    if logs_loading {
-        lines.push(Line::from(""));
-        lines.push(Line::from(Span::styled(
-            "Events: Loading...",
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        )));
-    } else {
+    {
         lines.push(Line::from(""));
 
         lines.push(Line::from(Span::styled(

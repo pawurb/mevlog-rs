@@ -8,11 +8,11 @@ use cmd::seed_db::SeedDBArgs;
 use cmd::tui::TuiArgs;
 use cmd::{
     affected_addresses::AffectedAddressesArgs, block::BlockArgs, block_logs::BlockLogsArgs,
-    block_txs::BlockTxsArgs,
-    chain_info::ChainInfoArgs, chains::ChainsArgs, coinbase_transfer::CoinbaseTransferArgs,
-    debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
-    evm_traces::EvmTracesArgs, query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs,
-    tx_logs::TxLogsArgs, update_db::UpdateDBArgs,
+    block_txs::BlockTxsArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
+    coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
+    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, evm_traces::EvmTracesArgs,
+    query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
+    update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;

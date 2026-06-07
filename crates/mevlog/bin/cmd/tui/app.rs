@@ -22,7 +22,7 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
-        BlockId, CallExtract, DataRequest, DataResponse, MEVStateDiffJson, RpcOpts, TraceMode,
+        BlockId, CallExtract, DataRequest, DataResponse, RpcOpts, StateDiffJson, TraceMode,
         TransactionJson, worker::spawn_data_worker,
     },
     views::{
@@ -132,11 +132,9 @@ pub struct App {
     pub(crate) traces: Option<Vec<CallExtract>>,
     pub(crate) traces_loading: bool,
     pub(crate) traces_tx_hash: Option<String>,
-    pub(crate) state_diff: Option<MEVStateDiffJson>,
+    pub(crate) state_diff: Option<StateDiffJson>,
     pub(crate) state_diff_loading: bool,
     pub(crate) state_diff_tx_hash: Option<String>,
-    pub(crate) logs_tx_hash: Option<String>,
-    pub(crate) logs_loading: bool,
     pub(crate) pending_g: Option<Instant>,
     pub(crate) tx_popup_max_scroll: u16,
     pub(crate) tx_trace_loading: bool,
@@ -239,8 +237,6 @@ impl App {
             state_diff: None,
             state_diff_loading: false,
             state_diff_tx_hash: None,
-            logs_tx_hash: None,
-            logs_loading: false,
             pending_g: None,
             tx_popup_max_scroll: 0,
             tx_trace_loading: false,
@@ -353,7 +349,6 @@ impl App {
                         self.state_diff.as_ref(),
                         self.state_diff_loading,
                         self.tx_trace_loading,
-                        self.logs_loading,
                     );
                 }
 
@@ -496,9 +491,6 @@ impl App {
                 if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
                     self.request_state_diff_if_needed();
                 }
-                if self.tx_popup_open {
-                    self.request_logs_if_needed();
-                }
             }
             DataResponse::Traces(tx_hash, traces) => {
                 if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
@@ -510,18 +502,6 @@ impl App {
                 if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
                     self.state_diff = Some(state_diff);
                     self.state_diff_loading = false;
-                }
-            }
-            DataResponse::Logs(tx_hash, logs) => {
-                if self.logs_tx_hash.as_ref() == Some(&tx_hash) {
-                    self.logs_loading = false;
-                    if let Some(tx) = self
-                        .items
-                        .iter_mut()
-                        .find(|t| t.tx_hash.to_string() == tx_hash)
-                    {
-                        tx.logs = logs;
-                    }
                 }
             }
             DataResponse::TxTraced(tx_hash, traced_tx) => {

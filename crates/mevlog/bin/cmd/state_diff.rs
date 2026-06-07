@@ -6,7 +6,7 @@ use mevlog::{
         shared_init::{ConnOpts, OutputFormat, TraceMode, resolve_conn},
         tx_tracing::state_diff_for_tx,
     },
-    models::{evm_chain::EVMChain, json::mev_state_diff_json::MEVStateDiffJson},
+    models::{evm_chain::EVMChain, json::state_diff_json::StateDiffJson},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -37,12 +37,12 @@ impl StateDiffArgs {
             OutputFormat::Json => {
                 println!(
                     "{}",
-                    serde_json::to_string(&MEVStateDiffJson::from(&state_diff))?
+                    serde_json::to_string(&StateDiffJson::from(&state_diff))?
                 )
             }
             OutputFormat::JsonPretty => println!(
                 "{}",
-                serde_json::to_string_pretty(&MEVStateDiffJson::from(&state_diff))?
+                serde_json::to_string_pretty(&StateDiffJson::from(&state_diff))?
             ),
             OutputFormat::Table => {
                 if state_diff.is_empty() {
