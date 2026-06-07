@@ -40,6 +40,7 @@ pub mod debug_available;
 pub mod ens_lookup;
 pub mod ens_resolve;
 pub mod evm_traces;
+pub mod index;
 pub mod query;
 pub mod state_diff;
 #[cfg(feature = "tui")]

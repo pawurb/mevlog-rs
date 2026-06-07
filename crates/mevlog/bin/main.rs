@@ -11,7 +11,7 @@ use cmd::{
     block_txs::BlockTxsArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
     coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
     ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, evm_traces::EvmTracesArgs,
-    query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
+    index::IndexArgs, query::QueryArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
     update_db::UpdateDBArgs,
 };
 use eyre::Result;
@@ -52,6 +52,8 @@ pub struct MLArgs {
 pub enum MLSubcommand {
     #[command(about = "Query txs within a block range", alias = "q")]
     Query(Box<QueryArgs>),
+    #[command(about = "Index a block range into the local txs DB")]
+    Index(IndexArgs),
     #[command(about = "Show a single transaction")]
     Tx(TxArgs),
     #[command(name = "tx-logs", about = "Show a transaction's logs")]
@@ -158,6 +160,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
 
     match root_args.cmd {
         ML::Query(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::Index(args) => {
             args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
