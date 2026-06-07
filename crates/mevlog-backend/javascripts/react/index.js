@@ -57,15 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Extract initial values from data attributes
     const initialValues = {
       blocks: searchFormContainer.dataset.blocks || '',
-      position: searchFormContainer.dataset.position || '',
-      from: searchFormContainer.dataset.from || '',
-      to: searchFormContainer.dataset.to || '',
-      event: searchFormContainer.dataset.event || '',
-      not_event: searchFormContainer.dataset.notEvent || '',
-      method: searchFormContainer.dataset.method || '',
-      erc20_transfer: searchFormContainer.dataset.erc20Transfer || '',
-      tx_cost: searchFormContainer.dataset.txCost || '',
-      gas_price: searchFormContainer.dataset.gasPrice || '',
+      sql: searchFormContainer.dataset.sql || '',
       chain_id: searchFormContainer.dataset.chainId || ''
     };
     

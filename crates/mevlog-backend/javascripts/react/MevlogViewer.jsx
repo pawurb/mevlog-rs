@@ -26,7 +26,7 @@ const MevlogViewer = ({ replaceMode = false, showBlockNumbers = true, chainData:
       if (!sortConfig.key) {
         const blockDiff = b.block_number - a.block_number;
         if (blockDiff !== 0) return blockDiff;
-        return a.index - b.index;
+        return a.tx_index - b.tx_index;
       }
 
       // Custom sorting
@@ -38,9 +38,9 @@ const MevlogViewer = ({ replaceMode = false, showBlockNumbers = true, chainData:
       } else if (sortConfig.key === 'tx_cost') {
         aValue = parseFloat(a.tx_cost) || 0;
         bValue = parseFloat(b.tx_cost) || 0;
-      } else if (sortConfig.key === 'index') {
-        aValue = parseInt(a.index) || 0;
-        bValue = parseInt(b.index) || 0;
+      } else if (sortConfig.key === 'tx_index') {
+        aValue = parseInt(a.tx_index) || 0;
+        bValue = parseInt(b.tx_index) || 0;
       }
 
       if (aValue < bValue) {

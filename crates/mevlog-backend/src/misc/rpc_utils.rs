@@ -23,6 +23,14 @@ const CACHE_DURATION: Duration = Duration::from_secs(60); // 1 minute
 
 #[hotpath::measure(log = true)]
 pub async fn get_random_rpc_url(chain_id: u64) -> Result<Option<String>> {
+    // Mainnet prefers a configured ETH_RPC_URL over a random ChainList endpoint.
+    if chain_id == 1
+        && let Ok(url) = std::env::var("ETH_RPC_URL")
+        && !url.trim().is_empty()
+    {
+        return Ok(Some(url));
+    }
+
     let urls = get_cached_rpc_urls(chain_id).await?;
     let mut rng = rand::rng();
     Ok(urls.choose(&mut rng).cloned())

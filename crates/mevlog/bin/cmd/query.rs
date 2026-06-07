@@ -42,9 +42,8 @@ pub struct QueryArgs {
 
     #[arg(
         long,
-        help = "Custom read-only SQL to run against the local txs DB \
-                (tables: transactions, logs, blocks). When omitted, all \
-                txs in the block range are returned. Blob columns (addresses, \
+        help = "Read-only SQL to run against the local txs DB \
+                (tables: transactions, logs, blocks). Blob columns (addresses, \
                 hashes) are output as 0x-hex; addresses/hashes in predicates must \
                 be given as blob literals, e.g. WHERE from_address = X'1111...1111'. \
                 Macros must be wrapped in braces. {LATEST_BLOCK()} expands to the chain's \
@@ -54,7 +53,7 @@ pub struct QueryArgs {
                 {RESOLVE_ENS(\"name.eth\")} expands to the resolved address as a blob literal \
                 (Ethereum mainnet only), e.g. WHERE from_address = {RESOLVE_ENS(\"vitalik.eth\")}"
     )]
-    sql: Option<String>,
+    sql: String,
 }
 
 impl QueryArgs {
@@ -121,18 +120,8 @@ impl QueryArgs {
         chain_info.native_token_price = native_token_price;
         let duration_ns = start_time.elapsed().as_nanos() as u64;
 
-        // Default to reading the full requested range back from the local store so
-        // previously indexed blocks are included alongside freshly fetched ones.
-        let sql = self.sql.clone().unwrap_or_else(|| {
-            format!(
-                "SELECT * FROM transactions \
-                 WHERE block_number BETWEEN {} AND {} \
-                 ORDER BY block_number DESC, tx_index ASC",
-                block_range.from, block_range.to
-            )
-        });
         let sql = substitute_sql_macros(
-            &sql,
+            &self.sql,
             &deps.provider,
             deps.chain.chain_id,
             native_token_price,

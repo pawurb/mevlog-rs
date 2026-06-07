@@ -1,6 +1,8 @@
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
+use mevlog::misc::shared_init::mevlog_cmd_path;
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -8,6 +10,87 @@ use tokio::process::Command;
 use tokio::time::timeout;
 
 use crate::controllers::base_controller::{DATA_FETCH_ERROR, decorate_error_message};
+use crate::misc::{prices::get_price_for_chain_id, rpc_utils::get_random_rpc_url};
+
+/// Runs `block-txs` then `block-logs` for the same block and nests each tx's
+/// logs under `result[].logs` grouped by `tx_index`.
+pub async fn block_txs_with_logs(
+    chain_id: u64,
+    block_number: Option<String>,
+) -> Result<Value, Value> {
+    let block_arg = block_number.unwrap_or_else(|| "latest".to_string());
+    let price = get_price_for_chain_id(chain_id).await.ok().flatten();
+    let rpc_url = get_random_rpc_url(chain_id).await.ok().flatten();
+
+    let mut txs_cmd = Command::new(mevlog_cmd_path());
+    txs_cmd
+        .arg("block-txs")
+        .arg(&block_arg)
+        .arg("--format")
+        .arg("json")
+        .arg("--rpc-timeout-ms")
+        .arg("500")
+        .arg("--latest-offset")
+        .arg("2");
+    txs_cmd.env("RUST_LOG", "off");
+    if let Some(price) = price {
+        txs_cmd.arg("--native-token-price").arg(price.to_string());
+    }
+    if let Some(rpc_url) = &rpc_url {
+        txs_cmd.arg("--rpc-url").arg(rpc_url);
+    }
+    txs_cmd.arg("--chain-id").arg(chain_id.to_string());
+    txs_cmd.arg("--skip-verify-chain-id");
+
+    let mut txs_resp: Value = call_json_command_first_line(&mut txs_cmd).await?;
+
+    let resolved_block = txs_resp
+        .get("query")
+        .and_then(|q| q.get("blocks"))
+        .and_then(|b| b.as_str())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| block_arg.clone());
+
+    let mut logs_cmd = Command::new(mevlog_cmd_path());
+    logs_cmd
+        .arg("block-logs")
+        .arg(&resolved_block)
+        .arg("--format")
+        .arg("json")
+        .arg("--rpc-timeout-ms")
+        .arg("500");
+    logs_cmd.env("RUST_LOG", "off");
+    if let Some(rpc_url) = &rpc_url {
+        logs_cmd.arg("--rpc-url").arg(rpc_url);
+    }
+    logs_cmd.arg("--chain-id").arg(chain_id.to_string());
+    logs_cmd.arg("--skip-verify-chain-id");
+
+    let logs_resp: Value = call_json_command_first_line(&mut logs_cmd).await?;
+
+    let mut logs_by_tx: HashMap<i64, Vec<Value>> = HashMap::new();
+    if let Some(rows) = logs_resp.get("result").and_then(|r| r.as_array()) {
+        for log in rows {
+            if let Some(tx_index) = log.get("tx_index").and_then(|v| v.as_i64()) {
+                logs_by_tx.entry(tx_index).or_default().push(log.clone());
+            }
+        }
+    }
+
+    if let Some(txs) = txs_resp.get_mut("result").and_then(|r| r.as_array_mut()) {
+        for tx in txs.iter_mut() {
+            let tx_index = tx.get("tx_index").and_then(|v| v.as_i64());
+            let logs = tx_index
+                .and_then(|i| logs_by_tx.remove(&i))
+                .unwrap_or_default();
+            if let Some(obj) = tx.as_object_mut() {
+                obj.insert("logs".to_string(), Value::Array(logs));
+            }
+        }
+    }
+
+    Ok(txs_resp)
+}
 
 #[hotpath::measure]
 pub async fn call_json_command<T: serde::de::DeserializeOwned>(

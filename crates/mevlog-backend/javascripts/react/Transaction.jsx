@@ -19,6 +19,8 @@ const formatGasPriceToGwei = (gasPriceWei) => {
   return (gasPriceWei / 1e9).toFixed(2);
 };
 
+const logTopics = (log) => [log.topic0, log.topic1, log.topic2, log.topic3].filter(Boolean);
+
 const TransactionTableHeader = ({ sortConfig, onSort, showBlockNumbers = true }) => {
   const headerStyle = {
     display: 'flex',
@@ -61,10 +63,10 @@ const TransactionTableHeader = ({ sortConfig, onSort, showBlockNumbers = true })
       {showBlockNumbers && <span style={{ marginRight: '10px', fontSize: '14px', width: '80px', flexShrink: 0 }}>Block</span>}
       <span
         style={{ marginRight: '10px', fontSize: '14px', width: '50px', flexShrink: 0, ...clickableHeaderStyle }}
-        onClick={() => onSort && onSort('index')}
+        onClick={() => onSort && onSort('tx_index')}
       >
         <span>Index</span>
-        {getSortTriangle('index')}
+        {getSortTriangle('tx_index')}
       </span>
       <span style={{ marginRight: '10px', fontSize: '14px', width: '120px', flexShrink: 0 }}>Hash</span>
       <span style={{ marginRight: '10px', fontSize: '14px', flex: 1 }}>Signature</span>
@@ -104,25 +106,6 @@ const TransactionDetails = ({ transaction, explorerUrl, showExtraDetails = true 
     ));
   };
 
-  const renderLogEntry = (log, logIndex) => {
-    return (
-      <div key={logIndex} style={{ marginBottom: '20px' }}>
-        <div style={{ color: '#4a9eff', marginBottom: '8px' }}>
-          {formatExplorerLink(log.address, 'address', explorerUrl)}
-        </div>
-        <div style={{ color: '#ffa500', marginBottom: '8px' }}>
-          emit {log.signature}
-        </div>
-        {log.topics && log.topics.map((topic, topicIdx) => (
-          <div key={topicIdx} style={{ fontFamily: 'monospace', color: '#666', marginLeft: '20px' }}>
-            {topic}
-          </div>
-        ))}
-        {log.data && formatHexData(log.data)}
-      </div>
-    );
-  };
-
   const detailsStyle = {
     padding: '16px',
     backgroundColor: '#1a1a1a',
@@ -147,7 +130,6 @@ const TransactionDetails = ({ transaction, explorerUrl, showExtraDetails = true 
     margin: '16px 0',
     height: '1px'
   };
-  console.log(transaction);
 
   return (
     <div className="tx-details" style={detailsStyle}>
@@ -189,29 +171,27 @@ const TransactionDetails = ({ transaction, explorerUrl, showExtraDetails = true 
       <div style={separatorStyle}></div>
 
       {/* Contract Events/Logs */}
-      {transaction.log_groups && transaction.log_groups.length > 0 && (
+      {transaction.logs && transaction.logs.length > 0 && (
         <div>
-          {transaction.log_groups.map((logGroup, groupIdx) => (
-            <div key={groupIdx} style={{ marginBottom: '20px' }}>
-              {/* Display source only once at the top */}
-              {logGroup.logs.length > 0 && (
-                <div style={{ color: '#4a9eff', marginBottom: '8px' }}>
-                  {formatExplorerLink(logGroup.logs[0].source, 'address', explorerUrl)}
-                </div>
-              )}
-              {/* Display events data */}
-              {logGroup.logs.map((log, logIdx) => (
-                <div key={`${groupIdx}-${logIdx}`} style={{ marginBottom: '8px' }}>
-                  <div style={{ color: '#ffa500', marginBottom: '4px' }}>
-                    emit {log.signature} {log.symbol || ''}
-                  </div>
-                  {log.topics && log.topics.map((topic, topicIdx) => (
-                    <div key={topicIdx} style={{ fontFamily: 'monospace', color: '#666', marginLeft: '20px' }}>
-                      {topic}
-                    </div>
-                  ))}
+          {transaction.logs.map((log, logIdx) => (
+            <div key={logIdx} style={{ marginBottom: '16px' }}>
+              <div style={{ color: '#4a9eff', marginBottom: '4px' }}>
+                {formatExplorerLink(log.address, 'address', explorerUrl)}
+              </div>
+              <div style={{ color: '#ffa500', marginBottom: '4px' }}>
+                emit {log.signature || log.topic0}
+              </div>
+              {logTopics(log).map((topic, topicIdx) => (
+                <div key={topicIdx} style={{ fontFamily: 'monospace', color: '#666', marginLeft: '20px' }}>
+                  {topic}
                 </div>
               ))}
+              {log.erc20_amount && (
+                <div style={{ color: '#4CAF50', marginLeft: '20px' }}>
+                  amount: {log.erc20_amount}
+                </div>
+              )}
+              {log.data && formatHexData(log.data)}
             </div>
           ))}
           <div style={separatorStyle}></div>
@@ -278,7 +258,7 @@ const Transaction = ({ transaction, explorerUrl, showBlockNumbers = true, showEx
           </span>
         )}
         <span className="tx-index" style={{ marginRight: '10px', color: '#999', fontSize: '14px', width: '50px', flexShrink: 0 }}>
-          {transaction.index}:
+          {transaction.tx_index}:
         </span>
         <span className="tx-hash-short" style={{
           fontFamily: 'monospace',

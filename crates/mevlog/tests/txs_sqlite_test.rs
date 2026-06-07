@@ -159,7 +159,7 @@ pub mod tests {
             fs::remove_file(&p).ok();
         }
 
-        let output = run_query(&rpc_url, &tmp_dir, None, "json");
+        let output = run_query(&rpc_url, &tmp_dir, Some("SELECT 1"), "json");
 
         assert!(
             output.status.success(),
@@ -538,7 +538,7 @@ pub mod tests {
 
         let total_blocks = TO_BLOCK - FROM_BLOCK + 1;
 
-        let first = run_query(&rpc_url, &tmp_dir, None, "json");
+        let first = run_query(&rpc_url, &tmp_dir, Some("SELECT 1"), "json");
         assert!(
             first.status.success(),
             "first query failed: {}",
@@ -548,7 +548,7 @@ pub mod tests {
         assert_eq!(first_json.cached_blocks, 0, "first run cached_blocks");
         assert_eq!(first_json.new_blocks, total_blocks, "first run new_blocks");
 
-        let second = run_query(&rpc_url, &tmp_dir, None, "json");
+        let second = run_query(&rpc_url, &tmp_dir, Some("SELECT 1"), "json");
         assert!(
             second.status.success(),
             "second query failed: {}",

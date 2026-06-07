@@ -53,40 +53,8 @@ pub async fn search(
     cmd.arg("--chain-id").arg(chain_id.to_string());
     cmd.arg("--skip-verify-chain-id");
 
-    if let Some(position) = params.position {
-        cmd.arg("-p").arg(position);
-    }
-
-    if let Some(from) = params.from {
-        cmd.arg("--from").arg(from);
-    }
-
-    if let Some(to) = params.to {
-        cmd.arg("--to").arg(to);
-    }
-
-    if let Some(event) = params.event {
-        cmd.arg("--event").arg(event);
-    }
-
-    if let Some(not_event) = params.not_event {
-        cmd.arg("--not-event").arg(not_event);
-    }
-
-    if let Some(method) = params.method {
-        cmd.arg("--method").arg(method);
-    }
-
-    if let Some(erc20_transfer) = params.erc20_transfer {
-        cmd.arg("--erc20-transfer").arg(erc20_transfer);
-    }
-
-    if let Some(tx_cost) = params.tx_cost {
-        cmd.arg("--tx-cost").arg(tx_cost);
-    }
-
-    if let Some(gas_price) = params.gas_price {
-        cmd.arg("--gas-price").arg(gas_price);
+    if let Some(sql) = params.sql {
+        cmd.arg("--sql").arg(sql);
     }
 
     tracing::debug!("search command: {:?}", &cmd);
