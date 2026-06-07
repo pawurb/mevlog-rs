@@ -12,7 +12,7 @@ use tokio::{
 };
 use tracing::debug;
 
-use crate::cmd::tui::data::{MEVTransactionJson, QueryFilters, mevlog_cmd};
+use crate::cmd::tui::data::{MEVTransactionJson, mevlog_cmd};
 
 #[derive(Deserialize)]
 struct ErrorResponse {
@@ -26,57 +26,17 @@ struct Envelope<T> {
 
 #[hotpath::measure(future = true)]
 pub async fn fetch_txs(
-    filters: &QueryFilters,
+    blocks: &str,
     rpc_url: Option<String>,
     chain_id: Option<u64>,
 ) -> Result<Vec<MEVTransactionJson>> {
     let mut cmd = mevlog_cmd();
 
-    if let Some(ref txhash) = filters.txhash {
-        cmd.arg("tx")
-            .arg(txhash)
-            .arg("--logs")
-            .arg("--format")
-            .arg("json");
-    } else {
-        cmd.arg("query")
-            .arg("-b")
-            .arg(&filters.blocks)
-            .arg("--logs")
-            .arg("--format")
-            .arg("json");
-
-        if let Some(ref pos) = filters.position {
-            cmd.arg("--position").arg(pos);
-        }
-        if let Some(ref from) = filters.from {
-            cmd.arg("--from").arg(from);
-        }
-        if let Some(ref to) = filters.to {
-            cmd.arg("--to").arg(to);
-        }
-        if let Some(ref event) = filters.event {
-            cmd.arg("--event").arg(event);
-        }
-        if let Some(ref not_event) = filters.not_event {
-            cmd.arg("--not-event").arg(not_event);
-        }
-        if let Some(ref method) = filters.method {
-            cmd.arg("--method").arg(method);
-        }
-        if let Some(ref erc20) = filters.erc20_transfer {
-            cmd.arg("--erc20-transfer").arg(erc20);
-        }
-        if let Some(ref tx_cost) = filters.tx_cost {
-            cmd.arg("--tx-cost").arg(tx_cost);
-        }
-        if let Some(ref gas_price) = filters.gas_price {
-            cmd.arg("--gas-price").arg(gas_price);
-        }
-        if let Some(ref limit) = filters.limit {
-            cmd.arg("--limit").arg(limit);
-        }
-    }
+    cmd.arg("query")
+        .arg("-b")
+        .arg(blocks)
+        .arg("--format")
+        .arg("json");
 
     if let Some(rpc_url) = &rpc_url {
         cmd.arg("--rpc-url").arg(rpc_url);

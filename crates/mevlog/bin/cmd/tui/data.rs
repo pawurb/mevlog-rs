@@ -21,31 +21,6 @@ pub(crate) struct RpcOpts {
     pub block_timeout_ms: u64,
 }
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct QueryFilters {
-    pub blocks: String,
-    pub position: Option<String>,
-    pub from: Option<String>,
-    pub to: Option<String>,
-    pub event: Option<String>,
-    pub not_event: Option<String>,
-    pub method: Option<String>,
-    pub erc20_transfer: Option<String>,
-    pub tx_cost: Option<String>,
-    pub gas_price: Option<String>,
-    pub limit: Option<String>,
-    pub txhash: Option<String>,
-}
-
-impl QueryFilters {
-    pub fn from_blocks(blocks: impl Into<String>) -> Self {
-        Self {
-            blocks: blocks.into(),
-            ..Default::default()
-        }
-    }
-}
-
 #[allow(dead_code, clippy::large_enum_variant)]
 #[derive(Debug)]
 pub(crate) enum DataRequest {

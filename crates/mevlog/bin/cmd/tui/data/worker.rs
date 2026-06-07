@@ -15,7 +15,7 @@ use tracing::{debug, error, info};
 use crate::cmd::tui::{
     app::AppEvent,
     data::{
-        BlockId, DataRequest, DataResponse, QueryFilters,
+        BlockId, DataRequest, DataResponse,
         chains::fetch_chains,
         txs::{detect_trace_mode, fetch_state_diff, fetch_traces, fetch_tx_with_trace, fetch_txs},
     },
@@ -73,10 +73,9 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let timeout_duration = Duration::from_millis(opts.block_timeout_ms);
                     rt.spawn(async move {
-                        let filters = QueryFilters::from_blocks("latest");
                         match timeout(
                             timeout_duration,
-                            fetch_txs(&filters, Some(opts.rpc_url), Some(opts.chain_id)),
+                            fetch_txs("latest", Some(opts.rpc_url), Some(opts.chain_id)),
                         )
                         .await
                         {
@@ -108,10 +107,9 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let timeout_duration = Duration::from_millis(opts.block_timeout_ms);
                     rt.spawn(async move {
-                        let filters = QueryFilters::from_blocks(block.to_string());
                         match timeout(
                             timeout_duration,
-                            fetch_txs(&filters, Some(opts.rpc_url), Some(opts.chain_id)),
+                            fetch_txs(&block.to_string(), Some(opts.rpc_url), Some(opts.chain_id)),
                         )
                         .await
                         {
