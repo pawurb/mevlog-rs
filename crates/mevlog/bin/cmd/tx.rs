@@ -4,12 +4,13 @@ use mevlog::{
     db::txs::{
         display_sql::{logs_display_query, tx_display_query},
         indexing::index_block_range,
+        models::transaction::Transaction,
         raw_query::run_raw_query,
     },
     misc::{
         shared_init::{ConnOpts, OutputFormat, TraceMode, init_deps},
         sql_macros::{NATIVE_TOKEN_PRICE_MACRO, substitute_sql_macros},
-        tx_tracing::backfill_coinbase_transfers,
+        tx_tracing::coinbase_transfer_for_tx,
         utils::get_native_token_price,
     },
 };
@@ -58,13 +59,17 @@ impl TxArgs {
         index_block_range(block_number, block_number, 1, &deps).await?;
 
         if let Some(mode) = &self.evm_trace {
-            backfill_coinbase_transfers(
-                block_number,
-                block_number,
+            let coinbase_transfer = coinbase_transfer_for_tx(
+                self.tx_hash,
                 mode,
                 &deps.provider,
                 &deps.chain,
                 &deps.rpc_url,
+            )
+            .await?;
+            Transaction::update_coinbase_transfer(
+                self.tx_hash,
+                coinbase_transfer.amount_wei,
                 &deps.txs,
             )
             .await?;
