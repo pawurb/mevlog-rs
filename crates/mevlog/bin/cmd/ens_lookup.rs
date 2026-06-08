@@ -1,10 +1,9 @@
-use eyre::{Result, bail};
-use mevlog::misc::{
-    ens_utils::{ens_name_lookup, ensure_ens_supported},
-    shared_init::{ConnOpts, OutputFormat, resolve_conn},
+use eyre::Result;
+use mevlog::{
+    cmds,
+    misc::shared_init::{ConnOpts, OutputFormat},
 };
 use revm::primitives::Address;
-use serde::Serialize;
 
 #[derive(Debug, clap::Parser)]
 pub struct EnsLookupArgs {
@@ -15,25 +14,9 @@ pub struct EnsLookupArgs {
     pub conn_opts: ConnOpts,
 }
 
-#[derive(Serialize)]
-struct EnsLookupJson {
-    address: String,
-    name: String,
-}
-
 impl EnsLookupArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
-        let resolved = resolve_conn(&self.conn_opts).await?;
-        ensure_ens_supported(resolved.chain_id)?;
-
-        let Some(name) = ens_name_lookup(self.address, &resolved.provider).await? else {
-            bail!("No ENS name set for {:#x}", self.address);
-        };
-
-        let output = EnsLookupJson {
-            address: format!("{:#x}", self.address),
-            name,
-        };
+        let output = cmds::ens_lookup::ens_lookup(self.address, &self.conn_opts).await?;
 
         match format {
             OutputFormat::Json => println!("{}", serde_json::to_string(&output)?),

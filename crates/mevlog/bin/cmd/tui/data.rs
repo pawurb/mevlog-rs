@@ -1,7 +1,5 @@
-use tokio::process::Command;
-
 pub use mevlog::ChainEntryJson;
-pub use mevlog::misc::shared_init::{TraceMode, mevlog_cmd_path};
+pub use mevlog::misc::shared_init::{ConnOpts, TraceMode};
 pub use mevlog::models::call_extract::CallExtract;
 pub use mevlog::models::json::log_json::LogJson;
 pub use mevlog::models::json::state_diff_json::StateDiffJson;
@@ -11,14 +9,24 @@ pub(crate) mod chains;
 pub(crate) mod txs;
 pub(crate) mod worker;
 
-pub(crate) fn mevlog_cmd() -> Command {
-    Command::new(mevlog_cmd_path())
+/// Builds the connection options the in-process `cmds` calls run with. The TUI
+/// always has a concrete RPC URL, so it is passed verbatim (chain ID is only a
+/// fallback for RPC-URL selection and is unused here); the remaining fields take
+/// their CLI defaults.
+pub(crate) fn conn_opts(rpc_url: String) -> ConnOpts {
+    ConnOpts {
+        rpc_url: Some(rpc_url),
+        chain_id: None,
+        rpc_timeout_ms: 1000,
+        block_timeout_ms: 10000,
+        skip_verify_chain_id: false,
+        txs_db_dir: None,
+    }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct RpcOpts {
     pub rpc_url: String,
-    pub chain_id: u64,
     pub block_timeout_ms: u64,
 }
 

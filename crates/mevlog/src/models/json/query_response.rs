@@ -1,6 +1,6 @@
 use comfy_table::Table;
 use eyre::Result;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
 use crate::{ChainInfoNoRpcsJson, misc::shared_init::TraceMode};
@@ -65,6 +65,33 @@ pub struct QueryParams {
     pub evm_ops: bool,
     #[serde(default, skip_serializing_if = "is_false")]
     pub evm_state_diff: bool,
+}
+
+/// In-process result of a SQL-backed command, produced by the `cmds` layer.
+///
+/// Carries the generic `columns + rows` from `run_raw_query` (so the CLI can
+/// render the response envelope, CSV, or table without any change to ordering)
+/// plus the metadata the JSON envelope needs. In-process consumers (e.g. the
+/// TUI) deserialize the rows into concrete types via [`QueryOutcome::rows_as`].
+pub struct QueryOutcome {
+    pub columns: Vec<String>,
+    pub rows: Vec<Value>,
+    pub cached_blocks: u64,
+    pub new_blocks: u64,
+    pub duration_ns: u64,
+    pub chain: ChainInfoNoRpcsJson,
+    pub query: QueryParams,
+}
+
+impl QueryOutcome {
+    /// Deserializes the result rows into a concrete type. Used by the typed
+    /// `cmds` wrappers so callers never touch raw JSON.
+    pub fn rows_as<T: DeserializeOwned>(&self) -> Result<Vec<T>> {
+        self.rows
+            .iter()
+            .map(|row| serde_json::from_value(row.clone()).map_err(Into::into))
+            .collect()
+    }
 }
 
 pub fn format_duration(ns: u64) -> String {

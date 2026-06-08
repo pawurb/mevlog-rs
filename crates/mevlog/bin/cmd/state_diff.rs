@@ -1,12 +1,9 @@
 use alloy::primitives::{B256, TxHash};
-use eyre::{Result, bail};
+use eyre::Result;
 use mevlog::{
-    db::sigs::models::chain::Chain,
-    misc::{
-        shared_init::{ConnOpts, OutputFormat, TraceMode, resolve_conn},
-        tx_tracing::state_diff_for_tx,
-    },
-    models::{evm_chain::EVMChain, json::state_diff_json::StateDiffJson},
+    cmds,
+    misc::shared_init::{ConnOpts, OutputFormat, TraceMode},
+    models::json::state_diff_json::StateDiffJson,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -23,15 +20,9 @@ pub struct StateDiffArgs {
 
 impl StateDiffArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
-        let Some(mode) = &self.evm_trace else {
-            bail!("--evm-trace [rpc|revm] must be specified")
-        };
-
-        let conn = resolve_conn(&self.conn_opts).await?;
-        let chain = EVMChain::new(Chain::unknown(conn.chain_id as i64), conn.rpc_url.clone())?;
-
         let state_diff =
-            state_diff_for_tx(self.tx_hash, mode, &conn.provider, &chain, &conn.rpc_url).await?;
+            cmds::state_diff::state_diff(self.tx_hash, self.evm_trace.as_ref(), &self.conn_opts)
+                .await?;
 
         match format {
             OutputFormat::Json => {

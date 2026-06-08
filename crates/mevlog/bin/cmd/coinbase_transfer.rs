@@ -1,12 +1,8 @@
 use alloy::primitives::TxHash;
-use eyre::{Result, bail};
+use eyre::Result;
 use mevlog::{
-    db::sigs::models::chain::Chain,
-    misc::{
-        shared_init::{ConnOpts, OutputFormat, TraceMode, resolve_conn},
-        tx_tracing::coinbase_transfer_for_tx,
-    },
-    models::evm_chain::EVMChain,
+    cmds,
+    misc::shared_init::{ConnOpts, OutputFormat, TraceMode},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -23,16 +19,12 @@ pub struct CoinbaseTransferArgs {
 
 impl CoinbaseTransferArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
-        let Some(mode) = &self.evm_trace else {
-            bail!("--evm-trace [rpc|revm] must be specified")
-        };
-
-        let conn = resolve_conn(&self.conn_opts).await?;
-        let chain = EVMChain::new(Chain::unknown(conn.chain_id as i64), conn.rpc_url.clone())?;
-
-        let transfer =
-            coinbase_transfer_for_tx(self.tx_hash, mode, &conn.provider, &chain, &conn.rpc_url)
-                .await?;
+        let transfer = cmds::coinbase_transfer::coinbase_transfer(
+            self.tx_hash,
+            self.evm_trace.as_ref(),
+            &self.conn_opts,
+        )
+        .await?;
 
         match format {
             OutputFormat::Json => println!("{}", serde_json::to_string(&transfer)?),

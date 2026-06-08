@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use eyre::Result;
-use mevlog::misc::{rpc_capability::is_debug_trace_available, shared_init::init_provider};
+use mevlog::cmds;
 
 #[derive(Debug, clap::Parser)]
 pub struct DebugAvailableArgs {
@@ -14,8 +12,8 @@ pub struct DebugAvailableArgs {
 
 impl DebugAvailableArgs {
     pub async fn run(&self) -> Result<()> {
-        let provider = Arc::new(init_provider(&self.rpc_url).await?);
-        let available = is_debug_trace_available(&provider, self.timeout_ms).await;
+        let available =
+            cmds::debug_available::debug_available(&self.rpc_url, self.timeout_ms).await?;
         println!("{}", available);
         Ok(())
     }

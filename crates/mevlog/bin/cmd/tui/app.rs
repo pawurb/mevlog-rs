@@ -178,10 +178,9 @@ impl App {
 
         if mode == AppMode::Main {
             if let Some(ref url) = rpc_url {
-                if let Some(cid) = chain_id {
+                if chain_id.is_some() {
                     let opts = RpcOpts {
                         rpc_url: url.clone(),
-                        chain_id: cid,
                         block_timeout_ms,
                     };
                     let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest, opts));
@@ -250,9 +249,11 @@ impl App {
     }
 
     pub(crate) fn rpc_opts(&self) -> Option<RpcOpts> {
+        // A selected chain is still a precondition for fetching, even though the
+        // chain id itself is no longer needed once we have the RPC URL.
+        self.chain_id?;
         Some(RpcOpts {
             rpc_url: self.rpc_url.clone()?,
-            chain_id: self.chain_id?,
             block_timeout_ms: self.block_timeout_ms,
         })
     }

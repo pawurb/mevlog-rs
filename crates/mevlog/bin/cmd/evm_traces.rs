@@ -1,8 +1,8 @@
 use alloy::primitives::TxHash;
-use eyre::{Result, bail};
-use mevlog::misc::{
-    shared_init::{ConnOpts, OutputFormat, TraceMode, init_deps},
-    tx_tracing::calls_for_tx,
+use eyre::Result;
+use mevlog::{
+    cmds,
+    misc::shared_init::{ConnOpts, OutputFormat, TraceMode},
 };
 
 #[derive(Debug, clap::Parser)]
@@ -19,21 +19,9 @@ pub struct EvmTracesArgs {
 
 impl EvmTracesArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
-        let Some(mode) = &self.evm_trace else {
-            bail!("--evm-trace [rpc|revm] must be specified")
-        };
-
-        let deps = init_deps(&self.conn_opts).await?;
-
-        let calls = calls_for_tx(
-            self.tx_hash,
-            mode,
-            &deps.provider,
-            deps.chain.as_ref(),
-            &deps.rpc_url,
-            &deps.sqlite,
-        )
-        .await?;
+        let calls =
+            cmds::evm_traces::evm_traces(self.tx_hash, self.evm_trace.as_ref(), &self.conn_opts)
+                .await?;
 
         match format {
             OutputFormat::Json => println!("{}", serde_json::to_string(&calls)?),

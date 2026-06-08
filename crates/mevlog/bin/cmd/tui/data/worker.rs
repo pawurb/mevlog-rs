@@ -78,7 +78,7 @@ pub(crate) fn spawn_data_worker(
                     rt.spawn(async move {
                         match timeout(
                             timeout_duration,
-                            fetch_txs_with_logs("latest", Some(opts.rpc_url), Some(opts.chain_id)),
+                            fetch_txs_with_logs("latest", opts.rpc_url),
                         )
                         .await
                         {
@@ -112,11 +112,7 @@ pub(crate) fn spawn_data_worker(
                     rt.spawn(async move {
                         match timeout(
                             timeout_duration,
-                            fetch_txs_with_logs(
-                                &block.to_string(),
-                                Some(opts.rpc_url),
-                                Some(opts.chain_id),
-                            ),
+                            fetch_txs_with_logs(&block.to_string(), opts.rpc_url),
                         )
                         .await
                         {
@@ -147,14 +143,7 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_traces(
-                            &hash,
-                            Some(opts.rpc_url),
-                            Some(opts.chain_id),
-                            trace_mode,
-                        )
-                        .await
-                        {
+                        match fetch_traces(&hash, opts.rpc_url, trace_mode).await {
                             Ok(traces) => {
                                 debug!(tx_hash = %hash, count = traces.len(), "fetched traces");
                                 let _ = tx.send(AppEvent::Data(DataResponse::Traces(hash, traces)));
@@ -172,14 +161,7 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_state_diff(
-                            &hash,
-                            Some(opts.rpc_url),
-                            Some(opts.chain_id),
-                            trace_mode,
-                        )
-                        .await
-                        {
+                        match fetch_state_diff(&hash, opts.rpc_url, trace_mode).await {
                             Ok(state_diff) => {
                                 debug!(tx_hash = %hash, "fetched state diff");
                                 let _ = tx.send(AppEvent::Data(DataResponse::StateDiff(
@@ -199,14 +181,7 @@ pub(crate) fn spawn_data_worker(
                     let tx = event_tx.clone();
                     let hash = tx_hash.clone();
                     rt.spawn(async move {
-                        match fetch_tx_with_trace(
-                            &hash,
-                            Some(opts.rpc_url),
-                            Some(opts.chain_id),
-                            trace_mode,
-                        )
-                        .await
-                        {
+                        match fetch_tx_with_trace(&hash, opts.rpc_url, trace_mode).await {
                             Ok(traced_tx) => {
                                 debug!(tx_hash = %hash, "fetched tx with trace");
                                 let _ = tx

@@ -3,6 +3,7 @@ use alloy::providers::{
     fillers::{BlobGasFiller, ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller},
 };
 
+pub mod cmds;
 pub mod db;
 #[cfg(feature = "mcp")]
 pub mod mcp_server;

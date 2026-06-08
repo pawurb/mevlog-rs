@@ -1,11 +1,9 @@
-use eyre::{Result, bail};
+use eyre::Result;
 use mevlog::{
-    ChainInfoJson, ChainInfoNoRpcsJson, RpcUrlInfo,
-    misc::{
-        rpc_urls::{get_chain_id_from_rpc, get_chain_info, get_chain_info_no_benchmark},
-        shared_init::OutputFormat,
-    },
+    cmds::{self, chain_info::ChainInfoOutput},
+    misc::shared_init::OutputFormat,
 };
+use serde::Serialize;
 
 #[derive(Debug, clap::Parser)]
 pub struct ChainInfoArgs {
@@ -30,85 +28,33 @@ pub struct ChainInfoArgs {
 
 impl ChainInfoArgs {
     pub async fn run(&self, format: OutputFormat) -> Result<()> {
-        let chain_id = match (self.chain_id, &self.rpc_url) {
-            (Some(id), _) => id,
-            (None, Some(url)) => get_chain_id_from_rpc(url).await?,
-            (None, None) => bail!("Either --chain-id or --rpc-url must be specified"),
-        };
+        let output = cmds::chain_info::chain_info(
+            self.chain_id,
+            self.rpc_url.as_deref(),
+            self.skip_rpcs,
+            self.rpc_timeout_ms,
+            self.rpcs_limit,
+        )
+        .await?;
 
-        let chain_info_raw = if self.skip_rpcs {
-            get_chain_info_no_benchmark(chain_id).await?
-        } else {
-            let info = get_chain_info(chain_id, self.rpc_timeout_ms, self.rpcs_limit).await?;
-            if info.benchmarked_rpc_urls.is_empty() {
-                return Err(eyre::eyre!(
-                    "No working RPC URLs found for chain ID {}",
-                    chain_id
-                ));
-            }
-            info
-        };
-
-        if self.skip_rpcs {
-            let no_rpcs = ChainInfoNoRpcsJson {
-                chain_id,
-                name: chain_info_raw.name.clone(),
-                currency: chain_info_raw.native_currency.symbol.clone(),
-                explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
-                native_token_price: None,
-            };
-            self.output_no_rpcs(no_rpcs, format).await?;
-        } else {
-            let rpc_urls = chain_info_raw
-                .benchmarked_rpc_urls
-                .iter()
-                .map(|(url, response_time)| RpcUrlInfo {
-                    url: url.clone(),
-                    response_time_ms: *response_time,
-                })
-                .collect();
-
-            let response = ChainInfoJson {
-                chain_id,
-                name: chain_info_raw.name.clone(),
-                currency: chain_info_raw.native_currency.symbol.clone(),
-                explorer_url: chain_info_raw.explorers.first().map(|e| e.url.clone()),
-                rpc_timeout_ms: self.rpc_timeout_ms,
-                rpc_urls,
-            };
-            self.output_with_rpcs(response, format).await?;
+        match output {
+            ChainInfoOutput::Full(info) => print_json(&info, format),
+            ChainInfoOutput::NoRpcs(info) => print_json(&info, format),
         }
-
-        Ok(())
     }
+}
 
-    async fn output_no_rpcs(&self, info: ChainInfoNoRpcsJson, format: OutputFormat) -> Result<()> {
-        match format {
-            OutputFormat::Json => {
-                println!("{}", serde_json::to_string(&info)?);
-            }
-            OutputFormat::JsonPretty => {
-                println!("{}", serde_json::to_string_pretty(&info)?);
-            }
-            OutputFormat::Csv | OutputFormat::Table => {
-                eyre::bail!("'csv' and 'table' formats are only supported by the query command")
-            }
+fn print_json<T: Serialize>(info: &T, format: OutputFormat) -> Result<()> {
+    match format {
+        OutputFormat::Json => {
+            println!("{}", serde_json::to_string(info)?);
         }
-        Ok(())
-    }
-
-    async fn output_with_rpcs(&self, info: ChainInfoJson, format: OutputFormat) -> Result<()> {
-        match format {
-            OutputFormat::Json => {
-                println!("{}", serde_json::to_string(&info)?);
-            }
-            OutputFormat::JsonPretty => {
-                println!("{}", serde_json::to_string_pretty(&info)?);
-            }
-            OutputFormat::Csv | OutputFormat::Table => {
-                eyre::bail!("'csv' and 'table' formats are only supported by the query command")
-            }
+        OutputFormat::JsonPretty => {
+            println!("{}", serde_json::to_string_pretty(info)?);
         }
-        Ok(())
+        OutputFormat::Csv | OutputFormat::Table => {
+            eyre::bail!("'csv' and 'table' formats are only supported by the query command")
+        }
     }
+    Ok(())
 }
