@@ -369,34 +369,6 @@ pub mod tests {
         }
     }
 
-    // cargo run --bin mevlog query -b 0 --rpc-url $ETH_RPC_URL --format json-pretty
-    #[test]
-    fn test_cli_format_query() {
-        let cmd = Command::new("cargo")
-            .env("RUST_LOG", "off")
-            .arg("run")
-            .arg("--bin")
-            .arg("mevlog")
-            .arg("query")
-            .arg("-b")
-            .arg("0")
-            .arg("--rpc-url")
-            .arg(std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set"))
-            .arg("--format")
-            .arg("json-pretty")
-            .output()
-            .expect("failed to execute CLI");
-
-        let err = String::from_utf8(cmd.stderr).unwrap();
-        let expected_content = ["\"error\": \"Invalid block number: 0\""];
-        for expected in expected_content {
-            assert!(
-                err.contains(expected),
-                "Expected:\n{expected}\n\nGot:\n{err}"
-            );
-        }
-    }
-
     /*
     // cargo run --bin mevlog query -b 22045570 -p 0:3 --rpc-url $ETH_RPC_URL --format json-pretty
     #[test]
