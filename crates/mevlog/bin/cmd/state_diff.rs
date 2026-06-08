@@ -19,7 +19,7 @@ pub struct StateDiffArgs {
 }
 
 impl StateDiffArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let state_diff =
             cmds::state_diff::state_diff(self.tx_hash, self.evm_trace.as_ref(), &self.conn_opts)
                 .await?;

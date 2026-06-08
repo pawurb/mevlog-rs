@@ -25,7 +25,7 @@ pub struct McpArgs {
 }
 
 impl McpArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self) -> Result<()> {
         debug!(host = %self.host, port = self.port, chain_id = ?self.conn_opts.chain_id, "resolving MCP server connection");
         let resolved = resolve_conn(&self.conn_opts).await?;
         info!(

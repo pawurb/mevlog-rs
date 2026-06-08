@@ -9,7 +9,7 @@ pub struct TraceData {
     pub value: Option<U256>,
 }
 
-pub fn find_coinbase_transfer(coinbase: Address, traces: Vec<TraceData>) -> U256 {
+pub(crate) fn find_coinbase_transfer(coinbase: Address, traces: Vec<TraceData>) -> U256 {
     for trace in traces {
         if let Some(to) = trace.to
             && to == coinbase

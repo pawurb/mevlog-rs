@@ -19,7 +19,7 @@ pub struct QueryResult {
 ///
 /// Uses a read-only `rusqlite` connection rather than `sqlx` so the custom
 /// `u256_sum` SQL function is available to the query.
-pub fn run_raw_query(sql: &str, db_path: &str) -> Result<QueryResult> {
+pub(crate) fn run_raw_query(sql: &str, db_path: &str) -> Result<QueryResult> {
     // Accept both `sqlite://<path>` URLs and bare filesystem paths.
     let filename = db_path
         .strip_prefix("sqlite://")

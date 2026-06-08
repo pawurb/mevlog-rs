@@ -7,7 +7,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-pub fn render_state_diff_tab(
+pub(super) fn render_state_diff_tab(
     area: Rect,
     frame: &mut Frame,
     state_diff: Option<&StateDiffJson>,

@@ -15,7 +15,7 @@ pub struct EnsLookupArgs {
 }
 
 impl EnsLookupArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let output = cmds::ens_lookup::ens_lookup(self.address, &self.conn_opts).await?;
 
         match format {

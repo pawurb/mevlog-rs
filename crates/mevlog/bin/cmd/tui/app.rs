@@ -39,7 +39,7 @@ pub(crate) struct DefaultChain {
 }
 
 impl DefaultChain {
-    pub const fn new(
+    pub(super) const fn new(
         chain_id: u64,
         name: &'static str,
         chain: &'static str,
@@ -53,7 +53,7 @@ impl DefaultChain {
         }
     }
 
-    pub fn to_chain_entry(&self) -> ChainEntryJson {
+    pub(super) fn to_chain_entry(&self) -> ChainEntryJson {
         ChainEntryJson {
             chain_id: self.chain_id,
             name: self.name.to_string(),
@@ -104,7 +104,7 @@ pub(crate) enum AppEvent {
     Data(DataResponse),
 }
 
-pub struct App {
+pub(super) struct App {
     pub(crate) table_state: TableState,
     pub(crate) items: Vec<TransactionJson>,
     pub(crate) current_block: Option<u64>,
@@ -148,7 +148,7 @@ pub struct App {
 
 #[hotpath::measure_all]
 impl App {
-    pub fn new(items: Vec<TransactionJson>, conn_opts: &ConnOpts) -> Self {
+    pub(crate) fn new(items: Vec<TransactionJson>, conn_opts: &ConnOpts) -> Self {
         let current_block = items.first().map(|tx| tx.block_number);
 
         let (data_req_tx, data_req_rx) =
@@ -258,7 +258,7 @@ impl App {
         })
     }
 
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub(crate) fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;

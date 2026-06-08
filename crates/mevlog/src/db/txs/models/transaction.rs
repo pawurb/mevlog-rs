@@ -49,7 +49,7 @@ impl Transaction {
     // 3 nonce, 4 from_address, 5 to_address, 7 value_string, 9 input,
     // 10 gas_limit, 11 gas_used, 12 gas_price, 13 transaction_type,
     // 14 max_priority_fee_per_gas, 15 max_fee_per_gas, 16 success.
-    pub async fn from_parquet_row(
+    pub(crate) async fn from_parquet_row(
         batch: &RecordBatch,
         row_idx: usize,
         sqlite: &SqlitePool,
@@ -104,7 +104,8 @@ impl Transaction {
         Ok((tx, block_number))
     }
 
-    pub async fn count(conn: &SqlitePool) -> Result<i64> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn count(conn: &SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM transactions")
             .fetch_one(conn)
             .await?
@@ -113,7 +114,7 @@ impl Transaction {
         Ok(count)
     }
 
-    pub async fn save<'c, E>(&self, executor: E) -> Result<()>
+    pub(crate) async fn save<'c, E>(&self, executor: E) -> Result<()>
     where
         E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
     {
@@ -177,7 +178,7 @@ impl Transaction {
         Ok(())
     }
 
-    pub async fn save_batch(txs: &[Transaction], conn: &SqlitePool) -> Result<()> {
+    pub(crate) async fn save_batch(txs: &[Transaction], conn: &SqlitePool) -> Result<()> {
         let mut db_tx = conn.begin().await?;
 
         for tx in txs {
@@ -192,7 +193,7 @@ impl Transaction {
     /// its own so backfill progress survives an interrupt mid-range. A traced tx
     /// with no coinbase payment is written as `Some(0)`, so a stored `NULL` always
     /// means "never traced".
-    pub async fn update_coinbase_transfer(
+    pub(crate) async fn update_coinbase_transfer(
         tx_hash: FixedBytes<32>,
         value: U256,
         conn: &SqlitePool,
@@ -260,7 +261,7 @@ impl Transaction {
     }
 }
 
-pub async fn extract_signature(
+pub(crate) async fn extract_signature(
     input: Option<&Bytes>,
     index: u64,
     to: Option<TxKind>,
@@ -291,7 +292,7 @@ pub async fn extract_signature(
     Ok((signature_hash, signature))
 }
 
-pub fn calculate_create_address(nonce: u64, from: Address) -> Address {
+pub(crate) fn calculate_create_address(nonce: u64, from: Address) -> Address {
     let mut out = Vec::new();
     let list: [&dyn Encodable; 2] = [&from, &U256::from(nonce)];
     alloy::rlp::encode_list::<_, dyn Encodable>(&list, &mut out);
@@ -300,7 +301,7 @@ pub fn calculate_create_address(nonce: u64, from: Address) -> Address {
 }
 
 // Common signatures, that are duplicate and mismatched in the database
-pub fn find_sig_overwrite(signature: &str, tx_index: u64) -> Option<String> {
+pub(crate) fn find_sig_overwrite(signature: &str, tx_index: u64) -> Option<String> {
     if signature == "0x098999be" && tx_index == 0 {
         return Some("setL1BlockValuesIsthmus()".to_string());
     }
@@ -317,14 +318,14 @@ pub mod test {
     use super::*;
     use crate::db::txs::{conn, init_db};
 
-    pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
+    pub(crate) async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
         let (write, _path, cleaner) = setup_test_db_rw().await;
         (write, cleaner)
     }
 
     /// Returns a writable pool plus the on-disk path of the same file. The path
     /// is what the read-only `rusqlite`-backed `run_raw_query` consumes.
-    pub async fn setup_test_db_rw() -> (SqlitePool, String, SqliteCleaner) {
+    pub(crate) async fn setup_test_db_rw() -> (SqlitePool, String, SqliteCleaner) {
         let uuid = Uuid::new_v4();
         let db_path = format!("/tmp/{uuid}-mevlog-txs-test.db");
         let db_url = format!("sqlite://{db_path}");

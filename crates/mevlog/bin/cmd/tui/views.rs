@@ -5,9 +5,9 @@ mod status_bar;
 mod tx_popup;
 mod txs_table;
 
-pub use bottom_bar::render_key_bindings;
-pub use info_popup::render_info_popup;
-pub use network_selector::NetworkSelector;
-pub use status_bar::StatusBar;
-pub use tx_popup::render_tx_popup;
-pub use txs_table::TxsTable;
+pub(super) use bottom_bar::render_key_bindings;
+pub(super) use info_popup::render_info_popup;
+pub(super) use network_selector::NetworkSelector;
+pub(super) use status_bar::StatusBar;
+pub(super) use tx_popup::render_tx_popup;
+pub(super) use txs_table::TxsTable;

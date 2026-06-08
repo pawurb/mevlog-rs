@@ -10,7 +10,7 @@ use crate::cmd::tui::data::TransactionJson;
 
 const LABEL_WIDTH: usize = 19;
 
-pub fn render_info_tab(
+pub(super) fn render_info_tab(
     tx: &TransactionJson,
     area: Rect,
     frame: &mut Frame,

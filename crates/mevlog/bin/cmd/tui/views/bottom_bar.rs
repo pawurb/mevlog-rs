@@ -17,7 +17,7 @@ const QUIT: &str = "<q>";
 
 /// Renders the bottom controls bar showing context-aware keybindings
 #[allow(clippy::fn_params_excessive_bools, clippy::too_many_arguments)]
-pub fn render_key_bindings(
+pub(crate) fn render_key_bindings(
     frame: &mut Frame,
     area: Rect,
     mode: &AppMode,

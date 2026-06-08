@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::time::timeout;
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn fetch_chains(filter: Option<String>) -> Result<Vec<ChainEntryJson>> {
+pub(crate) async fn fetch_chains(filter: Option<String>) -> Result<Vec<ChainEntryJson>> {
     match timeout(
         Duration::from_secs(10),
         cmds::chains::chains(filter.as_deref(), None, &[]),

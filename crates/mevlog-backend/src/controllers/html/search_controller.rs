@@ -25,7 +25,7 @@ struct SearchTemplate {
 }
 
 impl SearchTemplate {
-    pub fn new(params: SearchParams) -> Self {
+    pub(crate) fn new(params: SearchParams) -> Self {
         let blocks = get_default_blocks(params.blocks);
         let h = host();
         let canonical_url = format!("{h}/search");
@@ -54,13 +54,13 @@ pub struct SearchParams {
 }
 
 impl SearchParams {
-    pub async fn validate(&self) -> Result<()> {
+    pub(crate) async fn validate(&self) -> Result<()> {
         Ok(())
     }
 }
 
 #[hotpath::measure]
-pub async fn search(
+pub(crate) async fn search(
     query: Result<Query<SearchParams>, axum::extract::rejection::QueryRejection>,
 ) -> impl IntoResponse {
     let params = match extract_query_params(query) {

@@ -15,11 +15,11 @@ use crate::db::sigs::{SCHEMA_VERSION, db_file_name, default_db_path};
 
 pub const PROGRESS_CHARS: &str = "█▓▒░─";
 
-pub fn file_exists() -> bool {
+pub(crate) fn file_exists() -> bool {
     default_db_path().exists()
 }
 
-pub async fn remove_files() -> Result<()> {
+pub(crate) async fn remove_files() -> Result<()> {
     let path = default_db_path();
 
     if path.exists() {
@@ -42,7 +42,7 @@ pub async fn remove_files() -> Result<()> {
     Ok(())
 }
 
-pub async fn download_file() -> Result<()> {
+pub(crate) async fn download_file() -> Result<()> {
     let url = file_url();
     let client = Client::new();
     let db_path = default_db_path().to_string_lossy().into_owned();
@@ -158,7 +158,7 @@ async fn ensure_database_indexes(sqlite: &SqlitePool) -> Result<()> {
     Ok(())
 }
 
-pub async fn check_and_create_indexes(sqlite: &SqlitePool) -> Result<()> {
+pub(crate) async fn check_and_create_indexes(sqlite: &SqlitePool) -> Result<()> {
     if !file_exists() {
         eyre::bail!("Database file does not exist")
     }

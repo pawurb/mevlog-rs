@@ -1,7 +1,4 @@
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::sync::Arc;
 
 use alloy::{sol, uint};
 use eyre::Result;
@@ -20,7 +17,7 @@ pub const GWEI: U256 = uint!(1_000_000_000_U256);
 pub const GWEI_U128: u128 = 1_000_000_000_u128;
 pub const GWEI_F64: f64 = 1_000_000_000_f64;
 
-pub fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {
+pub(crate) fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {
     format!("{}-{}", chain.name, block_number)
 }
 
@@ -90,16 +87,6 @@ fn init_logs_inner(to_file: bool) {
     }
 }
 
-pub fn measure_start(label: &str) -> (String, Instant) {
-    (label.to_string(), Instant::now())
-}
-
-pub fn measure_end(start: (String, Instant)) -> Duration {
-    let elapsed = start.1.elapsed();
-    tracing::info!("Elapsed: {:.2?} for '{}'", elapsed, start.0);
-    elapsed
-}
-
 pub trait ToU64 {
     fn to_u64(&self) -> u64;
 }
@@ -120,13 +107,13 @@ impl ToU128 for U256 {
     }
 }
 
-pub fn wei_to_eth(wei: U256) -> f64 {
+pub(crate) fn wei_to_eth(wei: U256) -> f64 {
     let wei_f64 = wei.to_string().parse::<f64>().unwrap();
     let wei_per_eth_f64 = ETHER.to_string().parse::<f64>().unwrap();
     wei_f64 / wei_per_eth_f64
 }
 
-pub async fn get_native_token_price(
+pub(crate) async fn get_native_token_price(
     chain: &EVMChain,
     provider: &Arc<GenericProvider>,
     native_token_price: Option<f64>,

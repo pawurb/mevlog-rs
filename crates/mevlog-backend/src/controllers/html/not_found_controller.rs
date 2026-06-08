@@ -17,7 +17,7 @@ struct NotFoundTemplate {
     canonical_url: String,
 }
 
-pub async fn not_found() -> impl IntoResponse {
+pub(crate) async fn not_found() -> impl IntoResponse {
     let h = host();
     let template = NotFoundTemplate {
         title: "Page Not Found - mevlog.rs".to_string(),

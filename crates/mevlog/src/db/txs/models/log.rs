@@ -26,7 +26,7 @@ impl Log {
     // Default cryo `logs` columns: 0 block_number, 1 transaction_index,
     // 2 log_index, 3 transaction_hash, 4 address, 5 topic0, 6 topic1,
     // 7 topic2, 8 topic3, 9 data, 10 chain_id.
-    pub async fn from_parquet_row(
+    pub(crate) async fn from_parquet_row(
         batch: &RecordBatch,
         row_idx: usize,
         sqlite: &SqlitePool,
@@ -72,7 +72,8 @@ impl Log {
         })
     }
 
-    pub async fn count(conn: &SqlitePool) -> Result<i64> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn count(conn: &SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM logs")
             .fetch_one(conn)
             .await?
@@ -81,7 +82,7 @@ impl Log {
         Ok(count)
     }
 
-    pub async fn save<'c, E>(&self, executor: E) -> Result<()>
+    pub(crate) async fn save<'c, E>(&self, executor: E) -> Result<()>
     where
         E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
     {
@@ -113,7 +114,7 @@ impl Log {
         Ok(())
     }
 
-    pub async fn save_batch(logs: &[Log], conn: &SqlitePool) -> Result<()> {
+    pub(crate) async fn save_batch(logs: &[Log], conn: &SqlitePool) -> Result<()> {
         let mut db_tx = conn.begin().await?;
 
         for log in logs {

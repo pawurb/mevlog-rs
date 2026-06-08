@@ -13,14 +13,18 @@ const SELECTED_ROW_STYLE: Style = Style::new()
     .bg(Color::DarkGray)
     .add_modifier(Modifier::BOLD);
 
-pub struct NetworkSelector<'a> {
+pub(crate) struct NetworkSelector<'a> {
     chains: &'a [ChainEntryJson],
     search_query: &'a str,
     is_loading: bool,
 }
 
 impl<'a> NetworkSelector<'a> {
-    pub fn new(chains: &'a [ChainEntryJson], search_query: &'a str, is_loading: bool) -> Self {
+    pub(crate) fn new(
+        chains: &'a [ChainEntryJson],
+        search_query: &'a str,
+        is_loading: bool,
+    ) -> Self {
         Self {
             chains,
             search_query,
@@ -28,7 +32,13 @@ impl<'a> NetworkSelector<'a> {
         }
     }
 
-    pub fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState, popup_open: bool) {
+    pub(crate) fn render(
+        &self,
+        area: Rect,
+        frame: &mut Frame,
+        state: &mut TableState,
+        popup_open: bool,
+    ) {
         self.render_chains_table(area, frame, state);
 
         if popup_open {

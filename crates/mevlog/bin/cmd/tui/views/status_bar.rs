@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Paragraph},
 };
 
-pub struct StatusBar<'a> {
+pub(crate) struct StatusBar<'a> {
     chain: Option<&'a ChainEntryJson>,
     current_block: Option<u64>,
     is_loading: bool,
@@ -17,7 +17,7 @@ pub struct StatusBar<'a> {
 }
 
 impl<'a> StatusBar<'a> {
-    pub fn new(
+    pub(crate) fn new(
         chain: Option<&'a ChainEntryJson>,
         current_block: Option<u64>,
         is_loading: bool,
@@ -33,7 +33,7 @@ impl<'a> StatusBar<'a> {
         }
     }
 
-    pub fn render(&self, area: Rect, frame: &mut Frame) {
+    pub(crate) fn render(&self, area: Rect, frame: &mut Frame) {
         let mut status_parts = vec![];
 
         if self.is_loading && self.current_block.is_none() {

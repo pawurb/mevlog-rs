@@ -11,7 +11,7 @@ pub struct ExploreParams {
 }
 
 #[hotpath::measure]
-pub async fn explore(
+pub(crate) async fn explore(
     query: Result<Query<ExploreParams>, axum::extract::rejection::QueryRejection>,
 ) -> impl IntoResponse {
     let params = match extract_json_query_params(query) {

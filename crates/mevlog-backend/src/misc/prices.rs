@@ -22,7 +22,7 @@ pub struct PriceResponse {
     pub binancecoin: TokenPrice,
 }
 
-pub async fn get_price_for_chain_id(chain_id: u64) -> Result<Option<f64>> {
+pub(crate) async fn get_price_for_chain_id(chain_id: u64) -> Result<Option<f64>> {
     match chain_id {
         1 => Ok(get_crypto_prices().await?.ethereum.usd),
         56 => Ok(get_crypto_prices().await?.binancecoin.usd),
@@ -30,7 +30,7 @@ pub async fn get_price_for_chain_id(chain_id: u64) -> Result<Option<f64>> {
     }
 }
 
-pub async fn get_crypto_prices() -> Result<PriceResponse> {
+pub(crate) async fn get_crypto_prices() -> Result<PriceResponse> {
     {
         let cache = PRICE_CACHE.read().await;
         if let Some(cached_prices) = cache.as_ref() {
@@ -49,7 +49,7 @@ pub async fn get_crypto_prices() -> Result<PriceResponse> {
     Ok(prices)
 }
 
-pub async fn update_prices_cache() -> Result<()> {
+pub(crate) async fn update_prices_cache() -> Result<()> {
     let prices = fetch_prices_from_api().await?;
     {
         let mut cache = PRICE_CACHE.write().await;

@@ -32,7 +32,7 @@ pub(super) fn render_scrollable(
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn render_tx_popup(
+pub(crate) fn render_tx_popup(
     tx: &TransactionJson,
     area: Rect,
     frame: &mut Frame,

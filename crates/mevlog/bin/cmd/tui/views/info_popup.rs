@@ -11,7 +11,7 @@ use ratatui::{
 const POPUP_WIDTH: u16 = 80;
 const POPUP_HEIGHT: u16 = 12;
 
-pub fn render_info_popup(
+pub(crate) fn render_info_popup(
     area: Rect,
     frame: &mut Frame,
     chain: Option<&ChainEntryJson>,

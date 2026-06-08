@@ -7,7 +7,7 @@ use ratatui::{
     widgets::Paragraph,
 };
 
-pub fn render_traces_tab(
+pub(super) fn render_traces_tab(
     area: Rect,
     frame: &mut Frame,
     traces: Option<&[CallExtract]>,

@@ -18,7 +18,7 @@ pub struct AffectedAddressesArgs {
 }
 
 impl AffectedAddressesArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let addresses = cmds::affected_addresses::affected_addresses(
             self.tx_hash,
             self.evm_trace.as_ref(),

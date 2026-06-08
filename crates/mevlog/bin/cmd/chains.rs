@@ -20,7 +20,7 @@ pub struct ChainsArgs {
 }
 
 impl ChainsArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let chains_entries =
             cmds::chains::chains(self.filter.as_deref(), self.limit, &self.chain_id).await?;
 

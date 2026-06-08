@@ -22,7 +22,7 @@ const ENS_LOOKUP: Address = address!("0x80800fB4e3c77a25638aF8607f5274541831CF07
 const ENS_CHAIN_ID: u64 = 1;
 
 /// Returns an error if ENS resolution is not available on the given chain.
-pub fn ensure_ens_supported(chain_id: u64) -> Result<()> {
+pub(crate) fn ensure_ens_supported(chain_id: u64) -> Result<()> {
     if chain_id != ENS_CHAIN_ID {
         bail!("ENS resolution is only supported on Ethereum mainnet (chain ID {ENS_CHAIN_ID})");
     }
@@ -30,7 +30,7 @@ pub fn ensure_ens_supported(chain_id: u64) -> Result<()> {
 }
 
 /// Forward resolution: ENS name -> address.
-pub async fn ens_addr_lookup(
+pub(crate) async fn ens_addr_lookup(
     name: &str,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<Address>> {
@@ -46,7 +46,7 @@ pub async fn ens_addr_lookup(
 }
 
 /// Reverse resolution: address -> ENS name.
-pub async fn ens_name_lookup(
+pub(crate) async fn ens_name_lookup(
     target: Address,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<String>> {
@@ -59,7 +59,7 @@ pub async fn ens_name_lookup(
 }
 
 // source https://github.com/foundry-rs/foundry/blob/0a2ad0034dded199812bc9a97ea96f59f9b87354/crates/common/src/ens.rs#L168
-pub fn namehash(name: &str) -> B256 {
+pub(crate) fn namehash(name: &str) -> B256 {
     if name.is_empty() {
         return B256::ZERO;
     }
@@ -91,7 +91,7 @@ pub fn namehash(name: &str) -> B256 {
     buffer[..32].try_into().unwrap()
 }
 
-pub fn reverse_address(addr: &Address) -> String {
+pub(crate) fn reverse_address(addr: &Address) -> String {
     format!("{addr:x}.{ENS_REVERSE_REGISTRAR_DOMAIN}")
 }
 

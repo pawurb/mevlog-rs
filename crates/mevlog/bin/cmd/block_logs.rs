@@ -19,7 +19,7 @@ pub struct BlockLogsArgs {
 }
 
 impl BlockLogsArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let outcome =
             cmds::block_logs::block_logs(&self.block, self.latest_offset, &self.conn_opts).await?;
         print_query_outcome(outcome, format)

@@ -12,7 +12,7 @@ fn resolve_url(db_url: Option<String>, default_path: PathBuf) -> String {
     db_url.unwrap_or_else(|| default_path.to_string_lossy().into_owned())
 }
 
-pub async fn init_db(
+pub(crate) async fn init_db(
     db_url: Option<String>,
     default_path: PathBuf,
     migrator: &Migrator,
@@ -45,7 +45,7 @@ pub async fn init_db(
     Ok(())
 }
 
-pub async fn conn(
+pub(crate) async fn conn(
     db_url: Option<String>,
     default_path: PathBuf,
     read_only: bool,

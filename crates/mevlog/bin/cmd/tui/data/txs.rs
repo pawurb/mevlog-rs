@@ -14,7 +14,7 @@ use crate::cmd::tui::data::{LogJson, TransactionJson, conn_opts};
 const CMD_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[hotpath::measure(future = true)]
-pub async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJson>> {
+pub(crate) async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJson>> {
     let conn = conn_opts(rpc_url);
     match timeout(
         CMD_TIMEOUT,
@@ -33,7 +33,10 @@ pub async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJ
 /// `tx_index`, which avoids the per-tx `tx-logs` RPC the popup used to make on
 /// every selection change.
 #[hotpath::measure(future = true)]
-pub async fn fetch_txs_with_logs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJson>> {
+pub(crate) async fn fetch_txs_with_logs(
+    blocks: &str,
+    rpc_url: String,
+) -> Result<Vec<TransactionJson>> {
     let mut txs = fetch_txs(blocks, rpc_url.clone()).await?;
     if txs.is_empty() {
         return Ok(txs);
@@ -75,7 +78,7 @@ async fn fetch_block_logs(blocks: &str, rpc_url: String) -> Result<Vec<LogJson>>
 }
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
+pub(crate) async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
     let Ok(provider) = init_provider(rpc_url).await else {
         return TraceMode::Revm;
     };
@@ -88,7 +91,7 @@ pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
 }
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn fetch_traces(
+pub(crate) async fn fetch_traces(
     tx_hash: &str,
     rpc_url: String,
     trace_mode: TraceMode,
@@ -107,7 +110,7 @@ pub async fn fetch_traces(
 }
 
 #[hotpath::measure(future = true)]
-pub async fn fetch_tx_with_trace(
+pub(crate) async fn fetch_tx_with_trace(
     tx_hash: &str,
     rpc_url: String,
     trace_mode: TraceMode,
@@ -126,7 +129,7 @@ pub async fn fetch_tx_with_trace(
 }
 
 #[hotpath::measure(future = true)]
-pub async fn fetch_state_diff(
+pub(crate) async fn fetch_state_diff(
     tx_hash: &str,
     rpc_url: String,
     trace_mode: TraceMode,

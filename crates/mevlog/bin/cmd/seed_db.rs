@@ -46,7 +46,7 @@ pub struct SeedDBArgs {
 
 impl SeedDBArgs {
     #[allow(dead_code)]
-    pub async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self) -> Result<()> {
         let db_url = self.output_path.to_string_lossy().into_owned();
         println!("Seeding db at {db_url}");
 

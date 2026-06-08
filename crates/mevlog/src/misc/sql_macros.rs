@@ -23,7 +23,7 @@ const ENS_MACRO_CLOSE: &str = "\")}";
 ///   is available rather than silently producing wrong USD figures.
 /// - `{RESOLVE_ENS("name.eth")}` -> the resolved address as a `X'..'` blob literal
 ///   (Ethereum mainnet only).
-pub async fn substitute_sql_macros(
+pub(crate) async fn substitute_sql_macros(
     sql: &str,
     provider: &Arc<GenericProvider>,
     chain_id: u64,
@@ -66,7 +66,7 @@ pub async fn substitute_sql_macros(
 /// Extracts the names from every `{RESOLVE_ENS("name.eth")}` token in `sql`,
 /// deduplicated. Each name must end with `.eth`; anything else is rejected so a
 /// typo doesn't silently fall through to an unresolved token.
-pub fn extract_ens_names(sql: &str) -> Result<Vec<String>> {
+pub(crate) fn extract_ens_names(sql: &str) -> Result<Vec<String>> {
     let mut names = Vec::new();
     let mut rest = sql;
     while let Some(start) = rest.find(ENS_MACRO_OPEN) {
@@ -91,7 +91,7 @@ pub fn extract_ens_names(sql: &str) -> Result<Vec<String>> {
 
 /// Builds the `{RESOLVE_ENS("name")}` token for `name`, so substitution uses the
 /// same grammar that [`extract_ens_names`] parses.
-pub fn ens_macro_token(name: &str) -> String {
+pub(crate) fn ens_macro_token(name: &str) -> String {
     format!("{ENS_MACRO_OPEN}{name}{ENS_MACRO_CLOSE}")
 }
 

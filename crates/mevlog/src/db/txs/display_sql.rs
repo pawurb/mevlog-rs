@@ -15,7 +15,7 @@ use crate::misc::{sql_macros::NATIVE_TOKEN_PRICE_MACRO, utils::ETH_TRANSFER};
 /// `txcost = gas_used * effective_gas_price` and
 /// `fullcost = txcost + coinbase_transfer` are computed once in an inner query;
 /// `fullcost` is `NULL` when `coinbase_transfer` is `NULL` (untraced tx).
-pub fn tx_display_query(where_sql: &str) -> String {
+pub(crate) fn tx_display_query(where_sql: &str) -> String {
     let price = NATIVE_TOKEN_PRICE_MACRO;
     format!(
         "SELECT \
@@ -58,7 +58,7 @@ pub fn tx_display_query(where_sql: &str) -> String {
 /// and the block's indexed transaction count.
 ///
 /// [`BlockJson`]: crate::models::json::block_json::BlockJson
-pub fn block_display_query(where_sql: &str) -> String {
+pub(crate) fn block_display_query(where_sql: &str) -> String {
     format!(
         "SELECT \
             block_number, \
@@ -81,7 +81,7 @@ pub fn block_display_query(where_sql: &str) -> String {
 /// Canonical logs `SELECT` for the given `WHERE` clause, projecting the columns
 /// of [`LogJson`]. `topic0..topic3` are returned as separate columns (`NULL`
 /// when absent), keeping the rows faithful to the echoed SQL.
-pub fn logs_display_query(where_sql: &str) -> String {
+pub(crate) fn logs_display_query(where_sql: &str) -> String {
     format!(
         "SELECT \
             log_index, \
@@ -99,7 +99,7 @@ pub fn logs_display_query(where_sql: &str) -> String {
 /// Like [`logs_display_query`] but for a whole block: includes `tx_index` so
 /// callers can group the flat log rows by transaction, and orders by
 /// `(tx_index, log_index)` to keep each tx's logs contiguous and in order.
-pub fn block_logs_display_query(where_sql: &str) -> String {
+pub(crate) fn block_logs_display_query(where_sql: &str) -> String {
     format!(
         "SELECT \
             tx_index, \

@@ -23,7 +23,7 @@ use crate::{
 };
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn rpc_tx_calls(
+pub(crate) async fn rpc_tx_calls(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
 ) -> Result<Vec<CallFrame>> {
@@ -53,7 +53,7 @@ pub async fn rpc_tx_calls(
 }
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn rpc_affected_addresses(
+pub(crate) async fn rpc_affected_addresses(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
 ) -> Result<HashSet<Address>> {
@@ -98,7 +98,7 @@ fn collect_calls(frame: &CallFrame, result: &mut Vec<CallFrame>) {
 }
 
 #[hotpath::measure(log = true, future = true)]
-pub async fn rpc_tx_state_diff(
+pub(crate) async fn rpc_tx_state_diff(
     tx_hash: TxHash,
     provider: &Arc<GenericProvider>,
 ) -> Result<StateDiff> {

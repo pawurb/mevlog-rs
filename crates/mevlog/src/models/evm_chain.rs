@@ -17,7 +17,7 @@ pub struct EVMChain {
 
 #[hotpath::measure_all]
 impl EVMChain {
-    pub fn new(db_chain: Chain, rpc_url: String) -> Result<Self> {
+    pub(crate) fn new(db_chain: Chain, rpc_url: String) -> Result<Self> {
         Ok(Self {
             chain_id: db_chain.id as u64,
             name: db_chain.name,
@@ -35,7 +35,7 @@ impl EVMChain {
         })
     }
 
-    pub fn revm_cache_dir_name(&self) -> String {
+    pub(crate) fn revm_cache_dir_name(&self) -> String {
         if let Ok(chain) = NamedChain::try_from(self.chain_id) {
             chain.to_string()
         } else {
@@ -43,7 +43,7 @@ impl EVMChain {
         }
     }
 
-    pub fn cryo_cache_dir_name(&self) -> String {
+    pub(crate) fn cryo_cache_dir_name(&self) -> String {
         // Based on https://github.com/paradigmxyz/cryo/blob/559b65455d7ef6b03e8e9e96a0e50fd4fe8a9c86/crates/cli/src/parse/file_output.rs#L62
         match self.chain_id {
             1 => "ethereum".to_string(),
@@ -68,9 +68,5 @@ impl EVMChain {
             11155111 => "sepolia".to_string(),
             chain_id => format!("network_{chain_id}"),
         }
-    }
-
-    pub fn is_mainnet(&self) -> bool {
-        self.chain_id == 1
     }
 }

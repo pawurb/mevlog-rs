@@ -14,25 +14,25 @@ const SELECTED_ROW_STYLE: Style = Style::new()
     .bg(Color::DarkGray)
     .add_modifier(Modifier::BOLD);
 
-pub struct TxsTable<'a> {
+pub(crate) struct TxsTable<'a> {
     items: &'a [TransactionJson],
     explorer_url: Option<&'a str>,
 }
 
 impl<'a> TxsTable<'a> {
-    pub fn new(items: &'a [TransactionJson]) -> Self {
+    pub(crate) fn new(items: &'a [TransactionJson]) -> Self {
         Self {
             items,
             explorer_url: None,
         }
     }
 
-    pub fn with_explorer_url(mut self, url: Option<&'a str>) -> Self {
+    pub(crate) fn with_explorer_url(mut self, url: Option<&'a str>) -> Self {
         self.explorer_url = url;
         self
     }
 
-    pub fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState) {
+    pub(crate) fn render(&self, area: Rect, frame: &mut Frame, state: &mut TableState) {
         let header_cells: Vec<Cell> = vec![
             Cell::from("Index"),
             Cell::from("Hash"),
