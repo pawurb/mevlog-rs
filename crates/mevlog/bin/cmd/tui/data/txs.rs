@@ -8,7 +8,6 @@ use mevlog::misc::shared_init::{TraceMode, init_provider};
 use mevlog::models::call_extract::CallExtract;
 use mevlog::models::json::state_diff_json::StateDiffJson;
 use tokio::time::timeout;
-use tracing::debug;
 
 use crate::cmd::tui::data::{LogJson, TransactionJson, conn_opts};
 
@@ -143,6 +142,5 @@ pub async fn fetch_state_diff(
         Ok(res) => res?,
         Err(_) => eyre::bail!("evm-state-diff timed out after 120 seconds"),
     };
-    debug!(%tx_hash, "computed state diff");
     Ok(StateDiffJson::from(&state_diff))
 }

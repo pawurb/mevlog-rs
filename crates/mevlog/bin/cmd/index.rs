@@ -58,6 +58,10 @@ impl IndexArgs {
             bail!("--blocks is required unless --live is set");
         }
 
+        if matches!(format, OutputFormat::Csv | OutputFormat::Table) {
+            bail!("'csv' and 'table' formats are only supported by the query command");
+        }
+
         let deps = init_deps(&self.conn_opts).await?;
 
         // Backfill the requested range (in both normal and live mode).
