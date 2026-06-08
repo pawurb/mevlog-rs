@@ -10,18 +10,12 @@ use crate::cmd::tui::data::TransactionJson;
 
 const LABEL_WIDTH: usize = 19;
 
-pub(super) fn render_info_tab(
-    tx: &TransactionJson,
-    area: Rect,
-    frame: &mut Frame,
-    scroll: u16,
-    tx_trace_loading: bool,
-) -> u16 {
-    let lines = build_tx_lines(tx, tx_trace_loading);
+pub(super) fn render_info_tab(tx: &TransactionJson, area: Rect, frame: &mut Frame, scroll: u16) -> u16 {
+    let lines = build_tx_lines(tx);
     super::render_scrollable(area, frame, lines, scroll)
 }
 
-fn build_tx_lines(tx: &TransactionJson, tx_trace_loading: bool) -> Vec<Line<'static>> {
+fn build_tx_lines(tx: &TransactionJson) -> Vec<Line<'static>> {
     let mut lines: Vec<Line<'static>> = Vec::new();
 
     let from_display = tx.from.to_string();
@@ -60,50 +54,6 @@ fn build_tx_lines(tx: &TransactionJson, tx_trace_loading: bool) -> Vec<Line<'sta
     ));
 
     lines.push(build_label_value_line("Gas Tx Cost:", &tx.display_tx_cost));
-
-    match &tx.display_coinbase_transfer {
-        Some(coinbase) => {
-            let display = tx
-                .display_coinbase_transfer_usd
-                .as_ref()
-                .map(|usd| format!("{} | {}", coinbase, usd))
-                .unwrap_or_else(|| coinbase.clone());
-            lines.push(build_label_value_line("Coinbase Transfer:", &display));
-        }
-        None => {
-            lines.push(build_label_na_line("Coinbase Transfer:", tx_trace_loading));
-        }
-    }
-
-    match &tx.display_full_tx_cost {
-        Some(full_cost) => {
-            let display = tx
-                .display_full_tx_cost_usd
-                .as_ref()
-                .map(|usd| format!("{} | {}", full_cost, usd))
-                .unwrap_or_else(|| full_cost.clone());
-            lines.push(build_label_value_line("Real Tx Cost:", &display));
-        }
-        None => {
-            lines.push(build_label_na_line("Real Tx Cost:", tx_trace_loading));
-        }
-    }
-
-    match tx.full_tx_cost.as_ref().and_then(|c| c.parse::<f64>().ok()) {
-        Some(full_cost) if tx.gas_used > 0 => {
-            let real_gas_price = full_cost / tx.gas_used as f64 / GWEI_F64;
-            lines.push(build_label_value_line(
-                "Real Gas Price:",
-                &format!("{:.2} GWEI", real_gas_price),
-            ));
-        }
-        Some(_) => {
-            lines.push(build_label_value_line("Real Gas Price:", "0.00 GWEI"));
-        }
-        None => {
-            lines.push(build_label_na_line("Real Gas Price:", tx_trace_loading));
-        }
-    }
 
     {
         lines.push(Line::from(""));
@@ -144,23 +94,5 @@ fn build_label_value_line(label: &str, value: &str) -> Line<'static> {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(value.to_string()),
-    ])
-}
-
-fn build_label_na_line(label: &str, is_loading: bool) -> Line<'static> {
-    let value = if is_loading { "Loading..." } else { "N/A" };
-    Line::from(vec![
-        Span::styled(
-            format!("{:width$}", label, width = LABEL_WIDTH),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            value.to_string(),
-            Style::default()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD),
-        ),
     ])
 }

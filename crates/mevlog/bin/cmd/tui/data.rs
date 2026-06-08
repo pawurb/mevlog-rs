@@ -1,8 +1,6 @@
 pub(super) use mevlog::ChainEntryJson;
-pub(super) use mevlog::misc::shared_init::{ConnOpts, TraceMode};
-pub(super) use mevlog::models::call_extract::CallExtract;
+pub(super) use mevlog::misc::shared_init::ConnOpts;
 pub(super) use mevlog::models::json::log_json::LogJson;
-pub(super) use mevlog::models::json::state_diff_json::StateDiffJson;
 pub(super) use mevlog::models::json::transaction_json::TransactionJson;
 
 pub(crate) mod chains;
@@ -37,10 +35,6 @@ pub(crate) enum DataRequest {
     Tx(String, RpcOpts),
     Chains(Option<String>),
     ChainInfo(String),
-    Traces(String, TraceMode, RpcOpts),
-    StateDiff(String, TraceMode, RpcOpts),
-    TxTrace(String, TraceMode, RpcOpts),
-    DetectTraceMode(String),
     RefreshRpc(u64, u64),
 }
 
@@ -56,10 +50,6 @@ pub(crate) enum DataResponse {
     Block(u64, Vec<TransactionJson>),
     Chains(Vec<ChainEntryJson>),
     ChainInfo(ChainEntryJson),
-    Traces(String, Vec<CallExtract>),
-    StateDiff(String, StateDiffJson),
-    TxTraced(String, TransactionJson),
-    TraceMode(TraceMode),
     RpcRefreshed(String),
     Error(String),
 }

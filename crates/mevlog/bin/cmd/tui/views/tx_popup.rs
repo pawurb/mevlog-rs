@@ -1,10 +1,6 @@
 mod info;
-mod state_diff;
-mod traces;
 mod transfers;
 
-use mevlog::models::call_extract::CallExtract;
-use mevlog::models::json::state_diff_json::StateDiffJson;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
@@ -31,7 +27,6 @@ pub(super) fn render_scrollable(
     max_scroll
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn render_tx_popup(
     tx: &TransactionJson,
     area: Rect,
@@ -39,11 +34,6 @@ pub(crate) fn render_tx_popup(
     scroll: u16,
     active_tab: TxPopupTab,
     explorer_url: Option<&str>,
-    traces: Option<&[CallExtract]>,
-    traces_loading: bool,
-    state_diff: Option<&StateDiffJson>,
-    state_diff_loading: bool,
-    tx_trace_loading: bool,
 ) -> u16 {
     let popup_width = (area.width as f32 * 0.8) as u16;
     let popup_height = (area.height as f32 * 0.8) as u16;
@@ -78,22 +68,10 @@ pub(crate) fn render_tx_popup(
     render_popup_tab_bar(inner_chunks[1], frame, active_tab);
 
     match active_tab {
-        TxPopupTab::Info => {
-            info::render_info_tab(tx, inner_chunks[3], frame, scroll, tx_trace_loading)
-        }
-        TxPopupTab::Traces => {
-            traces::render_traces_tab(inner_chunks[3], frame, traces, traces_loading, scroll)
-        }
+        TxPopupTab::Info => info::render_info_tab(tx, inner_chunks[3], frame, scroll),
         TxPopupTab::Transfers => {
             transfers::render_transfers_tab(tx, inner_chunks[3], frame, scroll)
         }
-        TxPopupTab::State => state_diff::render_state_diff_tab(
-            inner_chunks[3],
-            frame,
-            state_diff,
-            state_diff_loading,
-            scroll,
-        ),
     }
 }
 
@@ -122,8 +100,6 @@ fn render_popup_tab_bar(area: Rect, frame: &mut Frame, active_tab: TxPopupTab) {
     let tabs = [
         (TxPopupTab::Info, "1", "Info"),
         (TxPopupTab::Transfers, "2", "Transfers"),
-        (TxPopupTab::Traces, "3", "Traces"),
-        (TxPopupTab::State, "4", "State"),
     ];
 
     let mut spans = Vec::new();

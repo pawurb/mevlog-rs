@@ -4,7 +4,7 @@ use ratatui::widgets::TableState;
 
 use crate::cmd::tui::{
     app::{App, AppMode, DEFAULT_CHAINS, TxPopupTab},
-    data::{BlockId, DataRequest, TraceMode},
+    data::{BlockId, DataRequest},
 };
 
 #[hotpath::measure_all]
@@ -125,98 +125,6 @@ impl App {
         }
     }
 
-    pub(crate) fn request_traces_if_needed(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.table_state.selected()
-            && let Some(tx) = self.items.get(idx)
-        {
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.traces = None;
-            self.traces_loading = true;
-            self.traces_tx_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::Traces(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn clear_traces(&mut self) {
-        self.traces = None;
-        self.traces_loading = false;
-        self.traces_tx_hash = None;
-    }
-
-    pub(crate) fn request_state_diff_if_needed(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.table_state.selected()
-            && let Some(tx) = self.items.get(idx)
-        {
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.state_diff = None;
-            self.state_diff_loading = true;
-            self.state_diff_tx_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::StateDiff(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn clear_state_diff(&mut self) {
-        self.state_diff = None;
-        self.state_diff_loading = false;
-        self.state_diff_tx_hash = None;
-    }
-
-    pub(crate) fn request_tx_trace(&mut self) {
-        let Some(opts) = self.rpc_opts() else {
-            return;
-        };
-        if let Some(idx) = self.table_state.selected()
-            && let Some(tx) = self.items.get(idx)
-        {
-            if tx.full_tx_cost.is_some() {
-                return;
-            }
-
-            let tx_hash = tx.tx_hash.to_string();
-
-            if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
-                return;
-            }
-
-            self.tx_trace_loading = true;
-            self.tx_trace_hash = Some(tx_hash.clone());
-
-            let trace_mode = self.trace_mode.clone().unwrap_or(TraceMode::Revm);
-            let _ = self
-                .data_req_tx
-                .send(DataRequest::TxTrace(tx_hash, trace_mode, opts));
-        }
-    }
-
-    pub(crate) fn clear_tx_trace(&mut self) {
-        self.tx_trace_loading = false;
-        self.tx_trace_hash = None;
-    }
-
     pub(crate) fn return_to_network_selection(&mut self) {
         self.items.clear();
         self.table_state = TableState::default();
@@ -228,12 +136,8 @@ impl App {
         self.tx_popup_tab = TxPopupTab::default();
         self.selected_chain = None;
         self.error_message = None;
-        self.clear_traces();
-        self.clear_state_diff();
-        self.clear_tx_trace();
         self.chain_id = None;
         self.rpc_url = None;
-        self.trace_mode = None;
         self.info_popup_open = false;
         self.rpc_refreshing = false;
 
@@ -267,7 +171,7 @@ impl App {
 
     pub(crate) fn handle_rpc_refreshed(&mut self, new_rpc_url: String) {
         self.rpc_refreshing = false;
-        self.rpc_url = Some(new_rpc_url.clone());
+        self.rpc_url = Some(new_rpc_url);
 
         if let Some(opts) = self.rpc_opts() {
             self.is_loading = true;
@@ -275,8 +179,5 @@ impl App {
                 .data_req_tx
                 .send(DataRequest::Block(BlockId::Latest, opts));
         }
-        let _ = self
-            .data_req_tx
-            .send(DataRequest::DetectTraceMode(new_rpc_url));
     }
 }
