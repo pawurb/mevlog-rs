@@ -3474,8 +3474,6 @@ dependencies = [
 [[package]]
 name = "hotpath"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bff002d5c53fa1c6891f32156b9451d16654bc8a761894d7660b25c0a332d517"
 dependencies = [
  "arc-swap",
  "axum 0.8.8",
@@ -3497,9 +3495,12 @@ dependencies = [
  "schemars 1.2.1",
  "serde",
  "serde_json",
+ "time",
  "tiny_http",
  "tokio",
  "tokio-util",
+ "tracing",
+ "tracing-subscriber 0.3.23",
 ]
 
 [[package]]
@@ -3515,8 +3516,6 @@ dependencies = [
 [[package]]
 name = "hotpath-macros"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e2f4ac4534511584b7082657e133dcf3d8727b2f456a6b2a2c3eb02b82c1277"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3526,14 +3525,10 @@ dependencies = [
 [[package]]
 name = "hotpath-macros-meta"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6a87070853e9402ec79184f8d8d930d7eb86cd274aecdcf973f73b6f40271b0"
 
 [[package]]
 name = "hotpath-meta"
 version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31cfef2b9d280ad754c23b40b50cc74676489597f3cebfe0c180389e08a53ed"
 dependencies = [
  "hotpath-macros-meta",
 ]

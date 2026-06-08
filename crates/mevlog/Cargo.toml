@@ -55,8 +55,8 @@ comfy-table = "7"
 which = "7"
 alloy-chains = "0.2"
 console-subscriber = { version = "0.4", optional = true }
-hotpath = { version = "0.16", features = ["tokio", "crossbeam"] }
-# hotpath = { path = "../../../hotpath-rs/crates/hotpath", features = ["tokio", "dev"] }
+# hotpath = { version = "0.16", features = ["tokio", "crossbeam"] }
+hotpath = { path = "../../../hotpath-rs/crates/hotpath", features = ["tokio", "crossbeam", "dev", "sqlx"] }
 crossterm = { version = "0.28", optional = true }
 ratatui = { version = "0.29", optional = true, features = [
   "unstable-rendered-line-info",
