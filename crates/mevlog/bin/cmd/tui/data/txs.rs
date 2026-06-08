@@ -1,12 +1,7 @@
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
-use alloy::primitives::TxHash;
 use eyre::Result;
 use mevlog::cmds;
-use mevlog::misc::rpc_capability::is_debug_trace_available;
-use mevlog::misc::shared_init::{TraceMode, init_provider};
-use mevlog::models::call_extract::CallExtract;
-use mevlog::models::json::state_diff_json::StateDiffJson;
 use tokio::time::timeout;
 
 use crate::cmd::tui::data::{LogJson, TransactionJson, conn_opts};
@@ -14,7 +9,7 @@ use crate::cmd::tui::data::{LogJson, TransactionJson, conn_opts};
 const CMD_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[hotpath::measure(future = true)]
-pub async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJson>> {
+pub(crate) async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJson>> {
     let conn = conn_opts(rpc_url);
     match timeout(
         CMD_TIMEOUT,
@@ -33,7 +28,10 @@ pub async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJ
 /// `tx_index`, which avoids the per-tx `tx-logs` RPC the popup used to make on
 /// every selection change.
 #[hotpath::measure(future = true)]
-pub async fn fetch_txs_with_logs(blocks: &str, rpc_url: String) -> Result<Vec<TransactionJson>> {
+pub(crate) async fn fetch_txs_with_logs(
+    blocks: &str,
+    rpc_url: String,
+) -> Result<Vec<TransactionJson>> {
     let mut txs = fetch_txs(blocks, rpc_url.clone()).await?;
     if txs.is_empty() {
         return Ok(txs);
@@ -72,75 +70,4 @@ async fn fetch_block_logs(blocks: &str, rpc_url: String) -> Result<Vec<LogJson>>
         Ok(res) => res,
         Err(_) => eyre::bail!("block-logs timed out after 120 seconds"),
     }
-}
-
-#[hotpath::measure(log = true, future = true)]
-pub async fn detect_trace_mode(rpc_url: &str) -> TraceMode {
-    let Ok(provider) = init_provider(rpc_url).await else {
-        return TraceMode::Revm;
-    };
-    let provider = Arc::new(provider);
-    if is_debug_trace_available(&provider, 5000).await {
-        TraceMode::RPC
-    } else {
-        TraceMode::Revm
-    }
-}
-
-#[hotpath::measure(log = true, future = true)]
-pub async fn fetch_traces(
-    tx_hash: &str,
-    rpc_url: String,
-    trace_mode: TraceMode,
-) -> Result<Vec<CallExtract>> {
-    let tx_hash: TxHash = tx_hash.parse()?;
-    let conn = conn_opts(rpc_url);
-    match timeout(
-        CMD_TIMEOUT,
-        cmds::evm_traces::evm_traces(tx_hash, Some(&trace_mode), &conn),
-    )
-    .await
-    {
-        Ok(res) => res,
-        Err(_) => eyre::bail!("evm-traces timed out after 120 seconds"),
-    }
-}
-
-#[hotpath::measure(future = true)]
-pub async fn fetch_tx_with_trace(
-    tx_hash: &str,
-    rpc_url: String,
-    trace_mode: TraceMode,
-) -> Result<TransactionJson> {
-    let tx_hash: TxHash = tx_hash.parse()?;
-    let conn = conn_opts(rpc_url);
-    match timeout(
-        CMD_TIMEOUT,
-        cmds::tx::tx_typed(tx_hash, Some(&trace_mode), None, &conn),
-    )
-    .await
-    {
-        Ok(res) => res,
-        Err(_) => eyre::bail!("tx --evm-trace timed out after 120 seconds"),
-    }
-}
-
-#[hotpath::measure(future = true)]
-pub async fn fetch_state_diff(
-    tx_hash: &str,
-    rpc_url: String,
-    trace_mode: TraceMode,
-) -> Result<StateDiffJson> {
-    let tx_hash: TxHash = tx_hash.parse()?;
-    let conn = conn_opts(rpc_url);
-    let state_diff = match timeout(
-        CMD_TIMEOUT,
-        cmds::state_diff::state_diff(tx_hash, Some(&trace_mode), &conn),
-    )
-    .await
-    {
-        Ok(res) => res?,
-        Err(_) => eyre::bail!("evm-state-diff timed out after 120 seconds"),
-    };
-    Ok(StateDiffJson::from(&state_diff))
 }

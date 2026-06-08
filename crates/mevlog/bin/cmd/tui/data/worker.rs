@@ -14,14 +14,7 @@ use tracing::{debug, error, info};
 
 use crate::cmd::tui::{
     app::AppEvent,
-    data::{
-        BlockId, DataRequest, DataResponse,
-        chains::fetch_chains,
-        txs::{
-            detect_trace_mode, fetch_state_diff, fetch_traces, fetch_tx_with_trace,
-            fetch_txs_with_logs,
-        },
-    },
+    data::{BlockId, DataRequest, DataResponse, chains::fetch_chains, txs::fetch_txs_with_logs},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -30,10 +23,6 @@ enum RequestKey {
     Tx,
     Chains,
     ChainInfo,
-    Traces,
-    StateDiff,
-    TxTrace,
-    DetectTraceMode,
     RefreshRpc,
 }
 
@@ -44,10 +33,6 @@ impl DataRequest {
             DataRequest::Tx(..) => RequestKey::Tx,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
-            DataRequest::Traces(..) => RequestKey::Traces,
-            DataRequest::StateDiff(..) => RequestKey::StateDiff,
-            DataRequest::TxTrace(..) => RequestKey::TxTrace,
-            DataRequest::DetectTraceMode(_) => RequestKey::DetectTraceMode,
             DataRequest::RefreshRpc(..) => RequestKey::RefreshRpc,
         }
     }
@@ -137,73 +122,6 @@ pub(crate) fn spawn_data_worker(
                 }
 
                 DataRequest::Tx(_tx_hash, _opts) => rt.spawn(async move { todo!() }),
-
-                DataRequest::Traces(tx_hash, trace_mode, opts) => {
-                    info!(%tx_hash, ?trace_mode, "fetching traces");
-                    let tx = event_tx.clone();
-                    let hash = tx_hash.clone();
-                    rt.spawn(async move {
-                        match fetch_traces(&hash, opts.rpc_url, trace_mode).await {
-                            Ok(traces) => {
-                                debug!(tx_hash = %hash, count = traces.len(), "fetched traces");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Traces(hash, traces)));
-                            }
-                            Err(e) => {
-                                error!(tx_hash = %hash, error = %e, "failed to fetch traces");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
-                            }
-                        }
-                    })
-                }
-
-                DataRequest::StateDiff(tx_hash, trace_mode, opts) => {
-                    info!(%tx_hash, ?trace_mode, "fetching state diff");
-                    let tx = event_tx.clone();
-                    let hash = tx_hash.clone();
-                    rt.spawn(async move {
-                        match fetch_state_diff(&hash, opts.rpc_url, trace_mode).await {
-                            Ok(state_diff) => {
-                                debug!(tx_hash = %hash, "fetched state diff");
-                                let _ = tx.send(AppEvent::Data(DataResponse::StateDiff(
-                                    hash, state_diff,
-                                )));
-                            }
-                            Err(e) => {
-                                error!(tx_hash = %hash, error = %e, "failed to fetch state diff");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
-                            }
-                        }
-                    })
-                }
-
-                DataRequest::TxTrace(tx_hash, trace_mode, opts) => {
-                    info!(%tx_hash, ?trace_mode, "fetching tx with trace");
-                    let tx = event_tx.clone();
-                    let hash = tx_hash.clone();
-                    rt.spawn(async move {
-                        match fetch_tx_with_trace(&hash, opts.rpc_url, trace_mode).await {
-                            Ok(traced_tx) => {
-                                debug!(tx_hash = %hash, "fetched tx with trace");
-                                let _ = tx
-                                    .send(AppEvent::Data(DataResponse::TxTraced(hash, traced_tx)));
-                            }
-                            Err(e) => {
-                                error!(tx_hash = %hash, error = %e, "failed to fetch tx trace");
-                                let _ = tx.send(AppEvent::Data(DataResponse::Error(e.to_string())));
-                            }
-                        }
-                    })
-                }
-
-                DataRequest::DetectTraceMode(rpc_url) => {
-                    info!(%rpc_url, "detecting trace mode");
-                    let tx = event_tx.clone();
-                    rt.spawn(async move {
-                        let trace_mode = detect_trace_mode(&rpc_url).await;
-                        debug!(?trace_mode, "detected trace mode");
-                        let _ = tx.send(AppEvent::Data(DataResponse::TraceMode(trace_mode)));
-                    })
-                }
 
                 DataRequest::Chains(filter) => {
                     info!(?filter, "fetching chains");

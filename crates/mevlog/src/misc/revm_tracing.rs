@@ -36,7 +36,7 @@ use crate::models::{
     state_diff::{StateDiff, u256_to_option_b256},
 };
 
-pub async fn init_revm_db(
+pub(crate) async fn init_revm_db(
     block_number: u64,
     trace_mode: &Option<TraceMode>,
     rpc_url: &str,
@@ -71,7 +71,7 @@ pub async fn init_revm_db(
     Ok(Some(cache_db))
 }
 
-pub fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {
+pub(crate) fn revm_cache_path(block_number: u64, chain: &EVMChain) -> Result<PathBuf> {
     Ok(home::home_dir().unwrap().join(format!(
         ".mevlog/.revm-cache/{}/{block_number}.json",
         chain.revm_cache_dir_name()
@@ -90,7 +90,7 @@ pub struct RevmBlockContext {
 }
 
 impl RevmBlockContext {
-    pub fn new(block: &AnyRpcBlock) -> Self {
+    pub(crate) fn new(block: &AnyRpcBlock) -> Self {
         let header = &block.header;
         Self {
             number: header.number(),
@@ -126,7 +126,7 @@ async fn fetch_tx_request(
 // moment its trace completes (mid-replay), so an interrupt keeps prior progress;
 // those targets are then omitted from the returned map. With `None`, nothing is
 // persisted and every target's trace is returned for the caller to consume.
-pub async fn revm_block_traced_calls(
+pub(crate) async fn revm_block_traced_calls(
     block_number: u64,
     targets: &HashSet<FixedBytes<32>>,
     provider: &Arc<GenericProvider>,
@@ -230,7 +230,7 @@ pub(crate) async fn backfill_revm(
     Ok(())
 }
 
-pub fn revm_affected_addresses(
+pub(crate) fn revm_affected_addresses(
     _tx_hash: FixedBytes<32>,
     tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
@@ -260,7 +260,7 @@ pub fn revm_affected_addresses(
     Ok(res.state.keys().cloned().collect())
 }
 
-pub async fn revm_affected_addresses_for_tx(
+pub(crate) async fn revm_affected_addresses_for_tx(
     tx_hash: FixedBytes<32>,
     block_number: u64,
     provider: &Arc<GenericProvider>,
@@ -296,7 +296,7 @@ pub async fn revm_affected_addresses_for_tx(
     Ok(HashSet::new())
 }
 
-pub async fn revm_state_diff_for_tx(
+pub(crate) async fn revm_state_diff_for_tx(
     tx_hash: FixedBytes<32>,
     block_number: u64,
     provider: &Arc<GenericProvider>,
@@ -332,7 +332,7 @@ pub async fn revm_state_diff_for_tx(
     Ok(StateDiff::new())
 }
 
-pub async fn revm_calls_for_tx(
+pub(crate) async fn revm_calls_for_tx(
     tx_hash: FixedBytes<32>,
     block_number: u64,
     provider: &Arc<GenericProvider>,
@@ -368,7 +368,7 @@ pub async fn revm_calls_for_tx(
     Ok(vec![])
 }
 
-pub fn revm_tx_calls(
+pub(crate) fn revm_tx_calls(
     tx_hash: FixedBytes<32>,
     tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
@@ -405,7 +405,7 @@ pub fn revm_tx_calls(
     Ok(txs.clone())
 }
 
-pub fn revm_tx_state_diff(
+pub(crate) fn revm_tx_state_diff(
     tx_hash: FixedBytes<32>,
     tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,
@@ -453,7 +453,7 @@ pub fn revm_tx_state_diff(
     Ok(state_diff)
 }
 
-pub fn revm_commit_tx(
+pub(crate) fn revm_commit_tx(
     tx_hash: FixedBytes<32>,
     tx_req: &TransactionRequest,
     block_context: &RevmBlockContext,

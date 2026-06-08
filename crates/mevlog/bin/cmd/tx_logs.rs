@@ -17,7 +17,7 @@ pub struct TxLogsArgs {
 }
 
 impl TxLogsArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let outcome = cmds::tx_logs::tx_logs(self.tx_hash, &self.conn_opts).await?;
         print_query_outcome(outcome, format)
     }

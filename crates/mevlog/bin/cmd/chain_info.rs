@@ -27,7 +27,7 @@ pub struct ChainInfoArgs {
 }
 
 impl ChainInfoArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let output = cmds::chain_info::chain_info(
             self.chain_id,
             self.rpc_url.as_deref(),

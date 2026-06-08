@@ -177,7 +177,7 @@ async fn cache_chains(cache_dir: &std::path::Path, chains: &[ChainInfo]) -> Resu
     Ok(())
 }
 
-pub async fn benchmark_url(url: String, timeout_ms: u64) -> Result<u64> {
+pub(crate) async fn benchmark_url(url: String, timeout_ms: u64) -> Result<u64> {
     let provider = init_provider(&url).await?;
 
     let latest = tokio::select! {

@@ -29,7 +29,7 @@ pub struct Block {
 impl Block {
     // Default cryo `blocks` columns: 0 block_hash, 1 author, 2 block_number,
     // 3 gas_used, 4 extra_data, 5 timestamp, 6 base_fee_per_gas.
-    pub fn from_parquet_row(batch: &RecordBatch, row_idx: usize) -> Result<(Block, u64)> {
+    pub(crate) fn from_parquet_row(batch: &RecordBatch, row_idx: usize) -> Result<(Block, u64)> {
         let get = |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
 
         let block_number = get(2).parse::<u64>().unwrap();
@@ -46,7 +46,8 @@ impl Block {
         Ok((block, block_number))
     }
 
-    pub async fn count(conn: &SqlitePool) -> Result<i64> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn count(conn: &SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM blocks")
             .fetch_one(conn)
             .await?
@@ -55,7 +56,7 @@ impl Block {
         Ok(count)
     }
 
-    pub async fn save<'c, E>(&self, executor: E) -> Result<()>
+    pub(crate) async fn save<'c, E>(&self, executor: E) -> Result<()>
     where
         E: sqlx::Executor<'c, Database = sqlx::Sqlite>,
     {
@@ -80,7 +81,7 @@ impl Block {
         Ok(())
     }
 
-    pub async fn save_batch(blocks: &[Block], conn: &SqlitePool) -> Result<()> {
+    pub(crate) async fn save_batch(blocks: &[Block], conn: &SqlitePool) -> Result<()> {
         let mut db_tx = conn.begin().await?;
 
         for block in blocks {
@@ -91,7 +92,7 @@ impl Block {
         Ok(())
     }
 
-    pub async fn missing_blocks(from: u64, to: u64, conn: &SqlitePool) -> Result<Vec<u64>> {
+    pub(crate) async fn missing_blocks(from: u64, to: u64, conn: &SqlitePool) -> Result<Vec<u64>> {
         let existing: Vec<i64> = sqlx::query_scalar(
             "SELECT block_number FROM blocks WHERE block_number BETWEEN ? AND ?",
         )
@@ -104,7 +105,7 @@ impl Block {
         Ok((from..=to).filter(|b| !indexed.contains(b)).collect())
     }
 
-    pub async fn query_where(where_sql: &str, conn: &SqlitePool) -> Result<Vec<Block>> {
+    pub(crate) async fn query_where(where_sql: &str, conn: &SqlitePool) -> Result<Vec<Block>> {
         let sql = format!("SELECT * FROM blocks WHERE {where_sql} ORDER BY block_number DESC");
 
         let rows = sqlx::query(sqlx::AssertSqlSafe(sql))

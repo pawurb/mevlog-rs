@@ -5,7 +5,7 @@ use mevlog::cmds;
 pub struct UpdateDBArgs {}
 
 impl UpdateDBArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self) -> Result<()> {
         cmds::update_db::update_db().await
     }
 }

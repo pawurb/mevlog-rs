@@ -47,7 +47,7 @@ pub struct QueryArgs {
 }
 
 impl QueryArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let outcome = cmds::query::query(
             &self.blocks,
             self.latest_offset,

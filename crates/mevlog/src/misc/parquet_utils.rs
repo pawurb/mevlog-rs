@@ -2,7 +2,11 @@ use arrow::{array::Array, record_batch::RecordBatch};
 
 /// Extract a string value from a parquet column at the specified row index.
 /// Handles multiple Arrow data types and converts them to string representation.
-pub fn get_parquet_string_value(batch: &RecordBatch, col_idx: usize, row_idx: usize) -> String {
+pub(crate) fn get_parquet_string_value(
+    batch: &RecordBatch,
+    col_idx: usize,
+    row_idx: usize,
+) -> String {
     let column = batch.column(col_idx);
     if column.is_null(row_idx) {
         return String::new();

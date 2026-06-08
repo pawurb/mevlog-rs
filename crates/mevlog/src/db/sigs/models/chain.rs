@@ -23,7 +23,8 @@ impl Chain {
         Ok(exists)
     }
 
-    pub async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM chains")
             .fetch_one(conn)
             .await?
@@ -32,7 +33,7 @@ impl Chain {
         Ok(count)
     }
 
-    pub async fn find(id: i64, conn: &sqlx::SqlitePool) -> Result<Option<Chain>> {
+    pub(crate) async fn find(id: i64, conn: &sqlx::SqlitePool) -> Result<Option<Chain>> {
         let result = sqlx::query(
             r#"
             SELECT id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool 
@@ -58,7 +59,8 @@ impl Chain {
         }
     }
 
-    pub async fn find_all(conn: &sqlx::SqlitePool) -> Result<Vec<Chain>> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn find_all(conn: &sqlx::SqlitePool) -> Result<Vec<Chain>> {
         let rows = sqlx::query(
             r#"
             SELECT id, name, explorer_url, currency_symbol, chainlink_oracle, uniswap_v2_pool 
@@ -103,7 +105,8 @@ impl Chain {
         Ok(())
     }
 
-    pub async fn update(&self, conn: &sqlx::SqlitePool) -> Result<()> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn update(&self, conn: &sqlx::SqlitePool) -> Result<()> {
         sqlx::query(
             r#"
             UPDATE chains 
@@ -123,7 +126,8 @@ impl Chain {
         Ok(())
     }
 
-    pub async fn delete(id: i64, conn: &sqlx::SqlitePool) -> Result<()> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn delete(id: i64, conn: &sqlx::SqlitePool) -> Result<()> {
         sqlx::query("DELETE FROM chains WHERE id = ?")
             .bind(id)
             .execute(conn)
@@ -132,7 +136,7 @@ impl Chain {
         Ok(())
     }
 
-    pub fn unknown(id: i64) -> Self {
+    pub(crate) fn unknown(id: i64) -> Self {
         Self {
             id,
             name: "Unknown".to_string(),

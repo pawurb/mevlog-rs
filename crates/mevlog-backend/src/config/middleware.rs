@@ -26,7 +26,7 @@ pub enum Env {
 }
 
 impl Env {
-    pub fn current() -> Self {
+    pub(crate) fn current() -> Self {
         match std::env::var("ENV")
             .unwrap_or_else(|_| "development".to_string())
             .as_str()
@@ -38,7 +38,7 @@ impl Env {
         }
     }
 
-    pub fn is_dev(&self) -> bool {
+    pub(crate) fn is_dev(&self) -> bool {
         self == &Self::Development
     }
 }
@@ -109,7 +109,7 @@ pub fn cors() -> CorsLayer {
         .allow_origin(Any)
 }
 
-pub fn cache_control() -> SetResponseHeaderLayer<HeaderValue> {
+pub(crate) fn cache_control() -> SetResponseHeaderLayer<HeaderValue> {
     let cache_control = if Env::current().is_dev() {
         HeaderValue::from_static("no-cache, no-store, must-revalidate, max-age=0")
     } else {
@@ -176,7 +176,7 @@ pub fn init_logs(filename: &str) {
     }
 }
 
-pub fn host() -> String {
+pub(crate) fn host() -> String {
     match Env::current() {
         Env::Development | Env::Test => "http://localhost:3000",
         Env::Production => "https://mevlog.rs",

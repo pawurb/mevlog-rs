@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[hotpath::measure]
-pub async fn search(
+pub(crate) async fn search(
     query: Result<Query<SearchParams>, axum::extract::rejection::QueryRejection>,
 ) -> impl IntoResponse {
     let params = match extract_json_query_params(query) {

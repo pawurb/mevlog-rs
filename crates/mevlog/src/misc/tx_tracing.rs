@@ -56,7 +56,7 @@ impl std::fmt::Display for CoinbaseTransfer {
 ///
 /// Traces the tx's calls (over RPC or local Revm replay), looks up its block's
 /// beneficiary, and returns the ETH sent straight to that address (`0` if none).
-pub async fn coinbase_transfer_for_tx(
+pub(crate) async fn coinbase_transfer_for_tx(
     tx_hash: TxHash,
     mode: &TraceMode,
     provider: &Arc<GenericProvider>,
@@ -91,7 +91,7 @@ pub async fn coinbase_transfer_for_tx(
 }
 
 /// Addresses affected by a single tx according to the selected trace backend.
-pub async fn affected_addresses_for_tx(
+pub(crate) async fn affected_addresses_for_tx(
     tx_hash: TxHash,
     mode: &TraceMode,
     provider: &Arc<GenericProvider>,
@@ -112,7 +112,7 @@ pub async fn affected_addresses_for_tx(
 }
 
 /// Storage state diff produced by a single tx according to the selected backend.
-pub async fn state_diff_for_tx(
+pub(crate) async fn state_diff_for_tx(
     tx_hash: TxHash,
     mode: &TraceMode,
     provider: &Arc<GenericProvider>,
@@ -129,7 +129,7 @@ pub async fn state_diff_for_tx(
 }
 
 /// Decoded call traces of a single tx according to the selected backend.
-pub async fn calls_for_tx(
+pub(crate) async fn calls_for_tx(
     tx_hash: TxHash,
     mode: &TraceMode,
     provider: &Arc<GenericProvider>,
@@ -230,7 +230,7 @@ async fn tx_block_number(tx_hash: TxHash, provider: &Arc<GenericProvider>) -> Re
 /// NULL always means "never traced" (block beneficiary unknown, or the trace
 /// failed). Covers both freshly-indexed blocks and blocks indexed earlier
 /// without `--evm-trace`.
-pub async fn backfill_coinbase_transfers(
+pub(crate) async fn backfill_coinbase_transfers(
     from: u64,
     to: u64,
     mode: &TraceMode,

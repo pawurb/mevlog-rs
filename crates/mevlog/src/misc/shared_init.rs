@@ -149,7 +149,7 @@ pub async fn init_provider(rpc_url: &str) -> Result<GenericProvider> {
     Ok(ProviderBuilder::new().connect_client(client))
 }
 
-pub fn config_path() -> PathBuf {
+pub(crate) fn config_path() -> PathBuf {
     home::home_dir().unwrap().join(".mevlog")
 }
 

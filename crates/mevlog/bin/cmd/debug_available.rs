@@ -11,7 +11,7 @@ pub struct DebugAvailableArgs {
 }
 
 impl DebugAvailableArgs {
-    pub async fn run(&self) -> Result<()> {
+    pub(crate) async fn run(&self) -> Result<()> {
         let available =
             cmds::debug_available::debug_available(&self.rpc_url, self.timeout_ms).await?;
         println!("{}", available);

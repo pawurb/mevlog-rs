@@ -15,7 +15,8 @@ static TOPIC_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Option
 
 #[hotpath::measure_all(future = true)]
 impl Event {
-    pub async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM events")
             .fetch_one(conn)
             .await?
@@ -24,7 +25,7 @@ impl Event {
         Ok(count)
     }
 
-    pub async fn find_by_topic(
+    pub(crate) async fn find_by_topic(
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {
@@ -79,7 +80,7 @@ pub mod test {
     use super::*;
     use crate::db::sigs::{conn, init_db};
 
-    pub async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
+    pub(crate) async fn setup_test_db() -> (SqlitePool, SqliteCleaner) {
         let uuid = Uuid::new_v4();
         let db_path = format!("/tmp/{uuid}-mevlog-test.db");
         let db_url = format!("sqlite://{db_path}");

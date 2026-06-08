@@ -19,7 +19,7 @@ struct ExploreTemplate {
 }
 
 impl ExploreTemplate {
-    pub fn new(chain_id: Option<u64>, block_number: Option<String>) -> Self {
+    pub(crate) fn new(chain_id: Option<u64>, block_number: Option<String>) -> Self {
         let h = host();
         let canonical_url = format!("{h}/explore");
         Self {
@@ -34,17 +34,17 @@ impl ExploreTemplate {
         }
     }
 
-    pub fn chain_id_value(&self) -> u64 {
+    pub(crate) fn chain_id_value(&self) -> u64 {
         self.chain_id.unwrap_or(1)
     }
 
-    pub fn block_number_value(&self) -> &str {
+    pub(crate) fn block_number_value(&self) -> &str {
         self.block_number.as_deref().unwrap_or("latest")
     }
 }
 
 #[hotpath::measure]
-pub async fn explore(Query(params): Query<ExploreParams>) -> impl IntoResponse {
+pub(crate) async fn explore(Query(params): Query<ExploreParams>) -> impl IntoResponse {
     let chain_id = if params.chain_id == Some(1) {
         None
     } else {

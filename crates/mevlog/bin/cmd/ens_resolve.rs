@@ -14,7 +14,7 @@ pub struct EnsResolveArgs {
 }
 
 impl EnsResolveArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let output = cmds::ens_resolve::ens_resolve(&self.name, &self.conn_opts).await?;
 
         match format {

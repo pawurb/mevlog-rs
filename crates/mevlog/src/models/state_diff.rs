@@ -10,7 +10,7 @@ pub struct StorageSlotChange {
 }
 
 impl StorageSlotChange {
-    pub fn new(slot: B256, value_before: Option<B256>, value_after: Option<B256>) -> Self {
+    pub(crate) fn new(slot: B256, value_before: Option<B256>, value_after: Option<B256>) -> Self {
         Self {
             slot,
             value_before,
@@ -25,13 +25,13 @@ pub struct StateDiff {
 }
 
 impl StateDiff {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             contracts: BTreeMap::new(),
         }
     }
 
-    pub fn add_change(
+    pub(crate) fn add_change(
         &mut self,
         address: Address,
         slot: B256,
@@ -51,7 +51,7 @@ fn b256_from_u256(value: U256) -> B256 {
     B256::from(value.to_be_bytes())
 }
 
-pub fn u256_to_option_b256(value: U256) -> Option<B256> {
+pub(crate) fn u256_to_option_b256(value: U256) -> Option<B256> {
     if value == U256::ZERO {
         None
     } else {

@@ -86,7 +86,7 @@ pub struct QueryOutcome {
 impl QueryOutcome {
     /// Deserializes the result rows into a concrete type. Used by the typed
     /// `cmds` wrappers so callers never touch raw JSON.
-    pub fn rows_as<T: DeserializeOwned>(&self) -> Result<Vec<T>> {
+    pub(crate) fn rows_as<T: DeserializeOwned>(&self) -> Result<Vec<T>> {
         self.rows
             .iter()
             .map(|row| serde_json::from_value(row.clone()).map_err(Into::into))
@@ -94,7 +94,7 @@ impl QueryOutcome {
     }
 }
 
-pub fn format_duration(ns: u64) -> String {
+pub(crate) fn format_duration(ns: u64) -> String {
     if ns < 1_000 {
         format!("{} ns", ns)
     } else if ns < 1_000_000 {

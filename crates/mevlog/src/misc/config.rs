@@ -11,21 +11,13 @@ pub struct Config {
     chains: HashMap<String, ChainConfig>,
 }
 
-impl Config {
-    pub fn chains(&self) -> impl Iterator<Item = (u64, &ChainConfig)> {
-        self.chains
-            .iter()
-            .filter_map(|(k, v)| k.parse::<u64>().ok().map(|id| (id, v)))
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainConfig {
     pub rpc_url: String,
 }
 
 impl Config {
-    pub fn config_file_path() -> PathBuf {
+    pub(crate) fn config_file_path() -> PathBuf {
         config_path().join("config.toml")
     }
 
@@ -38,7 +30,7 @@ impl Config {
         Ok(toml::from_str(&content)?)
     }
 
-    pub fn init_if_missing() -> Result<()> {
+    pub(crate) fn init_if_missing() -> Result<()> {
         let path = Self::config_file_path();
         if !path.exists() {
             fs::create_dir_all(config_path())?;

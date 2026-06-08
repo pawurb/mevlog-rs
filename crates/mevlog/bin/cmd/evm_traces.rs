@@ -18,7 +18,7 @@ pub struct EvmTracesArgs {
 }
 
 impl EvmTracesArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let calls =
             cmds::evm_traces::evm_traces(self.tx_hash, self.evm_trace.as_ref(), &self.conn_opts)
                 .await?;

@@ -131,24 +131,13 @@ async fn sitemap_xml() -> Response<Body> {
     (StatusCode::OK, headers, body).into_response()
 }
 
-pub fn invalid_req(reason: &str) -> Response<Body> {
-    (StatusCode::BAD_REQUEST, reason.to_string()).into_response()
-}
-
 #[hotpath::measure]
-pub fn html_response(body: String, status: StatusCode) -> Response<Body> {
+pub(crate) fn html_response(body: String, status: StatusCode) -> Response<Body> {
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Type",
         HeaderValue::from_static("text/html; charset=utf-8"),
     );
-
-    (status, headers, body).into_response()
-}
-
-pub fn json_response(body: String, status: StatusCode) -> Response<Body> {
-    let mut headers = HeaderMap::new();
-    headers.insert("Content-Type", HeaderValue::from_static("application/json"));
 
     (status, headers, body).into_response()
 }
@@ -162,7 +151,7 @@ pub mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
 
-    pub async fn get_test_app() -> Result<Router> {
+    pub(crate) async fn get_test_app() -> Result<Router> {
         Ok(app().await)
     }
 

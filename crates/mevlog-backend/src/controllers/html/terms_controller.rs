@@ -18,7 +18,7 @@ struct TermsTemplate {
 }
 
 #[hotpath::measure]
-pub async fn terms() -> impl IntoResponse {
+pub(crate) async fn terms() -> impl IntoResponse {
     let h = host();
     let template = TermsTemplate {
         title: "Privacy Policy & Terms - mevlog.rs".to_string(),

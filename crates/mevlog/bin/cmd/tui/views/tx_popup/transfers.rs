@@ -10,7 +10,7 @@ use crate::cmd::tui::data::TransactionJson;
 
 const ERC20_TRANSFER_SIGNATURE: &str = "Transfer(address,address,uint256)";
 
-pub fn render_transfers_tab(
+pub(super) fn render_transfers_tab(
     tx: &TransactionJson,
     area: Rect,
     frame: &mut Frame,

@@ -53,7 +53,7 @@ pub struct IndexArgs {
 }
 
 impl IndexArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         if !self.live && self.blocks.is_none() {
             bail!("--blocks is required unless --live is set");
         }

@@ -22,8 +22,7 @@ use mevlog::{ChainEntryJson, misc::shared_init::ConnOpts};
 use crate::cmd::tui::{
     app::keys::spawn_input_reader,
     data::{
-        BlockId, CallExtract, DataRequest, DataResponse, RpcOpts, StateDiffJson, TraceMode,
-        TransactionJson, worker::spawn_data_worker,
+        BlockId, DataRequest, DataResponse, RpcOpts, TransactionJson, worker::spawn_data_worker,
     },
     views::{
         NetworkSelector, StatusBar, TxsTable, render_info_popup, render_key_bindings,
@@ -39,7 +38,7 @@ pub(crate) struct DefaultChain {
 }
 
 impl DefaultChain {
-    pub const fn new(
+    pub(super) const fn new(
         chain_id: u64,
         name: &'static str,
         chain: &'static str,
@@ -53,7 +52,7 @@ impl DefaultChain {
         }
     }
 
-    pub fn to_chain_entry(&self) -> ChainEntryJson {
+    pub(super) fn to_chain_entry(&self) -> ChainEntryJson {
         ChainEntryJson {
             chain_id: self.chain_id,
             name: self.name.to_string(),
@@ -92,9 +91,7 @@ pub(crate) enum AppMode {
 pub(crate) enum TxPopupTab {
     #[default]
     Info,
-    Traces,
     Transfers,
-    State,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -104,7 +101,7 @@ pub(crate) enum AppEvent {
     Data(DataResponse),
 }
 
-pub struct App {
+pub(super) struct App {
     pub(crate) table_state: TableState,
     pub(crate) items: Vec<TransactionJson>,
     pub(crate) current_block: Option<u64>,
@@ -129,26 +126,17 @@ pub struct App {
     pub(crate) selected_chain: Option<ChainEntryJson>,
     #[allow(dead_code)]
     state_tx: Sender<AppEvent>,
-    pub(crate) traces: Option<Vec<CallExtract>>,
-    pub(crate) traces_loading: bool,
-    pub(crate) traces_tx_hash: Option<String>,
-    pub(crate) state_diff: Option<StateDiffJson>,
-    pub(crate) state_diff_loading: bool,
-    pub(crate) state_diff_tx_hash: Option<String>,
     pub(crate) pending_g: Option<Instant>,
     pub(crate) tx_popup_max_scroll: u16,
-    pub(crate) tx_trace_loading: bool,
-    pub(crate) tx_trace_hash: Option<String>,
     pub(crate) block_input_popup_open: bool,
     pub(crate) block_input_query: String,
-    pub(crate) trace_mode: Option<TraceMode>,
     pub(crate) info_popup_open: bool,
     pub(crate) rpc_refreshing: bool,
 }
 
 #[hotpath::measure_all]
 impl App {
-    pub fn new(items: Vec<TransactionJson>, conn_opts: &ConnOpts) -> Self {
+    pub(crate) fn new(items: Vec<TransactionJson>, conn_opts: &ConnOpts) -> Self {
         let current_block = items.first().map(|tx| tx.block_number);
 
         let (data_req_tx, data_req_rx) =
@@ -185,7 +173,6 @@ impl App {
                     };
                     let _ = data_req_tx.send(DataRequest::Block(BlockId::Latest, opts));
                 }
-                let _ = data_req_tx.send(DataRequest::DetectTraceMode(url.clone()));
                 if chain_id.is_none() {
                     let _ = data_req_tx.send(DataRequest::ChainInfo(url.clone()));
                 }
@@ -230,19 +217,10 @@ impl App {
             block_timeout_ms,
             selected_chain,
             state_tx,
-            traces: None,
-            traces_loading: false,
-            traces_tx_hash: None,
-            state_diff: None,
-            state_diff_loading: false,
-            state_diff_tx_hash: None,
             pending_g: None,
             tx_popup_max_scroll: 0,
-            tx_trace_loading: false,
-            tx_trace_hash: None,
             block_input_popup_open: false,
             block_input_query: String::new(),
-            trace_mode: None,
             info_popup_open: false,
             rpc_refreshing,
         }
@@ -258,7 +236,7 @@ impl App {
         })
     }
 
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub(crate) fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
@@ -293,7 +271,6 @@ impl App {
                     &self.mode,
                     self.search_popup_open,
                     false,
-                    TxPopupTab::default(),
                     false,
                     false,
                     self.can_return_to_main(),
@@ -318,7 +295,6 @@ impl App {
                     self.current_block,
                     self.is_loading,
                     self.loading_block,
-                    self.trace_mode.as_ref(),
                 )
                 .render(chunks[0], frame);
 
@@ -345,11 +321,6 @@ impl App {
                         self.tx_popup_scroll,
                         self.tx_popup_tab,
                         explorer_url.as_deref(),
-                        self.traces.as_deref(),
-                        self.traces_loading,
-                        self.state_diff.as_ref(),
-                        self.state_diff_loading,
-                        self.tx_trace_loading,
                     );
                 }
 
@@ -371,7 +342,6 @@ impl App {
                     &self.mode,
                     false,
                     self.tx_popup_open,
-                    self.tx_popup_tab,
                     self.block_input_popup_open,
                     self.info_popup_open,
                     false,
@@ -485,43 +455,6 @@ impl App {
                     Some(0)
                 };
                 self.table_state.select(new_selection);
-
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::Traces {
-                    self.request_traces_if_needed();
-                }
-                if self.tx_popup_open && self.tx_popup_tab == TxPopupTab::State {
-                    self.request_state_diff_if_needed();
-                }
-            }
-            DataResponse::Traces(tx_hash, traces) => {
-                if self.traces_tx_hash.as_ref() == Some(&tx_hash) {
-                    self.traces = Some(traces);
-                    self.traces_loading = false;
-                }
-            }
-            DataResponse::StateDiff(tx_hash, state_diff) => {
-                if self.state_diff_tx_hash.as_ref() == Some(&tx_hash) {
-                    self.state_diff = Some(state_diff);
-                    self.state_diff_loading = false;
-                }
-            }
-            DataResponse::TxTraced(tx_hash, traced_tx) => {
-                if self.tx_trace_hash.as_ref() == Some(&tx_hash) {
-                    self.tx_trace_loading = false;
-                    self.tx_trace_hash = None;
-                    let tx = self
-                        .items
-                        .iter_mut()
-                        .find(|t| t.tx_hash.to_string() == tx_hash);
-                    if let Some(tx) = tx {
-                        tx.coinbase_transfer = traced_tx.coinbase_transfer;
-                        tx.display_coinbase_transfer = traced_tx.display_coinbase_transfer;
-                        tx.display_coinbase_transfer_usd = traced_tx.display_coinbase_transfer_usd;
-                        tx.full_tx_cost = traced_tx.full_tx_cost;
-                        tx.display_full_tx_cost = traced_tx.display_full_tx_cost;
-                        tx.display_full_tx_cost_usd = traced_tx.display_full_tx_cost_usd;
-                    }
-                }
             }
             DataResponse::Chains(chains) => {
                 self.available_chains = chains;
@@ -539,9 +472,6 @@ impl App {
                         .data_req_tx
                         .send(DataRequest::Block(BlockId::Latest, opts));
                 }
-            }
-            DataResponse::TraceMode(trace_mode) => {
-                self.trace_mode = Some(trace_mode);
             }
             DataResponse::RpcRefreshed(new_rpc_url) => {
                 self.handle_rpc_refreshed(new_rpc_url);

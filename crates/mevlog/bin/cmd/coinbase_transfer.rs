@@ -18,7 +18,7 @@ pub struct CoinbaseTransferArgs {
 }
 
 impl CoinbaseTransferArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let transfer = cmds::coinbase_transfer::coinbase_transfer(
             self.tx_hash,
             self.evm_trace.as_ref(),

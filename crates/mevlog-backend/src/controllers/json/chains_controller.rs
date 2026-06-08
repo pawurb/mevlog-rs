@@ -16,7 +16,7 @@ pub struct ChainsParams {
 }
 
 #[hotpath::measure(log = true)]
-pub async fn chains(
+pub(crate) async fn chains(
     query: Result<Query<ChainsParams>, axum::extract::rejection::QueryRejection>,
 ) -> impl IntoResponse {
     let params = match extract_json_query_params(query) {

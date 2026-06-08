@@ -15,7 +15,7 @@ use crate::{db::shared, misc::shared_init::config_path};
 static MIGRATOR: Migrator = sqlx::migrate!("migrations/txs");
 pub const SCHEMA_VERSION: u64 = 1;
 
-pub async fn init_db(db_url: Option<String>, chain_id: u64) -> Result<()> {
+pub(crate) async fn init_db(db_url: Option<String>, chain_id: u64) -> Result<()> {
     shared::init_db(db_url, default_db_path(chain_id), &MIGRATOR).await
 }
 
@@ -27,6 +27,6 @@ pub fn db_file_name(schema_version: u64, chain_id: u64) -> String {
     format!("mevlog-txs-v{schema_version}-{chain_id}.db")
 }
 
-pub fn default_db_path(chain_id: u64) -> PathBuf {
+pub(crate) fn default_db_path(chain_id: u64) -> PathBuf {
     config_path().join(db_file_name(SCHEMA_VERSION, chain_id))
 }

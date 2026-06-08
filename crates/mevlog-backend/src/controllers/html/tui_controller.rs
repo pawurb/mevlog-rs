@@ -18,7 +18,7 @@ struct TuiTemplate {
 }
 
 #[hotpath::measure]
-pub async fn tui() -> impl IntoResponse {
+pub(crate) async fn tui() -> impl IntoResponse {
     let h = host();
     let template = TuiTemplate {
         title: "TUI Terminal Interface - mevlog.rs".to_string(),

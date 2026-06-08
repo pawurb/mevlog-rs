@@ -15,7 +15,8 @@ static SELECTOR_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Opt
 
 #[hotpath::measure_all(future = true)]
 impl Method {
-    pub async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
+    #[allow(dead_code)] // used in tests
+    pub(crate) async fn count(conn: &sqlx::SqlitePool) -> Result<i64> {
         let count = sqlx::query("SELECT COUNT(*) FROM methods")
             .fetch_one(conn)
             .await?
@@ -24,7 +25,7 @@ impl Method {
         Ok(count)
     }
 
-    pub async fn find_by_selector(
+    pub(crate) async fn find_by_selector(
         signature_hash: &str,
         conn: &sqlx::SqlitePool,
     ) -> Result<Option<String>> {

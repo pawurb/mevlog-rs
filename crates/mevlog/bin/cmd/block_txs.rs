@@ -22,7 +22,7 @@ pub struct BlockTxsArgs {
 }
 
 impl BlockTxsArgs {
-    pub async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let outcome = cmds::block_txs::block_txs(
             &self.block,
             self.latest_offset,

@@ -14,7 +14,7 @@ use crate::misc::{prices::get_price_for_chain_id, rpc_utils::get_random_rpc_url}
 
 /// Runs `block-txs` then `block-logs` for the same block and nests each tx's
 /// logs under `result[].logs` grouped by `tx_index`.
-pub async fn block_txs_with_logs(
+pub(crate) async fn block_txs_with_logs(
     chain_id: u64,
     block_number: Option<String>,
 ) -> Result<Value, Value> {
@@ -93,7 +93,7 @@ pub async fn block_txs_with_logs(
 }
 
 #[hotpath::measure]
-pub async fn call_json_command<T: serde::de::DeserializeOwned>(
+pub(crate) async fn call_json_command<T: serde::de::DeserializeOwned>(
     cmd: &mut Command,
 ) -> Result<T, Value> {
     let timeout_duration = Duration::from_secs(10);
@@ -127,7 +127,7 @@ pub async fn call_json_command<T: serde::de::DeserializeOwned>(
     }
 }
 
-pub async fn call_json_command_first_line<T: serde::de::DeserializeOwned>(
+pub(crate) async fn call_json_command_first_line<T: serde::de::DeserializeOwned>(
     cmd: &mut Command,
 ) -> Result<T, Value> {
     tracing::trace!("cmd: {:?}", &cmd);
@@ -195,11 +195,7 @@ pub async fn call_json_command_first_line<T: serde::de::DeserializeOwned>(
     }
 }
 
-pub fn error_json_response(e: &str) -> String {
-    format!("{{\"error\": \"{e}\"}}")
-}
-
-pub fn extract_json_query_params<T>(
+pub(crate) fn extract_json_query_params<T>(
     query: Result<Query<T>, axum::extract::rejection::QueryRejection>,
 ) -> Result<T, impl IntoResponse>
 where
@@ -216,7 +212,7 @@ where
     }
 }
 
-pub fn extract_query_params<T>(
+pub(crate) fn extract_query_params<T>(
     query: Result<Query<T>, axum::extract::rejection::QueryRejection>,
 ) -> Result<T, String>
 where

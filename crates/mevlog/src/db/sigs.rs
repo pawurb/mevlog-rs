@@ -21,10 +21,10 @@ pub async fn conn(db_url: Option<String>) -> Result<SqlitePool> {
     shared::conn(db_url, default_db_path(), false).await
 }
 
-pub fn db_file_name(schema_version: u64) -> String {
+pub(crate) fn db_file_name(schema_version: u64) -> String {
     format!("mevlog-sqlite-v{schema_version}.db")
 }
 
-pub fn default_db_path() -> PathBuf {
+pub(crate) fn default_db_path() -> PathBuf {
     config_path().join(db_file_name(SCHEMA_VERSION))
 }

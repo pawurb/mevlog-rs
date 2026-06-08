@@ -166,7 +166,7 @@ fn run_cryo_batch(
     Ok(())
 }
 
-pub async fn fetch_blocks_batch(
+pub(crate) async fn fetch_blocks_batch(
     start_block: u64,
     end_block: u64,
     chain: &EVMChain,

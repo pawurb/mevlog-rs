@@ -22,7 +22,7 @@ struct HomeTemplate {
 }
 
 #[hotpath::measure]
-pub async fn home() -> impl IntoResponse {
+pub(crate) async fn home() -> impl IntoResponse {
     tracing::debug!("Home controller called");
 
     let h = host();
