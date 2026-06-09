@@ -3,7 +3,7 @@ use axum::{
     Router,
     body::Body,
     http::{HeaderMap, HeaderValue, Response, StatusCode},
-    response::IntoResponse,
+    response::{IntoResponse, Redirect},
     routing::get,
 };
 use tower::Layer;
@@ -49,6 +49,11 @@ pub async fn app() -> Router {
             ))),
         )
         .nest_service("/assets", cache_control().layer(ServeDir::new("assets")))
+        .route("/docs", get(|| async { Redirect::permanent("/docs/") }))
+        .nest_service(
+            "/docs/",
+            cache_control().layer(ServeDir::new("docs_html")),
+        )
         .route_service(
             "/all-chains.png",
             cache_control().layer(ServeFile::new("assets/all-chains.png")),

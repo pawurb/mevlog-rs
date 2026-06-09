@@ -1,0 +1,11 @@
+[book]
+title = "mevlog docs"
+src = "src"
+
+[build]
+build-dir = "../docs_html"
+
+[output.html]
+site-url = "/docs/"
+default-theme = "ayu"
+preferred-dark-theme = "ayu"

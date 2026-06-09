@@ -27,6 +27,15 @@ copy_file() {
     fi
 }
 
+# Build mdbook docs if mdbook is available
+if command -v mdbook &> /dev/null; then
+    echo "Building mdbook docs..."
+    mdbook build docs_src
+    echo "mdbook build completed"
+else
+    echo "mdbook not found, skipping docs build"
+fi
+
 # Build React components if Node.js is available
 if command -v npm &> /dev/null; then
     echo "Building React components..."
