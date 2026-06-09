@@ -45,8 +45,8 @@ async fn run() -> Result<()> {
 
 async fn populate_mainnet_cache() -> Result<()> {
     let rpc_url = std::env::var("REMOTE_ETH_RPC_URL").expect("Missing REMOTE_ETH_RPC_URL env var");
-    let uptime_url =
-        std::env::var("UPTIME_URL_MAINNET_CACHE").expect("Missing UPTIME_URL_MAINNET_CACHE env var");
+    let uptime_url = std::env::var("UPTIME_URL_MAINNET_CACHE")
+        .expect("Missing UPTIME_URL_MAINNET_CACHE env var");
     let provider = ProviderBuilder::new().connect_http(rpc_url.parse()?);
     info!("Scheduler connected to HTTP provider");
 

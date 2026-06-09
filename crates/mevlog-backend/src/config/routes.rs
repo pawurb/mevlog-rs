@@ -52,12 +52,9 @@ pub async fn app() -> Router {
         .route("/docs", get(|| async { Redirect::permanent("/docs/") }))
         .nest_service(
             "/docs/",
-            from_fn(docs_html_ext).layer(
-                cache_control().layer(
-                    ServeDir::new("docs_html")
-                        .not_found_service(ServeFile::new("docs_html/404.html")),
-                ),
-            ),
+            from_fn(docs_html_ext).layer(cache_control().layer(
+                ServeDir::new("docs_html").not_found_service(ServeFile::new("docs_html/404.html")),
+            )),
         )
         .route_service(
             "/all-chains.png",

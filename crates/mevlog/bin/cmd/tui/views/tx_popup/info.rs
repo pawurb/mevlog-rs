@@ -10,7 +10,12 @@ use crate::cmd::tui::data::TransactionJson;
 
 const LABEL_WIDTH: usize = 19;
 
-pub(super) fn render_info_tab(tx: &TransactionJson, area: Rect, frame: &mut Frame, scroll: u16) -> u16 {
+pub(super) fn render_info_tab(
+    tx: &TransactionJson,
+    area: Rect,
+    frame: &mut Frame,
+    scroll: u16,
+) -> u16 {
     let lines = build_tx_lines(tx);
     super::render_scrollable(area, frame, lines, scroll)
 }
