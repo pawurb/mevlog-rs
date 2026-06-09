@@ -5,7 +5,7 @@ use tokio::process::Command;
 use alloy::providers::{Provider, ProviderBuilder};
 use eyre::Result;
 use mevlog_backend::config::{middleware, schedule::get_schedule};
-use mevlog_backend::misc::utils::{measure_end, measure_start, uptime_ping};
+use mevlog_backend::misc::utils::uptime_ping;
 use tracing::{debug, error, info};
 
 #[tokio::main]
@@ -45,56 +45,55 @@ async fn run() -> Result<()> {
 
 async fn populate_mainnet_cache() -> Result<()> {
     let rpc_url = std::env::var("REMOTE_ETH_RPC_URL").expect("Missing REMOTE_ETH_RPC_URL env var");
+    let uptime_url =
+        std::env::var("UPTIME_URL_MAINNET_CACHE").expect("Missing UPTIME_URL_MAINNET_CACHE env var");
     let provider = ProviderBuilder::new().connect_http(rpc_url.parse()?);
-    tracing::info!("Scheduler connected to HTTP provider");
+    info!("Scheduler connected to HTTP provider");
 
-    let mut current_block_number = provider.get_block_number().await?;
+    let mut last_indexed = provider.get_block_number().await?;
     loop {
-        let new_block_number = match provider.get_block_number().await {
+        let latest = match provider.get_block_number().await {
             Ok(block_number) => block_number,
             Err(e) => {
                 error!("Failed to get block number: {}", &e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
                 continue;
             }
         };
 
-        if new_block_number == current_block_number {
+        if latest <= last_indexed {
+            debug!("No new blocks, sleeping: {}", last_indexed);
             tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
-            debug!("No new blocks, sleeping: {}", current_block_number);
             continue;
         }
 
-        current_block_number = new_block_number;
-
-        let start = measure_start("mevlog latest");
-        let _resp = match Command::new(mevlog_cmd_path())
-            .arg("query")
+        let range = format!("{}:{}", last_indexed + 1, latest);
+        let status = match Command::new(mevlog_cmd_path())
+            .arg("index")
             .arg("-b")
-            .arg("latest")
+            .arg(&range)
             .arg("--rpc-url")
-            .arg(rpc_url.clone())
-            .output()
+            .arg(&rpc_url)
+            .status()
             .await
         {
-            Ok(resp) => resp,
+            Ok(status) => status,
             Err(e) => {
-                error!("Failed to run mevlog query latest: {}", &e);
+                error!("Failed to run mevlog index: {}", &e);
                 continue;
             }
         };
-        measure_end(start);
 
-        if new_block_number % 10 == 0 {
-            let uptime_url = std::env::var("UPTIME_URL_MAINNET_CACHE")
-                .expect("Missing UPTIME_URL_MAINNET_CACHE env var");
-            info!("Mainnet cache uptime ping");
+        if !status.success() {
+            error!("mevlog index {} exited: {}", range, status);
+            continue;
+        }
 
-            match uptime_ping(&uptime_url).await {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("Failed to uptime ping: {}", &e);
-                }
-            }
+        last_indexed = latest;
+
+        info!("Mainnet cache uptime ping");
+        if let Err(e) = uptime_ping(&uptime_url).await {
+            error!("Failed to uptime ping: {}", &e);
         }
     }
 
