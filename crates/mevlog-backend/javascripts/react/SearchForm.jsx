@@ -194,8 +194,7 @@ const QueryResult = ({ response }) => {
   return (
     <div className="query-result">
       <div style={metaStyle}>
-        {response.result_count} rows · {response.duration} ·
-        {' '}cached blocks: {response.cached_blocks} · new blocks: {response.new_blocks}
+        {response.result_count} rows · {response.duration}
       </div>
 
       {rows.length === 0 ? (
