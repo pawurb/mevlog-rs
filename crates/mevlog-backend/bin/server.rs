@@ -43,7 +43,7 @@ async fn run() -> Result<()> {
         .layer(from_fn(middleware::security_headers))
         .layer(cors());
 
-    let port = std::env::var("PORT").unwrap_or_else(|_| "3000".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
 
     if TcpListener::bind(format!("0.0.0.0:{port}")).await.is_err() {
         eyre::bail!("Port {} is already in use", port);

@@ -11,11 +11,11 @@ html.ayu,
     --inline-code-color: #f5ae2e;
 }
 
-/* ---- 2. Top nav (mirrors the main app's sticky-nav) ---- */
+/* ---- 2. Top nav — pixel-matched to the app's .sticky-nav (styles.css) ---- */
 :root {
-    --mevlog-nav-h: 64px;
-    --mevlog-nav-bg: #14191f;    /* Ayu sidebar-bg, so the bar blends with the docs */
-    --mevlog-nav-border: #2d334f;/* Ayu sidebar-spacer */
+    --mevlog-nav-h: 86px;                  /* app bar height: 60px logo + 10px/10px pad + border */
+    --mevlog-nav-bg: hsl(210, 25%, 8%);    /* app --background (navy) */
+    --mevlog-nav-border: #675f54;          /* app --bright-black */
 }
 
 .mevlog-topnav {
@@ -35,7 +35,7 @@ html.ayu,
     align-items: center;
     gap: 8px;
     height: 100%;
-    padding: 0 16px;
+    padding: 0 20px;             /* match app body's 20px horizontal inset */
     overflow-x: auto;            /* don't wrap on narrow viewports — scroll instead */
 }
 
@@ -43,12 +43,13 @@ html.ayu,
     display: inline-flex;
     align-items: center;
     flex: 0 0 auto;
-    margin-right: 8px;
+    margin-right: 15px;          /* app .sticky-nav-logo margin-right */
 }
 
 .mevlog-logo {
-    height: 40px;
+    height: 60px;                /* app .sticky-nav-logo height */
     width: auto;
+    transform: translateY(4px);  /* app .sticky-nav-logo */
     transition: opacity 0.2s ease;
 }
 
@@ -56,40 +57,31 @@ html.ayu,
     opacity: 0.8;
 }
 
+/* Matches the app's .btn.btn-ghost (terminal.css): 1em / .65em 2em padding */
 .mevlog-btn {
     flex: 0 0 auto;
     cursor: pointer;
     font-family: inherit;
-    font-size: 0.9em;
+    font-size: 15px;            /* app --global-font-size */
     font-weight: 700;
-    padding: 0.45em 1.1em;
-    border: 1px solid;
+    line-height: 1.4;
+    padding: 0.65em 2em;
+    border: 1px solid var(--foreground, #c5c5c5);
     border-radius: 0;
+    color: var(--foreground, #c5c5c5);
     background: transparent;
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-/* Per-route accent colors, matching the app menu */
-.mevlog-btn[data-route="explore"] { border-color: #5fdaff; color: #5fdaff; }
-.mevlog-btn[data-route="explore"]:hover { background: #5fdaff; color: var(--mevlog-nav-bg); }
+/* Per-route accent colors, matching the app menu (Explore=green, Search=yellow) */
+.mevlog-btn[data-route="explore"] { border-color: #84f088; color: #84f088; }
+.mevlog-btn[data-route="explore"]:hover { background: #84f088; color: var(--mevlog-nav-bg); }
 
 .mevlog-btn[data-route="search"]  { border-color: #f5ae2e; color: #f5ae2e; }
 .mevlog-btn[data-route="search"]:hover { background: #f5ae2e; color: var(--mevlog-nav-bg); }
 
-.mevlog-btn[data-route="tui"]     { border-color: #ff645a; color: #ff645a; }
-.mevlog-btn[data-route="tui"]:hover { background: #ff645a; color: var(--mevlog-nav-bg); }
-
-.mevlog-btn[data-route="mcp"]     { border-color: #ff9269; color: #ff9269; }
-.mevlog-btn[data-route="mcp"]:hover { background: #ff9269; color: var(--mevlog-nav-bg); }
-
-.mevlog-btn[data-route="docs"]    { border-color: #f5ae2e; color: #f5ae2e; }
-.mevlog-btn[data-route="docs"]:hover { background: #f5ae2e; color: var(--mevlog-nav-bg); }
-
-/* Docs is the current page — keep it filled to mark "you are here" */
-.mevlog-btn-active {
-    background: #f5ae2e;
-    color: var(--mevlog-nav-bg) !important;
-}
+/* Docs button: ghost gray, identical to the app (no per-route color there) */
+.mevlog-btn[data-route="docs"]:hover { border-color: #727578; color: #727578; }
 
 .mevlog-stars {
     flex: 0 0 auto;

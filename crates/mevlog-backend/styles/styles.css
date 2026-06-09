@@ -46,7 +46,13 @@
   /* Selected text color */
 }
 
-/* Apply background and foreground */
+/* Apply background and foreground.
+   html also carries the bg so the first paint of a fresh document is navy,
+   not the UA default white (prevents the flash when navigating between pages). */
+html {
+  background-color: var(--background);
+}
+
 body {
   background-color: var(--background);
   color: var(--foreground);

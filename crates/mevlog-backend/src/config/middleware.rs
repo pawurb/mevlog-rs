@@ -111,7 +111,10 @@ pub fn cors() -> CorsLayer {
 
 pub(crate) fn cache_control() -> SetResponseHeaderLayer<HeaderValue> {
     let cache_control = if Env::current().is_dev() {
-        HeaderValue::from_static("no-cache, no-store, must-revalidate, max-age=0")
+        // "no-cache" (not "no-store"): the browser keeps the asset and revalidates
+        // with a conditional request (fast 304), instead of re-downloading the
+        // render-blocking CSS on every navigation — which caused the FOUC/flash.
+        HeaderValue::from_static("no-cache")
     } else {
         HeaderValue::from_static("public, max-age=1382400, immutable")
     };
@@ -178,7 +181,7 @@ pub fn init_logs(filename: &str) {
 
 pub(crate) fn host() -> String {
     match Env::current() {
-        Env::Development | Env::Test => "http://localhost:3000",
+        Env::Development | Env::Test => "http://localhost:3002",
         Env::Production => "https://mevlog.rs",
     }
     .to_string()
