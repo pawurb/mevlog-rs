@@ -56,6 +56,10 @@ path = "bin/server.rs"
 name = "scheduler"
 path = "bin/scheduler.rs"
 
+[[bin]]
+name = "clean-html-links"
+path = "bin/clean-html-links.rs"
+
 [package.metadata.askama]
 template-dir = "templates"
 

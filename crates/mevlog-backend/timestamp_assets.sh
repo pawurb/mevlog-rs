@@ -31,6 +31,8 @@ copy_file() {
 if command -v mdbook &> /dev/null; then
     echo "Building mdbook docs..."
     mdbook build docs_src
+    echo "Stripping .html suffixes from doc links..."
+    cargo run --quiet --bin clean-html-links docs_html
     echo "mdbook build completed"
 else
     echo "mdbook not found, skipping docs build"

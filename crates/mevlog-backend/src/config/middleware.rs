@@ -109,6 +109,35 @@ pub fn cors() -> CorsLayer {
         .allow_origin(Any)
 }
 
+/// Rewrites extensionless paths to their `.html` file so the docs `ServeDir`
+/// (which does not append `.html`) can serve mdBook's now-clean URLs.
+/// Runs on the nested `/docs/` service, so it sees the prefix-stripped path
+/// (e.g. `/chain-info`, not `/docs/chain-info`).
+pub(crate) async fn docs_html_ext(mut request: Request, next: Next) -> Response {
+    let path = request.uri().path();
+    if should_append_html(path) {
+        let mut new_path = format!("{path}.html");
+        if let Some(query) = request.uri().query() {
+            new_path = format!("{new_path}?{query}");
+        }
+        if let Ok(uri) = new_path.parse::<Uri>() {
+            *request.uri_mut() = uri;
+        }
+    }
+    next.run(request).await
+}
+
+fn should_append_html(path: &str) -> bool {
+    // Directory / index requests already resolve via ServeDir's index handling.
+    if path.is_empty() || path.ends_with('/') {
+        return false;
+    }
+    // A dot in the last segment means it already has an extension (`.html`,
+    // `.css`, `.js`, `.png`, …) — leave it untouched.
+    let last_segment = path.rsplit('/').next().unwrap_or("");
+    !last_segment.contains('.')
+}
+
 pub(crate) fn cache_control() -> SetResponseHeaderLayer<HeaderValue> {
     let cache_control = if Env::current().is_dev() {
         // "no-cache" (not "no-store"): the browser keeps the asset and revalidates

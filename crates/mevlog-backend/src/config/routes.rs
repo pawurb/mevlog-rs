@@ -3,13 +3,14 @@ use axum::{
     Router,
     body::Body,
     http::{HeaderMap, HeaderValue, Response, StatusCode},
+    middleware::from_fn,
     response::{IntoResponse, Redirect},
     routing::get,
 };
 use tower::Layer;
 use tower_http::services::{ServeDir, ServeFile};
 
-use super::{cache_control, host};
+use super::{cache_control, docs_html_ext, host};
 
 pub async fn app() -> Router {
     let deployed_at = deployed_at();
@@ -51,7 +52,12 @@ pub async fn app() -> Router {
         .route("/docs", get(|| async { Redirect::permanent("/docs/") }))
         .nest_service(
             "/docs/",
-            cache_control().layer(ServeDir::new("docs_html")),
+            from_fn(docs_html_ext).layer(
+                cache_control().layer(
+                    ServeDir::new("docs_html")
+                        .not_found_service(ServeFile::new("docs_html/404.html")),
+                ),
+            ),
         )
         .route_service(
             "/all-chains.png",
@@ -168,6 +174,26 @@ pub mod tests {
 
         let body = response.into_body().collect().await.unwrap().to_bytes();
         assert_eq!(body, "OK");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn docs_extensionless_url_serves_html() -> Result<()> {
+        let app = get_test_app().await?;
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/docs/getting-started")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        // The rewrite layer maps /docs/getting-started -> getting-started.html.
+        assert_eq!(response.status(), StatusCode::OK);
+        let body = response.into_body().collect().await.unwrap().to_bytes();
+        assert!(!body.is_empty());
         Ok(())
     }
 }
