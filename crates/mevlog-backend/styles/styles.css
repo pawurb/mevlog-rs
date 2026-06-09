@@ -33,16 +33,16 @@
   --bright-white: #f6f7ec;
   /* ANSI 15 */
 
-  /* UI Colors */
-  --background: #292520;
-  /* Terminal background */
-  --foreground: #e5c7a9;
-  /* Terminal text color */
+  /* UI Colors — aligned with the mdbook "ayu" docs theme so /docs and the app match */
+  --background: hsl(210, 25%, 8%);
+  /* Ayu --bg (navy) */
+  --foreground: #c5c5c5;
+  /* Ayu --fg */
   --cursor-color: #f6f7ec;
   /* Cursor color */
-  --selection-background: #525458;
-  /* Selected text background */
-  --selection-foreground: #e5c7a9;
+  --selection-background: #3b4b5e;
+  /* Ayu-ish selection */
+  --selection-foreground: #c5c5c5;
   /* Selected text color */
 }
 
@@ -50,7 +50,7 @@
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   padding: 0px 20px 20px 20px;
   /* ✅ Adjust overall text size */
   line-height: 1.2;
@@ -239,9 +239,11 @@ form.inspect-form {
 }
 
 :root {
-  --block-background-color: #292520 !important;
-  --background-color: #292520 !important;
-  --font-color: #e5c7a9 !important;
+  --block-background-color: hsl(210, 25%, 8%) !important;
+  --background-color: hsl(210, 25%, 8%) !important;
+  --font-color: #c5c5c5 !important;
+  /* Sans body font to match the ayu docs theme; code/data keep --mono-font-stack */
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
 }
 
 body {

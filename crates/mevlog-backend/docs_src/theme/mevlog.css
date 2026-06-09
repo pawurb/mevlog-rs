@@ -1,0 +1,125 @@
+/* mevlog.rs docs theme overlay
+   1. Retint Ayu's blue accent to the mevlog brand orange (navy bg kept as-is).
+   2. Style the injected app top-nav (self-contained — app CSS is not loaded here).
+   3. Offset mdbook's fixed sidebar + sticky menu-bar below the nav. */
+
+/* ---- 1. Accent harmonization (keep Ayu navy background) ---- */
+html.ayu,
+:root {
+    --links: #f5ae2e;            /* was Ayu blue #0096cf */
+    --sidebar-active: #f5ae2e;   /* brand orange */
+    --inline-code-color: #f5ae2e;
+}
+
+/* ---- 2. Top nav (mirrors the main app's sticky-nav) ---- */
+:root {
+    --mevlog-nav-h: 64px;
+    --mevlog-nav-bg: #14191f;    /* Ayu sidebar-bg, so the bar blends with the docs */
+    --mevlog-nav-border: #2d334f;/* Ayu sidebar-spacer */
+}
+
+.mevlog-topnav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--mevlog-nav-h);
+    z-index: 1100;               /* above the fixed sidebar + sticky menu-bar */
+    background: var(--mevlog-nav-bg);
+    border-bottom: 1px solid var(--mevlog-nav-border);
+    box-sizing: border-box;
+}
+
+.mevlog-topnav-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 100%;
+    padding: 0 16px;
+    overflow-x: auto;            /* don't wrap on narrow viewports — scroll instead */
+}
+
+.mevlog-logo-link {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    margin-right: 8px;
+}
+
+.mevlog-logo {
+    height: 40px;
+    width: auto;
+    transition: opacity 0.2s ease;
+}
+
+.mevlog-logo-link:hover .mevlog-logo {
+    opacity: 0.8;
+}
+
+.mevlog-btn {
+    flex: 0 0 auto;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.9em;
+    font-weight: 700;
+    padding: 0.45em 1.1em;
+    border: 1px solid;
+    border-radius: 0;
+    background: transparent;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+/* Per-route accent colors, matching the app menu */
+.mevlog-btn[data-route="explore"] { border-color: #5fdaff; color: #5fdaff; }
+.mevlog-btn[data-route="explore"]:hover { background: #5fdaff; color: var(--mevlog-nav-bg); }
+
+.mevlog-btn[data-route="search"]  { border-color: #f5ae2e; color: #f5ae2e; }
+.mevlog-btn[data-route="search"]:hover { background: #f5ae2e; color: var(--mevlog-nav-bg); }
+
+.mevlog-btn[data-route="tui"]     { border-color: #ff645a; color: #ff645a; }
+.mevlog-btn[data-route="tui"]:hover { background: #ff645a; color: var(--mevlog-nav-bg); }
+
+.mevlog-btn[data-route="mcp"]     { border-color: #ff9269; color: #ff9269; }
+.mevlog-btn[data-route="mcp"]:hover { background: #ff9269; color: var(--mevlog-nav-bg); }
+
+.mevlog-btn[data-route="docs"]    { border-color: #f5ae2e; color: #f5ae2e; }
+.mevlog-btn[data-route="docs"]:hover { background: #f5ae2e; color: var(--mevlog-nav-bg); }
+
+/* Docs is the current page — keep it filled to mark "you are here" */
+.mevlog-btn-active {
+    background: #f5ae2e;
+    color: var(--mevlog-nav-bg) !important;
+}
+
+.mevlog-stars {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    margin-left: 4px;
+}
+
+.mevlog-stars img {
+    height: 20px;
+    width: auto;
+}
+
+/* ---- 3. Push mdbook's chrome below the fixed nav ---- */
+.sidebar {
+    top: var(--mevlog-nav-h) !important;
+}
+
+#mdbook-menu-bar.sticky,
+#mdbook-menu-bar-hover-placeholder:hover + #mdbook-menu-bar,
+#mdbook-menu-bar:hover,
+html.sidebar-visible #mdbook-menu-bar {
+    top: var(--mevlog-nav-h) !important;
+}
+
+#mdbook-body-container {
+    padding-top: var(--mevlog-nav-h);
+}
+
+/* Keep in-page anchor jumps clear of both bars */
+html {
+    scroll-padding-top: calc(var(--mevlog-nav-h) + var(--menu-bar-height, 50px));
+}

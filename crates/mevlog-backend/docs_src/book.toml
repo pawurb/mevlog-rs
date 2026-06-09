@@ -9,3 +9,5 @@ build-dir = "../docs_html"
 site-url = "/docs/"
 default-theme = "ayu"
 preferred-dark-theme = "ayu"
+theme = "theme"
+additional-css = ["theme/mevlog.css"]

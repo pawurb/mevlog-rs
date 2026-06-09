@@ -19,7 +19,6 @@ pub async fn app() -> Router {
         .route("/search", get(html::search_controller::search))
         .route("/terms", get(html::terms_controller::terms))
         .route("/explore", get(html::explore_controller::explore))
-        .route("/tui", get(html::tui_controller::tui))
         .route(
             "/api/chain-info",
             get(json::chain_info_controller::chain_info),
@@ -82,10 +81,6 @@ pub async fn app() -> Router {
             "/mevlog-demo.mp4",
             cache_control().layer(ServeFile::new("assets/mevlog-demo.mp4")),
         )
-        .route_service(
-            "/media/mevlog-tui-demo.mp4",
-            cache_control().layer(ServeFile::new("media/mevlog-tui-demo.mp4")),
-        )
         .fallback(html::not_found_controller::not_found)
 }
 
@@ -116,10 +111,6 @@ async fn sitemap_xml() -> Response<Body> {
   <url>
     <loc>{h}/search</loc>
     <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>{h}/tui</loc>
-    <priority>0.7</priority>
   </url>
   <url>
     <loc>{h}/terms</loc>
