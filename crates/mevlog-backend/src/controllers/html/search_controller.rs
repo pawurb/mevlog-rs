@@ -8,12 +8,11 @@ use eyre::Result;
 use reqwest::StatusCode;
 use serde::Deserialize;
 
-use crate::controllers::base_controller::{error_message, get_default_blocks};
+use crate::controllers::base_controller::error_message;
 
 #[derive(Template)]
 #[template(path = "search.html")]
 struct SearchTemplate {
-    blocks: String,
     sql: String,
     host: String,
     page: String,
@@ -26,12 +25,10 @@ struct SearchTemplate {
 
 impl SearchTemplate {
     pub(crate) fn new(params: SearchParams) -> Self {
-        let blocks = get_default_blocks(params.blocks);
         let h = host();
         let canonical_url = format!("{h}/search");
 
         Self {
-            blocks,
             sql: params.sql.unwrap_or_default(),
             host: h,
             page: "search".to_string(),
@@ -46,8 +43,6 @@ impl SearchTemplate {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct SearchParams {
-    #[serde(default, deserialize_with = "empty_string_as_none")]
-    pub blocks: Option<String>,
     #[serde(default, deserialize_with = "empty_string_as_none")]
     pub sql: Option<String>,
     pub chain_id: Option<u64>,

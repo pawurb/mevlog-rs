@@ -4,7 +4,6 @@ use tokio::process::Command as AsyncCommand;
 
 use crate::{
     controllers::{
-        base_controller::get_default_blocks,
         html::search_controller::SearchParams,
         json::base_controller::{call_json_command_first_line, extract_json_query_params},
     },
@@ -25,9 +24,10 @@ pub(crate) async fn search(
     let chain_id = params.chain_id.unwrap_or(1);
 
     let mut cmd = AsyncCommand::new(mevlog_cmd_path());
+    // Block range is hardcoded: not settable via the web API.
     cmd.arg("query")
         .arg("-b")
-        .arg(get_default_blocks(params.blocks))
+        .arg("latest")
         .arg("--format")
         .arg("json")
         .arg("--rpc-timeout-ms")

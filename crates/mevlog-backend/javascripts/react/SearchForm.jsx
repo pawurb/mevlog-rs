@@ -3,34 +3,29 @@ import React, { useState } from 'react';
 // Search only supports Ethereum mainnet.
 const CHAIN_ID = 1;
 
-// Predefined read-only SQL queries. Each sets both the SQL and a sensible
-// block range. Tables: transactions, logs, blocks. Macros (braces):
+// Predefined read-only SQL queries. The block range is fixed server-side.
+// Tables: transactions, logs, blocks. Macros (braces):
 // {LATEST_BLOCK()}, {NATIVE_TOKEN_PRICE()}, {RESOLVE_ENS("name.eth")}.
 const PRESETS = [
   {
     label: 'Top 20 txs by gas used (last 50 blocks)',
-    blocks: '50:latest',
     sql: 'SELECT block_number, tx_index, tx_hash, gas_used,\n       u256_to_dec(value) AS value\nFROM transactions\nORDER BY gas_used DESC\nLIMIT 20',
   },
   {
     label: 'Total USDC transferred (last 100 blocks)',
-    blocks: '100:latest',
     sql: "SELECT u256_sum(erc20_amount) AS total_usdc\nFROM logs\nWHERE address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n  AND erc20_amount IS NOT NULL",
   },
   {
     label: 'Txs from vitalik.eth (mainnet only)',
-    blocks: '1000:latest',
     sql: 'SELECT block_number, tx_index, tx_hash, to_address AS "to",\n       u256_to_dec(value) AS value\nFROM transactions\nWHERE from_address = {RESOLVE_ENS("vitalik.eth")}',
   },
   {
     label: 'Tx count per block (recent window)',
-    blocks: '20:latest',
     sql: 'SELECT block_number, COUNT(*) AS txs\nFROM transactions\nWHERE block_number > {LATEST_BLOCK()} - 20\nGROUP BY block_number\nORDER BY block_number DESC',
   },
 ];
 
 const SearchForm = ({ initialValues = {} }) => {
-  const [blocks, setBlocks] = useState(initialValues.blocks || 'latest');
   const [sql, setSql] = useState(initialValues.sql || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -41,7 +36,6 @@ const SearchForm = ({ initialValues = {} }) => {
     const preset = PRESETS[parseInt(idx)];
     if (preset) {
       setSql(preset.sql);
-      setBlocks(preset.blocks);
     }
   };
 
@@ -56,7 +50,6 @@ const SearchForm = ({ initialValues = {} }) => {
 
     const params = new URLSearchParams();
     params.set('chain_id', CHAIN_ID);
-    if (blocks) params.set('blocks', blocks);
     params.set('sql', sql.trim());
 
     try {
@@ -113,17 +106,6 @@ const SearchForm = ({ initialValues = {} }) => {
     <div className="search-form">
       <form onSubmit={runQuery}>
         <div style={{ display: 'flex', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '0 0 200px' }}>
-            <label style={labelStyle} htmlFor="search-blocks">Blocks</label>
-            <input
-              id="search-blocks"
-              type="text"
-              value={blocks}
-              onChange={(e) => setBlocks(e.target.value)}
-              placeholder="latest, 100:latest, 22030800:22030900"
-              style={inputStyle}
-            />
-          </div>
           <div style={{ flex: 1, minWidth: '200px' }}>
             <label style={labelStyle} htmlFor="search-preset">Preset query</label>
             <select
@@ -215,19 +197,6 @@ const QueryResult = ({ response }) => {
         {response.result_count} rows · {response.duration} ·
         {' '}cached blocks: {response.cached_blocks} · new blocks: {response.new_blocks}
       </div>
-
-      {response.query && response.query.sql && (
-        <pre style={{
-          backgroundColor: '#1a1a1a',
-          border: '1px solid #333',
-          borderRadius: '4px',
-          padding: '10px',
-          color: '#9cdcfe',
-          fontSize: '12px',
-          overflowX: 'auto',
-          margin: '0 0 12px',
-        }}>{response.query.sql}</pre>
-      )}
 
       {rows.length === 0 ? (
         <div className="no-data" style={{ color: '#888', padding: '12px' }}>

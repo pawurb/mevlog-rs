@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (searchFormContainer) {
     // Extract initial values from data attributes
     const initialValues = {
-      blocks: searchFormContainer.dataset.blocks || '',
       sql: searchFormContainer.dataset.sql || '',
       chain_id: searchFormContainer.dataset.chainId || ''
     };
