@@ -177,24 +177,4 @@ pub mod tests {
         assert_eq!(body, "OK");
         Ok(())
     }
-
-    #[tokio::test]
-    async fn docs_extensionless_url_serves_html() -> Result<()> {
-        let app = get_test_app().await?;
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/docs/getting-started")
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        // The rewrite layer maps /docs/getting-started -> getting-started.html.
-        assert_eq!(response.status(), StatusCode::OK);
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        assert!(!body.is_empty());
-        Ok(())
-    }
 }

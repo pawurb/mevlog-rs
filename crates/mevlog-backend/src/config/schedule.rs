@@ -1,7 +1,12 @@
 use eyre::Result;
+use mevlog::db::txs::{self, purge::purge_old_blocks};
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::misc::{prices::update_prices_cache, utils::uptime_ping};
+
+// ~7 days of mainnet blocks (12s block time)
+const PURGE_KEEP_BLOCKS: u64 = 50_400;
+const PURGE_CHAIN_ID: u64 = 1;
 
 pub async fn get_schedule() -> Result<JobScheduler> {
     let mut sched = JobScheduler::new().await?;
@@ -31,6 +36,39 @@ pub async fn get_schedule() -> Result<JobScheduler> {
                     }
                     Err(e) => {
                         tracing::error!("Failed to update prices cache: {}", &e);
+                    }
+                }
+            })
+        })?)
+        .await?;
+
+    sched
+        .add(Job::new_async("every 1 hour", |_uuid, _l| {
+            Box::pin(async move {
+                let purged = async {
+                    let conn = txs::conn(None, PURGE_CHAIN_ID, false).await?;
+                    let stats = purge_old_blocks(PURGE_KEEP_BLOCKS, &conn).await?;
+                    conn.close().await;
+                    Ok::<_, eyre::Error>(stats)
+                }
+                .await;
+
+                match purged {
+                    Ok(stats) => {
+                        tracing::info!(
+                            "Purged txs DB for chain {}: {} blocks, {} txs, {} logs removed",
+                            PURGE_CHAIN_ID,
+                            stats.purged_blocks,
+                            stats.purged_transactions,
+                            stats.purged_logs
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to purge txs DB for chain {}: {}",
+                            PURGE_CHAIN_ID,
+                            &e
+                        );
                     }
                 }
             })

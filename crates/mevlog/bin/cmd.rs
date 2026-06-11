@@ -41,6 +41,7 @@ pub(crate) mod ens_lookup;
 pub(crate) mod ens_resolve;
 pub(crate) mod evm_traces;
 pub(crate) mod index;
+pub(crate) mod purge_db;
 pub(crate) mod query;
 pub(crate) mod state_diff;
 #[cfg(feature = "tui")]

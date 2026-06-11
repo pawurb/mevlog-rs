@@ -13,8 +13,8 @@ pub mod tests {
             models::{log::Log, transaction::Transaction},
         },
         models::json::{
-            block_json::BlockJson, log_json::LogJson, query_response::QueryResponse,
-            transaction_json::TransactionJson,
+            block_json::BlockJson, log_json::LogJson, purge_response::PurgeResponse,
+            query_response::QueryResponse, transaction_json::TransactionJson,
         },
     };
     use uuid::Uuid;
@@ -142,6 +142,94 @@ pub mod tests {
             .args(["--format", "json"])
             .output()
             .expect("failed to execute CLI")
+    }
+
+    fn run_purge(tmp_dir: &Path, keep: u64) -> Output {
+        Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .args(["run", "--bin", "mevlog", "--", "purge-db"])
+            .args(["--keep", &keep.to_string()])
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", "json"])
+            .output()
+            .expect("failed to execute CLI")
+    }
+
+    #[tokio::test]
+    async fn test_purge_removes_indexed_data() -> Result<()> {
+        let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
+
+        sync_fixtures_to_cache();
+
+        let tmp_dir = std::env::temp_dir().join(format!("mevlog-sqlite-test-{}", Uuid::new_v4()));
+        fs::create_dir_all(&tmp_dir)?;
+
+        let output = run_query(&rpc_url, &tmp_dir, Some("SELECT 1"), "json");
+        assert!(
+            output.status.success(),
+            "query failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let db_path = tmp_dir.join(txs::db_file_name(txs::SCHEMA_VERSION, CHAIN_ID));
+        let conn = txs::conn(
+            Some(db_path.to_string_lossy().into_owned()),
+            CHAIN_ID,
+            false,
+        )
+        .await?;
+
+        let total_blocks = (TO_BLOCK - FROM_BLOCK + 1) as i64;
+        let blocks_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM blocks")
+            .fetch_one(&conn)
+            .await?;
+        let txs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM transactions")
+            .fetch_one(&conn)
+            .await?;
+        let logs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM logs")
+            .fetch_one(&conn)
+            .await?;
+        assert_eq!(blocks_count, total_blocks, "blocks should be indexed");
+        assert!(txs_count > 0, "transactions should be indexed");
+        assert!(logs_count > 0, "logs should be indexed");
+
+        // keep=0: everything up to and including the highest indexed block
+        // (TO_BLOCK) is purged; the cutoff never consults the chain head.
+        let output = run_purge(&tmp_dir, 0);
+        assert!(
+            output.status.success(),
+            "purge failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let resp: PurgeResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(resp.keep, 0, "keep mismatch");
+        assert_eq!(resp.latest_block, Some(TO_BLOCK), "latest_block mismatch");
+        assert_eq!(resp.cutoff_block, Some(TO_BLOCK + 1), "cutoff mismatch");
+        assert_eq!(
+            resp.purged_blocks, total_blocks as u64,
+            "purged_blocks mismatch"
+        );
+        assert_eq!(
+            resp.purged_transactions, txs_count as u64,
+            "purged_transactions mismatch"
+        );
+        assert_eq!(resp.purged_logs, logs_count as u64, "purged_logs mismatch");
+        assert_eq!(resp.chain_id, CHAIN_ID, "chain id mismatch");
+
+        for table in ["blocks", "transactions", "logs"] {
+            let count: i64 =
+                sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
+                    .fetch_one(&conn)
+                    .await?;
+            assert_eq!(count, 0, "{table} should be empty after purge");
+        }
+
+        fs::remove_dir_all(&tmp_dir).ok();
+        Ok(())
     }
 
     #[tokio::test]
