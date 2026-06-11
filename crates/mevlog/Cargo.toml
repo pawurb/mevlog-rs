@@ -31,7 +31,7 @@ sqlx = { version = "0.9", default-features = false, features = [
   "macros",
   "migrate",
 ] }
-rusqlite = { version = "0.37", features = ["bundled", "functions"] }
+rusqlite = { version = "0.37", features = ["bundled", "functions", "hooks"] }
 evm-sqlite = { git = "https://github.com/pawurb/evm-sqlite-rs" }
 home = "0.5"
 toml = "0.8"

@@ -1,9 +1,49 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    time::{Duration, Instant},
+};
 
 use evm_sqlite::register_functions;
 use eyre::{Result, bail};
-use rusqlite::{Connection, OpenFlags, types::ValueRef};
+use rusqlite::{
+    Connection, OpenFlags,
+    hooks::{AuthAction, AuthContext, Authorization},
+    types::ValueRef,
+};
 use serde_json::{Map, Value};
+
+/// Tables a user-supplied `--sql` query is allowed to read. Everything else
+/// (the `_sqlx_migrations` bookkeeping table, attached databases, etc.) is
+/// rejected by the authorizer below.
+const ALLOWED_TABLES: [&str; 3] = ["transactions", "logs", "blocks"];
+
+/// Wall-clock ceiling for a single user query. The progress handler interrupts
+/// execution once exceeded, so a pathological query (recursive CTE, huge cross
+/// join, `randomblob`) can't pin a core indefinitely.
+const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// VM instructions between progress-handler invocations.
+const PROGRESS_OPS: i32 = 10_000;
+
+/// Authorizer callback: permit only read-only access to the allowed tables
+/// plus SQL function calls. Reads of any other table error out, and every
+/// mutating/structural/side-effecting action (ATTACH, DETACH, PRAGMA,
+/// transactions, DDL, DML) is denied.
+fn authorize(ctx: AuthContext<'_>) -> Authorization {
+    match ctx.action {
+        AuthAction::Select | AuthAction::Function { .. } | AuthAction::Recursive => {
+            Authorization::Allow
+        }
+        AuthAction::Read { table_name, .. } => {
+            if ALLOWED_TABLES.contains(&table_name) {
+                Authorization::Allow
+            } else {
+                Authorization::Deny
+            }
+        }
+        _ => Authorization::Deny,
+    }
+}
 
 /// Result of a raw SQL query: the selected column names (in `SELECT` order) plus
 /// one JSON object per row. Columns are carried separately so tabular consumers
@@ -26,11 +66,20 @@ pub(crate) fn run_raw_query(sql: &str, db_path: &str) -> Result<QueryResult> {
         .or_else(|| db_path.strip_prefix("sqlite:"))
         .unwrap_or(db_path);
 
-    let conn = Connection::open_with_flags(
-        filename,
-        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
-    )?;
+    // No `SQLITE_OPEN_URI`: keeps `file:...?mode=rwc` tricks out of any filename
+    // the SQL could reference. The path is resolved by us, not the user.
+    let conn = Connection::open_with_flags(filename, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     register_functions(&conn)?;
+
+    // Defense-in-depth on top of the read-only handle and the authorizer. Set
+    // before the authorizer is installed, since the authorizer denies PRAGMA.
+    conn.pragma_update(None, "query_only", true)?;
+
+    // Interrupt runaway queries once the deadline passes.
+    let deadline = Instant::now() + QUERY_TIMEOUT;
+    conn.progress_handler(PROGRESS_OPS, Some(move || Instant::now() >= deadline));
+
+    conn.authorizer(Some(authorize));
 
     let mut stmt = conn.prepare(sql)?;
     let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
@@ -173,6 +222,58 @@ mod test {
 
         let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path)?;
         assert_eq!(result.rows[0]["n"], json!(1));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_allows_allowed_tables() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
+
+        for table in ["transactions", "logs", "blocks"] {
+            let sql = format!("SELECT COUNT(*) AS n FROM {table}");
+            assert!(
+                run_raw_query(&sql, &path).is_ok(),
+                "`{table}` should be readable"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_denies_non_allowed_tables() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
+
+        for sql in [
+            "SELECT name FROM sqlite_master",
+            "SELECT version FROM _sqlx_migrations",
+        ] {
+            assert!(
+                run_raw_query(sql, &path).is_err(),
+                "expected `{sql}` denied"
+            );
+        }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_denies_attach_and_pragma() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
+
+        for sql in [
+            "ATTACH DATABASE 'file:/tmp/evil?mode=rwc' AS e",
+            "PRAGMA query_only = OFF",
+        ] {
+            assert!(
+                run_raw_query(sql, &path).is_err(),
+                "expected `{sql}` denied"
+            );
+        }
 
         Ok(())
     }
