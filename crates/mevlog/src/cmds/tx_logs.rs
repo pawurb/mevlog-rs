@@ -8,13 +8,17 @@ use crate::{
     db::txs::{
         display_sql::logs_display_query, indexing::index_block_range, raw_query::run_raw_query,
     },
-    misc::shared_init::{ConnOpts, init_deps},
+    misc::shared_init::{ConnOpts, CryoOpts, init_deps},
     models::json::query_response::{QueryOutcome, QueryParams},
 };
 
 /// Indexes the block holding `tx_hash` and returns that transaction's logs,
 /// shaped for display.
-pub async fn tx_logs(tx_hash: TxHash, conn_opts: &ConnOpts) -> Result<QueryOutcome> {
+pub async fn tx_logs(
+    tx_hash: TxHash,
+    conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
+) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
 
     let receipt = deps
@@ -32,7 +36,7 @@ pub async fn tx_logs(tx_hash: TxHash, conn_opts: &ConnOpts) -> Result<QueryOutco
     let start_time = Instant::now();
 
     let (cached_blocks, new_blocks) =
-        index_block_range(block_number, block_number, 1, &deps).await?;
+        index_block_range(block_number, block_number, 1, &deps, cryo_opts).await?;
 
     let chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
     let duration_ns = start_time.elapsed().as_nanos() as u64;

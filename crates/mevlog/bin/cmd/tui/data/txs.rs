@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use eyre::Result;
-use mevlog::cmds;
+use mevlog::{cmds, misc::shared_init::CryoOpts};
 use tokio::time::timeout;
 
 use crate::cmd::tui::data::{LogJson, TransactionJson, conn_opts};
@@ -13,7 +13,7 @@ pub(crate) async fn fetch_txs(blocks: &str, rpc_url: String) -> Result<Vec<Trans
     let conn = conn_opts(rpc_url);
     match timeout(
         CMD_TIMEOUT,
-        cmds::block_txs::block_txs_typed(blocks, None, None, &conn),
+        cmds::block_txs::block_txs_typed(blocks, None, None, &conn, &CryoOpts::default()),
     )
     .await
     {
@@ -63,7 +63,7 @@ async fn fetch_block_logs(blocks: &str, rpc_url: String) -> Result<Vec<LogJson>>
     let conn = conn_opts(rpc_url);
     match timeout(
         CMD_TIMEOUT,
-        cmds::block_logs::block_logs_typed(blocks, None, &conn),
+        cmds::block_logs::block_logs_typed(blocks, None, &conn, &CryoOpts::default()),
     )
     .await
     {

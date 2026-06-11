@@ -10,7 +10,7 @@ use crate::{
         models::transaction::Transaction, raw_query::run_raw_query,
     },
     misc::{
-        shared_init::{ConnOpts, TraceMode, init_deps},
+        shared_init::{ConnOpts, CryoOpts, TraceMode, init_deps},
         sql_macros::{NATIVE_TOKEN_PRICE_MACRO, substitute_sql_macros},
         tx_tracing::coinbase_transfer_for_tx,
         utils::get_native_token_price,
@@ -28,6 +28,7 @@ pub async fn tx(
     evm_trace: Option<&TraceMode>,
     native_token_price: Option<f64>,
     conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
 ) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
 
@@ -46,7 +47,7 @@ pub async fn tx(
     let start_time = Instant::now();
 
     let (cached_blocks, new_blocks) =
-        index_block_range(block_number, block_number, 1, &deps).await?;
+        index_block_range(block_number, block_number, 1, &deps, cryo_opts).await?;
 
     if let Some(mode) = evm_trace {
         let coinbase_transfer =
@@ -105,10 +106,12 @@ pub async fn tx_typed(
     evm_trace: Option<&TraceMode>,
     native_token_price: Option<f64>,
     conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
 ) -> Result<TransactionJson> {
-    let rows: Vec<TransactionJson> = tx(tx_hash, evm_trace, native_token_price, conn_opts)
-        .await?
-        .rows_as()?;
+    let rows: Vec<TransactionJson> =
+        tx(tx_hash, evm_trace, native_token_price, conn_opts, cryo_opts)
+            .await?
+            .rows_as()?;
     rows.into_iter()
         .next()
         .ok_or_else(|| eyre::eyre!("Transaction {} not found in local store", tx_hash))

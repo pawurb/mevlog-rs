@@ -4,6 +4,7 @@ use eyre::Result;
 use sqlx::SqlitePool;
 
 use crate::db::txs::models::{block::Block, log::Log, transaction::Transaction};
+use crate::misc::shared_init::CryoOpts;
 use crate::models::evm_chain::EVMChain;
 
 pub struct BatchedBlockData {
@@ -134,6 +135,7 @@ fn run_cryo_batch(
     start_block: u64,
     end_block: u64,
     chain: &EVMChain,
+    cryo_opts: &CryoOpts,
 ) -> Result<()> {
     let range = format!("{}:{}", start_block, end_block + 1);
     let cmd = Command::new("cryo")
@@ -145,6 +147,14 @@ fn run_cryo_batch(
             &chain.rpc_url,
             "--output-dir",
             cryo_cache_dir(chain).display().to_string().as_str(),
+            "--requests-per-second",
+            &cryo_opts.cryo_requests_per_second.to_string(),
+            "--max-concurrent-requests",
+            &cryo_opts.cryo_max_concurrent_requests.to_string(),
+            "--max-retries",
+            &cryo_opts.cryo_max_retries.to_string(),
+            "--initial-backoff",
+            &cryo_opts.cryo_initial_backoff.to_string(),
         ])
         .output();
 
@@ -171,6 +181,7 @@ pub(crate) async fn fetch_blocks_batch(
     end_block: u64,
     chain: &EVMChain,
     sqlite: &SqlitePool,
+    cryo_opts: &CryoOpts,
 ) -> Result<BatchedBlockData> {
     if which::which("cryo").is_err() {
         eyre::bail!(
@@ -182,21 +193,21 @@ pub(crate) async fn fetch_blocks_batch(
     let tx_coverage = analyze_coverage(&tx_ranges, start_block, end_block);
 
     for (gap_start, gap_end) in &tx_coverage.missing_ranges {
-        run_cryo_batch("txs", *gap_start, *gap_end, chain)?;
+        run_cryo_batch("txs", *gap_start, *gap_end, chain, cryo_opts)?;
     }
 
     let log_ranges = scan_cached_ranges(chain, "logs");
     let log_coverage = analyze_coverage(&log_ranges, start_block, end_block);
 
     for (gap_start, gap_end) in &log_coverage.missing_ranges {
-        run_cryo_batch("logs", *gap_start, *gap_end, chain)?;
+        run_cryo_batch("logs", *gap_start, *gap_end, chain, cryo_opts)?;
     }
 
     let block_ranges = scan_cached_ranges(chain, "blocks");
     let block_coverage = analyze_coverage(&block_ranges, start_block, end_block);
 
     for (gap_start, gap_end) in &block_coverage.missing_ranges {
-        run_cryo_batch("blocks", *gap_start, *gap_end, chain)?;
+        run_cryo_batch("blocks", *gap_start, *gap_end, chain, cryo_opts)?;
     }
 
     let tx_ranges = scan_cached_ranges(chain, "transactions");

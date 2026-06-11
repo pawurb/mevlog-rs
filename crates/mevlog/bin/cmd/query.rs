@@ -1,7 +1,7 @@
 use eyre::Result;
 use mevlog::{
     cmds,
-    misc::shared_init::{ConnOpts, OutputFormat, SharedOpts},
+    misc::shared_init::{ConnOpts, CryoOpts, OutputFormat, SharedOpts},
 };
 
 use crate::cmd::print_query_outcome;
@@ -16,6 +16,9 @@ pub struct QueryArgs {
 
     #[command(flatten)]
     conn_opts: ConnOpts,
+
+    #[command(flatten)]
+    cryo_opts: CryoOpts,
 
     #[arg(long, help = "Get N-offset latest block")]
     latest_offset: Option<u64>,
@@ -56,6 +59,7 @@ impl QueryArgs {
             &self.sql,
             &self.shared_opts,
             &self.conn_opts,
+            &self.cryo_opts,
         )
         .await?;
         print_query_outcome(outcome, format)

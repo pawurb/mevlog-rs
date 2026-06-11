@@ -1,7 +1,7 @@
 use eyre::Result;
 use mevlog::{
     cmds,
-    misc::shared_init::{ConnOpts, OutputFormat},
+    misc::shared_init::{ConnOpts, CryoOpts, OutputFormat},
 };
 
 use crate::cmd::print_query_outcome;
@@ -19,6 +19,9 @@ pub struct BlockTxsArgs {
 
     #[command(flatten)]
     pub conn_opts: ConnOpts,
+
+    #[command(flatten)]
+    pub cryo_opts: CryoOpts,
 }
 
 impl BlockTxsArgs {
@@ -28,6 +31,7 @@ impl BlockTxsArgs {
             self.latest_offset,
             self.native_token_price,
             &self.conn_opts,
+            &self.cryo_opts,
         )
         .await?;
         print_query_outcome(outcome, format)

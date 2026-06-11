@@ -221,6 +221,53 @@ pub struct ConnOpts {
     pub txs_db_dir: Option<String>,
 }
 
+const DEFAULT_CRYO_REQUESTS_PER_SECOND: u64 = 25;
+const DEFAULT_CRYO_MAX_CONCURRENT_REQUESTS: u64 = 10;
+const DEFAULT_CRYO_MAX_RETRIES: u64 = 8;
+const DEFAULT_CRYO_INITIAL_BACKOFF_MS: u64 = 1000;
+
+#[derive(Clone, Debug, clap::Parser)]
+pub struct CryoOpts {
+    #[arg(
+        long,
+        help = "Max RPC requests per second for cryo block fetching",
+        default_value_t = DEFAULT_CRYO_REQUESTS_PER_SECOND
+    )]
+    pub cryo_requests_per_second: u64,
+
+    #[arg(
+        long,
+        help = "Max concurrent RPC requests for cryo block fetching",
+        default_value_t = DEFAULT_CRYO_MAX_CONCURRENT_REQUESTS
+    )]
+    pub cryo_max_concurrent_requests: u64,
+
+    #[arg(
+        long,
+        help = "Max retries for cryo RPC provider errors",
+        default_value_t = DEFAULT_CRYO_MAX_RETRIES
+    )]
+    pub cryo_max_retries: u64,
+
+    #[arg(
+        long,
+        help = "Initial retry backoff in milliseconds for cryo RPC provider errors",
+        default_value_t = DEFAULT_CRYO_INITIAL_BACKOFF_MS
+    )]
+    pub cryo_initial_backoff: u64,
+}
+
+impl Default for CryoOpts {
+    fn default() -> Self {
+        Self {
+            cryo_requests_per_second: DEFAULT_CRYO_REQUESTS_PER_SECOND,
+            cryo_max_concurrent_requests: DEFAULT_CRYO_MAX_CONCURRENT_REQUESTS,
+            cryo_max_retries: DEFAULT_CRYO_MAX_RETRIES,
+            cryo_initial_backoff: DEFAULT_CRYO_INITIAL_BACKOFF_MS,
+        }
+    }
+}
+
 #[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TraceMode {

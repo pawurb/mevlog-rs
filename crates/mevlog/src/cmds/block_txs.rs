@@ -9,7 +9,7 @@ use crate::{
     },
     misc::{
         args_parsing::BlocksRange,
-        shared_init::{ConnOpts, init_deps},
+        shared_init::{ConnOpts, CryoOpts, init_deps},
         sql_macros::{NATIVE_TOKEN_PRICE_MACRO, substitute_sql_macros},
         utils::get_native_token_price,
     },
@@ -25,6 +25,7 @@ pub async fn block_txs(
     latest_offset: Option<u64>,
     native_token_price: Option<f64>,
     conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
 ) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
 
@@ -40,7 +41,7 @@ pub async fn block_txs(
     let start_time = Instant::now();
 
     let (cached_blocks, new_blocks) =
-        index_block_range(block_number, block_number, 1, &deps).await?;
+        index_block_range(block_number, block_number, 1, &deps, cryo_opts).await?;
 
     let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
     chain_info.native_token_price = native_token_price;
@@ -88,8 +89,15 @@ pub async fn block_txs_typed(
     latest_offset: Option<u64>,
     native_token_price: Option<f64>,
     conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
 ) -> Result<Vec<TransactionJson>> {
-    block_txs(block, latest_offset, native_token_price, conn_opts)
-        .await?
-        .rows_as()
+    block_txs(
+        block,
+        latest_offset,
+        native_token_price,
+        conn_opts,
+        cryo_opts,
+    )
+    .await?
+    .rows_as()
 }

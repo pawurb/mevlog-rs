@@ -3,7 +3,10 @@ use tracing::info;
 
 use crate::{
     db::txs::models::{block::Block, log::Log, transaction::Transaction},
-    misc::{data_fetch::fetch_blocks_batch, shared_init::SharedDeps},
+    misc::{
+        data_fetch::fetch_blocks_batch,
+        shared_init::{CryoOpts, SharedDeps},
+    },
 };
 
 /// Indexes every block in `from..=to` that is not already in the local store,
@@ -19,6 +22,7 @@ pub async fn index_block_range(
     to: u64,
     batch_size: usize,
     deps: &SharedDeps,
+    cryo_opts: &CryoOpts,
 ) -> Result<(u64, u64)> {
     let missing = Block::missing_blocks(from, to, &deps.txs).await?;
 
@@ -52,7 +56,8 @@ pub async fn index_block_range(
             );
 
             let batch_data =
-                fetch_blocks_batch(start_block, end_block, &deps.chain, &deps.sqlite).await?;
+                fetch_blocks_batch(start_block, end_block, &deps.chain, &deps.sqlite, cryo_opts)
+                    .await?;
 
             let mut chunk_txs: Vec<Transaction> = vec![];
             for &block_number in chunk {

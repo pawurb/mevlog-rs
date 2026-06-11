@@ -9,7 +9,7 @@ use crate::{
     },
     misc::{
         args_parsing::BlocksRange,
-        shared_init::{ConnOpts, init_deps},
+        shared_init::{ConnOpts, CryoOpts, init_deps},
     },
     models::json::query_response::{QueryOutcome, QueryParams},
 };
@@ -19,6 +19,7 @@ pub async fn block(
     block: &str,
     latest_offset: Option<u64>,
     conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
 ) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
 
@@ -31,7 +32,7 @@ pub async fn block(
     let start_time = Instant::now();
 
     let (cached_blocks, new_blocks) =
-        index_block_range(block_number, block_number, 1, &deps).await?;
+        index_block_range(block_number, block_number, 1, &deps, cryo_opts).await?;
 
     let chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
     let duration_ns = start_time.elapsed().as_nanos() as u64;

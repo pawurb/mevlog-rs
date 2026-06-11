@@ -7,7 +7,7 @@ use crate::{
     db::txs::{indexing::index_block_range, raw_query::run_raw_query},
     misc::{
         args_parsing::BlocksRange,
-        shared_init::{ConnOpts, SharedOpts, init_deps},
+        shared_init::{ConnOpts, CryoOpts, SharedOpts, init_deps},
         sql_macros::substitute_sql_macros,
         tx_tracing::backfill_coinbase_transfers,
         utils::get_native_token_price,
@@ -17,6 +17,7 @@ use crate::{
 
 /// Collects all txs within a block range into the local store and runs the
 /// given read-only SQL against it.
+#[allow(clippy::too_many_arguments)]
 pub async fn query(
     blocks: &str,
     latest_offset: Option<u64>,
@@ -25,6 +26,7 @@ pub async fn query(
     sql: &str,
     shared_opts: &SharedOpts,
     conn_opts: &ConnOpts,
+    cryo_opts: &CryoOpts,
 ) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
 
@@ -60,8 +62,14 @@ pub async fn query(
 
     // Only fetch blocks that are not already in the local store. Indexed
     // blocks (including empty ones, tracked by the `blocks` table) are skipped.
-    let (cached_blocks, new_blocks) =
-        index_block_range(block_range.from, block_range.to, batch_size, &deps).await?;
+    let (cached_blocks, new_blocks) = index_block_range(
+        block_range.from,
+        block_range.to,
+        batch_size,
+        &deps,
+        cryo_opts,
+    )
+    .await?;
 
     // Backfill direct coinbase payments for any untraced txs in range. Runs
     // over the local store, so it also covers blocks indexed earlier without

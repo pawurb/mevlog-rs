@@ -7,7 +7,7 @@ use mevlog::{
     db::txs::{indexing::index_block_range, purge::purge_old_blocks},
     misc::{
         args_parsing::BlocksRange,
-        shared_init::{ConnOpts, OutputFormat, init_deps},
+        shared_init::{ConnOpts, CryoOpts, OutputFormat, init_deps},
     },
     models::json::index_response::{IndexResponse, serialize_index_response},
 };
@@ -24,6 +24,9 @@ pub struct IndexArgs {
 
     #[command(flatten)]
     conn_opts: ConnOpts,
+
+    #[command(flatten)]
+    cryo_opts: CryoOpts,
 
     #[arg(long, help = "Get N-offset latest block")]
     latest_offset: Option<u64>,
@@ -96,8 +99,14 @@ impl IndexArgs {
                 }
 
                 let start_time = Instant::now();
-                let (cached_blocks, new_blocks) =
-                    index_block_range(range.from, range.to, self.batch_size, &deps).await?;
+                let (cached_blocks, new_blocks) = index_block_range(
+                    range.from,
+                    range.to,
+                    self.batch_size,
+                    &deps,
+                    &self.cryo_opts,
+                )
+                .await?;
                 let duration_ns = start_time.elapsed().as_nanos() as u64;
 
                 if self.live {
@@ -136,7 +145,8 @@ impl IndexArgs {
                 // No backfill range given: start from the current latest block.
                 let latest = deps.provider.get_block_number().await?;
                 let (cached_blocks, new_blocks) =
-                    index_block_range(latest, latest, self.batch_size, &deps).await?;
+                    index_block_range(latest, latest, self.batch_size, &deps, &self.cryo_opts)
+                        .await?;
                 info!(
                     "Indexed latest block {} ({} new, {} cached)",
                     latest, new_blocks, cached_blocks
@@ -163,7 +173,8 @@ impl IndexArgs {
                 let from = last_indexed + 1;
                 let start_time = Instant::now();
                 let (cached_blocks, new_blocks) =
-                    index_block_range(from, latest, self.batch_size, &deps).await?;
+                    index_block_range(from, latest, self.batch_size, &deps, &self.cryo_opts)
+                        .await?;
                 info!(
                     "Indexed blocks {}..={} ({} new, {} cached) in {:.2?}",
                     from,

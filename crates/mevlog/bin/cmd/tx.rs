@@ -2,7 +2,7 @@ use alloy::primitives::TxHash;
 use eyre::Result;
 use mevlog::{
     cmds,
-    misc::shared_init::{ConnOpts, OutputFormat, TraceMode},
+    misc::shared_init::{ConnOpts, CryoOpts, OutputFormat, TraceMode},
 };
 
 use crate::cmd::print_query_outcome;
@@ -23,6 +23,9 @@ pub struct TxArgs {
 
     #[command(flatten)]
     pub conn_opts: ConnOpts,
+
+    #[command(flatten)]
+    pub cryo_opts: CryoOpts,
 }
 
 impl TxArgs {
@@ -32,6 +35,7 @@ impl TxArgs {
             self.evm_trace.as_ref(),
             self.native_token_price,
             &self.conn_opts,
+            &self.cryo_opts,
         )
         .await?;
         print_query_outcome(outcome, format)
