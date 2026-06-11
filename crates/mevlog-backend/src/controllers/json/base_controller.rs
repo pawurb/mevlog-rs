@@ -98,6 +98,10 @@ pub(crate) async fn call_json_command<T: serde::de::DeserializeOwned>(
 ) -> Result<T, Value> {
     let timeout_duration = Duration::from_secs(10);
 
+    // Kill the child when the timeout fires; otherwise it keeps indexing over
+    // RPC as an orphan after we've already returned an error to the client.
+    cmd.kill_on_drop(true);
+
     match timeout(timeout_duration, cmd.output()).await {
         Ok(Ok(output)) => {
             if !output.status.success() {
@@ -134,6 +138,9 @@ pub(crate) async fn call_json_command_first_line<T: serde::de::DeserializeOwned>
     let timeout_duration = Duration::from_secs(10);
 
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    // Kill the child when the timeout fires; otherwise it keeps indexing over
+    // RPC as an orphan after we've already returned an error to the client.
+    cmd.kill_on_drop(true);
 
     let timeout_result = timeout(timeout_duration, async {
         let mut child = cmd.spawn().map_err(|e| {

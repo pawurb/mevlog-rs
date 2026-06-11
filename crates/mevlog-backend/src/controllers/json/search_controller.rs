@@ -46,7 +46,14 @@ pub(crate) async fn search(
         cmd.arg("--native-token-price").arg(price.to_string());
     }
 
-    if let Ok(Some(rpc_url)) = get_random_rpc_url(chain_id).await {
+    // Mainnet queries prefer the dedicated ETH_RPC_URL_REMOTE endpoint.
+    let remote_rpc_url = std::env::var("ETH_RPC_URL_REMOTE")
+        .ok()
+        .filter(|url| chain_id == 1 && !url.trim().is_empty());
+
+    if let Some(rpc_url) = remote_rpc_url {
+        cmd.arg("--rpc-url").arg(&rpc_url);
+    } else if let Ok(Some(rpc_url)) = get_random_rpc_url(chain_id).await {
         cmd.arg("--rpc-url").arg(&rpc_url);
     }
 
