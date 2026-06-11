@@ -36,6 +36,7 @@ pub(crate) mod block_txs;
 pub(crate) mod chain_info;
 pub(crate) mod chains;
 pub(crate) mod coinbase_transfer;
+pub(crate) mod db_info;
 pub(crate) mod debug_available;
 pub(crate) mod ens_lookup;
 pub(crate) mod ens_resolve;

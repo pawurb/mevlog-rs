@@ -15,7 +15,11 @@ pub struct PurgeStats {
     pub purged_logs: u64,
 }
 
-/// Deletes all indexed data older than the `keep` newest indexed blocks.
+/// Deletes all indexed data below a `keep`-sized block-number window ending at
+/// the newest indexed block. With gapless indexing this equals keeping the
+/// `keep` newest indexed blocks; with disjoint indexed ranges, older islands
+/// falling outside the window are purged regardless of how many blocks are
+/// indexed in total.
 ///
 /// The highest block present in the local DB is the reference (no RPC calls):
 /// rows with `block_number < MAX(blocks.block_number) - keep + 1` are removed

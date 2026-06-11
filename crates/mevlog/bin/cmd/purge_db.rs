@@ -1,4 +1,4 @@
-use std::{path::PathBuf, time::Instant};
+use std::time::Instant;
 
 use eyre::{Result, bail};
 use mevlog::{
@@ -11,7 +11,7 @@ use mevlog::{
 pub struct PurgeDBArgs {
     #[arg(
         long,
-        help = "Number of newest indexed blocks to keep; older data is deleted (0 purges everything)"
+        help = "Keep blocks within this distance of the newest indexed block; data below that window is deleted (0 purges everything)"
     )]
     keep: u64,
 
@@ -31,13 +31,13 @@ impl PurgeDBArgs {
             bail!("'csv' and 'table' formats are only supported by the query command");
         }
 
-        let db_url = self.txs_db_dir.as_ref().map(|dir| {
-            PathBuf::from(dir)
-                .join(txs::db_file_name(txs::SCHEMA_VERSION, self.chain_id))
-                .to_string_lossy()
-                .into_owned()
-        });
-        let conn = txs::conn(db_url, self.chain_id, false).await?;
+        let db_path = txs::resolve_db_path(self.txs_db_dir.as_deref(), self.chain_id);
+        let conn = txs::conn(
+            Some(db_path.to_string_lossy().into_owned()),
+            self.chain_id,
+            false,
+        )
+        .await?;
 
         let start_time = Instant::now();
         let stats = purge_old_blocks(self.keep, &conn).await?;
