@@ -12,7 +12,6 @@ use reqwest::StatusCode;
 use time::UtcOffset;
 
 use std::time::Instant;
-use tower_http::set_header::SetResponseHeaderLayer;
 use tracing::info_span;
 use tracing_futures::Instrument;
 use tracing_subscriber::fmt::time::OffsetTime;
@@ -138,8 +137,18 @@ fn should_append_html(path: &str) -> bool {
     !last_segment.contains('.')
 }
 
-pub(crate) fn cache_control() -> SetResponseHeaderLayer<HeaderValue> {
-    let cache_control = if Env::current().is_dev() {
+pub(crate) async fn cache_control(request: Request, next: Next) -> Response {
+    let mut response = next.run(request).await;
+
+    let status = response.status();
+    // Only successful responses (and 304 revalidations / 206 range responses)
+    // may be cached long-term. Errors must be "no-store": a 404 during a deploy
+    // window would otherwise be cached by Cloudflare for the full max-age.
+    let cacheable = status.is_success() || status == StatusCode::NOT_MODIFIED;
+
+    let cache_control = if !cacheable {
+        HeaderValue::from_static("no-store")
+    } else if Env::current().is_dev() {
         // "no-cache" (not "no-store"): the browser keeps the asset and revalidates
         // with a conditional request (fast 304), instead of re-downloading the
         // render-blocking CSS on every navigation — which caused the FOUC/flash.
@@ -148,7 +157,8 @@ pub(crate) fn cache_control() -> SetResponseHeaderLayer<HeaderValue> {
         HeaderValue::from_static("public, max-age=1382400, immutable")
     };
 
-    SetResponseHeaderLayer::overriding(CACHE_CONTROL, cache_control)
+    response.headers_mut().insert(CACHE_CONTROL, cache_control);
+    response
 }
 
 pub async fn only_ssl(request: Request, next: Next) -> Response {

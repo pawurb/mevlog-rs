@@ -33,61 +33,67 @@ pub async fn app() -> Router {
         .route("/sitemap.xml", get(sitemap_xml))
         .route_service(
             &format!("/{deployed_at}-scripts.js"),
-            cache_control().layer(ServeFile::new(format!("assets/{deployed_at}-scripts.js"))),
+            from_fn(cache_control)
+                .layer(ServeFile::new(format!("assets/{deployed_at}-scripts.js"))),
         )
         .route_service(
             &format!("/{deployed_at}-styles.css"),
-            cache_control().layer(ServeFile::new(format!("assets/{deployed_at}-styles.css"))),
+            from_fn(cache_control)
+                .layer(ServeFile::new(format!("assets/{deployed_at}-styles.css"))),
         )
         .route_service(
             &format!("/{deployed_at}-terminal.css"),
-            cache_control().layer(ServeFile::new(format!("assets/{deployed_at}-terminal.css"))),
+            from_fn(cache_control)
+                .layer(ServeFile::new(format!("assets/{deployed_at}-terminal.css"))),
         )
         .route_service(
             &format!("/{deployed_at}-react-bundle.js"),
-            cache_control().layer(ServeFile::new(format!(
+            from_fn(cache_control).layer(ServeFile::new(format!(
                 "assets/{deployed_at}-react-bundle.js"
             ))),
         )
-        .nest_service("/assets", cache_control().layer(ServeDir::new("assets")))
+        .nest_service(
+            "/assets",
+            from_fn(cache_control).layer(ServeDir::new("assets")),
+        )
         .route("/docs", get(|| async { Redirect::permanent("/docs/") }))
         .nest_service(
             "/docs/",
-            from_fn(docs_html_ext).layer(cache_control().layer(
+            from_fn(docs_html_ext).layer(from_fn(cache_control).layer(
                 ServeDir::new("docs_html").not_found_service(ServeFile::new("docs_html/404.html")),
             )),
         )
         .route_service(
             "/all-chains.png",
-            cache_control().layer(ServeFile::new("assets/all-chains.png")),
+            from_fn(cache_control).layer(ServeFile::new("assets/all-chains.png")),
         )
         .route_service(
             "/custom-queries.png",
-            cache_control().layer(ServeFile::new("assets/custom-queries.png")),
+            from_fn(cache_control).layer(ServeFile::new("assets/custom-queries.png")),
         )
         .route_service(
             "/favicon.ico",
-            cache_control().layer(ServeFile::new("assets/favicon.ico")),
+            from_fn(cache_control).layer(ServeFile::new("assets/favicon.ico")),
         )
         .route_service(
             "/find-outliers.png",
-            cache_control().layer(ServeFile::new("assets/find-outliers.png")),
+            from_fn(cache_control).layer(ServeFile::new("assets/find-outliers.png")),
         )
         .route_service(
             "/github-stars.svg",
-            cache_control().layer(ServeFile::new("assets/github-stars.svg")),
+            from_fn(cache_control).layer(ServeFile::new("assets/github-stars.svg")),
         )
         .route_service(
             "/mevlog-logo.png",
-            cache_control().layer(ServeFile::new("assets/mevlog-logo.png")),
+            from_fn(cache_control).layer(ServeFile::new("assets/mevlog-logo.png")),
         )
         .route_service(
             "/open-source.png",
-            cache_control().layer(ServeFile::new("assets/open-source.png")),
+            from_fn(cache_control).layer(ServeFile::new("assets/open-source.png")),
         )
         .route_service(
             "/mevlog-demo.mp4",
-            cache_control().layer(ServeFile::new("assets/mevlog-demo.mp4")),
+            from_fn(cache_control).layer(ServeFile::new("assets/mevlog-demo.mp4")),
         )
         .fallback(html::not_found_controller::not_found)
 }
