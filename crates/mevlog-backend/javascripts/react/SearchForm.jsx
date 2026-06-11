@@ -10,20 +10,32 @@ const CHAIN_ID = 1;
 // {LATEST_BLOCK()}, {NATIVE_TOKEN_PRICE()}, {RESOLVE_ENS("name.eth")}.
 const PRESETS = [
   {
-    label: 'Top 20 txs by gas used (last 50 blocks)',
-    sql: 'SELECT block_number, tx_index, tx_hash, gas_used,\n       u256_to_dec(value) AS value\nFROM transactions\nORDER BY gas_used DESC\nLIMIT 20',
+    label: 'How much jaredfromsubway.eth spent on gas in last 1 day',
+    sql: 'SELECT COUNT(*) AS txs,\n       format_ether(u256_sum(u256_mul(t.gas_used, t.effective_gas_price))) AS gas_spent_eth,\n       format_usd(u256_sum(u256_mul(t.gas_used, t.effective_gas_price)), {NATIVE_TOKEN_PRICE()}) AS gas_spent_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.from_address = {RESOLVE_ENS("jaredfromsubway.eth")}\n  AND b.timestamp >= unixepoch(\'now\', \'-1 day\')',
   },
   {
-    label: 'Total USDC transferred (last 100 blocks)',
-    sql: "SELECT u256_sum(erc20_amount) AS total_usdc\nFROM logs\nWHERE address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n  AND erc20_amount IS NOT NULL",
+    label: 'Which 10 txs transferred the most USDC in last 1 day',
+    sql: "SELECT t.tx_hash,\n       ROUND(CAST(u256_to_dec(u256_sum(l.erc20_amount)) AS REAL) / 1e6, 2) AS usdc\nFROM logs l\nJOIN transactions t ON t.block_number = l.block_number AND t.tx_index = l.tx_index\nJOIN blocks b ON b.block_number = l.block_number\nWHERE l.address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n  AND l.erc20_amount IS NOT NULL\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.tx_hash\nORDER BY u256_sum(l.erc20_amount) DESC\nLIMIT 10",
   },
   {
-    label: 'Txs from vitalik.eth (mainnet only)',
-    sql: 'SELECT block_number, tx_index, tx_hash, to_address AS "to",\n       u256_to_dec(value) AS value\nFROM transactions\nWHERE from_address = {RESOLVE_ENS("vitalik.eth")}',
+    label: 'Which 10 txs spent the most on gas in last 1 day',
+    sql: "SELECT t.block_number, t.tx_hash,\n       format_ether(u256_mul(t.gas_used, t.effective_gas_price)) AS gas_eth,\n       format_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()}) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 10",
   },
   {
-    label: 'Tx count per block (recent window)',
-    sql: 'SELECT block_number, COUNT(*) AS txs\nFROM transactions\nWHERE block_number > {LATEST_BLOCK()} - 20\nGROUP BY block_number\nORDER BY block_number DESC',
+    label: 'Which 5 txs used the most gas in last 1 day',
+    sql: "SELECT t.block_number, t.tx_hash, t.gas_used,\n       format_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()}) AS gas_cost_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.gas_used DESC\nLIMIT 5",
+  },
+  {
+    label: 'Top 10 ETH transfers in last 1 day',
+    sql: "SELECT t.block_number, t.tx_hash, t.from_address, t.to_address,\n       format_ether(t.value) AS value_eth,\n       format_usd(t.value, {NATIVE_TOKEN_PRICE()}) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
+  },
+  {
+    label: 'How many new contracts deployed in last 1 day',
+    sql: "SELECT COUNT(*) AS contracts_deployed\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.to_address IS NULL\n  AND t.success = 1\n  AND b.timestamp >= unixepoch('now', '-1 day')",
+  },
+  {
+    label: 'Top 5 miners by blocks mined in last 1 day',
+    sql: "SELECT miner, COUNT(*) AS blocks_mined\nFROM blocks\nWHERE timestamp >= unixepoch('now', '-1 day')\nGROUP BY miner\nORDER BY blocks_mined DESC\nLIMIT 5",
   },
 ];
 
@@ -159,14 +171,14 @@ const SearchForm = ({ initialValues = {} }) => {
 
         <div style={{ marginBottom: '12px' }}>
           <label style={labelStyle} htmlFor="search-sql">
-            Read-only SQL (tables: transactions, logs, blocks)
+            Read-only SQL
           </label>
           <textarea
             id="search-sql"
             value={sql}
             onChange={(e) => setSql(e.target.value)}
             placeholder={'SELECT block_number, tx_index, tx_hash, gas_used\nFROM transactions\nORDER BY gas_used DESC\nLIMIT 20'}
-            rows={8}
+            rows={12}
             style={{ ...inputStyle, resize: 'vertical' }}
           />
         </div>
