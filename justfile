@@ -33,3 +33,11 @@ release:
 # Run benchmarks comparing two git refs
 compare before after:
     bash scripts/compare.sh {{before}} {{after}}
+
+# Re-download the GitHub stars badge with the current star count
+refresh-stars:
+    cd {{backend_dir}} && \
+    stars=$(curl -sf https://api.github.com/repos/pawurb/mevlog-rs | jq -r .stargazers_count) && \
+    curl -sf "https://img.shields.io/badge/Stars-${stars}-blue?style=social&logo=github" -o media/github-stars.svg && \
+    mkdir -p assets && cp media/github-stars.svg assets/github-stars.svg && \
+    echo "Badge updated: ${stars} stars"

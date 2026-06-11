@@ -1,6 +1,7 @@
 pub mod display_sql;
 pub mod indexing;
 pub mod models;
+pub mod purge;
 pub mod raw_query;
 
 use std::path::PathBuf;
