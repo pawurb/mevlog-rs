@@ -8,8 +8,8 @@ use crate::cmd::print_query_outcome;
 
 #[derive(Debug, clap::Parser)]
 pub struct QueryArgs {
-    #[arg(short = 'b', long, help_heading = "Block number or range to collect (e.g., '22030899', 'latest', '22030800:22030900' '50:latest', '50:'", num_args(1..))]
-    blocks: String,
+    #[arg(short = 'b', long, help_heading = "Block number or range to collect (e.g., '22030899', 'latest', '22030800:22030900' '50:latest', '50:'", num_args(1..), required_unless_present = "skip_index", conflicts_with = "skip_index")]
+    blocks: Option<String>,
 
     #[command(flatten)]
     shared_opts: SharedOpts,
@@ -42,6 +42,13 @@ pub struct QueryArgs {
 
     #[arg(
         long,
+        help = "Skip indexing and query the local store as-is (no block range \
+                resolution or fetching)"
+    )]
+    skip_index: bool,
+
+    #[arg(
+        long,
         help = "Read-only SQL to run against the local txs DB \
                 (tables: transactions, logs, blocks). Blob columns (addresses, \
                 hashes) are output as 0x-hex; addresses/hashes in predicates must \
@@ -59,11 +66,12 @@ pub struct QueryArgs {
 impl QueryArgs {
     pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         let outcome = cmds::query::query(
-            &self.blocks,
+            self.blocks.as_deref(),
             self.latest_offset,
             self.max_range,
             self.max_rows,
             self.batch_size,
+            self.skip_index,
             &self.sql,
             &self.shared_opts,
             &self.conn_opts,

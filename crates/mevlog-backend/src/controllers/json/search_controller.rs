@@ -24,19 +24,12 @@ pub(crate) async fn search(
     let chain_id = params.chain_id.unwrap_or(1);
 
     let mut cmd = AsyncCommand::new(mevlog_cmd_path());
-    // Block range is hardcoded: not settable via the web API.
+    // The scheduler keeps the store indexed; web queries read it as-is.
     cmd.arg("query")
-        .arg("-b")
-        .arg("latest")
+        .arg("--skip-index")
         .arg("--format")
         .arg("json")
         .arg("--rpc-timeout-ms")
-        .arg("500")
-        .arg("--latest-offset")
-        .arg("2")
-        .arg("--batch-size")
-        .arg("20")
-        .arg("--max-range")
         .arg("500")
         .arg("--max-rows")
         .arg("200");

@@ -439,7 +439,7 @@ pub mod tests {
         );
         assert_eq!(
             envelope.query.blocks,
-            format!("{FROM_BLOCK}:{TO_BLOCK}"),
+            Some(format!("{FROM_BLOCK}:{TO_BLOCK}")),
             "echoed blocks mismatch"
         );
         assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
@@ -722,7 +722,7 @@ pub mod tests {
         assert_eq!(envelope.result.len(), 1, "result array length mismatch");
         assert_eq!(
             envelope.query.blocks,
-            FROM_BLOCK.to_string(),
+            Some(FROM_BLOCK.to_string()),
             "echoed blocks mismatch"
         );
         assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
@@ -795,7 +795,7 @@ pub mod tests {
         assert_eq!(envelope.result_count, 1, "result_count mismatch");
         assert_eq!(
             envelope.query.blocks,
-            FROM_BLOCK.to_string(),
+            Some(FROM_BLOCK.to_string()),
             "echoed blocks mismatch"
         );
         assert_eq!(envelope.chain.chain_id, CHAIN_ID, "chain id mismatch");
@@ -904,7 +904,7 @@ pub mod tests {
         assert!(envelope.result_count > 0, "expected transactions in block");
         assert_eq!(
             envelope.query.blocks,
-            FROM_BLOCK.to_string(),
+            Some(FROM_BLOCK.to_string()),
             "echoed blocks mismatch"
         );
 

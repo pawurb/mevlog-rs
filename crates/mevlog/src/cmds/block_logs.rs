@@ -53,7 +53,7 @@ pub async fn block_logs(
         duration_ns,
         chain: chain_info,
         query: QueryParams {
-            blocks: block_number.to_string(),
+            blocks: Some(block_number.to_string()),
             sql: Some(sql),
             evm_trace: None,
             evm_calls: false,

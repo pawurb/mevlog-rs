@@ -54,7 +54,8 @@ fn is_false(v: &bool) -> bool {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
-    pub blocks: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocks: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub sql: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

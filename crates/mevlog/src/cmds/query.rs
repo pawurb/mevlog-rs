@@ -19,11 +19,12 @@ use crate::{
 /// given read-only SQL against it.
 #[allow(clippy::too_many_arguments)]
 pub async fn query(
-    blocks: &str,
+    blocks: Option<&str>,
     latest_offset: Option<u64>,
     max_range: Option<u64>,
     max_rows: Option<usize>,
     batch_size: usize,
+    skip_index: bool,
     sql: &str,
     shared_opts: &SharedOpts,
     conn_opts: &ConnOpts,
@@ -46,47 +47,61 @@ pub async fn query(
     let native_token_price =
         get_native_token_price(&deps.chain, &deps.provider, shared_opts.native_token_price).await?;
 
-    let block_range = BlocksRange::from_str(blocks, &deps.provider, latest_offset).await?;
-
-    if let Some(max_range) = max_range {
-        let range_size = block_range.size();
-        if range_size > max_range {
-            bail!(
-                "Block range size {} exceeds maximum allowed range of {}",
-                range_size,
-                max_range
-            );
-        }
-    }
-
     let start_time = Instant::now();
 
-    // Only fetch blocks that are not already in the local store. Indexed
-    // blocks (including empty ones, tracked by the `blocks` table) are skipped.
-    let (cached_blocks, new_blocks) = index_block_range(
-        block_range.from,
-        block_range.to,
-        batch_size,
-        &deps,
-        cryo_opts,
-    )
-    .await?;
+    // With --skip-index the local store is queried as-is: no block range
+    // resolution (so no RPC for 'latest'), no fetching, no backfill.
+    let (cached_blocks, new_blocks) = if skip_index {
+        if blocks.is_some() {
+            bail!("'--blocks' and '--skip-index' are mutually exclusive");
+        }
+        (0, 0)
+    } else {
+        let Some(blocks) = blocks else {
+            bail!("'--blocks' is required unless --skip-index is enabled");
+        };
+        let block_range = BlocksRange::from_str(blocks, &deps.provider, latest_offset).await?;
 
-    // Backfill direct coinbase payments for any untraced txs in range. Runs
-    // over the local store, so it also covers blocks indexed earlier without
-    // --evm-trace.
-    if let Some(mode) = &shared_opts.evm_trace {
-        backfill_coinbase_transfers(
+        if let Some(max_range) = max_range {
+            let range_size = block_range.size();
+            if range_size > max_range {
+                bail!(
+                    "Block range size {} exceeds maximum allowed range of {}",
+                    range_size,
+                    max_range
+                );
+            }
+        }
+
+        // Only fetch blocks that are not already in the local store. Indexed
+        // blocks (including empty ones, tracked by the `blocks` table) are skipped.
+        let counts = index_block_range(
             block_range.from,
             block_range.to,
-            mode,
-            &deps.provider,
-            &deps.chain,
-            &deps.rpc_url,
-            &deps.txs,
+            batch_size,
+            &deps,
+            cryo_opts,
         )
         .await?;
-    }
+
+        // Backfill direct coinbase payments for any untraced txs in range. Runs
+        // over the local store, so it also covers blocks indexed earlier without
+        // --evm-trace.
+        if let Some(mode) = &shared_opts.evm_trace {
+            backfill_coinbase_transfers(
+                block_range.from,
+                block_range.to,
+                mode,
+                &deps.provider,
+                &deps.chain,
+                &deps.rpc_url,
+                &deps.txs,
+            )
+            .await?;
+        }
+
+        counts
+    };
 
     let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
     chain_info.native_token_price = native_token_price;
@@ -104,7 +119,7 @@ pub async fn query(
         duration_ns,
         chain: chain_info,
         query: QueryParams {
-            blocks: blocks.to_string(),
+            blocks: blocks.map(str::to_string),
             sql: Some(sql),
             evm_trace: shared_opts.evm_trace.clone(),
             evm_calls: shared_opts.evm_calls,
