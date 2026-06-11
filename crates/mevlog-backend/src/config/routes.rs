@@ -25,6 +25,7 @@ pub async fn app() -> Router {
             get(json::chain_info_controller::chain_info),
         )
         .route("/api/chains", get(json::chains_controller::chains))
+        .route("/api/db-info", get(json::db_info_controller::db_info))
         .route("/api/explore", get(json::explore_controller::explore))
         .route("/api/search", get(json::search_controller::search))
         .route("/uptime", get(|| async move { "OK".into_response() }))

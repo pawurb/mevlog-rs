@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Search only supports Ethereum mainnet.
 const CHAIN_ID = 1;
@@ -25,19 +25,33 @@ const PRESETS = [
   },
 ];
 
+const formatTimestamp = (ts) => {
+  if (ts === null || ts === undefined) return '';
+  const d = new Date(ts * 1000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} `
+    + `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`;
+};
+
 const SearchForm = ({ initialValues = {} }) => {
   const [sql, setSql] = useState(initialValues.sql || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [response, setResponse] = useState(null);
+  const [dbInfo, setDbInfo] = useState(null);
 
-  const applyPreset = (idx) => {
-    if (idx === '') return;
-    const preset = PRESETS[parseInt(idx)];
-    if (preset) {
-      setSql(preset.sql);
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/db-info?chain_id=${CHAIN_ID}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && !data.error && data.min_block !== null) {
+          setDbInfo(data);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const runQuery = async (e) => {
     if (e) e.preventDefault();
@@ -104,22 +118,38 @@ const SearchForm = ({ initialValues = {} }) => {
 
   return (
     <div className="search-form">
+      {dbInfo && (
+        <div style={{
+          color: 'var(--foreground)',
+          fontFamily: 'monospace',
+          fontSize: '13px',
+          marginBottom: '12px',
+        }}>
+          Indexed blocks:{' '}
+          <span style={{ color: 'var(--bright-white)' }}>
+            {dbInfo.min_block} – {dbInfo.max_block}
+          </span>
+          {' '}({formatTimestamp(dbInfo.min_block_timestamp)} – {formatTimestamp(dbInfo.max_block_timestamp)})
+        </div>
+      )}
       <form onSubmit={runQuery}>
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '12px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <label style={labelStyle} htmlFor="search-preset">Preset query</label>
-            <select
-              id="search-preset"
-              onChange={(e) => applyPreset(e.target.value)}
-              defaultValue=""
-              style={{ ...inputStyle, cursor: 'pointer' }}
+        <div style={{ marginBottom: '4px' }}>
+          <span style={labelStyle}>Preset queries</span>
+        </div>
+        <div className="preset-grid">
+          {PRESETS.map((p, idx) => (
+            <button
+              key={idx}
+              type="button"
+              className={`preset-card${sql === p.sql ? ' active' : ''}`}
+              onClick={() => setSql(p.sql)}
             >
-              <option value="">— select a preset —</option>
-              {PRESETS.map((p, idx) => (
-                <option key={idx} value={idx}>{p.label}</option>
-              ))}
-            </select>
-          </div>
+              <span className="preset-label">
+                <span className="preset-marker">▸</span>
+                {p.label}
+              </span>
+            </button>
+          ))}
         </div>
 
         <div style={{ marginBottom: '12px' }}>
