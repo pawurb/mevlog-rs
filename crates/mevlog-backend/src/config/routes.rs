@@ -73,6 +73,10 @@ pub async fn app() -> Router {
             cache_control().layer(ServeFile::new("assets/find-outliers.png")),
         )
         .route_service(
+            "/github-stars.svg",
+            cache_control().layer(ServeFile::new("assets/github-stars.svg")),
+        )
+        .route_service(
             "/mevlog-logo.png",
             cache_control().layer(ServeFile::new("assets/mevlog-logo.png")),
         )
