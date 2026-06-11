@@ -1105,3 +1105,109 @@ a[href="/tui"] button.active {
     transition: none;
   }
 }
+
+/* Search view: schema reference */
+.schema-reference {
+  margin-bottom: 16px;
+}
+
+.schema-toggle {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 0;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--foreground);
+}
+
+.schema-toggle:hover {
+  color: var(--bright-white);
+}
+
+.schema-toggle:hover .schema-marker {
+  color: var(--yellow);
+}
+
+.schema-toggle:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+.schema-marker {
+  color: var(--bright-black);
+}
+
+.schema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.schema-table {
+  background: hsl(210, 25%, 11%);
+  border: 1px solid #2b3640;
+  border-radius: 4px;
+  padding: 12px 14px;
+  font-family: monospace;
+}
+
+.schema-table-name {
+  color: var(--yellow);
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.schema-columns {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.schema-columns td {
+  padding: 1px 0;
+  font-size: 12px;
+  vertical-align: baseline;
+}
+
+.schema-col-name {
+  color: var(--foreground);
+  padding-right: 12px !important;
+}
+
+.schema-nullable {
+  color: var(--bright-black);
+}
+
+.schema-pk {
+  color: var(--yellow);
+  font-size: 10px;
+}
+
+.schema-col-type {
+  color: var(--bright-black);
+  padding-right: 12px !important;
+}
+
+.schema-col-hint {
+  color: var(--cyan);
+  font-size: 11px;
+}
+
+.schema-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #2b3640;
+  color: var(--bright-black);
+  font-size: 11px;
+}
+
+/* terminal.css borders all tables; schema cards are borderless aligned rows */
+.schema-columns,
+.schema-columns td {
+  border: none !important;
+}
