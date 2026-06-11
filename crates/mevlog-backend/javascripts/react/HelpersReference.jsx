@@ -24,6 +24,10 @@ const GROUPS = [
         sig: 'u256_to_dec(col)',
         desc: 'U256 BLOB to full-precision decimal string.',
       },
+      {
+        sig: 'erc20_to_real(amount, decimals)',
+        desc: 'Token amount divided by 10^decimals, as REAL (approximate f64; use u256_to_dec for exact). E.g. erc20_to_real(erc20_amount, 6) for USDC.',
+      },
     ],
   },
   {
