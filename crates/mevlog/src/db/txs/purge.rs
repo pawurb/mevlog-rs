@@ -24,8 +24,10 @@ pub struct PurgeStats {
 /// The highest block present in the local DB is the reference (no RPC calls):
 /// rows with `block_number < MAX(blocks.block_number) - keep + 1` are removed
 /// from `logs`, `transactions`, and `blocks` in a single transaction
-/// (`keep = 0` purges everything). Disk space is reclaimed afterwards via
-/// `VACUUM` plus a WAL truncation.
+/// (`keep = 0` purges everything). Disk space is not reclaimed; call
+/// [`reclaim_space`] afterwards for one-off purges. Frequent purges (e.g.
+/// `index --live`) should skip it — freed pages get reused by subsequent
+/// inserts, and a full DB rewrite per round would be wasteful.
 pub async fn purge_old_blocks(keep: u64, conn: &SqlitePool) -> Result<PurgeStats> {
     let latest_block: Option<i64> = sqlx::query_scalar("SELECT MAX(block_number) FROM blocks")
         .fetch_one(conn)
@@ -59,9 +61,6 @@ pub async fn purge_old_blocks(keep: u64, conn: &SqlitePool) -> Result<PurgeStats
 
     db_tx.commit().await?;
 
-    sqlx::query("VACUUM").execute(conn).await?;
-    truncate_wal(conn).await?;
-
     Ok(PurgeStats {
         latest_block: Some(latest_block),
         cutoff_block: Some(cutoff_block),
@@ -69,6 +68,14 @@ pub async fn purge_old_blocks(keep: u64, conn: &SqlitePool) -> Result<PurgeStats
         purged_transactions,
         purged_logs,
     })
+}
+
+/// Reclaims disk space freed by [`purge_old_blocks`] via `VACUUM` plus a WAL
+/// truncation.
+pub async fn reclaim_space(conn: &SqlitePool) -> Result<()> {
+    sqlx::query("VACUUM").execute(conn).await?;
+    truncate_wal(conn).await?;
+    Ok(())
 }
 
 #[cfg(test)]

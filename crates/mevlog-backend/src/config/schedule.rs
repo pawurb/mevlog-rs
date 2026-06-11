@@ -1,5 +1,6 @@
 use eyre::Result;
-use mevlog::db::txs::{self, purge::purge_old_blocks};
+use mevlog::{misc::shared_init::mevlog_cmd_path, models::json::purge_response::PurgeResponse};
+use tokio::process::Command as AsyncCommand;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::misc::{prices::update_prices_cache, utils::uptime_ping};
@@ -46,21 +47,40 @@ pub async fn get_schedule() -> Result<JobScheduler> {
         .add(Job::new_async("every 1 hour", |_uuid, _l| {
             Box::pin(async move {
                 let purged = async {
-                    let conn = txs::conn(None, PURGE_CHAIN_ID, false).await?;
-                    let stats = purge_old_blocks(PURGE_KEEP_BLOCKS, &conn).await?;
-                    conn.close().await;
-                    Ok::<_, eyre::Error>(stats)
+                    let mut cmd = AsyncCommand::new(mevlog_cmd_path());
+                    cmd.arg("purge-db")
+                        .arg("--keep")
+                        .arg(PURGE_KEEP_BLOCKS.to_string())
+                        .arg("--chain-id")
+                        .arg(PURGE_CHAIN_ID.to_string())
+                        .arg("--format")
+                        .arg("json");
+                    cmd.env("RUST_LOG", "off");
+
+                    let output = cmd.output().await?;
+                    if !output.status.success() {
+                        eyre::bail!(
+                            "purge-db exited with {}: {}",
+                            output.status,
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
+
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let resp: PurgeResponse = serde_json::from_str(stdout.trim())?;
+                    Ok::<_, eyre::Error>(resp)
                 }
                 .await;
 
                 match purged {
-                    Ok(stats) => {
+                    Ok(resp) => {
                         tracing::info!(
-                            "Purged txs DB for chain {}: {} blocks, {} txs, {} logs removed",
+                            "Purged txs DB for chain {}: {} blocks, {} txs, {} logs removed in {}",
                             PURGE_CHAIN_ID,
-                            stats.purged_blocks,
-                            stats.purged_transactions,
-                            stats.purged_logs
+                            resp.purged_blocks,
+                            resp.purged_transactions,
+                            resp.purged_logs,
+                            resp.duration
                         );
                     }
                     Err(e) => {

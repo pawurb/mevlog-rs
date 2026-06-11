@@ -4,7 +4,7 @@ use alloy::providers::Provider;
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
-    db::txs::indexing::index_block_range,
+    db::txs::{indexing::index_block_range, purge::purge_old_blocks},
     misc::{
         args_parsing::BlocksRange,
         shared_init::{ConnOpts, OutputFormat, init_deps},
@@ -50,12 +50,26 @@ pub struct IndexArgs {
         default_value = "3000"
     )]
     poll_interval_ms: u64,
+
+    #[arg(
+        long,
+        help = "With --live: after each indexing round, delete data older than this many blocks behind the newest indexed block"
+    )]
+    keep: Option<u64>,
 }
 
 impl IndexArgs {
     pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
         if !self.live && self.blocks.is_none() {
             bail!("--blocks is required unless --live is set");
+        }
+
+        if self.keep.is_some() && !self.live {
+            bail!("--keep requires --live; use the purge-db command for one-off pruning");
+        }
+
+        if self.keep == Some(0) {
+            bail!("--keep must be at least 1; use 'purge-db --keep 0' to wipe the DB");
         }
 
         if matches!(format, OutputFormat::Csv | OutputFormat::Table) {
@@ -131,6 +145,12 @@ impl IndexArgs {
             }
         };
 
+        // One-time purge after the backfill, instead of waiting for the first
+        // new block.
+        if let Some(keep) = self.keep {
+            purge_and_log(keep, &deps.txs).await?;
+        }
+
         info!(
             "Watching for new blocks (poll every {}ms)",
             self.poll_interval_ms
@@ -153,8 +173,26 @@ impl IndexArgs {
                     start_time.elapsed()
                 );
                 last_indexed = latest;
+
+                if let Some(keep) = self.keep {
+                    purge_and_log(keep, &deps.txs).await?;
+                }
             }
             tokio::time::sleep(poll).await;
         }
     }
+}
+
+async fn purge_and_log(keep: u64, conn: &sqlx::SqlitePool) -> Result<()> {
+    let stats = purge_old_blocks(keep, conn).await?;
+    if stats.purged_blocks > 0 {
+        info!(
+            "Purged {} blocks below {} ({} txs, {} logs)",
+            stats.purged_blocks,
+            stats.cutoff_block.unwrap_or_default(),
+            stats.purged_transactions,
+            stats.purged_logs
+        );
+    }
+    Ok(())
 }
