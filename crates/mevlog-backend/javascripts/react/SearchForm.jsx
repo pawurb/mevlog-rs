@@ -27,7 +27,7 @@ const PRESETS = [
   },
   {
     label: 'Top 10 ETH transfers in last 1 day',
-    sql: "SELECT t.block_number, t.tx_hash, t.from_address, t.to_address,\n       format_ether(t.value) AS value_eth,\n       format_usd(t.value, {NATIVE_TOKEN_PRICE()}) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
+    sql: "SELECT t.tx_hash,\n       format_ether(t.value) AS value_eth,\n       format_usd(t.value, {NATIVE_TOKEN_PRICE()}) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
   },
   {
     label: 'How many new contracts deployed in last 1 day',
