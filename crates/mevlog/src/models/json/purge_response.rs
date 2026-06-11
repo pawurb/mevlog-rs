@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{db::txs::purge::PurgeStats, models::json::query_response::format_duration};
 
-/// Status envelope emitted by the `purge` command after removing indexed data
-/// older than the `keep` newest blocks from the local txs DB. `latest_block`
+/// Status envelope emitted by the `purge-db` command after removing indexed
+/// data below the retained block window from the local txs DB. `latest_block`
 /// (the highest indexed block) and `cutoff_block` (the lowest retained block)
 /// are `null` when the DB was empty.
 #[derive(Debug, Serialize, Deserialize)]

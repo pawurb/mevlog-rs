@@ -1,4 +1,5 @@
 pub mod block_json;
+pub mod db_info_response;
 pub mod index_response;
 pub mod log_json;
 pub mod purge_response;

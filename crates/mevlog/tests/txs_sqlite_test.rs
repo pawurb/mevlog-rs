@@ -13,8 +13,9 @@ pub mod tests {
             models::{log::Log, transaction::Transaction},
         },
         models::json::{
-            block_json::BlockJson, log_json::LogJson, purge_response::PurgeResponse,
-            query_response::QueryResponse, transaction_json::TransactionJson,
+            block_json::BlockJson, db_info_response::DbInfoResponse, log_json::LogJson,
+            purge_response::PurgeResponse, query_response::QueryResponse,
+            transaction_json::TransactionJson,
         },
     };
     use uuid::Uuid;
@@ -156,8 +157,19 @@ pub mod tests {
             .expect("failed to execute CLI")
     }
 
+    fn run_db_info(tmp_dir: &Path) -> Output {
+        Command::new("cargo")
+            .env("RUST_LOG", "off")
+            .args(["run", "--bin", "mevlog", "--", "db-info"])
+            .args(["--chain-id", &CHAIN_ID.to_string()])
+            .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])
+            .args(["--format", "json"])
+            .output()
+            .expect("failed to execute CLI")
+    }
+
     #[tokio::test]
-    async fn test_purge_removes_indexed_data() -> Result<()> {
+    async fn test_db_info_and_purge_removes_indexed_data() -> Result<()> {
         let rpc_url = std::env::var("ETH_RPC_URL").expect("ETH_RPC_URL must be set");
 
         sync_fixtures_to_cache();
@@ -181,19 +193,43 @@ pub mod tests {
         )
         .await?;
 
-        let total_blocks = (TO_BLOCK - FROM_BLOCK + 1) as i64;
-        let blocks_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM blocks")
-            .fetch_one(&conn)
-            .await?;
+        let total_blocks = TO_BLOCK - FROM_BLOCK + 1;
         let txs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM transactions")
             .fetch_one(&conn)
             .await?;
         let logs_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM logs")
             .fetch_one(&conn)
             .await?;
-        assert_eq!(blocks_count, total_blocks, "blocks should be indexed");
         assert!(txs_count > 0, "transactions should be indexed");
         assert!(logs_count > 0, "logs should be indexed");
+
+        let output = run_db_info(&tmp_dir);
+        assert!(
+            output.status.success(),
+            "db-info failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let resp: DbInfoResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(resp.chain_id, CHAIN_ID, "chain id mismatch");
+        assert_eq!(resp.schema_version, txs::SCHEMA_VERSION, "schema mismatch");
+        assert_eq!(resp.db_path, db_path.to_string_lossy(), "db_path mismatch");
+        assert_eq!(resp.blocks, total_blocks, "blocks mismatch");
+        assert_eq!(resp.transactions, txs_count as u64, "txs mismatch");
+        assert_eq!(resp.logs, logs_count as u64, "logs mismatch");
+        assert_eq!(resp.min_block, Some(FROM_BLOCK), "min_block mismatch");
+        assert_eq!(resp.max_block, Some(TO_BLOCK), "max_block mismatch");
+        assert_eq!(resp.missing_blocks, 0, "missing_blocks mismatch");
+        assert!(resp.db_size_bytes > 0, "db_size_bytes should be positive");
+        assert!(
+            resp.min_block_timestamp.is_some() && resp.min_block_time.is_some(),
+            "min block timestamps should be set"
+        );
+        assert!(
+            resp.max_block_timestamp >= resp.min_block_timestamp,
+            "timestamps should be ordered"
+        );
 
         // keep=0: everything up to and including the highest indexed block
         // (TO_BLOCK) is purged; the cutoff never consults the chain head.
@@ -209,10 +245,7 @@ pub mod tests {
         assert_eq!(resp.keep, 0, "keep mismatch");
         assert_eq!(resp.latest_block, Some(TO_BLOCK), "latest_block mismatch");
         assert_eq!(resp.cutoff_block, Some(TO_BLOCK + 1), "cutoff mismatch");
-        assert_eq!(
-            resp.purged_blocks, total_blocks as u64,
-            "purged_blocks mismatch"
-        );
+        assert_eq!(resp.purged_blocks, total_blocks, "purged_blocks mismatch");
         assert_eq!(
             resp.purged_transactions, txs_count as u64,
             "purged_transactions mismatch"
@@ -220,13 +253,24 @@ pub mod tests {
         assert_eq!(resp.purged_logs, logs_count as u64, "purged_logs mismatch");
         assert_eq!(resp.chain_id, CHAIN_ID, "chain id mismatch");
 
-        for table in ["blocks", "transactions", "logs"] {
-            let count: i64 =
-                sqlx::query_scalar(sqlx::AssertSqlSafe(format!("SELECT COUNT(*) FROM {table}")))
-                    .fetch_one(&conn)
-                    .await?;
-            assert_eq!(count, 0, "{table} should be empty after purge");
-        }
+        let output = run_db_info(&tmp_dir);
+        assert!(
+            output.status.success(),
+            "db-info after purge failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        );
+
+        let resp: DbInfoResponse = serde_json::from_slice(&output.stdout)?;
+        assert_eq!(resp.blocks, 0, "blocks should be empty after purge");
+        assert_eq!(resp.transactions, 0, "txs should be empty after purge");
+        assert_eq!(resp.logs, 0, "logs should be empty after purge");
+        assert_eq!(resp.min_block, None, "min_block should be null after purge");
+        assert_eq!(resp.max_block, None, "max_block should be null after purge");
+        assert_eq!(resp.min_block_time, None, "min_block_time should be null");
+        assert_eq!(resp.max_block_time, None, "max_block_time should be null");
+        assert_eq!(resp.missing_blocks, 0, "missing_blocks should be 0");
+        assert!(resp.db_size_bytes > 0, "db file should still exist");
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())

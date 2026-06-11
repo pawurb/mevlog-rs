@@ -9,10 +9,10 @@ use cmd::tui::TuiArgs;
 use cmd::{
     affected_addresses::AffectedAddressesArgs, block::BlockArgs, block_logs::BlockLogsArgs,
     block_txs::BlockTxsArgs, chain_info::ChainInfoArgs, chains::ChainsArgs,
-    coinbase_transfer::CoinbaseTransferArgs, debug_available::DebugAvailableArgs,
-    ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs, evm_traces::EvmTracesArgs,
-    index::IndexArgs, purge_db::PurgeDBArgs, query::QueryArgs, state_diff::StateDiffArgs,
-    tx::TxArgs, tx_logs::TxLogsArgs, update_db::UpdateDBArgs,
+    coinbase_transfer::CoinbaseTransferArgs, db_info::DbInfoArgs,
+    debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
+    evm_traces::EvmTracesArgs, index::IndexArgs, purge_db::PurgeDBArgs, query::QueryArgs,
+    state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs, update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -54,8 +54,12 @@ pub enum MLSubcommand {
     Query(Box<QueryArgs>),
     #[command(about = "Index a block range into the local txs DB")]
     Index(IndexArgs),
-    #[command(about = "Remove indexed data older than the N newest blocks")]
+    #[command(
+        about = "Remove indexed data below a block window ending at the newest indexed block"
+    )]
     PurgeDB(PurgeDBArgs),
+    #[command(name = "db-info", about = "Show local txs DB stats")]
+    DbInfo(DbInfoArgs),
     #[command(about = "Show a single transaction")]
     Tx(TxArgs),
     #[command(name = "tx-logs", about = "Show a transaction's logs")]
@@ -168,6 +172,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::PurgeDB(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::DbInfo(args) => {
             args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
