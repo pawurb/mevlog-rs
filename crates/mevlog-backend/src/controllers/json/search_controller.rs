@@ -37,7 +37,9 @@ pub(crate) async fn search(
         .arg("--batch-size")
         .arg("20")
         .arg("--max-range")
-        .arg("500");
+        .arg("500")
+        .arg("--max-rows")
+        .arg("200");
     cmd.env("RUST_LOG", "off");
 
     let price = get_price_for_chain_id(chain_id).await;

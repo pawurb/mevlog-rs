@@ -76,7 +76,7 @@ pub async fn tx(
         sql.replace(NATIVE_TOKEN_PRICE_MACRO, "NULL")
     };
 
-    let result = run_raw_query(&sql, &deps.txs_read_path)?;
+    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
     if result.rows.is_empty() {
         bail!("Transaction {} not found in local store", tx_hash);
     }

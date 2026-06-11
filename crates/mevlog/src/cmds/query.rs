@@ -22,6 +22,7 @@ pub async fn query(
     blocks: &str,
     latest_offset: Option<u64>,
     max_range: Option<u64>,
+    max_rows: Option<usize>,
     batch_size: usize,
     sql: &str,
     shared_opts: &SharedOpts,
@@ -93,7 +94,7 @@ pub async fn query(
 
     let sql =
         substitute_sql_macros(sql, &deps.provider, deps.chain.chain_id, native_token_price).await?;
-    let result = run_raw_query(&sql, &deps.txs_read_path)?;
+    let result = run_raw_query(&sql, &deps.txs_read_path, max_rows)?;
 
     Ok(QueryOutcome {
         columns: result.columns,

@@ -45,7 +45,7 @@ pub async fn tx_logs(
     let sql = logs_display_query(&format!(
         "block_number = {block_number} AND tx_index = {tx_index}"
     ));
-    let result = run_raw_query(&sql, &deps.txs_read_path)?;
+    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
 
     Ok(QueryOutcome {
         columns: result.columns,

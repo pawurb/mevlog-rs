@@ -56,10 +56,16 @@ pub struct QueryResult {
 
 /// Runs a user-provided SQL statement against the read-only txs DB and
 /// serializes each result row into a JSON object keyed by column name.
+/// Errors if the result exceeds `max_rows` (`None` = unlimited); rows are
+/// stepped lazily, so nothing past the cap is ever materialized.
 ///
 /// Uses a read-only `rusqlite` connection rather than `sqlx` so the custom
 /// `u256_sum` SQL function is available to the query.
-pub(crate) fn run_raw_query(sql: &str, db_path: &str) -> Result<QueryResult> {
+pub(crate) fn run_raw_query(
+    sql: &str,
+    db_path: &str,
+    max_rows: Option<usize>,
+) -> Result<QueryResult> {
     // Accept both `sqlite://<path>` URLs and bare filesystem paths.
     let filename = db_path
         .strip_prefix("sqlite://")
@@ -95,6 +101,11 @@ pub(crate) fn run_raw_query(sql: &str, db_path: &str) -> Result<QueryResult> {
     let mut out = Vec::new();
     let mut rows = stmt.query([])?;
     while let Some(row) = rows.next()? {
+        if let Some(max_rows) = max_rows
+            && out.len() == max_rows
+        {
+            bail!("query returned more than {max_rows} rows; add a LIMIT clause");
+        }
         let mut obj = Map::with_capacity(col_count);
         for (i, col) in columns.iter().enumerate() {
             let value = match row.get_ref(i)? {
@@ -152,6 +163,7 @@ mod test {
         let result = run_raw_query(
             "SELECT block_number, tx_hash, from_address, signature FROM transactions",
             &path,
+            None,
         )?;
 
         assert_eq!(
@@ -176,6 +188,7 @@ mod test {
         let result = run_raw_query(
             "SELECT block_number, tx_hash FROM transactions WHERE 1 = 0",
             &path,
+            None,
         )?;
 
         assert!(result.rows.is_empty());
@@ -189,7 +202,8 @@ mod test {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
-        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path).unwrap_err();
+        let err =
+            run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path, None).unwrap_err();
         assert!(err.to_string().contains("duplicate column name `x`"));
 
         Ok(())
@@ -200,8 +214,22 @@ mod test {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path)?;
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None)?;
         assert_eq!(result.rows[0]["n"], json!(1));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_enforces_max_rows() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
+
+        let sql = "SELECT block_number FROM transactions";
+        assert!(run_raw_query(sql, &path, Some(1)).is_ok());
+
+        let err = run_raw_query(sql, &path, Some(0)).unwrap_err();
+        assert!(err.to_string().contains("more than 0 rows"));
 
         Ok(())
     }
@@ -216,11 +244,11 @@ mod test {
             "UPDATE transactions SET nonce = 0",
             "DROP TABLE transactions",
         ] {
-            let err = run_raw_query(stmt, &path);
+            let err = run_raw_query(stmt, &path, None);
             assert!(err.is_err(), "expected `{stmt}` to be rejected");
         }
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path)?;
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None)?;
         assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
@@ -234,7 +262,7 @@ mod test {
         for table in ["transactions", "logs", "blocks"] {
             let sql = format!("SELECT COUNT(*) AS n FROM {table}");
             assert!(
-                run_raw_query(&sql, &path).is_ok(),
+                run_raw_query(&sql, &path, None).is_ok(),
                 "`{table}` should be readable"
             );
         }
@@ -252,7 +280,7 @@ mod test {
             "SELECT version FROM _sqlx_migrations",
         ] {
             assert!(
-                run_raw_query(sql, &path).is_err(),
+                run_raw_query(sql, &path, None).is_err(),
                 "expected `{sql}` denied"
             );
         }
@@ -270,7 +298,7 @@ mod test {
             "PRAGMA query_only = OFF",
         ] {
             assert!(
-                run_raw_query(sql, &path).is_err(),
+                run_raw_query(sql, &path, None).is_err(),
                 "expected `{sql}` denied"
             );
         }

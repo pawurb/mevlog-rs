@@ -28,6 +28,13 @@ pub struct QueryArgs {
 
     #[arg(
         long,
+        help = "Maximum number of rows the --sql query may return; errors when \
+                exceeded (default: unlimited)"
+    )]
+    max_rows: Option<usize>,
+
+    #[arg(
+        long,
         help = "Batch size for data fetching (default: 100)",
         default_value = "100"
     )]
@@ -55,6 +62,7 @@ impl QueryArgs {
             &self.blocks,
             self.latest_offset,
             self.max_range,
+            self.max_rows,
             self.batch_size,
             &self.sql,
             &self.shared_opts,
