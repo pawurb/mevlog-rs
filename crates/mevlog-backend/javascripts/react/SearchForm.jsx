@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import SchemaReference from './SchemaReference';
+import HelpersReference from './HelpersReference';
 
 // Search only supports Ethereum mainnet.
 const CHAIN_ID = 1;
@@ -134,6 +135,9 @@ const SearchForm = ({ initialValues = {} }) => {
         </div>
       )}
       <form onSubmit={runQuery}>
+        <SchemaReference />
+        <HelpersReference />
+
         <div style={{ marginBottom: '4px' }}>
           <span style={labelStyle}>Preset queries</span>
         </div>
@@ -152,8 +156,6 @@ const SearchForm = ({ initialValues = {} }) => {
             </button>
           ))}
         </div>
-
-        <SchemaReference />
 
         <div style={{ marginBottom: '12px' }}>
           <label style={labelStyle} htmlFor="search-sql">

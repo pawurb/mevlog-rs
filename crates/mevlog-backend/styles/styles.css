@@ -1170,44 +1170,79 @@ a[href="/tui"] button.active {
 
 .schema-columns td {
   padding: 1px 0;
-  font-size: 12px;
+  font-size: 13px;
   vertical-align: baseline;
 }
 
 .schema-col-name {
-  color: var(--foreground);
+  color: var(--bright-white);
   padding-right: 12px !important;
 }
 
 .schema-nullable {
-  color: var(--bright-black);
+  color: var(--black);
 }
 
 .schema-pk {
   color: var(--yellow);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .schema-col-type {
-  color: var(--bright-black);
+  color: var(--black);
   padding-right: 12px !important;
 }
 
 .schema-col-hint {
-  color: var(--cyan);
-  font-size: 11px;
+  color: var(--bright-cyan);
+  font-size: 12px;
 }
 
 .schema-footer {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid #2b3640;
-  color: var(--bright-black);
-  font-size: 11px;
+  color: var(--black);
+  font-size: 12px;
 }
 
 /* terminal.css borders all tables; schema cards are borderless aligned rows */
 .schema-columns,
 .schema-columns td {
   border: none !important;
+}
+
+/* Search view: SQL functions & macros reference */
+/* a / a:hover use `all: unset`, which strips class styles on hover and makes
+   the link change font mid-hover; re-assert every state explicitly. */
+a.schema-source-link,
+a.schema-source-link:hover,
+a.schema-source-link:focus {
+  margin-left: 12px;
+  font-family: monospace;
+  font-size: 13px;
+  color: var(--blue);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+a.schema-source-link:hover,
+a.schema-source-link:focus {
+  color: var(--bright-blue);
+}
+
+.helper-entry {
+  margin-bottom: 8px;
+}
+
+.helper-sig {
+  color: var(--bright-white);
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.helper-desc {
+  color: var(--black);
+  font-size: 13px;
+  line-height: 1.4;
 }
