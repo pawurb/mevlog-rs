@@ -3,9 +3,9 @@ use axum::{
     extract::Request,
     http::{HeaderValue, Uri},
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
 };
-use reqwest::header::CACHE_CONTROL;
+use reqwest::header::{CACHE_CONTROL, CONTENT_TYPE};
 use tower_http::cors::{Any, CorsLayer};
 
 use reqwest::StatusCode;
@@ -113,8 +113,22 @@ pub fn cors() -> CorsLayer {
 /// Runs on the nested `/docs/` service, so it sees the prefix-stripped path
 /// (e.g. `/chain-info`, not `/docs/chain-info`).
 pub(crate) async fn docs_html_ext(mut request: Request, next: Next) -> Response {
-    let path = request.uri().path();
-    if should_append_html(path) {
+    let path = request.uri().path().to_string();
+
+    // ".html" URLs redirect permanently to their clean form (the rewrite below
+    // maps them back to the file). Mirrors clean-html-links, which rewrites
+    // internal links the same way and leaves mdBook's special print.html as-is;
+    // the index page collapses into "/docs/" itself.
+    if let Some(clean) = path.strip_suffix(".html") {
+        if clean == "/index" {
+            return Redirect::permanent("/docs/").into_response();
+        }
+        if !clean.is_empty() && clean != "/print" {
+            return Redirect::permanent(&format!("/docs{clean}")).into_response();
+        }
+    }
+
+    if should_append_html(&path) {
         let mut new_path = format!("{path}.html");
         if let Some(query) = request.uri().query() {
             new_path = format!("{new_path}?{query}");
@@ -146,9 +160,18 @@ pub(crate) async fn cache_control(request: Request, next: Next) -> Response {
     // window would otherwise be cached by Cloudflare for the full max-age.
     let cacheable = status.is_success() || status == StatusCode::NOT_MODIFIED;
 
+    // HTML lives at stable URLs (`/explore`, `/docs/introduction.html`) and changes
+    // on every deploy, so it must revalidate; only fingerprinted assets (timestamped
+    // app bundles, mdbook-hashed files) are safe to mark immutable.
+    let is_html = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|header| header.to_str().ok())
+        .is_some_and(|content_type| content_type.starts_with("text/html"));
+
     let cache_control = if !cacheable {
         HeaderValue::from_static("no-store")
-    } else if Env::current().is_dev() {
+    } else if Env::current().is_dev() || is_html {
         // "no-cache" (not "no-store"): the browser keeps the asset and revalidates
         // with a conditional request (fast 304), instead of re-downloading the
         // render-blocking CSS on every navigation — which caused the FOUC/flash.
