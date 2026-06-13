@@ -56,6 +56,13 @@ pub struct QueryArgs {
 
     #[arg(
         long,
+        help = "Abort query execution (RPC, indexing and SQL) after this many \
+                milliseconds (default: no timeout)"
+    )]
+    timeout_ms: Option<u64>,
+
+    #[arg(
+        long,
         help = "Read-only SQL to run against the local txs DB \
                 (tables: transactions, logs, blocks). Blob columns (addresses, \
                 hashes) are output as 0x-hex; addresses/hashes in predicates must \
@@ -84,6 +91,7 @@ impl QueryArgs {
             &self.shared_opts,
             &self.conn_opts,
             &self.cryo_opts,
+            self.timeout_ms,
         )
         .await?;
         print_query_outcome(outcome, format)

@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use axum::{Json, extract::Query, http::StatusCode, response::IntoResponse};
 use mevlog::{
     cmds::query::query,
@@ -7,18 +5,18 @@ use mevlog::{
     misc::shared_init::{ConnOpts, CryoOpts, SharedOpts},
     models::json::query_response::serialize_query_response,
 };
-use tokio::time::timeout;
 
 use crate::{
     controllers::{
-        base_controller::{DATA_FETCH_ERROR, decorate_error_message},
-        html::search_controller::SearchParams,
+        base_controller::decorate_error_message, html::search_controller::SearchParams,
         json::base_controller::extract_json_query_params,
     },
     misc::{prices::get_price_for_chain_id, rpc_utils::get_random_rpc_url},
 };
 
-const QUERY_TIMEOUT: Duration = Duration::from_millis(10000);
+// Kept below the server-wide 10s TimeoutLayer so query()'s decorated timeout
+// error wins the race instead of the outer layer's generic 408.
+const QUERY_TIMEOUT_MS: u64 = 8000;
 
 #[hotpath::measure]
 pub(crate) async fn search(
@@ -70,7 +68,8 @@ pub(crate) async fn search(
 
     // The scheduler keeps the store indexed; web queries read it as-is
     // (skip_index = true => no block range resolution, fetching, or backfill).
-    let run = query(
+    // The timeout is enforced inside query() (shared with the CLI's --timeout-ms).
+    let outcome = match query(
         None, // blocks
         None, // latest_offset
         None, // max_range
@@ -82,22 +81,16 @@ pub(crate) async fn search(
         &shared_opts,
         &conn_opts,
         &cryo_opts,
-    );
-
-    let outcome = match timeout(QUERY_TIMEOUT, run).await {
-        Ok(Ok(outcome)) => outcome,
-        Ok(Err(error)) => {
+        Some(QUERY_TIMEOUT_MS),
+    )
+    .await
+    {
+        Ok(outcome) => outcome,
+        Err(error) => {
             let message = decorate_error_message(&error.to_string());
             return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({ "error": message })),
-            )
-                .into_response();
-        }
-        Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": decorate_error_message(DATA_FETCH_ERROR) })),
             )
                 .into_response();
         }

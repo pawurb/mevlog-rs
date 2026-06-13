@@ -16,7 +16,15 @@ use serde::Deserialize;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
+/// Extra time on top of the per-request timeout before the CLI subprocess is
+/// force-killed: covers process startup (before the CLI's own clock starts) and
+/// lets the CLI's own timeout error surface ahead of this hard kill.
+const KILL_GRACE: Duration = Duration::from_secs(5);
+
 #[derive(Debug, Deserialize, JsonSchema)]
+// Reject stale clients still sending the removed `blocks`/`skip_index` params
+// instead of silently querying the whole DB.
+#[serde(deny_unknown_fields)]
 struct QueryParams {
     #[schemars(
         description = "Read-only SQL run against the local txs DB. Tables: transactions, logs, blocks. See the tool description for the full schema, U256 helper functions and {MACRO()} reference."
@@ -104,6 +112,8 @@ EXAMPLES:
         let mut args = vec![
             "query".to_string(),
             "--skip-index".to_string(),
+            "--timeout-ms".to_string(),
+            self.timeout.as_millis().to_string(),
             "--sql".to_string(),
             p.sql,
         ];
@@ -174,12 +184,18 @@ impl MevlogMcpServer {
         // Kill the spawned process if the timeout future below is dropped.
         cmd.kill_on_drop(true);
 
-        let output = match tokio::time::timeout(self.timeout, cmd.output()).await {
+        // The request budget (self.timeout) is enforced inside the CLI: `query`
+        // gets it via --timeout-ms (covering RPC, indexing and SQL). This is only
+        // a hard-kill backstop for cases the CLI can't self-bound — db_info (no
+        // internal timeout) or a wedged child. KILL_GRACE covers process startup
+        // before the CLI's own clock starts and lets its cleaner error win.
+        let backstop = self.timeout + KILL_GRACE;
+        let output = match tokio::time::timeout(backstop, cmd.output()).await {
             Ok(res) => res.map_err(|e| {
                 McpError::internal_error(format!("Failed to execute mevlog: {e}"), None)
             })?,
             Err(_) => {
-                let ms = self.timeout.as_millis();
+                let ms = backstop.as_millis();
                 error!(timeout_ms = ms, "mevlog CLI timed out during MCP request");
                 return Err(McpError::internal_error(
                     format!("mevlog timed out after {ms}ms"),

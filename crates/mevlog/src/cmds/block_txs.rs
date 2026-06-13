@@ -63,7 +63,7 @@ pub async fn block_txs(
         sql.replace(NATIVE_TOKEN_PRICE_MACRO, "NULL")
     };
 
-    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None).await?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None, None).await?;
 
     Ok(QueryOutcome {
         columns: result.columns,
