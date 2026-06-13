@@ -33,18 +33,6 @@ pub async fn query(
 ) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
 
-    if shared_opts.evm_trace.is_none() {
-        if shared_opts.evm_calls {
-            bail!("'--evm-calls' is supported only with --evm-trace [rpc|revm] enabled")
-        }
-        if shared_opts.evm_ops {
-            bail!("'--evm-ops' is supported only with --evm-trace [rpc|revm] enabled")
-        }
-        if shared_opts.evm_state_diff {
-            bail!("'--evm-state-diff' is supported only with --evm-trace [rpc|revm] enabled")
-        }
-    }
-
     let start_time = Instant::now();
 
     let native_token_price =
@@ -130,9 +118,6 @@ pub async fn query(
             blocks: blocks.map(str::to_string),
             sql: Some(sql),
             evm_trace: shared_opts.evm_trace.clone(),
-            evm_calls: shared_opts.evm_calls,
-            evm_ops: shared_opts.evm_ops,
-            evm_state_diff: shared_opts.evm_state_diff,
         },
     })
 }

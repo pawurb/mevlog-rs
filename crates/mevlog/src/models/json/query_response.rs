@@ -48,10 +48,6 @@ pub fn rows_to_table(columns: &[String], rows: &[Value]) -> String {
     table.to_string()
 }
 
-fn is_false(v: &bool) -> bool {
-    !v
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -60,12 +56,6 @@ pub struct QueryParams {
     pub sql: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub evm_trace: Option<TraceMode>,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub evm_calls: bool,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub evm_ops: bool,
-    #[serde(default, skip_serializing_if = "is_false")]
-    pub evm_state_diff: bool,
 }
 
 /// In-process result of a SQL-backed command, produced by the `cmds` layer.

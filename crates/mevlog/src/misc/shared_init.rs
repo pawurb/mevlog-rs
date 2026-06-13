@@ -164,24 +164,6 @@ pub struct SharedOpts {
     #[arg(long, help = "EVM tracing mode ('revm' or 'rpc')")]
     pub evm_trace: Option<TraceMode>,
 
-    #[arg(long, help = "Show detailed tx calls info")]
-    pub evm_calls: bool,
-
-    #[arg(long, help = "Display EVM opcodes executed by the transaction")]
-    pub evm_ops: bool,
-
-    #[arg(
-        long,
-        help = "Display storage slot changes (state diff) for the transaction"
-    )]
-    pub evm_state_diff: bool,
-
-    #[arg(long, help = "Display amounts in ERC20 Transfer event logs")]
-    pub erc20_transfer_amount: bool,
-
-    #[arg(long, help = "Include event logs in output")]
-    pub logs: bool,
-
     #[arg(
         long,
         help = "Provide native token price in USD instead of reading it from price oracle"

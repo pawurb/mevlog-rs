@@ -24,24 +24,6 @@ struct GetTransactionParams {
         description = "Tracing mode: 'revm' for local simulation or 'rpc' for debug_traceTransaction"
     )]
     evm_trace: Option<String>,
-    #[schemars(description = "Number of transactions before (newer, smaller indexes) to include")]
-    before: Option<u8>,
-    #[schemars(description = "Number of transactions after (older, larger indexes) to include")]
-    after: Option<u8>,
-    #[schemars(description = "Show detailed tx calls info (requires evm_trace)")]
-    evm_calls: Option<bool>,
-    #[schemars(
-        description = "Display EVM opcodes executed by the transaction (requires evm_trace)"
-    )]
-    evm_ops: Option<bool>,
-    #[schemars(
-        description = "Display storage slot changes (state diff) for the transaction (requires evm_trace)"
-    )]
-    evm_state_diff: Option<bool>,
-    #[schemars(description = "Display amounts in ERC20 Transfer event logs")]
-    erc20_transfer_amount: Option<bool>,
-    #[schemars(description = "Include event logs in output")]
-    logs: Option<bool>,
     #[schemars(
         description = "Native token price in USD (e.g., 3500.0 for ETH). When provided, transaction values and costs are also displayed in USD"
     )]
@@ -56,20 +38,6 @@ struct QueryTransactionsParams {
     blocks: String,
     #[schemars(description = "Tracing mode: 'revm' or 'rpc'")]
     evm_trace: Option<String>,
-    #[schemars(description = "Show detailed tx calls info (requires evm_trace)")]
-    evm_calls: Option<bool>,
-    #[schemars(
-        description = "Display EVM opcodes executed by the transaction (requires evm_trace)"
-    )]
-    evm_ops: Option<bool>,
-    #[schemars(
-        description = "Display storage slot changes (state diff) for the transaction (requires evm_trace)"
-    )]
-    evm_state_diff: Option<bool>,
-    #[schemars(description = "Display amounts in ERC20 Transfer event logs")]
-    erc20_transfer_amount: Option<bool>,
-    #[schemars(description = "Include event logs in output")]
-    logs: Option<bool>,
     #[schemars(
         description = "Native token price in USD (e.g., 3500.0 for ETH). When provided, transaction values and costs are also displayed in USD"
     )]
@@ -128,29 +96,6 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
             args.push("--evm-trace".to_string());
             args.push(evm_trace);
         }
-        if let Some(before) = params.0.before {
-            args.push("--before".to_string());
-            args.push(before.to_string());
-        }
-        if let Some(after) = params.0.after {
-            args.push("--after".to_string());
-            args.push(after.to_string());
-        }
-        if params.0.evm_calls == Some(true) {
-            args.push("--evm-calls".to_string());
-        }
-        if params.0.evm_ops == Some(true) {
-            args.push("--evm-ops".to_string());
-        }
-        if params.0.evm_state_diff == Some(true) {
-            args.push("--evm-state-diff".to_string());
-        }
-        if params.0.erc20_transfer_amount == Some(true) {
-            args.push("--erc20-transfer-amount".to_string());
-        }
-        if params.0.logs == Some(true) {
-            args.push("--logs".to_string());
-        }
         if let Some(price) = params.0.native_token_price {
             args.push("--native-token-price".to_string());
             args.push(price.to_string());
@@ -178,21 +123,6 @@ Block range examples: 'latest' (latest block), '22030899' (single block), '22030
         if let Some(evm_trace) = params.0.evm_trace {
             args.push("--evm-trace".to_string());
             args.push(evm_trace);
-        }
-        if params.0.evm_calls == Some(true) {
-            args.push("--evm-calls".to_string());
-        }
-        if params.0.evm_ops == Some(true) {
-            args.push("--evm-ops".to_string());
-        }
-        if params.0.evm_state_diff == Some(true) {
-            args.push("--evm-state-diff".to_string());
-        }
-        if params.0.erc20_transfer_amount == Some(true) {
-            args.push("--erc20-transfer-amount".to_string());
-        }
-        if params.0.logs == Some(true) {
-            args.push("--logs".to_string());
         }
         if let Some(price) = params.0.native_token_price {
             args.push("--native-token-price".to_string());
