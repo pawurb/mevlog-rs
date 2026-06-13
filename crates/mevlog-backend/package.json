@@ -7,8 +7,10 @@
     "dev": "webpack --mode development --watch"
   },
   "dependencies": {
+    "prismjs": "^1.30.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-simple-code-editor": "^0.14.1"
   },
   "devDependencies": {
     "@babel/core": "^7.22.0",

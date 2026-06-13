@@ -36,8 +36,12 @@ const GROUPS = [
       { sig: 'format_ether(col)', desc: 'Wei to ETH, 6 decimal places.' },
       { sig: 'format_gwei(col)', desc: 'Wei to gwei, 2 decimal places.' },
       {
-        sig: 'format_usd(col, price)',
-        desc: 'Wei to $-prefixed USD, 2 decimal places. Combine with {NATIVE_TOKEN_PRICE()}.',
+        sig: 'format_usd(x)',
+        desc: 'Pure formatter: a REAL/INTEGER USD value to a $-prefixed string with thousands commas and 2 decimals (e.g. $1,234,567.89). Does NOT convert from wei — wrap a wei amount in convert_usd first.',
+      },
+      {
+        sig: 'convert_usd(wei, price)',
+        desc: "Wei amount to its USD value (REAL) at price, as ether(wei) * price. Pair with format_usd, e.g. format_usd(convert_usd(t.value, {NATIVE_TOKEN_PRICE()})).",
       },
     ],
   },

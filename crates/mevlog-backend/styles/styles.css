@@ -1246,3 +1246,50 @@ a.schema-source-link:focus {
   font-size: 13px;
   line-height: 1.4;
 }
+
+/* ---- SQL editor (react-simple-code-editor + Prism) syntax highlighting ---- */
+.sql-editor {
+  cursor: text;
+}
+.sql-editor textarea {
+  outline: none;
+}
+.sql-editor textarea::placeholder {
+  color: #666;
+}
+/* Prism token colors (ayu-ish dark palette) */
+.sql-editor .token.keyword {
+  color: #59c2ff;
+}
+.sql-editor .token.function,
+.sql-editor .token.mevlog-function {
+  color: #ffb454;
+}
+.sql-editor .token.string,
+.sql-editor .token.char {
+  color: #aad94c;
+}
+.sql-editor .token.hex-blob {
+  color: #aad94c;
+}
+.sql-editor .token.number,
+.sql-editor .token.boolean,
+.sql-editor .token.constant {
+  color: #d2a6ff;
+}
+.sql-editor .token.operator,
+.sql-editor .token.punctuation {
+  color: #bfbdb6;
+}
+.sql-editor .token.comment {
+  color: #5c6773;
+  font-style: italic;
+}
+.sql-editor .token.variable {
+  color: #bfbdb6;
+}
+/* mevlog {MACRO()} tokens — gold to match the Run query button */
+.sql-editor .token.mevlog-macro {
+  color: #ffd700;
+  font-weight: bold;
+}
