@@ -30,6 +30,10 @@ deploy:
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
 
+# Tail remote server and scheduler logs
+logs target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh
+
 # Pull latest and reinstall the CLI on the remote node
 update-remote-cli target_node=env_var('TARGET_NODE'):
     ssh {{target_node}} 'cd ~/mevlog-rs && git pull && . "$HOME/.cargo/env" && OPENSSL_DIR=/usr/ OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu/ cargo install mevlog --path crates/mevlog'
