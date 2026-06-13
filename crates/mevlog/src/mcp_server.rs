@@ -154,6 +154,7 @@ struct ChainInfoParams {
 
 #[derive(Clone)]
 pub struct MevlogMcpServer {
+    #[allow(dead_code)]
     tool_router: ToolRouter<Self>,
     rpc_url: String,
     chain_id: u64,
