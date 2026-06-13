@@ -38,6 +38,18 @@ logs target_node=env_var('TARGET_NODE'):
 update-remote-cli target_node=env_var('TARGET_NODE'):
     ssh {{target_node}} 'cd ~/mevlog-rs && git pull && . "$HOME/.cargo/env" && OPENSSL_DIR=/usr/ OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu/ cargo install mevlog --path crates/mevlog --features mcp'
 
+# Start the MCP server on the remote node (screen session, reads .env)
+mcp-start target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/mcp_start.sh
+
+# Stop the MCP server on the remote node
+mcp-stop target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/mcp_stop.sh
+
+# Show MCP server status on the remote node
+mcp-status target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/mcp_status.sh
+
 # Run benchmarks comparing two git refs
 compare before after:
     bash scripts/compare.sh {{before}} {{after}}
