@@ -44,10 +44,10 @@ pub async fn query(
         }
     }
 
+    let start_time = Instant::now();
+
     let native_token_price =
         get_native_token_price(&deps.chain, &deps.provider, shared_opts.native_token_price).await?;
-
-    let start_time = Instant::now();
 
     // With --skip-index the local store is queried as-is: no block range
     // resolution (so no RPC for 'latest'), no fetching, no backfill.
@@ -105,11 +105,12 @@ pub async fn query(
 
     let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
     chain_info.native_token_price = native_token_price;
-    let duration_ns = start_time.elapsed().as_nanos() as u64;
 
     let sql =
         substitute_sql_macros(sql, &deps.provider, deps.chain.chain_id, native_token_price).await?;
     let result = run_raw_query(&sql, &deps.txs_read_path, max_rows)?;
+
+    let duration_ns = start_time.elapsed().as_nanos() as u64;
 
     Ok(QueryOutcome {
         columns: result.columns,
