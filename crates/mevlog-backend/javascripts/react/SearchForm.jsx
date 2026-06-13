@@ -43,7 +43,7 @@ const PRESETS = [
   },
   {
     label: 'Which 10 txs transferred the most USDC in last 1 day',
-    sql: "SELECT t.tx_hash,\n       format_usd(erc20_to_real(u256_sum(l.erc20_amount), 6)) AS usdc\nFROM logs l\nJOIN transactions t ON t.block_number = l.block_number AND t.tx_index = l.tx_index\nJOIN blocks b ON b.block_number = l.block_number\nWHERE l.address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n  AND l.erc20_amount IS NOT NULL\n  AND l.block_number >= {LATEST_BLOCK()} - 7200\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.tx_hash\nORDER BY u256_sum(l.erc20_amount) DESC\nLIMIT 10",
+    sql: "WITH agg AS (\n  SELECT block_number, tx_index, u256_sum(erc20_amount) AS amt\n  FROM logs\n  WHERE address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n    AND erc20_amount IS NOT NULL\n    AND block_number >= {LATEST_BLOCK()} - 7200\n  GROUP BY block_number, tx_index\n  ORDER BY amt DESC\n  LIMIT 10\n)\nSELECT t.tx_hash,\n       format_usd(erc20_to_real(agg.amt, 6)) AS usdc\nFROM agg\nJOIN transactions t\n  ON t.block_number = agg.block_number AND t.tx_index = agg.tx_index\nORDER BY agg.amt DESC",
   },
   {
     label: 'Which 10 txs spent the most on gas in last 1 day',
