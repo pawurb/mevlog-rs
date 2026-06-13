@@ -71,6 +71,19 @@ pub struct QueryResult {
     pub rows: Vec<Value>,
 }
 
+/// Runs [`run_raw_query`] on the blocking pool so the SQLite work doesn't stall
+/// the async runtime. Arguments are owned for the `'static` `spawn_blocking`
+/// closure.
+pub(crate) async fn run_raw_query_async(
+    sql: String,
+    db_path: String,
+    max_rows: Option<usize>,
+) -> Result<QueryResult> {
+    tokio::task::spawn_blocking(move || run_raw_query(&sql, &db_path, max_rows))
+        .await
+        .map_err(|e| eyre!("query execution task failed: {e}"))?
+}
+
 /// Runs a user-provided SQL statement against the read-only txs DB and
 /// serializes each result row into a JSON object keyed by column name.
 /// Errors if the result exceeds `max_rows` (`None` = unlimited); rows are
@@ -78,11 +91,7 @@ pub struct QueryResult {
 ///
 /// Uses a read-only `rusqlite` connection rather than `sqlx` so the custom
 /// `u256_sum` SQL function is available to the query.
-pub(crate) fn run_raw_query(
-    sql: &str,
-    db_path: &str,
-    max_rows: Option<usize>,
-) -> Result<QueryResult> {
+fn run_raw_query(sql: &str, db_path: &str, max_rows: Option<usize>) -> Result<QueryResult> {
     // Accept both `sqlite://<path>` URLs and bare filesystem paths.
     let filename = db_path
         .strip_prefix("sqlite://")

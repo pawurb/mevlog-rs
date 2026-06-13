@@ -5,7 +5,8 @@ use eyre::{Result, bail};
 use crate::{
     ChainInfoNoRpcsJson,
     db::txs::{
-        display_sql::block_display_query, indexing::index_block_range, raw_query::run_raw_query,
+        display_sql::block_display_query, indexing::index_block_range,
+        raw_query::run_raw_query_async,
     },
     misc::{
         args_parsing::BlocksRange,
@@ -38,7 +39,7 @@ pub async fn block(
     let duration_ns = start_time.elapsed().as_nanos() as u64;
 
     let sql = block_display_query(&format!("block_number = {block_number}"));
-    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None).await?;
     if result.rows.is_empty() {
         bail!("Block {block_number} not found in local store");
     }

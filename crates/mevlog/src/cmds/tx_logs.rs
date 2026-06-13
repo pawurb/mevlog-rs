@@ -6,7 +6,8 @@ use eyre::Result;
 use crate::{
     ChainInfoNoRpcsJson,
     db::txs::{
-        display_sql::logs_display_query, indexing::index_block_range, raw_query::run_raw_query,
+        display_sql::logs_display_query, indexing::index_block_range,
+        raw_query::run_raw_query_async,
     },
     misc::shared_init::{ConnOpts, CryoOpts, init_deps},
     models::json::query_response::{QueryOutcome, QueryParams},
@@ -45,7 +46,7 @@ pub async fn tx_logs(
     let sql = logs_display_query(&format!(
         "block_number = {block_number} AND tx_index = {tx_index}"
     ));
-    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None).await?;
 
     Ok(QueryOutcome {
         columns: result.columns,

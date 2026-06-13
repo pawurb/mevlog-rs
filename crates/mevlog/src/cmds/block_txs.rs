@@ -5,7 +5,7 @@ use eyre::{Result, bail};
 use crate::{
     ChainInfoNoRpcsJson,
     db::txs::{
-        display_sql::tx_display_query, indexing::index_block_range, raw_query::run_raw_query,
+        display_sql::tx_display_query, indexing::index_block_range, raw_query::run_raw_query_async,
     },
     misc::{
         args_parsing::BlocksRange,
@@ -63,7 +63,7 @@ pub async fn block_txs(
         sql.replace(NATIVE_TOKEN_PRICE_MACRO, "NULL")
     };
 
-    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None).await?;
 
     Ok(QueryOutcome {
         columns: result.columns,
