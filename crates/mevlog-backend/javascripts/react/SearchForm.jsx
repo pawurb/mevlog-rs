@@ -22,8 +22,8 @@ const PRESETS = [
     sql: "SELECT t.block_number, t.tx_hash,\n       format_ether(u256_mul(t.gas_used, t.effective_gas_price)) AS gas_eth,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 10",
   },
   {
-    label: 'Which 5 txs used the most gas in last 1 day',
-    sql: "SELECT t.block_number, t.tx_hash, t.gas_used,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_cost_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.gas_used DESC\nLIMIT 5",
+    label: 'Which 5 txs paid the most for gas in last 1 day',
+    sql: "SELECT t.block_number, t.tx_hash, t.gas_used,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_cost_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 5",
   },
   {
     label: 'Top 10 ETH transfers in last 1 day',
@@ -183,9 +183,24 @@ const SearchForm = ({ initialValues = {} }) => {
           />
         </div>
 
-        <button type="submit" style={buttonStyle} disabled={loading || !sql.trim()}>
-          {loading ? 'Running…' : 'Run query'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button type="submit" style={buttonStyle} disabled={loading || !sql.trim()}>
+            {loading ? 'Running…' : 'Run query'}
+          </button>
+          {loading && (
+            <span
+              style={{
+                width: '18px',
+                height: '18px',
+                border: '2px solid #333',
+                borderTop: '2px solid #ffd700',
+                borderRadius: '50%',
+                animation: 'spin 0.8s linear infinite',
+                display: 'inline-block',
+              }}
+            />
+          )}
+        </div>
       </form>
 
       {error && (
