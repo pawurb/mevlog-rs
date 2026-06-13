@@ -4,7 +4,7 @@ use std::{
 };
 
 use evm_sqlite::register_functions;
-use eyre::{Result, bail};
+use eyre::{Result, bail, eyre};
 use rusqlite::{
     Connection, OpenFlags,
     hooks::{AuthAction, AuthContext, Authorization},
@@ -19,11 +19,28 @@ const ALLOWED_TABLES: [&str; 3] = ["transactions", "logs", "blocks"];
 
 /// Wall-clock ceiling for a single user query. The progress handler interrupts
 /// execution once exceeded, so a pathological query (recursive CTE, huge cross
-/// join, `randomblob`) can't pin a core indefinitely.
-const QUERY_TIMEOUT: Duration = Duration::from_secs(10);
+/// join, `randomblob`) can't pin a core indefinitely. Kept below the backend's
+/// subprocess timeout so the friendly timeout message below wins the race.
+const QUERY_TIMEOUT: Duration = Duration::from_secs(8);
 
 /// VM instructions between progress-handler invocations.
 const PROGRESS_OPS: i32 = 10_000;
+
+/// Maps a `rusqlite` error to a friendly timeout message when it was caused by
+/// the progress handler interrupting a query past `deadline`; otherwise passes
+/// the original error through. The `SQL query timed out` marker lets the backend
+/// recognize this case and render guidance to the user.
+fn map_query_err(err: rusqlite::Error, deadline: Instant) -> eyre::Report {
+    if Instant::now() >= deadline {
+        eyre!(
+            "SQL query timed out after {}s. Run mevlog locally to query \
+             without limits.",
+            QUERY_TIMEOUT.as_secs()
+        )
+    } else {
+        err.into()
+    }
+}
 
 /// Authorizer callback: permit only read-only access to the allowed tables
 /// plus SQL function calls. Reads of any other table error out, and every
@@ -87,7 +104,7 @@ pub(crate) fn run_raw_query(
 
     conn.authorizer(Some(authorize));
 
-    let mut stmt = conn.prepare(sql)?;
+    let mut stmt = conn.prepare(sql).map_err(|e| map_query_err(e, deadline))?;
     let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
 
     // Rows are keyed by column name, so duplicate names would silently collapse
@@ -99,8 +116,8 @@ pub(crate) fn run_raw_query(
 
     let col_count = columns.len();
     let mut out = Vec::new();
-    let mut rows = stmt.query([])?;
-    while let Some(row) = rows.next()? {
+    let mut rows = stmt.query([]).map_err(|e| map_query_err(e, deadline))?;
+    while let Some(row) = rows.next().map_err(|e| map_query_err(e, deadline))? {
         if let Some(max_rows) = max_rows
             && out.len() == max_rows
         {

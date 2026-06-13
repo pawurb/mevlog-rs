@@ -96,7 +96,7 @@ pub(crate) async fn block_txs_with_logs(
 pub(crate) async fn call_json_command<T: serde::de::DeserializeOwned>(
     cmd: &mut Command,
 ) -> Result<T, Value> {
-    let timeout_duration = Duration::from_millis(7500);
+    let timeout_duration = Duration::from_millis(10000);
 
     // Kill the child when the timeout fires; otherwise it keeps indexing over
     // RPC as an orphan after we've already returned an error to the client.
@@ -135,7 +135,7 @@ pub(crate) async fn call_json_command_first_line<T: serde::de::DeserializeOwned>
     cmd: &mut Command,
 ) -> Result<T, Value> {
     tracing::trace!("cmd: {:?}", &cmd);
-    let timeout_duration = Duration::from_millis(7500);
+    let timeout_duration = Duration::from_millis(10000);
 
     cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     // Kill the child when the timeout fires; otherwise it keeps indexing over
