@@ -88,7 +88,7 @@ pub async fn get_schedule() -> Result<JobScheduler> {
         .add(Job::new_async("every 10 minutes", |_uuid, _l| {
             Box::pin(async move {
                 let reindexed = async {
-                    let rpc_url = std::env::var("REMOTE_ETH_RPC_URL")?;
+                    let rpc_url = std::env::var("ARCHIVE_ETH_RPC_URL")?;
 
                     let mut cmd = AsyncCommand::new(mevlog_cmd_path());
                     cmd.arg("reindex")
