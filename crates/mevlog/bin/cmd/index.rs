@@ -39,7 +39,7 @@ pub struct IndexArgs {
         help = "Batch size for data fetching (default: 100)",
         default_value = "100"
     )]
-    batch_size: usize,
+    batch_size: std::num::NonZeroUsize,
 
     #[arg(
         long,
@@ -102,7 +102,7 @@ impl IndexArgs {
                 let (cached_blocks, new_blocks) = index_block_range(
                     range.from,
                     range.to,
-                    self.batch_size,
+                    self.batch_size.get(),
                     &deps,
                     &self.cryo_opts,
                 )
@@ -144,9 +144,14 @@ impl IndexArgs {
             None => {
                 // No backfill range given: start from the current latest block.
                 let latest = deps.provider.get_block_number().await?;
-                let (cached_blocks, new_blocks) =
-                    index_block_range(latest, latest, self.batch_size, &deps, &self.cryo_opts)
-                        .await?;
+                let (cached_blocks, new_blocks) = index_block_range(
+                    latest,
+                    latest,
+                    self.batch_size.get(),
+                    &deps,
+                    &self.cryo_opts,
+                )
+                .await?;
                 info!(
                     "Indexed latest block {} ({} new, {} cached)",
                     latest, new_blocks, cached_blocks
@@ -173,7 +178,7 @@ impl IndexArgs {
                 let from = last_indexed + 1;
                 let start_time = Instant::now();
                 let (cached_blocks, new_blocks) =
-                    index_block_range(from, latest, self.batch_size, &deps, &self.cryo_opts)
+                    index_block_range(from, latest, self.batch_size.get(), &deps, &self.cryo_opts)
                         .await?;
                 info!(
                     "Indexed blocks {}..={} ({} new, {} cached) in {:.2?}",

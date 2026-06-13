@@ -21,7 +21,7 @@ pub struct ReindexArgs {
         help = "Batch size for data fetching (default: 100)",
         default_value = "100"
     )]
-    batch_size: usize,
+    batch_size: std::num::NonZeroUsize,
 }
 
 impl ReindexArgs {
@@ -32,26 +32,17 @@ impl ReindexArgs {
 
         let deps = init_deps(&self.conn_opts).await?;
 
-        // Read the indexed range from the local store, then re-run indexing over
-        // it: `index_block_range` only fetches blocks absent from the DB, so this
-        // backfills the gaps inside `min_block..=max_block` without re-fetching
-        // anything already present.
+        // Re-run indexing over the stored range; `index_block_range` only fetches
+        // blocks absent from the DB, so this backfills the gaps. A contiguous
+        // range is a no-op (`new_blocks = 0`), keeping it safe to run on a schedule.
         let stats = db_info(&deps.txs).await?;
         let (Some(from), Some(to)) = (stats.min_block, stats.max_block) else {
             bail!("Txs DB has no indexed blocks; nothing to reindex");
         };
 
-        if stats.missing_blocks == 0 {
-            bail!(
-                "No missing blocks in indexed range {}..={}; nothing to reindex",
-                from,
-                to
-            );
-        }
-
         let start_time = Instant::now();
         let (cached_blocks, new_blocks) =
-            index_block_range(from, to, self.batch_size, &deps, &self.cryo_opts).await?;
+            index_block_range(from, to, self.batch_size.get(), &deps, &self.cryo_opts).await?;
         let duration_ns = start_time.elapsed().as_nanos() as u64;
 
         let chain = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);

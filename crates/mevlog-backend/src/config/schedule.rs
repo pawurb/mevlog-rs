@@ -1,5 +1,8 @@
 use eyre::Result;
-use mevlog::{misc::shared_init::mevlog_cmd_path, models::json::purge_response::PurgeResponse};
+use mevlog::{
+    misc::shared_init::mevlog_cmd_path,
+    models::json::{index_response::IndexResponse, purge_response::PurgeResponse},
+};
 use tokio::process::Command as AsyncCommand;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
@@ -8,6 +11,7 @@ use crate::misc::utils::uptime_ping;
 // ~7 days of mainnet blocks (12s block time)
 const PURGE_KEEP_BLOCKS: u64 = 50_400;
 const PURGE_CHAIN_ID: u64 = 1;
+const REINDEX_CHAIN_ID: u64 = 1;
 
 pub async fn get_schedule() -> Result<JobScheduler> {
     let mut sched = JobScheduler::new().await?;
@@ -72,6 +76,59 @@ pub async fn get_schedule() -> Result<JobScheduler> {
                         tracing::error!(
                             "Failed to purge txs DB for chain {}: {}",
                             PURGE_CHAIN_ID,
+                            &e
+                        );
+                    }
+                }
+            })
+        })?)
+        .await?;
+
+    sched
+        .add(Job::new_async("every 10 minutes", |_uuid, _l| {
+            Box::pin(async move {
+                let reindexed = async {
+                    let rpc_url = std::env::var("REMOTE_ETH_RPC_URL")?;
+
+                    let mut cmd = AsyncCommand::new(mevlog_cmd_path());
+                    cmd.arg("reindex")
+                        .arg("--chain-id")
+                        .arg(REINDEX_CHAIN_ID.to_string())
+                        .arg("--rpc-url")
+                        .arg(&rpc_url)
+                        .arg("--format")
+                        .arg("json");
+                    cmd.env("RUST_LOG", "off");
+
+                    let output = cmd.output().await?;
+                    if !output.status.success() {
+                        eyre::bail!(
+                            "reindex exited with {}: {}",
+                            output.status,
+                            String::from_utf8_lossy(&output.stderr)
+                        );
+                    }
+
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let resp: IndexResponse = serde_json::from_str(stdout.trim())?;
+                    Ok::<_, eyre::Error>(resp)
+                }
+                .await;
+
+                match reindexed {
+                    Ok(resp) => {
+                        tracing::info!(
+                            "Reindexed txs DB for chain {}: {} blocks refetched, {} cached in {}",
+                            REINDEX_CHAIN_ID,
+                            resp.new_blocks,
+                            resp.cached_blocks,
+                            resp.duration
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to reindex txs DB for chain {}: {}",
+                            REINDEX_CHAIN_ID,
                             &e
                         );
                     }

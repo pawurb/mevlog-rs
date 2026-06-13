@@ -45,7 +45,7 @@ pub struct QueryArgs {
         help = "Batch size for data fetching (default: 100)",
         default_value = "100"
     )]
-    batch_size: usize,
+    batch_size: std::num::NonZeroUsize,
 
     #[arg(
         long,
@@ -77,7 +77,7 @@ impl QueryArgs {
             self.latest_offset,
             self.max_range,
             self.max_rows,
-            self.batch_size,
+            self.batch_size.get(),
             self.skip_index,
             self.latest_block,
             &self.sql,
