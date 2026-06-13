@@ -3,7 +3,7 @@ use mevlog::{misc::shared_init::mevlog_cmd_path, models::json::purge_response::P
 use tokio::process::Command as AsyncCommand;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
-use crate::misc::{prices::update_prices_cache, utils::uptime_ping};
+use crate::misc::utils::uptime_ping;
 
 // ~7 days of mainnet blocks (12s block time)
 const PURGE_KEEP_BLOCKS: u64 = 50_400;
@@ -24,21 +24,6 @@ pub async fn get_schedule() -> Result<JobScheduler> {
                         tracing::error!("Failed to uptime ping: {}", &e);
                     }
                 };
-            })
-        })?)
-        .await?;
-
-    sched
-        .add(Job::new_async("every 5 minutes", |_uuid, _l| {
-            Box::pin(async move {
-                match update_prices_cache().await {
-                    Ok(_) => {
-                        tracing::info!("Prices cache updated");
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to update prices cache: {}", &e);
-                    }
-                }
             })
         })?)
         .await?;

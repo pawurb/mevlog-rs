@@ -1,4 +1,5 @@
 use std::sync::LazyLock;
+use std::time::Duration;
 
 use eyre::{Result, bail};
 use reqwest;
@@ -58,6 +59,31 @@ pub(crate) async fn update_prices_cache() -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Warms the process-local price cache once and spawns a background task that
+/// refreshes it every 5 minutes. Must run inside the server process, since the
+/// cache is a process-local static and only the server's request handlers read
+/// it (`get_price_for_chain_id`). A warm cache lets web queries pass
+/// `--native-token-price`, avoiding the per-request Chainlink oracle RPC.
+pub async fn spawn_price_refresh() {
+    const REFRESH_INTERVAL: Duration = Duration::from_secs(5 * 60);
+
+    if let Err(e) = update_prices_cache().await {
+        tracing::error!("Failed to warm prices cache at startup: {}", &e);
+    }
+
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(REFRESH_INTERVAL);
+        interval.tick().await; // first tick fires immediately; skip (just warmed)
+        loop {
+            interval.tick().await;
+            match update_prices_cache().await {
+                Ok(_) => tracing::info!("Prices cache updated"),
+                Err(e) => tracing::error!("Failed to update prices cache: {}", &e),
+            }
+        }
+    });
 }
 
 async fn fetch_prices_from_api() -> Result<PriceResponse> {
