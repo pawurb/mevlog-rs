@@ -134,51 +134,12 @@ const SearchForm = ({ initialValues = {} }) => {
     setLoading(false);
   };
 
-  const labelStyle = {
-    display: 'block',
-    color: '#888',
-    fontSize: '12px',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    marginBottom: '4px',
-  };
-
-  const inputStyle = {
-    backgroundColor: '#1a1a1a',
-    border: '1px solid #333',
-    borderRadius: '4px',
-    color: '#fff',
-    fontFamily: 'monospace',
-    fontSize: '14px',
-    padding: '8px 10px',
-    width: '100%',
-    boxSizing: 'border-box',
-  };
-
-  const buttonStyle = {
-    backgroundColor: '#ffd700',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-    cursor: loading ? 'not-allowed' : 'pointer',
-    color: '#000',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    padding: '10px 24px',
-    opacity: loading ? 0.6 : 1,
-  };
-
   return (
     <div className="search-form">
       {dbInfo && (
-        <div style={{
-          color: 'var(--foreground)',
-          fontFamily: 'monospace',
-          fontSize: '13px',
-          marginBottom: '12px',
-        }}>
+        <div className="indexed-blocks">
           Indexed blocks:{' '}
-          <span style={{ color: 'var(--bright-white)' }}>
+          <span className="indexed-blocks-range">
             {dbInfo.min_block} – {dbInfo.max_block}
           </span>
           {' '}({formatTimestamp(dbInfo.min_block_timestamp)} – {formatTimestamp(dbInfo.max_block_timestamp)})
@@ -188,8 +149,8 @@ const SearchForm = ({ initialValues = {} }) => {
         <SchemaReference />
         <HelpersReference />
 
-        <div style={{ marginBottom: '4px' }}>
-          <span style={labelStyle}>Preset queries</span>
+        <div className="search-field search-field-tight">
+          <span className="search-label">Preset queries</span>
         </div>
         <div className="preset-grid">
           {PRESETS.map((p, idx) => (
@@ -207,8 +168,8 @@ const SearchForm = ({ initialValues = {} }) => {
           ))}
         </div>
 
-        <div style={{ marginBottom: '12px' }}>
-          <label style={labelStyle} htmlFor="search-sql">
+        <div className="search-field">
+          <label className="search-label" htmlFor="search-sql">
             Read-only SQL
           </label>
           <Editor
@@ -223,47 +184,19 @@ const SearchForm = ({ initialValues = {} }) => {
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            style={{
-              ...inputStyle,
-              padding: 0,
-              minHeight: '260px',
-              overflow: 'auto',
-            }}
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <button type="submit" style={buttonStyle} disabled={loading || !sql.trim()}>
+        <div className="query-actions">
+          <button type="submit" className="query-submit" disabled={loading || !sql.trim()}>
             {loading ? 'Running…' : 'Run query'}
           </button>
-          {loading && (
-            <span
-              style={{
-                width: '18px',
-                height: '18px',
-                border: '2px solid #333',
-                borderTop: '2px solid #ffd700',
-                borderRadius: '50%',
-                animation: 'spin 0.8s linear infinite',
-                display: 'inline-block',
-              }}
-            />
-          )}
+          {loading && <span className="query-loading-spinner" />}
         </div>
       </form>
 
       {error && (
-        <div style={{
-          marginTop: '16px',
-          backgroundColor: '#f8d7da',
-          color: '#721c24',
-          border: '1px solid #f5c6cb',
-          borderRadius: '4px',
-          padding: '12px',
-          fontFamily: 'monospace',
-          fontSize: '13px',
-          whiteSpace: 'pre-wrap',
-        }}>
+        <div className="query-error">
           {error}
         </div>
       )}
@@ -283,42 +216,23 @@ const QueryResult = ({ response }) => {
     return String(value);
   };
 
-  const metaStyle = {
-    color: '#888',
-    fontSize: '13px',
-    margin: '16px 0 8px',
-    fontFamily: 'monospace',
-  };
-
-  const cellStyle = {
-    border: '1px solid #333',
-    padding: '4px 8px',
-    fontFamily: 'monospace',
-    fontSize: '13px',
-    color: '#fff',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    maxWidth: '320px',
-  };
-
   return (
     <div className="query-result">
-      <div style={metaStyle}>
+      <div className="query-result-meta">
         {response.result_count} rows · {response.duration}
       </div>
 
       {rows.length === 0 ? (
-        <div className="no-data" style={{ color: '#888', padding: '12px' }}>
+        <div className="no-data query-no-data">
           Query returned no results
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+        <div className="query-table-wrap">
+          <table className="query-table">
             <thead>
               <tr>
                 {columns.map((col) => (
-                  <th key={col} style={{ ...cellStyle, backgroundColor: '#2a2a2a', fontWeight: 'bold' }}>
+                  <th key={col} className="query-cell query-cell-header">
                     {col}
                   </th>
                 ))}
@@ -328,7 +242,7 @@ const QueryResult = ({ response }) => {
               {rows.map((row, rowIdx) => (
                 <tr key={rowIdx}>
                   {columns.map((col) => (
-                    <td key={col} style={cellStyle} title={renderCell(row[col])}>
+                    <td key={col} className="query-cell" title={renderCell(row[col])}>
                       {renderCell(row[col])}
                     </td>
                   ))}
