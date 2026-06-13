@@ -25,12 +25,6 @@ const ALLOWED_TABLES: [&str; 3] = ["transactions", "logs", "blocks"];
 /// `pragma_X` table, so both arms of the authorizer consult these names.
 const ALLOWED_PRAGMA_NAMES: [&str; 2] = ["page_count", "page_size"];
 
-/// Wall-clock ceiling for a single user query. The progress handler interrupts
-/// execution once exceeded, so a pathological query (recursive CTE, huge cross
-/// join, `randomblob`) can't pin a core indefinitely. Kept below the backend's
-/// subprocess timeout so the friendly timeout message below wins the race.
-const QUERY_TIMEOUT: Duration = Duration::from_secs(8);
-
 /// VM instructions between progress-handler invocations.
 const PROGRESS_OPS: i32 = 10_000;
 
@@ -38,15 +32,12 @@ const PROGRESS_OPS: i32 = 10_000;
 /// the progress handler interrupting a query past `deadline`; otherwise passes
 /// the original error through. The `SQL query timed out` marker lets the backend
 /// recognize this case and render guidance to the user.
-fn map_query_err(err: rusqlite::Error, deadline: Instant) -> eyre::Report {
-    if Instant::now() >= deadline {
-        eyre!(
-            "SQL query timed out after {}s. Run mevlog locally to query \
-             without limits.",
-            QUERY_TIMEOUT.as_secs()
-        )
-    } else {
-        err.into()
+fn map_query_err(err: rusqlite::Error, deadline: Option<Instant>) -> eyre::Report {
+    match deadline {
+        Some(deadline) if Instant::now() >= deadline => {
+            eyre!("SQL query timed out. Run mevlog locally to query without limits.")
+        }
+        _ => err.into(),
     }
 }
 
@@ -95,8 +86,9 @@ pub(crate) async fn run_raw_query_async(
     sql: String,
     db_path: String,
     max_rows: Option<usize>,
+    timeout: Option<Duration>,
 ) -> Result<QueryResult> {
-    tokio::task::spawn_blocking(move || run_raw_query(&sql, &db_path, max_rows))
+    tokio::task::spawn_blocking(move || run_raw_query(&sql, &db_path, max_rows, timeout))
         .await
         .map_err(|e| eyre!("query execution task failed: {e}"))?
 }
@@ -108,7 +100,12 @@ pub(crate) async fn run_raw_query_async(
 ///
 /// Uses a read-only `rusqlite` connection rather than `sqlx` so the custom
 /// `u256_sum` SQL function is available to the query.
-fn run_raw_query(sql: &str, db_path: &str, max_rows: Option<usize>) -> Result<QueryResult> {
+fn run_raw_query(
+    sql: &str,
+    db_path: &str,
+    max_rows: Option<usize>,
+    timeout: Option<Duration>,
+) -> Result<QueryResult> {
     // Accept both `sqlite://<path>` URLs and bare filesystem paths.
     let filename = db_path
         .strip_prefix("sqlite://")
@@ -124,9 +121,12 @@ fn run_raw_query(sql: &str, db_path: &str, max_rows: Option<usize>) -> Result<Qu
     // before the authorizer is installed, since the authorizer denies PRAGMA.
     conn.pragma_update(None, "query_only", true)?;
 
-    // Interrupt runaway queries once the deadline passes.
-    let deadline = Instant::now() + QUERY_TIMEOUT;
-    conn.progress_handler(PROGRESS_OPS, Some(move || Instant::now() >= deadline));
+    // Interrupt runaway queries once the deadline passes. With no timeout the
+    // query runs unbounded (trusted local CLI use).
+    let deadline = timeout.map(|t| Instant::now() + t);
+    if let Some(deadline) = deadline {
+        conn.progress_handler(PROGRESS_OPS, Some(move || Instant::now() >= deadline));
+    }
 
     conn.authorizer(Some(authorize));
 
@@ -199,6 +199,32 @@ mod test {
     }
 
     #[tokio::test]
+    async fn raw_query_interrupts_long_query_past_timeout() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+
+        let txs: Vec<Transaction> = (0..40)
+            .map(|i| Transaction {
+                tx_index: i,
+                tx_hash: FixedBytes::<32>::from([i as u8; 32]),
+                ..sample_tx()
+            })
+            .collect();
+        Transaction::save_batch(&txs, &write).await?;
+
+        // A huge cross join over the allowed table runs far longer than the
+        // timeout; the progress handler must interrupt it once it elapses.
+        let sql = "SELECT count(*) FROM transactions a, transactions b, \
+                   transactions c, transactions d, transactions e";
+        let err = run_raw_query(sql, &path, None, Some(Duration::from_millis(50))).unwrap_err();
+        assert!(
+            err.to_string().contains("SQL query timed out"),
+            "expected timeout, got: {err}"
+        );
+
+        Ok(())
+    }
+
+    #[tokio::test]
     async fn raw_query_encodes_blobs_as_hex_and_ints_as_numbers() -> Result<()> {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
@@ -206,6 +232,7 @@ mod test {
         let result = run_raw_query(
             "SELECT block_number, tx_hash, from_address, signature FROM transactions",
             &path,
+            None,
             None,
         )?;
 
@@ -232,6 +259,7 @@ mod test {
             "SELECT block_number, tx_hash FROM transactions WHERE 1 = 0",
             &path,
             None,
+            None,
         )?;
 
         assert!(result.rows.is_empty());
@@ -245,8 +273,8 @@ mod test {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
-        let err =
-            run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path, None).unwrap_err();
+        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path, None, None)
+            .unwrap_err();
         assert!(err.to_string().contains("duplicate column name `x`"));
 
         Ok(())
@@ -257,7 +285,7 @@ mod test {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None)?;
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None, None)?;
         assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
@@ -269,9 +297,9 @@ mod test {
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
         let sql = "SELECT block_number FROM transactions";
-        assert!(run_raw_query(sql, &path, Some(1)).is_ok());
+        assert!(run_raw_query(sql, &path, Some(1), None).is_ok());
 
-        let err = run_raw_query(sql, &path, Some(0)).unwrap_err();
+        let err = run_raw_query(sql, &path, Some(0), None).unwrap_err();
         assert!(err.to_string().contains("more than 0 rows"));
 
         Ok(())
@@ -287,11 +315,11 @@ mod test {
             "UPDATE transactions SET nonce = 0",
             "DROP TABLE transactions",
         ] {
-            let err = run_raw_query(stmt, &path, None);
+            let err = run_raw_query(stmt, &path, None, None);
             assert!(err.is_err(), "expected `{stmt}` to be rejected");
         }
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None)?;
+        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None, None)?;
         assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
@@ -305,7 +333,7 @@ mod test {
         for table in ["transactions", "logs", "blocks"] {
             let sql = format!("SELECT COUNT(*) AS n FROM {table}");
             assert!(
-                run_raw_query(&sql, &path, None).is_ok(),
+                run_raw_query(&sql, &path, None, None).is_ok(),
                 "`{table}` should be readable"
             );
         }
@@ -323,7 +351,7 @@ mod test {
             "SELECT version FROM _sqlx_migrations",
         ] {
             assert!(
-                run_raw_query(sql, &path, None).is_err(),
+                run_raw_query(sql, &path, None, None).is_err(),
                 "expected `{sql}` denied"
             );
         }
@@ -340,6 +368,7 @@ mod test {
             "SELECT (SELECT page_count FROM pragma_page_count()) \
              * (SELECT page_size FROM pragma_page_size()) AS bytes",
             &path,
+            None,
             None,
         )?;
 
@@ -360,7 +389,7 @@ mod test {
             "PRAGMA query_only = OFF",
         ] {
             assert!(
-                run_raw_query(sql, &path, None).is_err(),
+                run_raw_query(sql, &path, None, None).is_err(),
                 "expected `{sql}` denied"
             );
         }

@@ -24,7 +24,8 @@ pub struct McpArgs {
         long,
         default_value = "30000",
         env = "MEVLOG_MCP_TIMEOUT_MS",
-        help = "Per-request timeout in milliseconds for the underlying mevlog CLI execution"
+        help = "Per-request work budget in milliseconds (covers RPC, indexing and SQL); \
+                the CLI subprocess is force-killed a few seconds later if it does not exit"
     )]
     pub timeout_ms: u64,
 
