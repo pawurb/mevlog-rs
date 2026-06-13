@@ -12,7 +12,8 @@ use cmd::{
     coinbase_transfer::CoinbaseTransferArgs, db_info::DbInfoArgs,
     debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
     evm_traces::EvmTracesArgs, index::IndexArgs, purge_db::PurgeDBArgs, query::QueryArgs,
-    state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs, update_db::UpdateDBArgs,
+    reindex::ReindexArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
+    update_db::UpdateDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -54,6 +55,8 @@ pub enum MLSubcommand {
     Query(Box<QueryArgs>),
     #[command(about = "Index a block range into the local txs DB")]
     Index(IndexArgs),
+    #[command(about = "Refetch missing blocks within the local txs DB's indexed range")]
+    Reindex(ReindexArgs),
     #[command(
         about = "Remove indexed data below a block window ending at the newest indexed block"
     )]
@@ -169,6 +172,9 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::Index(args) => {
+            args.run(root_args.format).await?;
+        }
+        ML::Reindex(args) => {
             args.run(root_args.format).await?;
         }
         ML::PurgeDB(args) => {
