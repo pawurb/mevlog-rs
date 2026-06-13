@@ -6,4 +6,4 @@ chain.
 
 These docs are served under `/docs/` alongside the main mevlog.rs app.
 
-See [Getting Started](./getting-started.md) to install and run your first query.
+See [Installation](./getting-started/installation.md) to install and run your first query.

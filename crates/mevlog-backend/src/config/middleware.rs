@@ -1,5 +1,6 @@
 use axum::http::Method;
 use axum::{
+    body::Body,
     extract::Request,
     http::{HeaderValue, Uri},
     middleware::Next,
@@ -11,11 +12,14 @@ use tower_http::cors::{Any, CorsLayer};
 use reqwest::StatusCode;
 use time::UtcOffset;
 
+use std::sync::LazyLock;
 use std::time::Instant;
 use tracing::info_span;
 use tracing_futures::Instrument;
 use tracing_subscriber::fmt::time::OffsetTime;
 use uuid::Uuid;
+
+use crate::content::doc_pages::DOC_PAGES;
 
 #[derive(Debug, PartialEq)]
 pub enum Env {
@@ -141,12 +145,19 @@ pub fn cors() -> CorsLayer {
 pub(crate) async fn docs_html_ext(mut request: Request, next: Next) -> Response {
     let path = request.uri().path().to_string();
 
+    // The first SUMMARY entry (introduction.md) is also emitted as index.html,
+    // so "/introduction" duplicates "/docs/" — collapse both onto "/docs/" to
+    // keep a single canonical URL that docs_seo can rewrite.
+    if path == "/introduction" {
+        return Redirect::permanent("/docs/").into_response();
+    }
+
     // ".html" URLs redirect permanently to their clean form (the rewrite below
     // maps them back to the file). Mirrors clean-html-links, which rewrites
     // internal links the same way and leaves mdBook's special print.html as-is;
     // the index page collapses into "/docs/" itself.
     if let Some(clean) = path.strip_suffix(".html") {
-        if clean == "/index" {
+        if clean == "/index" || clean == "/introduction" {
             return Redirect::permanent("/docs/").into_response();
         }
         if !clean.is_empty() && clean != "/print" {
@@ -273,4 +284,86 @@ pub(crate) fn host() -> String {
         Env::Production => "https://mevlog.rs",
     }
     .to_string()
+}
+
+static TITLE_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"(?s)<title>.*?</title>").unwrap());
+static DESC_RE: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r#"<meta name="description" content="[^"]*">"#).unwrap());
+
+/// Escape a value for safe interpolation into a double-quoted HTML attribute
+/// (and element text). Without this a literal `"` closes the attribute early.
+fn html_escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+}
+
+/// mdBook ships generic `<title>`/`<meta description>` per page. This rewrites
+/// them from `DOC_PAGES` and injects a canonical URL plus OG/Twitter tags so the
+/// served docs HTML carries the same SEO metadata as the app's `layout.html`.
+/// Applied at the top-level router, so it sees the full `/docs/...` path.
+pub(crate) async fn docs_seo(request: Request, next: Next) -> Response {
+    let path = request.uri().path().to_string();
+    let config = DOC_PAGES.iter().find(|page| page.path == path);
+
+    let response = next.run(request).await;
+
+    let Some(config) = config else {
+        return response;
+    };
+
+    let is_html = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|header| header.to_str().ok())
+        .is_some_and(|content_type| content_type.starts_with("text/html"));
+    if !is_html {
+        return response;
+    }
+
+    let (mut parts, body) = response.into_parts();
+    // Body length changes below; a stale Content-Length (from ServeDir) makes
+    // hyper panic on the mismatch.
+    parts.headers.remove(reqwest::header::CONTENT_LENGTH);
+
+    let bytes = match axum::body::to_bytes(body, usize::MAX).await {
+        Ok(bytes) => bytes,
+        Err(_) => return Response::from_parts(parts, Body::empty()),
+    };
+    let html = String::from_utf8_lossy(&bytes);
+
+    let canonical_url = format!("{}{}", host(), path);
+    // Values land inside double-quoted HTML attributes (and the <title> element),
+    // so escape them; otherwise a literal `"` (e.g. the macros page description)
+    // closes the attribute early and corrupts the OG/Twitter metadata.
+    let title = html_escape(config.title);
+    let desc = html_escape(config.description);
+    let title_tag = format!("<title>{title}</title>");
+    // NoExpand: the replacement is literal text, so a `$` in title/desc must not
+    // be interpreted as a regex capture-group reference.
+    let html = TITLE_RE.replace(&html, regex::NoExpand(&title_tag));
+    let meta = format!(
+        r#"<meta name="description" content="{desc}">
+    <link rel="canonical" href="{url}">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{desc}">
+    <meta property="og:url" content="{url}">
+    <meta property="og:site_name" content="mevlog.rs">
+    <meta property="og:image" content="{host}/mevlog-logo.png">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{desc}">
+    <meta name="twitter:image" content="{host}/mevlog-logo.png">"#,
+        desc = desc,
+        title = title,
+        url = canonical_url,
+        host = host(),
+    );
+    let html = DESC_RE.replace(&html, regex::NoExpand(&meta));
+
+    Response::from_parts(parts, Body::from(html.into_owned())).into_response()
 }

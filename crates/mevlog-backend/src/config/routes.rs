@@ -10,7 +10,7 @@ use axum::{
 use tower::Layer;
 use tower_http::services::{ServeDir, ServeFile};
 
-use super::{cache_control, docs_html_ext, host};
+use super::{cache_control, docs_html_ext, docs_seo, host};
 
 pub async fn app() -> Router {
     let deployed_at = deployed_at();
@@ -96,6 +96,7 @@ pub async fn app() -> Router {
             from_fn(cache_control).layer(ServeFile::new("assets/mevlog-demo.mp4")),
         )
         .fallback(html::not_found_controller::not_found)
+        .layer(from_fn(docs_seo))
 }
 
 async fn robots_txt() -> Response<Body> {
