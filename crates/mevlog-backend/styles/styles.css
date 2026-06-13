@@ -33,22 +33,14 @@
   --bright-white: #f6f7ec;
   /* ANSI 15 */
 
-  /* UI Colors — aligned with the mdbook "ayu" docs theme so /docs and the app match */
+  /* Aligned with the mdBook ayu docs theme so /docs and the app match. */
   --background: hsl(210, 25%, 8%);
-  /* Ayu --bg (navy) */
   --foreground: #c5c5c5;
-  /* Ayu --fg */
   --cursor-color: #f6f7ec;
-  /* Cursor color */
   --selection-background: #3b4b5e;
-  /* Ayu-ish selection */
   --selection-foreground: #c5c5c5;
-  /* Selected text color */
 }
 
-/* Apply background and foreground.
-   html also carries the bg so the first paint of a fresh document is navy,
-   not the UA default white (prevents the flash when navigating between pages). */
 html {
   background-color: var(--background);
 }
@@ -58,45 +50,32 @@ body {
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   padding: 0px 20px 20px 20px;
-  /* ✅ Adjust overall text size */
   line-height: 1.2;
-  /* ✅ Improves readability */
   word-wrap: break-word !important;
-  /* Deprecated but still widely supported */
   overflow-wrap: break-word !important;
-  /* Standard property */
 }
 
 pre {
   white-space: pre-wrap;
-  /* Keeps spaces but allows wrapping */
   word-wrap: break-word;
 }
 
-/* Cursor styling */
 ::selection {
   background: var(--selection-background);
   color: var(--selection-foreground);
 }
 
-/* Style for ANSI terminal-like output */
 .ansi-output {
   white-space: pre-wrap;
-  /* ✅ Preserves indentation & newlines */
   word-wrap: break-word;
-  /* ✅ Ensures long lines wrap */
   font-family: monospace;
-  /* ✅ Matches terminal output */
   font-size: 18px;
-  /* ✅ Increase font size (adjust as needed) */
   line-height: 1.5;
-  /* ✅ Better spacing between lines */
   background-color: var(--background);
   color: var(--foreground);
   padding: 15px;
 }
 
-/* Specific ANSI colors */
 .ansi-black {
   color: var(--black);
 }
@@ -163,14 +142,10 @@ pre {
 
 a {
   all: unset;
-  /* ✅ Resets all inherited styles */
   text-decoration: underline !important;
-  /* ✅ Removes underlines */
   cursor: pointer;
-  /* ✅ Ensures link remains clickable */
 }
 
-/* Ensure links remain clickable without changing appearance */
 a:hover,
 a:focus {
   all: unset;
@@ -178,53 +153,37 @@ a:focus {
   text-decoration: underline;
 }
 
-/* Style form container (3-column layout) */
 .form-container {
   display: grid;
   grid-template-columns: auto auto auto auto;
-  /* ✅ Creates 3 equal columns */
   gap: 15px 10px;
-  /* ✅ Adds space between fields */
   max-width: 95%;
-  /* ✅ Prevents unnecessary stretching */
   margin: 20px;
-  /* ✅ Removes unwanted centering */
   align-items: start;
-  /* ✅ Ensures everything aligns to the left */
   justify-items: start;
-  /* ✅ Forces items to align left */
   padding: 10px;
 }
 
-/* Align each field properly inside a column */
 .form-container li {
   display: flex;
   flex-direction: column;
-  /* ✅ Ensures label is above input */
   align-items: start;
-  /* ✅ Left-aligns both label and input */
 }
 
-/* Label styling */
 .form-container label {
   font-weight: bold;
   margin-bottom: 5px;
-  /* ✅ Space between label and input */
   text-align: left;
-  /* ✅ Ensures text inside labels is left-aligned */
 }
 
-/* Input styling */
 .form-container input {
   width: 100%;
   max-width: 400px;
-  /* ✅ Ensures inputs do not stretch */
   padding: 5px;
   border: 1px solid #ccc;
   border-radius: 5px;
   font-size: 14px;
   text-align: left;
-  /* ✅ Ensures text starts from the left */
 }
 
 form {
@@ -303,11 +262,7 @@ li::after {
 
   p {
     margin: 0;
-    /* Removes all margin (no spacing) */
     padding: 0;
-    /* Ensures no padding */
-    /* display: inline; */
-    /* Makes paragraphs behave like inline text */
   }
 }
 
@@ -526,9 +481,7 @@ a[href="/tui"] button.active {
   width: 40px;
   height: 40px;
   border: 4px solid #f3f3f3;
-  /* Light grey */
   border-top: 4px solid #3498db;
-  /* Blue */
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 20px auto;
@@ -1288,7 +1241,6 @@ a.schema-source-link:focus {
 .sql-editor .token.variable {
   color: #bfbdb6;
 }
-/* mevlog {MACRO()} tokens — gold to match the Run query button */
 .sql-editor .token.mevlog-macro {
   color: #ffd700;
   font-weight: bold;
