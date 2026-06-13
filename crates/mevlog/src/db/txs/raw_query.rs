@@ -17,6 +17,14 @@ use serde_json::{Map, Value};
 /// rejected by the authorizer below.
 const ALLOWED_TABLES: [&str; 3] = ["transactions", "logs", "blocks"];
 
+/// Read-only PRAGMA table-valued functions a query may call. These expose only
+/// the database file's size (`page_count * page_size`), never row data, so they
+/// are safe to surface for DB-stats queries even though every real `PRAGMA`
+/// statement stays denied by the authorizer. Each `pragma_X()` call triggers
+/// both a `Pragma { pragma_name: "X" }` action and a `Read` of the hidden
+/// `pragma_X` table, so both arms of the authorizer consult these names.
+const ALLOWED_PRAGMA_NAMES: [&str; 2] = ["page_count", "page_size"];
+
 /// Wall-clock ceiling for a single user query. The progress handler interrupts
 /// execution once exceeded, so a pathological query (recursive CTE, huge cross
 /// join, `randomblob`) can't pin a core indefinitely. Kept below the backend's
@@ -52,12 +60,21 @@ fn authorize(ctx: AuthContext<'_>) -> Authorization {
             Authorization::Allow
         }
         AuthAction::Read { table_name, .. } => {
-            if ALLOWED_TABLES.contains(&table_name) {
+            let pragma_table = table_name
+                .strip_prefix("pragma_")
+                .is_some_and(|name| ALLOWED_PRAGMA_NAMES.contains(&name));
+            if ALLOWED_TABLES.contains(&table_name) || pragma_table {
                 Authorization::Allow
             } else {
                 Authorization::Deny
             }
         }
+        // Permit only the read-only DB-size pragmas, and only their
+        // table-valued (no-value) form; any `PRAGMA name = value` is denied.
+        AuthAction::Pragma {
+            pragma_name,
+            pragma_value: None,
+        } if ALLOWED_PRAGMA_NAMES.contains(&pragma_name) => Authorization::Allow,
         _ => Authorization::Deny,
     }
 }
@@ -310,6 +327,25 @@ mod test {
                 "expected `{sql}` denied"
             );
         }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_allows_db_size_pragma_functions() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+        Transaction::save_batch(&[sample_tx()], &write).await?;
+
+        let result = run_raw_query(
+            "SELECT (SELECT page_count FROM pragma_page_count()) \
+             * (SELECT page_size FROM pragma_page_size()) AS bytes",
+            &path,
+            None,
+        )?;
+
+        assert_eq!(result.columns, ["bytes"]);
+        let bytes = result.rows[0]["bytes"].as_i64().expect("integer bytes");
+        assert!(bytes > 0, "db size should be positive, got {bytes}");
 
         Ok(())
     }

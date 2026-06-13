@@ -61,6 +61,10 @@ const PRESETS = [
     label: 'Top 5 miners by blocks mined in last 1 day',
     sql: "SELECT miner, COUNT(*) AS blocks_mined\nFROM blocks\nWHERE timestamp >= unixepoch('now', '-1 day')\nGROUP BY miner\nORDER BY blocks_mined DESC\nLIMIT 5",
   },
+  {
+    label: 'Get current DB stats info',
+    sql: "WITH db AS (\n  SELECT (SELECT page_count FROM pragma_page_count()) * (SELECT page_size FROM pragma_page_size()) AS bytes\n)\nSELECT (SELECT MIN(block_number) FROM blocks) AS min_block,\n       datetime((SELECT MIN(timestamp) FROM blocks), 'unixepoch') AS min_block_time,\n       (SELECT MAX(block_number) FROM blocks) AS max_block,\n       datetime((SELECT MAX(timestamp) FROM blocks), 'unixepoch') AS max_block_time,\n       (SELECT COUNT(*) FROM blocks) AS total_blocks,\n       (SELECT MAX(block_number) - MIN(block_number) + 1 - COUNT(*) FROM blocks) AS missing_blocks,\n       (SELECT COUNT(*) FROM logs) AS total_logs,\n       (SELECT COUNT(*) FROM transactions) AS total_txs,\n       CASE WHEN bytes < 1024 THEN bytes || ' B'\n            WHEN bytes < 1048576 THEN printf('%.2f KB', bytes / 1024.0)\n            WHEN bytes < 1073741824 THEN printf('%.2f MB', bytes / 1048576.0)\n            ELSE printf('%.2f GB', bytes / 1073741824.0) END AS db_size\nFROM db",
+  },
 ];
 
 const formatTimestamp = (ts) => {
