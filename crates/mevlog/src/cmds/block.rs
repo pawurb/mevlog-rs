@@ -39,7 +39,14 @@ pub async fn block(
     let duration_ns = start_time.elapsed().as_nanos() as u64;
 
     let sql = block_display_query(&format!("block_number = {block_number}"));
-    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None, None).await?;
+    let result = run_raw_query_async(
+        sql.clone(),
+        deps.txs_read_path.clone(),
+        None,
+        None,
+        deps.custom_table_names(),
+    )
+    .await?;
     if result.rows.is_empty() {
         bail!("Block {block_number} not found in local store");
     }

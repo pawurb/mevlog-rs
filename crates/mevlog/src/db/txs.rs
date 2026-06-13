@@ -1,3 +1,4 @@
+pub mod custom_tables;
 pub mod display_sql;
 pub mod indexing;
 pub mod info;

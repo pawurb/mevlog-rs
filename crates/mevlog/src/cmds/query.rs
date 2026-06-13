@@ -119,10 +119,12 @@ pub async fn query(
             cached_blocks,
             new_blocks,
             sql,
+            deps.custom_table_names(),
         ))
     };
 
-    let (txs_read_path, chain_info, cached_blocks, new_blocks, sql) = match deadline {
+    let (txs_read_path, chain_info, cached_blocks, new_blocks, sql, custom_tables) = match deadline
+    {
         Some(dl) => tokio::time::timeout_at(tokio::time::Instant::from_std(dl), prep)
             .await
             .map_err(|_| eyre!("Query timed out after {}ms", timeout_ms.unwrap()))??,
@@ -132,7 +134,14 @@ pub async fn query(
     // The SQL runs in a blocking task a dropped future can't cancel, so the
     // remaining budget is enforced inside SQLite via its progress handler.
     let remaining = deadline.map(|dl| dl.saturating_duration_since(Instant::now()));
-    let result = run_raw_query_async(sql.clone(), txs_read_path, max_rows, remaining).await?;
+    let result = run_raw_query_async(
+        sql.clone(),
+        txs_read_path,
+        max_rows,
+        remaining,
+        custom_tables,
+    )
+    .await?;
 
     let duration_ns = start_time.elapsed().as_nanos() as u64;
 

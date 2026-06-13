@@ -1,7 +1,7 @@
 use eyre::Result;
 use sqlx::SqlitePool;
 
-use crate::db::shared::truncate_wal;
+use crate::db::{shared::truncate_wal, txs::custom_tables};
 
 /// Row counts removed by [`purge_old_blocks`]. `latest_block`/`cutoff_block`
 /// are `None` when the DB had no indexed blocks (nothing to purge).
@@ -23,8 +23,10 @@ pub struct PurgeStats {
 ///
 /// The highest block present in the local DB is the reference (no RPC calls):
 /// rows with `block_number < MAX(blocks.block_number) - keep + 1` are removed
-/// from `logs`, `transactions`, and `blocks` in a single transaction
-/// (`keep = 0` purges everything). Disk space is not reclaimed; call
+/// from `logs`, `transactions`, `blocks`, and every tracked custom table in a
+/// single transaction (`keep = 0` purges everything). Custom-table rows are
+/// derived from `logs`, so they must not outlive their source rows; their
+/// counts are not reported in [`PurgeStats`]. Disk space is not reclaimed; call
 /// [`reclaim_space`] afterwards for one-off purges. Frequent purges (e.g.
 /// `index --live`) should skip it — freed pages get reused by subsequent
 /// inserts, and a full DB rewrite per round would be wasteful.
@@ -39,7 +41,18 @@ pub async fn purge_old_blocks(keep: u64, conn: &SqlitePool) -> Result<PurgeStats
     let latest_block = latest_block as u64;
     let cutoff_block = latest_block.saturating_add(1).saturating_sub(keep);
 
+    let custom_tables = custom_tables::tracked_table_names(conn).await?;
+
     let mut db_tx = conn.begin().await?;
+
+    for name in &custom_tables {
+        sqlx::query(sqlx::AssertSqlSafe(format!(
+            "DELETE FROM \"{name}\" WHERE block_number < ?"
+        )))
+        .bind(cutoff_block as i64)
+        .execute(&mut *db_tx)
+        .await?;
+    }
 
     let purged_logs = sqlx::query("DELETE FROM logs WHERE block_number < ?")
         .bind(cutoff_block as i64)
@@ -212,6 +225,59 @@ mod test {
         assert_eq!(stats.purged_transactions, 5);
         assert_eq!(stats.purged_logs, 5);
         assert_eq!(Block::count(&conn).await?, 0);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn purge_removes_custom_table_rows() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+
+        let topic0 = FixedBytes::<32>::from([0xdd; 32]);
+        let logs: Vec<Log> = (100..=104)
+            .map(|block_number| Log {
+                block_number,
+                tx_index: 0,
+                log_index: 0,
+                address: Address::from([0x11; 20]),
+                topics: vec![topic0],
+                data: U256::from(1u64).to_be_bytes::<32>().to_vec(),
+                erc20_amount: None,
+                signature: None,
+            })
+            .collect();
+
+        let blocks: Vec<Block> = (100..=104).map(sample_block).collect();
+        Block::save_batch(&blocks, &conn).await?;
+        Log::save_batch(&logs, &conn).await?;
+
+        let toml_str = format!(
+            r#"
+[tables.events]
+topic0 = "0x{}"
+
+[[tables.events.columns]]
+name = "amount"
+source = "data[0:32]"
+type = "uint256"
+"#,
+            hex::encode(topic0)
+        );
+        let config: crate::misc::config::Config = toml::from_str(&toml_str).unwrap();
+        crate::db::txs::custom_tables::sync(&config.custom_tables()?, 1, &conn).await?;
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
+            .fetch_one(&conn)
+            .await?;
+        assert_eq!(count, 5);
+
+        purge_old_blocks(2, &conn).await?;
+
+        let remaining: Vec<i64> =
+            sqlx::query_scalar("SELECT block_number FROM events ORDER BY block_number")
+                .fetch_all(&conn)
+                .await?;
+        assert_eq!(remaining, vec![103, 104]);
 
         Ok(())
     }
