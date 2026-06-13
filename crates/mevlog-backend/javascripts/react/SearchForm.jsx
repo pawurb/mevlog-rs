@@ -110,9 +110,19 @@ const SearchForm = ({ initialValues = {} }) => {
 
     try {
       const res = await fetch(`/api/search?${params.toString()}`);
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        setError(data.error || `HTTP ${res.status}: ${res.statusText}`);
+      const text = await res.text();
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        // Non-JSON response (timeout, panic, proxy error) — surface the raw body.
+        setError(text.trim() || `HTTP ${res.status}: ${res.statusText}`);
+        setResponse(null);
+        setLoading(false);
+        return;
+      }
+      if (!res.ok || !data || data.error) {
+        setError((data && data.error) || `HTTP ${res.status}: ${res.statusText}`);
         setResponse(null);
       } else {
         setResponse(data);
@@ -201,16 +211,24 @@ const SearchForm = ({ initialValues = {} }) => {
           <label style={labelStyle} htmlFor="search-sql">
             Read-only SQL
           </label>
-          <textarea
-            id="search-sql"
+          <Editor
+            textareaId="search-sql"
+            className="sql-editor"
             value={sql}
-            onChange={(e) => setSql(e.target.value)}
+            onValueChange={setSql}
+            highlight={highlightSql}
+            padding={10}
+            placeholder={'SELECT block_number, tx_index, tx_hash, gas_used\nFROM transactions\nORDER BY gas_used DESC\nLIMIT 20'}
+            textareaClassName="sql-editor-textarea"
             spellCheck={false}
             autoCapitalize="off"
             autoCorrect="off"
-            placeholder={'SELECT block_number, tx_index, tx_hash, gas_used\nFROM transactions\nORDER BY gas_used DESC\nLIMIT 20'}
-            rows={12}
-            style={{ ...inputStyle, resize: 'vertical' }}
+            style={{
+              ...inputStyle,
+              padding: 0,
+              minHeight: '260px',
+              overflow: 'auto',
+            }}
           />
         </div>
 
