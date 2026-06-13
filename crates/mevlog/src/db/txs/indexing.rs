@@ -13,6 +13,11 @@ use crate::{
 /// fetching missing blocks in contiguous runs of `batch_size` and persisting
 /// their txs, logs, and block rows. Returns `(cached_blocks, new_blocks)`.
 ///
+/// Backfill proceeds newest-block-first, so the most recent blocks become
+/// queryable first and an interrupted backfill leaves the gap at the bottom of
+/// the range. This also keeps a live indexer, which appends forward from the
+/// newest indexed block, from colliding with backfill on the same blocks.
+///
 /// Blocks are persisted last in each chunk: a `blocks` row marks a block as
 /// indexed, so a block is only flagged once its txs and logs have landed. Every
 /// block in the chunk (including empty ones) yields a block row, so empty
@@ -42,10 +47,11 @@ pub async fn index_block_range(
         .sum();
     let mut batch_idx = 0;
 
-    for (run_start, run_end) in ranges {
+    for (run_start, run_end) in ranges.into_iter().rev() {
         let run_blocks: Vec<u64> = (run_start..=run_end).collect();
 
-        for chunk in run_blocks.chunks(batch_size) {
+        // Newest chunk first; blocks inside a chunk stay ascending.
+        for chunk in run_blocks.chunks(batch_size).rev() {
             let start_block = *chunk.first().unwrap();
             let end_block = *chunk.last().unwrap();
 
