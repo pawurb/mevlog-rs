@@ -7,7 +7,7 @@ use crate::{
     ChainInfoNoRpcsJson,
     db::txs::{
         display_sql::tx_display_query, indexing::index_block_range,
-        models::transaction::Transaction, raw_query::run_raw_query,
+        models::transaction::Transaction, raw_query::run_raw_query_async,
     },
     misc::{
         shared_init::{ConnOpts, CryoOpts, TraceMode, init_deps},
@@ -77,7 +77,7 @@ pub async fn tx(
         sql.replace(NATIVE_TOKEN_PRICE_MACRO, "NULL")
     };
 
-    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None).await?;
     if result.rows.is_empty() {
         bail!("Transaction {} not found in local store", tx_hash);
     }

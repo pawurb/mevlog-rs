@@ -4,7 +4,7 @@ use eyre::{Result, bail};
 
 use crate::{
     ChainInfoNoRpcsJson,
-    db::txs::{indexing::index_block_range, raw_query::run_raw_query},
+    db::txs::{indexing::index_block_range, raw_query::run_raw_query_async},
     misc::{
         args_parsing::BlocksRange,
         shared_init::{ConnOpts, CryoOpts, SharedOpts, init_deps},
@@ -115,7 +115,7 @@ pub async fn query(
         latest_block,
     )
     .await?;
-    let result = run_raw_query(&sql, &deps.txs_read_path, max_rows)?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), max_rows).await?;
 
     let duration_ns = start_time.elapsed().as_nanos() as u64;
 

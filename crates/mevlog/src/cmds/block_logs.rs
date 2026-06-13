@@ -6,7 +6,7 @@ use crate::{
     ChainInfoNoRpcsJson,
     db::txs::{
         display_sql::block_logs_display_query, indexing::index_block_range,
-        raw_query::run_raw_query,
+        raw_query::run_raw_query_async,
     },
     misc::{
         args_parsing::BlocksRange,
@@ -43,7 +43,7 @@ pub async fn block_logs(
 
     // The logs SELECT has no macros (no USD columns), so it runs as-is.
     let sql = block_logs_display_query(&format!("block_number = {block_number}"));
-    let result = run_raw_query(&sql, &deps.txs_read_path, None)?;
+    let result = run_raw_query_async(sql.clone(), deps.txs_read_path.clone(), None).await?;
 
     Ok(QueryOutcome {
         columns: result.columns,
