@@ -23,6 +23,12 @@ pub struct PurgeDBArgs {
 
     #[arg(
         long,
+        help = "Reclaim freed disk space with VACUUM after purging. Off by default: freed pages are reused by subsequent inserts, and VACUUM needs an exclusive whole-DB lock that can block concurrent readers/writers"
+    )]
+    reclaim: bool,
+
+    #[arg(
+        long,
         help = "Override the directory holding the per-chain transactions SQLite DB (mainly for tests); filename stays mevlog-txs-v{N}-{chain_id}.db"
     )]
     txs_db_dir: Option<String>,
@@ -44,7 +50,9 @@ impl PurgeDBArgs {
 
         let start_time = Instant::now();
         let stats = purge_old_blocks(self.keep, &conn).await?;
-        reclaim_space(&conn).await?;
+        if self.reclaim {
+            reclaim_space(&conn).await?;
+        }
         let duration_ns = start_time.elapsed().as_nanos() as u64;
 
         let resp = PurgeResponse::new(self.keep, self.chain_id, stats, duration_ns);
