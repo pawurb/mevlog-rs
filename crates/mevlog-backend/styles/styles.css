@@ -613,6 +613,219 @@ a[href="/tui"] button.active {
   font-weight: bold !important;
 }
 
+.hero-subheader {
+  color: var(--foreground);
+  max-width: 760px;
+  margin: 0 auto 10px auto;
+  font-size: 1.2em;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* Hero query tabs: switch the example query shown in the terminal card. */
+.hero-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 720px;
+  margin: 26px auto 0 auto;
+}
+
+body.terminal .hero-tab {
+  font-family: monospace !important;
+  font-size: 0.82em;
+  padding: 5px 12px;
+  border-radius: 999px !important;
+  border: 1px solid rgba(80, 149, 82, 0.4);
+  background-color: transparent;
+  color: var(--foreground);
+  opacity: 0.7;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+body.terminal .hero-tab:hover {
+  opacity: 1;
+  border-color: rgba(245, 174, 46, 0.5);
+}
+
+body.terminal .hero-tab.active {
+  opacity: 1;
+  color: var(--yellow);
+  border-color: var(--yellow);
+  background-color: rgba(245, 174, 46, 0.08);
+}
+
+/* Hero signature: a real mevlog SQL query, rendered as a terminal card. */
+.hero-terminal {
+  max-width: 720px;
+  margin: 14px auto 0 auto;
+  text-align: left;
+  border: 1px solid rgba(80, 149, 82, 0.45);
+  border-radius: 10px;
+  overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+
+.hero-terminal-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background-color: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(80, 149, 82, 0.3);
+  font-family: monospace;
+  font-size: 0.82em;
+}
+
+.hero-terminal-cmd {
+  color: var(--yellow);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hero-terminal-net {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--foreground);
+  opacity: 0.7;
+}
+
+.hero-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--cyan);
+  box-shadow: 0 0 7px var(--cyan);
+  animation: hero-pulse 2s ease-in-out infinite;
+}
+
+@keyframes hero-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.hero-terminal-body {
+  margin: 0;
+  padding: 16px 18px;
+  background: transparent;
+  border: none;
+  font-family: monospace;
+  font-size: 0.95em;
+  line-height: 1.55;
+  min-height: 8.5em;
+  overflow-x: auto;
+}
+
+.hero-terminal-body code {
+  background: transparent;
+  padding: 0;
+  color: var(--foreground);
+  white-space: pre;
+  text-decoration: none;
+}
+
+.hero-terminal-body code span {
+  text-decoration: none;
+}
+
+/* One story: yellow = the mevlog vocabulary (custom fns + macros).
+   Standard SQL stays dim; the result value is the single green pop. */
+.hero-terminal-body .t-kw { color: var(--foreground); opacity: 0.45; }
+.hero-terminal-body .t-fn { color: var(--yellow); }
+.hero-terminal-body .t-macro { color: var(--yellow); font-weight: bold; }
+.hero-terminal-body .t-str { color: var(--foreground); opacity: 0.8; font-weight: normal; }
+
+.hero-caret {
+  display: inline-block;
+  width: 8px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background-color: var(--yellow);
+  animation: hero-blink 1.1s step-end infinite;
+}
+
+@keyframes hero-blink {
+  0%, 50% { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+.hero-terminal-out {
+  padding: 10px 18px;
+  border-top: 1px solid rgba(80, 149, 82, 0.3);
+  font-family: monospace;
+  font-size: 0.95em;
+  background-color: rgba(80, 149, 82, 0.07);
+}
+
+.hero-out-key { color: var(--foreground); opacity: 0.6; }
+.hero-out-val { color: var(--cyan); font-weight: bold; margin-left: 10px; }
+
+.hero-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin: 26px 0 8px 0;
+}
+
+/* High specificity + !important throughout: terminal.css has aggressive
+   a:hover and .btn rules that otherwise swap font, color, and radius on hover. */
+body.terminal .hero-cta,
+body.terminal .hero-cta:hover,
+body.terminal .hero-cta:focus {
+  display: inline-block;
+  padding: 10px 22px;
+  border-radius: 6px !important;
+  border: 1px solid transparent;
+  font-family: monospace !important;
+  font-size: 1em;
+  font-weight: bold;
+  text-decoration: none !important;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+body.terminal .hero-cta-primary,
+body.terminal .hero-cta-primary:focus {
+  background-color: var(--yellow) !important;
+  border-color: var(--yellow) !important;
+  color: var(--background) !important;
+}
+
+body.terminal .hero-cta-primary:hover {
+  background-color: var(--bright-yellow) !important;
+  border-color: var(--bright-yellow) !important;
+  color: var(--background) !important;
+}
+
+body.terminal .hero-cta-ghost,
+body.terminal .hero-cta-ghost:focus {
+  background-color: transparent !important;
+  border-color: rgba(245, 174, 46, 0.5) !important;
+  color: var(--yellow) !important;
+}
+
+body.terminal .hero-cta-ghost:hover {
+  background-color: rgba(245, 174, 46, 0.1) !important;
+  border-color: var(--yellow) !important;
+  color: var(--yellow) !important;
+}
+
+@media (max-width: 768px) {
+  .hero-terminal-body { font-size: 0.8em; }
+  .hero-cta { width: 100%; text-align: center; box-sizing: border-box; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-dot, .hero-caret { animation: none; }
+}
+
 .features-list {
   margin: 40px 0;
 }
@@ -646,22 +859,22 @@ a[href="/tui"] button.active {
   text-align: left;
 }
 
-.feature-text h3 {
-  color: var(--bright-cyan) !important;
-  margin-bottom: 20px;
+.feature-text h2 {
+  color: var(--foreground) !important;
+  margin-bottom: 16px;
   font-weight: bold !important;
-  text-shadow: 0 0 7px rgba(84, 240, 136, 0.3);
+  text-shadow: none;
 }
 
 @media (max-width: 768px) {
-  .feature-text h3 {
-    font-size: 1.6em !important;
+  .feature-text h2 {
+    font-size: 1.4em !important;
   }
 }
 
 @media (min-width: 769px) {
-  .feature-text h3 {
-    font-size: 2.5em !important;
+  .feature-text h2 {
+    font-size: 1.8em !important;
   }
 }
 
@@ -670,6 +883,26 @@ a[href="/tui"] button.active {
   font-size: 1.1em;
   line-height: 1.6;
   margin: 0;
+}
+
+/* Docs-style inline code chip. Override terminal.css backtick pseudo-elements
+   and its gray .terminal code color. */
+body.terminal .feature-text code,
+body.terminal .project-description code {
+  font-family: monospace;
+  font-size: 0.92em;
+  color: var(--yellow);
+  background-color: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+body.terminal .feature-text code::before,
+body.terminal .feature-text code::after,
+body.terminal .project-description code::before,
+body.terminal .project-description code::after {
+  content: none;
 }
 
 .feature-image-container {
@@ -774,8 +1007,8 @@ a[href="/tui"] button.active {
     text-align: center;
   }
 
-  .feature-row .feature-text h3,
-  .feature-row.reverse .feature-text h3,
+  .feature-row .feature-text h2,
+  .feature-row.reverse .feature-text h2,
   .feature-row .feature-text p,
   .feature-row.reverse .feature-text p {
     text-align: center;

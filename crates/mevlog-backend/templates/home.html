@@ -7,7 +7,7 @@
   "@type": "WebSite",
   "name": "mevlog.rs",
   "url": "https://mevlog.rs/",
-  "description": "Open-source web interface for querying EVM transactions across 2000+ chains, powered by Revm.",
+  "description": "Open-source tool for querying EVM transactions, logs, and blocks with SQL. Index any chain locally and run read-only queries with EVM-native functions.",
   "potentialAction": {
     "@type": "SearchAction",
     "target": "https://mevlog.rs/search?event={search_term}",
@@ -20,64 +20,125 @@
 {% block content %}
 
 <div class="hero-section">
-  <h1 class="main-header">EVM transactions querying powered by Revm</h1>
-  
+  <h1 class="main-header">Query any EVM chain with SQL</h1>
+
+  <p class="hero-subheader">The open-source, decentralized alternative to commercial chain indexers. Index blocks into a zero-config local SQLite database and run read-only SQL over transactions, logs, and blocks - with EVM-native functions for U256 math, ERC20 amounts, ENS, and live USD pricing. You own the data, on any of 2k+ EVM chains.</p>
+
+  <div class="hero-tabs" role="tablist" aria-label="Example queries">
+    <button type="button" class="hero-tab active" data-q="0">ENS gas spend</button>
+    <button type="button" class="hero-tab" data-q="1">USDC volume</button>
+    <button type="button" class="hero-tab" data-q="2">Biggest gas tx</button>
+    <button type="button" class="hero-tab" data-q="3">New contracts</button>
+    <button type="button" class="hero-tab" data-q="4">Top miners</button>
+  </div>
+
+  <div class="hero-terminal" role="img" aria-label="Example mevlog SQL query rendered as a terminal session">
+    <div class="hero-terminal-bar">
+      <span class="hero-terminal-cmd" id="hero-cmd">mevlog query -b 7200:latest --sql</span>
+      <span class="hero-terminal-net"><span class="hero-dot"></span>mainnet</span>
+    </div>
+    <pre class="hero-terminal-body"><code id="hero-code"><span class="t-kw">SELECT</span> <span class="t-fn">format_usd</span>(<span class="t-fn">convert_usd</span>(
+         <span class="t-fn">u256_sum</span>(<span class="t-fn">u256_mul</span>(gas_used, effective_gas_price)),
+         <span class="t-macro">{NATIVE_TOKEN_PRICE()}</span>)) <span class="t-kw">AS</span> gas_spent
+<span class="t-kw">FROM</span> transactions
+<span class="t-kw">WHERE</span> from_address = <span class="t-macro">{RESOLVE_ENS(<span class="t-str">"jaredfromsubway.eth"</span>)}</span><span class="hero-caret"></span></code></pre>
+    <div class="hero-terminal-out"><span class="hero-out-key" id="hero-key">gas_spent</span> <span class="hero-out-val" id="hero-val">$48,210.34</span></div>
+  </div>
+
+  <div class="hero-cta-row">
+    <a href="/search" class="hero-cta hero-cta-primary">Try a live query &rarr;</a>
+    <a href="/docs/querying/sql.html" class="hero-cta hero-cta-ghost">Read the docs</a>
+  </div>
+
+  <script>
+  (function () {
+    var KW = '<span class="t-kw">', FN = '<span class="t-fn">', MC = '<span class="t-macro">', ST = '<span class="t-str">', E = '</span>';
+    var QUERIES = [
+      {
+        cmd: 'mevlog query -b 7200:latest --sql',
+        key: 'gas_spent', val: '$48,210.34',
+        code: KW + 'SELECT' + E + ' ' + FN + 'format_usd' + E + '(' + FN + 'convert_usd' + E + '(\n         ' + FN + 'u256_sum' + E + '(' + FN + 'u256_mul' + E + '(gas_used, effective_gas_price)),\n         ' + MC + '{NATIVE_TOKEN_PRICE()}' + E + ')) ' + KW + 'AS' + E + ' gas_spent\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'WHERE' + E + ' from_address = ' + MC + '{RESOLVE_ENS(' + ST + '"jaredfromsubway.eth"' + E + ')}' + E
+      },
+      {
+        cmd: 'mevlog query -b 7200:latest --sql',
+        key: 'usdc_volume', val: '$1,284,019,442',
+        code: KW + 'SELECT' + E + ' ' + FN + 'erc20_to_real' + E + '(' + FN + 'u256_sum' + E + '(erc20_amount), 6) ' + KW + 'AS' + E + ' usdc_volume\n' + KW + 'FROM' + E + ' logs\n' + KW + 'WHERE' + E + ' address = ' + ST + "X'a0b8…eb48'" + E + '\n  ' + KW + 'AND' + E + ' erc20_amount ' + KW + 'IS NOT NULL' + E
+      },
+      {
+        cmd: 'mevlog query -b 7200:latest --sql',
+        key: 'top tx gas', val: '$9,418.55',
+        code: KW + 'SELECT' + E + ' tx_hash,\n       ' + FN + 'format_usd' + E + '(' + FN + 'convert_usd' + E + '(' + FN + 'u256_mul' + E + '(gas_used,\n         effective_gas_price), ' + MC + '{NATIVE_TOKEN_PRICE()}' + E + ')) ' + KW + 'AS' + E + ' gas_usd\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'ORDER BY' + E + ' ' + FN + 'u256_mul' + E + '(gas_used, effective_gas_price) ' + KW + 'DESC' + E + '\n' + KW + 'LIMIT' + E + ' 1'
+      },
+      {
+        cmd: 'mevlog query -b 7200:latest --sql',
+        key: 'contracts_deployed', val: '1,284',
+        code: KW + 'SELECT' + E + ' COUNT(*) ' + KW + 'AS' + E + ' contracts_deployed\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'WHERE' + E + ' signature = ' + ST + "'CREATE()'" + E + ' ' + KW + 'AND' + E + ' success = 1'
+      },
+      {
+        cmd: 'mevlog query -b 7200:latest --sql',
+        key: 'top miner', val: 'beaverbuild · 612 blocks',
+        code: KW + 'SELECT' + E + ' miner, COUNT(*) ' + KW + 'AS' + E + ' blocks_mined\n' + KW + 'FROM' + E + ' blocks\n' + KW + 'GROUP BY' + E + ' miner\n' + KW + 'ORDER BY' + E + ' blocks_mined ' + KW + 'DESC' + E + '\n' + KW + 'LIMIT' + E + ' 5'
+      }
+    ];
+    var code = document.getElementById('hero-code'),
+        cmd = document.getElementById('hero-cmd'),
+        key = document.getElementById('hero-key'),
+        val = document.getElementById('hero-val'),
+        tabs = document.querySelectorAll('.hero-tab');
+    if (!code || !tabs.length) return;
+    function show(i) {
+      var q = QUERIES[i];
+      if (!q) return;
+      code.innerHTML = q.code + '<span class="hero-caret"></span>';
+      cmd.textContent = q.cmd;
+      key.textContent = q.key;
+      val.textContent = q.val;
+      tabs.forEach(function (t, j) { t.classList.toggle('active', j === i); });
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () { show(parseInt(t.dataset.q, 10)); });
+    });
+  })();
+  </script>
+
   <div class="features-list">
     <div class="feature-row">
       <div class="feature-text">
-        <h2>Explore ALL chains in one place</h2>
-        <p>Try a web version integrated with over 2k EVM chains via <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a> RPCs. Or connect <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> to your local node for the best performance.</p></p>
+        <h2>EVM-native SQL functions</h2>
+        <p>Plain SQLite cannot sum U256 values. mevlog adds the missing pieces: 256-bit math, ERC20 decoding, and display helpers that turn raw wei into readable ETH, gwei, and live USD prices. Aggregate, sort, and surface outliers - the biggest gas spenders, the top <code>USDC</code> transfers, or what <code>jaredfromsubway.eth</code> paid in gas today.</p>
       </div>
       <div class="feature-image-container">
-        <img src="/all-chains.png" alt="All Chains" class="feature-image" />
+        <img src="/find-outliers.png" alt="Query output: gas price, gas cost in USD, and status columns" class="feature-image" />
       </div>
     </div>
-    
+
     <div class="feature-row reverse">
       <div class="feature-image-container">
-        <img src="/custom-queries.png" alt="Custom Queries" class="feature-image" />
+        <img src="/all-chains.png" alt="Chain selector listing Arbitrum networks" class="feature-image" />
       </div>
       <div class="feature-text">
-        <h2>Query txs with flexible filters</h2>
-        <p>Build complex queries with advanced filtering options. Search by events, method calls, ENS names, validator bribes, ERC20 transfers and more.</p>
+        <h2>Every chain, and you own the data</h2>
+        <p>No hosted API, no rate limits, no per-request billing. Index blocks into a local SQLite database that never leaves your machine. The web demo runs Ethereum mainnet; the <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> works against any <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a> chain or your own node.</p>
       </div>
     </div>
-    
+
     <div class="feature-row">
       <div class="feature-text">
-        <h2>Quickly find outliers</h2>
-        <p>Identify unusual transactions and potential MEV opportunities. Detect anomalies in gas usage, value transfers, and execution patterns.</p>
+        <h2>Open-source and free to use</h2>
+        <p>Powered by the MIT-licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>. The same query engine runs in the web demo and the CLI.</p>
       </div>
-      <div class="feature-image-container">
-        <img src="/find-outliers.png" alt="Find Outliers" class="feature-image" />
-      </div>
-    </div>
-    
-    <div class="feature-row reverse">
       <div class="feature-image-container">
         <img src="/open-source.png" alt="Open Source" class="feature-image" />
-      </div>
-      <div class="feature-text">
-        <h2>Open-Source and free to use</h2>
-        <p>Powered by MIT Licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>.</p>
       </div>
     </div>
   </div>
   
   <p class="project-description">
-    mevlog.rs is a web interface for <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a>.  This project aims to provide an easy-to-use Open Source tool for querying Ethereum transactions data with EVM tracing insights. It's still in a prototype stage. You can read about the origin of the project on <a target='_blank' class='yellow' href="https://pawelurbanek.com/long-tail-mev-revm">my blog</a>.
+    mevlog.rs is an open-source, decentralized alternative to commercial EVM chain indexers. Instead of paying for a hosted API, you index blocks into a local SQLite database and query them with SQL - no account, no rate limits, no per-request billing. You own the data, it never leaves your machine, and it works against any EVM chain or your own node. It's powered by the <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a>. You can read about the origin of the project on <a target='_blank' class='yellow' href="https://pawelurbanek.com/long-tail-mev-revm">my blog</a>.
   </p>
 
   <p class="project-description">
-    It's not a replacement for standard explorers. Think of it as a discovery tool that helps surface interesting transactions and points you to official explorers for deeper analysis.
-  </p>
-
-  <p class="project-description">
-    Currently, the web interface uses public RPCs sourced from <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>. Rust CLI is instrumented by <a class='yellow' target='_blank' href="https://hotpath.rs/">hotpath.rs profiler</a>.
-  </p>
-
-  <p class="project-description">
-    Project received an <a class='yellow' target='_blank' href="https://builder.ensgrants.xyz/">ENS PG Builder Grant</a> which helped me to implement the web interface, TUI, MCP, and ChainList integration.
+    The web demo indexes Ethereum mainnet over public RPCs sourced from <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>, and the Rust CLI is instrumented by the <a class='yellow' target='_blank' href="https://hotpath.rs/">hotpath.rs profiler</a>. The project received an <a class='yellow' target='_blank' href="https://builder.ensgrants.xyz/">ENS PG Builder Grant</a> which helped me implement the web interface and ChainList integration.
   </p>
 </div>
 
