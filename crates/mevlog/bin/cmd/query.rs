@@ -23,6 +23,13 @@ pub struct QueryArgs {
     #[arg(long, help = "Get N-offset latest block")]
     latest_offset: Option<u64>,
 
+    #[arg(
+        long,
+        help = "Latest block number used to expand the {LATEST_BLOCK()} SQL macro, \
+                avoiding the RPC call that would otherwise fetch it"
+    )]
+    latest_block: Option<u64>,
+
     #[arg(long, help = "Maximum allowed block range size")]
     max_range: Option<u64>,
 
@@ -72,6 +79,7 @@ impl QueryArgs {
             self.max_rows,
             self.batch_size,
             self.skip_index,
+            self.latest_block,
             &self.sql,
             &self.shared_opts,
             &self.conn_opts,

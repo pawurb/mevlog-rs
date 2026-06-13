@@ -18,7 +18,8 @@ const ENS_MACRO_CLOSE: &str = "\")}";
 
 /// Expands the macro tokens supported in `--sql` into concrete literals, fetching
 /// each value only when its token is present:
-/// - `{LATEST_BLOCK()}` -> the chain's current latest block number (one RPC call).
+/// - `{LATEST_BLOCK()}` -> the chain's current latest block number. Resolved from
+///   `latest_block` when provided (no RPC), otherwise fetched via one RPC call.
 /// - `{NATIVE_TOKEN_PRICE()}` -> the native token's USD price; errors if no price
 ///   is available rather than silently producing wrong USD figures.
 /// - `{RESOLVE_ENS("name.eth")}` -> the resolved address as a `X'..'` blob literal
@@ -28,11 +29,15 @@ pub(crate) async fn substitute_sql_macros(
     provider: &Arc<GenericProvider>,
     chain_id: u64,
     native_token_price: Option<f64>,
+    latest_block: Option<u64>,
 ) -> Result<String> {
     let mut out = sql.to_string();
 
     if out.contains(LATEST_BLOCK_MACRO) {
-        let latest = provider.get_block_number().await?;
+        let latest = match latest_block {
+            Some(latest) => latest,
+            None => provider.get_block_number().await?,
+        };
         out = out.replace(LATEST_BLOCK_MACRO, &latest.to_string());
     }
 

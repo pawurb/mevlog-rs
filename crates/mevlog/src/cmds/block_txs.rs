@@ -56,6 +56,7 @@ pub async fn block_txs(
             &deps.provider,
             deps.chain.chain_id,
             native_token_price,
+            None,
         )
         .await?
     } else {

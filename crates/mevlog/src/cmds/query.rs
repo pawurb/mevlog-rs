@@ -25,6 +25,7 @@ pub async fn query(
     max_rows: Option<usize>,
     batch_size: usize,
     skip_index: bool,
+    latest_block: Option<u64>,
     sql: &str,
     shared_opts: &SharedOpts,
     conn_opts: &ConnOpts,
@@ -106,8 +107,14 @@ pub async fn query(
     let mut chain_info = ChainInfoNoRpcsJson::from_evm_chain(&deps.chain);
     chain_info.native_token_price = native_token_price;
 
-    let sql =
-        substitute_sql_macros(sql, &deps.provider, deps.chain.chain_id, native_token_price).await?;
+    let sql = substitute_sql_macros(
+        sql,
+        &deps.provider,
+        deps.chain.chain_id,
+        native_token_price,
+        latest_block,
+    )
+    .await?;
     let result = run_raw_query(&sql, &deps.txs_read_path, max_rows)?;
 
     let duration_ns = start_time.elapsed().as_nanos() as u64;
