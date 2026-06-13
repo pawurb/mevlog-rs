@@ -20,6 +20,14 @@ pub struct McpArgs {
     )]
     pub host: String,
 
+    #[arg(
+        long,
+        default_value = "30000",
+        env = "MEVLOG_MCP_TIMEOUT_MS",
+        help = "Per-request timeout in milliseconds for the underlying mevlog CLI execution"
+    )]
+    pub timeout_ms: u64,
+
     #[command(flatten)]
     pub conn_opts: ConnOpts,
 }
@@ -39,6 +47,7 @@ impl McpArgs {
             resolved.chain_id,
             &self.host,
             self.port,
+            std::time::Duration::from_millis(self.timeout_ms),
         )
         .await
     }
