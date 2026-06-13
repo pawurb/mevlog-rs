@@ -35,13 +35,13 @@ pub(crate) fn tx_display_query(where_sql: &str) -> String {
             format_gwei(effective_gas_price) AS display_gas_price, \
             u256_to_dec(txcost) AS tx_cost, \
             format_ether(txcost) AS display_tx_cost, \
-            format_usd(txcost, {price}) AS display_tx_cost_usd, \
+            format_usd(convert_usd(txcost, {price})) AS display_tx_cost_usd, \
             u256_to_dec(coinbase_transfer) AS coinbase_transfer, \
             format_ether(coinbase_transfer) AS display_coinbase_transfer, \
-            format_usd(coinbase_transfer, {price}) AS display_coinbase_transfer_usd, \
+            format_usd(convert_usd(coinbase_transfer, {price})) AS display_coinbase_transfer_usd, \
             u256_to_dec(fullcost) AS full_tx_cost, \
             format_ether(fullcost) AS display_full_tx_cost, \
-            format_usd(fullcost, {price}) AS display_full_tx_cost_usd \
+            format_usd(convert_usd(fullcost, {price})) AS display_full_tx_cost_usd \
          FROM ( \
             SELECT *, \
                 u256_mul(gas_used, effective_gas_price) AS txcost, \

@@ -11,7 +11,7 @@ const CHAIN_ID = 1;
 const PRESETS = [
   {
     label: 'How much jaredfromsubway.eth spent on gas in last 1 day',
-    sql: 'SELECT COUNT(*) AS txs,\n       format_ether(u256_sum(u256_mul(t.gas_used, t.effective_gas_price))) AS gas_spent_eth,\n       format_usd(u256_sum(u256_mul(t.gas_used, t.effective_gas_price)), {NATIVE_TOKEN_PRICE()}) AS gas_spent_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.from_address = {RESOLVE_ENS("jaredfromsubway.eth")}\n  AND b.timestamp >= unixepoch(\'now\', \'-1 day\')',
+    sql: 'SELECT COUNT(*) AS txs,\n       format_ether(u256_sum(u256_mul(t.gas_used, t.effective_gas_price))) AS gas_spent_eth,\n       format_usd(convert_usd(u256_sum(u256_mul(t.gas_used, t.effective_gas_price)), {NATIVE_TOKEN_PRICE()})) AS gas_spent_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.from_address = {RESOLVE_ENS("jaredfromsubway.eth")}\n  AND b.timestamp >= unixepoch(\'now\', \'-1 day\')',
   },
   {
     label: 'Which 10 txs transferred the most USDC in last 1 day',
@@ -19,19 +19,19 @@ const PRESETS = [
   },
   {
     label: 'Which 10 txs spent the most on gas in last 1 day',
-    sql: "SELECT t.block_number, t.tx_hash,\n       format_ether(u256_mul(t.gas_used, t.effective_gas_price)) AS gas_eth,\n       format_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()}) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 10",
+    sql: "SELECT t.block_number, t.tx_hash,\n       format_ether(u256_mul(t.gas_used, t.effective_gas_price)) AS gas_eth,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 10",
   },
   {
     label: 'Which 5 txs used the most gas in last 1 day',
-    sql: "SELECT t.block_number, t.tx_hash, t.gas_used,\n       format_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()}) AS gas_cost_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.gas_used DESC\nLIMIT 5",
+    sql: "SELECT t.block_number, t.tx_hash, t.gas_used,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_cost_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.gas_used DESC\nLIMIT 5",
   },
   {
     label: 'Top 10 ETH transfers in last 1 day',
-    sql: "SELECT t.tx_hash,\n       format_ether(t.value) AS value_eth,\n       format_usd(t.value, {NATIVE_TOKEN_PRICE()}) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
+    sql: "SELECT t.tx_hash,\n       format_ether(t.value) AS value_eth,\n       format_usd(convert_usd(t.value, {NATIVE_TOKEN_PRICE()})) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
   },
   {
     label: 'How many new contracts deployed in last 1 day',
-    sql: "SELECT COUNT(*) AS contracts_deployed\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.to_address IS NULL\n  AND t.success = 1\n  AND b.timestamp >= unixepoch('now', '-1 day')",
+    sql: "SELECT COUNT(*) AS contracts_deployed\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.signature = 'CREATE()'\n  AND t.success = 1\n  AND b.timestamp >= unixepoch('now', '-1 day')",
   },
   {
     label: 'Top 5 miners by blocks mined in last 1 day',
