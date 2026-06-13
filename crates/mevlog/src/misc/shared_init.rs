@@ -9,7 +9,10 @@ use eyre::{Result, bail};
 use sqlx::SqlitePool;
 use tracing::debug;
 
-use crate::misc::{config::Config, rpc_urls::get_chain_info};
+use crate::misc::{
+    config::{Config, CustomTable},
+    rpc_urls::get_chain_info,
+};
 use crate::{
     GenericProvider,
     db::{
@@ -32,6 +35,16 @@ pub struct SharedDeps {
     pub provider: Arc<GenericProvider>,
     pub chain: Arc<EVMChain>,
     pub rpc_url: String,
+    /// Config-defined custom tables applicable to this chain, already synced
+    /// into the txs DB; the indexing path populates them per chunk.
+    pub custom_tables: Vec<CustomTable>,
+}
+
+impl SharedDeps {
+    /// Names of the custom tables to allowlist for `--sql` reads.
+    pub(crate) fn custom_table_names(&self) -> Vec<String> {
+        self.custom_tables.iter().map(|t| t.name.clone()).collect()
+    }
 }
 
 pub struct ResolvedConn {
@@ -114,6 +127,10 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
     });
     txs::init_db(txs_db_url.clone(), resolved.chain_id).await?;
     let txs = txs::conn(txs_db_url.clone(), resolved.chain_id, false).await?;
+
+    let config = Config::load()?;
+    let custom_tables =
+        txs::custom_tables::sync(&config.custom_tables()?, resolved.chain_id, &txs).await?;
     let txs_read_path = txs_db_url.unwrap_or_else(|| {
         txs::default_db_path(resolved.chain_id)
             .to_string_lossy()
@@ -132,6 +149,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         provider: resolved.provider,
         chain,
         rpc_url: resolved.rpc_url,
+        custom_tables,
     })
 }
 

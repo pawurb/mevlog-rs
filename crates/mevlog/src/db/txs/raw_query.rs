@@ -12,10 +12,12 @@ use rusqlite::{
 };
 use serde_json::{Map, Value};
 
-/// Tables a user-supplied `--sql` query is allowed to read. Everything else
-/// (the `_sqlx_migrations` bookkeeping table, attached databases, etc.) is
-/// rejected by the authorizer below.
-const ALLOWED_TABLES: [&str; 3] = ["transactions", "logs", "blocks"];
+/// Built-in tables a user-supplied `--sql` query is always allowed to read.
+/// Config-defined custom tables (passed in by the caller from the synced
+/// `SharedDeps::custom_tables`) are added on top; everything else (the
+/// `custom_tables` / `_sqlx_migrations` bookkeeping tables, attached databases,
+/// etc.) is rejected by the authorizer below.
+const BUILTIN_TABLES: [&str; 3] = ["transactions", "logs", "blocks"];
 
 /// Read-only PRAGMA table-valued functions a query may call. These expose only
 /// the database file's size (`page_count * page_size`), never row data, so they
@@ -41,11 +43,11 @@ fn map_query_err(err: rusqlite::Error, deadline: Option<Instant>) -> eyre::Repor
     }
 }
 
-/// Authorizer callback: permit only read-only access to the allowed tables
-/// plus SQL function calls. Reads of any other table error out, and every
+/// Authorizer callback: permit only read-only access to `allowed` tables plus
+/// SQL function calls. Reads of any other table error out, and every
 /// mutating/structural/side-effecting action (ATTACH, DETACH, PRAGMA,
 /// transactions, DDL, DML) is denied.
-fn authorize(ctx: AuthContext<'_>) -> Authorization {
+fn authorize(ctx: AuthContext<'_>, allowed: &HashSet<String>) -> Authorization {
     match ctx.action {
         AuthAction::Select | AuthAction::Function { .. } | AuthAction::Recursive => {
             Authorization::Allow
@@ -54,7 +56,7 @@ fn authorize(ctx: AuthContext<'_>) -> Authorization {
             let pragma_table = table_name
                 .strip_prefix("pragma_")
                 .is_some_and(|name| ALLOWED_PRAGMA_NAMES.contains(&name));
-            if ALLOWED_TABLES.contains(&table_name) || pragma_table {
+            if allowed.contains(table_name) || pragma_table {
                 Authorization::Allow
             } else {
                 Authorization::Deny
@@ -87,8 +89,11 @@ pub(crate) async fn run_raw_query_async(
     db_path: String,
     max_rows: Option<usize>,
     timeout: Option<Duration>,
+    custom_tables: Vec<String>,
 ) -> Result<QueryResult> {
-    tokio::task::spawn_blocking(move || run_raw_query(&sql, &db_path, max_rows, timeout))
+    tokio::task::spawn_blocking(move || {
+        run_raw_query(&sql, &db_path, max_rows, timeout, &custom_tables)
+    })
         .await
         .map_err(|e| eyre!("query execution task failed: {e}"))?
 }
@@ -105,6 +110,7 @@ fn run_raw_query(
     db_path: &str,
     max_rows: Option<usize>,
     timeout: Option<Duration>,
+    custom_tables: &[String],
 ) -> Result<QueryResult> {
     // Accept both `sqlite://<path>` URLs and bare filesystem paths.
     let filename = db_path
@@ -128,7 +134,11 @@ fn run_raw_query(
         conn.progress_handler(PROGRESS_OPS, Some(move || Instant::now() >= deadline));
     }
 
-    conn.authorizer(Some(authorize));
+    // Allowlist the built-in tables plus the config-defined custom tables.
+    // `move` into the closure so it lives as long as the connection.
+    let mut allowed: HashSet<String> = BUILTIN_TABLES.iter().map(|t| t.to_string()).collect();
+    allowed.extend(custom_tables.iter().cloned());
+    conn.authorizer(Some(move |ctx: AuthContext<'_>| authorize(ctx, &allowed)));
 
     let mut stmt = conn.prepare(sql).map_err(|e| map_query_err(e, deadline))?;
     let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
@@ -215,7 +225,8 @@ mod test {
         // timeout; the progress handler must interrupt it once it elapses.
         let sql = "SELECT count(*) FROM transactions a, transactions b, \
                    transactions c, transactions d, transactions e";
-        let err = run_raw_query(sql, &path, None, Some(Duration::from_millis(50))).unwrap_err();
+        let err =
+            run_raw_query(sql, &path, None, Some(Duration::from_millis(50)), &[]).unwrap_err();
         assert!(
             err.to_string().contains("SQL query timed out"),
             "expected timeout, got: {err}"
@@ -234,6 +245,7 @@ mod test {
             &path,
             None,
             None,
+            &[],
         )?;
 
         assert_eq!(
@@ -260,6 +272,7 @@ mod test {
             &path,
             None,
             None,
+            &[],
         )?;
 
         assert!(result.rows.is_empty());
@@ -273,7 +286,7 @@ mod test {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
-        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path, None, None)
+        let err = run_raw_query("SELECT 1 AS x, 2 AS x FROM transactions", &path, None, None, &[])
             .unwrap_err();
         assert!(err.to_string().contains("duplicate column name `x`"));
 
@@ -285,7 +298,8 @@ mod test {
         let (write, path, _cl) = setup_test_db_rw().await;
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None, None)?;
+        let result =
+            run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None, None, &[])?;
         assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
@@ -297,9 +311,9 @@ mod test {
         Transaction::save_batch(&[sample_tx()], &write).await?;
 
         let sql = "SELECT block_number FROM transactions";
-        assert!(run_raw_query(sql, &path, Some(1), None).is_ok());
+        assert!(run_raw_query(sql, &path, Some(1), None, &[]).is_ok());
 
-        let err = run_raw_query(sql, &path, Some(0), None).unwrap_err();
+        let err = run_raw_query(sql, &path, Some(0), None, &[]).unwrap_err();
         assert!(err.to_string().contains("more than 0 rows"));
 
         Ok(())
@@ -315,11 +329,12 @@ mod test {
             "UPDATE transactions SET nonce = 0",
             "DROP TABLE transactions",
         ] {
-            let err = run_raw_query(stmt, &path, None, None);
+            let err = run_raw_query(stmt, &path, None, None, &[]);
             assert!(err.is_err(), "expected `{stmt}` to be rejected");
         }
 
-        let result = run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None, None)?;
+        let result =
+            run_raw_query("SELECT COUNT(*) AS n FROM transactions", &path, None, None, &[])?;
         assert_eq!(result.rows[0]["n"], json!(1));
 
         Ok(())
@@ -333,7 +348,7 @@ mod test {
         for table in ["transactions", "logs", "blocks"] {
             let sql = format!("SELECT COUNT(*) AS n FROM {table}");
             assert!(
-                run_raw_query(&sql, &path, None, None).is_ok(),
+                run_raw_query(&sql, &path, None, None, &[]).is_ok(),
                 "`{table}` should be readable"
             );
         }
@@ -351,7 +366,7 @@ mod test {
             "SELECT version FROM _sqlx_migrations",
         ] {
             assert!(
-                run_raw_query(sql, &path, None, None).is_err(),
+                run_raw_query(sql, &path, None, None, &[]).is_err(),
                 "expected `{sql}` denied"
             );
         }
@@ -370,11 +385,37 @@ mod test {
             &path,
             None,
             None,
+            &[],
         )?;
 
         assert_eq!(result.columns, ["bytes"]);
         let bytes = result.rows[0]["bytes"].as_i64().expect("integer bytes");
         assert!(bytes > 0, "db size should be positive, got {bytes}");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn raw_query_allows_configured_custom_tables() -> Result<()> {
+        let (write, path, _cl) = setup_test_db_rw().await;
+
+        // A custom table present in the DB; callers pass its name (sourced from
+        // config via `SharedDeps::custom_tables`) to allowlist reads.
+        sqlx::query("CREATE TABLE swaps (block_number BIGINT, sender BLOB)")
+            .execute(&write)
+            .await?;
+
+        let allowed = vec!["swaps".to_string()];
+        assert!(
+            run_raw_query("SELECT COUNT(*) AS n FROM swaps", &path, None, None, &allowed).is_ok(),
+            "configured custom table `swaps` should be readable"
+        );
+
+        // A table in the DB but not in the allowlist stays denied.
+        assert!(
+            run_raw_query("SELECT COUNT(*) AS n FROM swaps", &path, None, None, &[]).is_err(),
+            "unlisted table `swaps` should be denied"
+        );
 
         Ok(())
     }
@@ -389,7 +430,7 @@ mod test {
             "PRAGMA query_only = OFF",
         ] {
             assert!(
-                run_raw_query(sql, &path, None, None).is_err(),
+                run_raw_query(sql, &path, None, None, &[]).is_err(),
                 "expected `{sql}` denied"
             );
         }

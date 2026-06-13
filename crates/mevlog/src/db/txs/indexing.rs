@@ -2,7 +2,10 @@ use eyre::Result;
 use tracing::info;
 
 use crate::{
-    db::txs::models::{block::Block, log::Log, transaction::Transaction},
+    db::txs::{
+        custom_tables,
+        models::{block::Block, log::Log, transaction::Transaction},
+    },
     misc::{
         data_fetch::fetch_blocks_batch,
         shared_init::{CryoOpts, SharedDeps},
@@ -87,6 +90,10 @@ pub async fn index_block_range(
             }
 
             Log::save_batch(&chunk_logs, &deps.txs).await?;
+            // Custom tables derive from the logs rows just written; populating
+            // here keeps decoding in SQL with no second decode path.
+            custom_tables::populate_range(&deps.custom_tables, start_block, end_block, &deps.txs)
+                .await?;
             Transaction::save_batch(&chunk_txs, &deps.txs).await?;
             Block::save_batch(&chunk_blocks, &deps.txs).await?;
         }
