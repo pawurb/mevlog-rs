@@ -45,6 +45,7 @@ async fn run() -> Result<()> {
         ))
         .layer(CompressionLayer::new())
         .layer(CatchPanicLayer::new())
+        .layer(from_fn(middleware::api_json_errors))
         .layer(from_fn(middleware::security_headers))
         .layer(cors());
 

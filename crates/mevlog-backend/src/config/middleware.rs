@@ -102,6 +102,32 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
     response
 }
 
+// Rewrite non-JSON `/api` error responses (timeout 408, panic 500) into `{"error": ...}`.
+pub async fn api_json_errors(request: Request, next: Next) -> Response {
+    let is_api = request.uri().path().starts_with("/api");
+    let response = next.run(request).await;
+
+    if !is_api || response.status().is_success() {
+        return response;
+    }
+
+    let is_json = response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.starts_with("application/json"));
+    if is_json {
+        return response;
+    }
+
+    let status = response.status();
+    let message = match status {
+        StatusCode::REQUEST_TIMEOUT => "Query timed out. Narrow the block range and try again.",
+        _ => status.canonical_reason().unwrap_or("Request failed"),
+    };
+    (status, axum::Json(serde_json::json!({ "error": message }))).into_response()
+}
+
 pub fn cors() -> CorsLayer {
     CorsLayer::new()
         .allow_methods([Method::GET, Method::POST])
