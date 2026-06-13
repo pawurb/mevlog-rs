@@ -17,31 +17,95 @@ use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
 #[derive(Debug, Deserialize, JsonSchema)]
-struct GetTransactionParams {
+struct QueryParams {
+    #[schemars(
+        description = "Block number or range to index before querying: 'latest', a single block like '22030899', or a range like '22030800:22030900', '50:latest', '50:'. Omit only when skip_index is true."
+    )]
+    blocks: Option<String>,
+    #[schemars(
+        description = "Read-only SQL run against the local txs DB. Tables: transactions, logs, blocks. See the tool description for the full schema, U256 helper functions and {MACRO()} reference."
+    )]
+    sql: String,
+    #[schemars(
+        description = "Native token price in USD (e.g. 3500.0 for ETH); also feeds the {NATIVE_TOKEN_PRICE()} macro and format_usd()"
+    )]
+    native_token_price: Option<f64>,
+    #[schemars(description = "Index the block that is N blocks behind the chain's latest block")]
+    latest_offset: Option<u64>,
+    #[schemars(
+        description = "Latest block number used to expand the {LATEST_BLOCK()} macro without an extra RPC call"
+    )]
+    latest_block: Option<u64>,
+    #[schemars(description = "Maximum allowed block range size")]
+    max_range: Option<u64>,
+    #[schemars(description = "Maximum number of rows the query may return (errors when exceeded)")]
+    max_rows: Option<usize>,
+    #[schemars(description = "Batch size for data fetching (default: 100)")]
+    batch_size: Option<usize>,
+    #[schemars(
+        description = "Skip indexing and query the local store as-is (no block range resolution or fetching). When true, 'blocks' is ignored."
+    )]
+    skip_index: Option<bool>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct TxParams {
     #[schemars(description = "Transaction hash (0x-prefixed hex string)")]
     tx_hash: String,
     #[schemars(
-        description = "Tracing mode: 'revm' for local simulation or 'rpc' for debug_traceTransaction"
+        description = "EVM tracing mode: 'revm' for local simulation or 'rpc' for debug_traceTransaction; enables coinbase/full cost"
     )]
     evm_trace: Option<String>,
     #[schemars(
-        description = "Native token price in USD (e.g., 3500.0 for ETH). When provided, transaction values and costs are also displayed in USD"
+        description = "Native token price in USD (overrides the chain oracle); adds USD value/cost columns"
     )]
     native_token_price: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-struct QueryTransactionsParams {
-    #[schemars(
-        description = "Block range: 'latest', a block number like '22030899', or a range like '22030800:22030900'"
-    )]
-    blocks: String,
-    #[schemars(description = "Tracing mode: 'revm' or 'rpc'")]
+struct TxHashParams {
+    #[schemars(description = "Transaction hash (0x-prefixed hex string)")]
+    tx_hash: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct EvmTxParams {
+    #[schemars(description = "Transaction hash (0x-prefixed hex string)")]
+    tx_hash: String,
+    #[schemars(description = "EVM tracing mode: 'revm' or 'rpc'")]
     evm_trace: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct BlockParams {
+    #[schemars(description = "Block number or 'latest'")]
+    block: String,
+    #[schemars(description = "Resolve the block that is N blocks behind the chain's latest block")]
+    latest_offset: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct BlockTxsParams {
+    #[schemars(description = "Block number or 'latest'")]
+    block: String,
+    #[schemars(description = "Resolve the block that is N blocks behind the chain's latest block")]
+    latest_offset: Option<u64>,
     #[schemars(
-        description = "Native token price in USD (e.g., 3500.0 for ETH). When provided, transaction values and costs are also displayed in USD"
+        description = "Native token price in USD (overrides the chain oracle); adds USD columns"
     )]
     native_token_price: Option<f64>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct EnsResolveParams {
+    #[schemars(description = "ENS name to resolve to an address (e.g. 'vitalik.eth')")]
+    name: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+struct EnsLookupParams {
+    #[schemars(description = "Address to reverse-resolve to an ENS name (0x-prefixed hex)")]
+    address: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -60,6 +124,10 @@ struct ChainInfoParams {
     chain_id: u64,
     #[schemars(description = "Include RPC endpoints sorted by response time")]
     include_rpcs: Option<bool>,
+    #[schemars(
+        description = "Number of RPC URLs to return when include_rpcs is true (default: 5)"
+    )]
+    rpcs_limit: Option<usize>,
 }
 
 #[derive(Clone)]
@@ -80,23 +148,79 @@ impl MevlogMcpServer {
     }
 
     #[tool(
-        description = r#"Get detailed information about a specific Ethereum transaction.
+        description = r#"Run a read-only SQL query against indexed Ethereum transactions within a block range.
 
-Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. The `transactions` array includes transaction details such as hash, block number, from/to addresses, value, gas usage, method signature, event logs, and optionally traced call details.
+This is the primary tool. It indexes the requested `blocks` into a local per-chain SQLite store, then runs `sql` over it and returns a JSON `QueryResponse` envelope (`result`, `duration`, `chain`, `query` — `query.sql` echoes the fully-substituted SQL that produced `result`).
 
-Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug_traceTransaction) to get internal calls and state changes."#
+Block range examples (the `blocks` param): 'latest', '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks), '50:' (50 blocks up to latest). Set `skip_index: true` to query already-indexed data without fetching.
+
+SCHEMA — three tables:
+  • transactions(block_number, tx_index, tx_hash, from_address, to_address, value, gas_used, effective_gas_price, success, method, ...)
+  • logs(block_number, tx_index, log_index, address, topic0, topic1, topic2, topic3, data, erc20_amount)
+      erc20_amount = decoded ERC20 Transfer amount as a 32-byte big-endian BLOB (NULL for non-transfer logs).
+  • blocks(block_number, block_hash, miner, gas_used, extra_data, timestamp, base_fee_per_gas)
+
+RULES:
+  • Address/hash columns are BLOBs, emitted as 0x-hex. In predicates they MUST be blob literals: WHERE from_address = X'1111...1111'.
+  • `success` is 0/1 (SQLite has no boolean).
+  • Plain SQL SUM() cannot total U256 BLOB columns (value, erc20_amount, gas cost) — use the helper functions below.
+
+U256 / display helper functions:
+  • u256_sum(col)            aggregate sum of 32-byte BLOB column → 0x-hex BLOB
+  • u256_mul(a,b) / u256_add(a,b)   exact 256-bit scalar math → BLOB (e.g. u256_mul(gas_used, effective_gas_price) = tx cost)
+  • u256_to_dec(col)         BLOB → full-precision decimal string
+  • erc20_to_real(amount, decimals)   amount / 10^decimals → REAL (approx f64), e.g. erc20_to_real(erc20_amount, 6) for USDC
+  • format_ether(col) / format_gwei(col) / format_usd(col, price)   wei → ETH / gwei / $USD display strings
+
+MACROS (must be brace-wrapped; resolved over RPC only when present):
+  • {LATEST_BLOCK()}        → current latest block number, e.g. WHERE block_number > {LATEST_BLOCK()} - 100
+  • {NATIVE_TOKEN_PRICE()}  → native token USD price (from native_token_price param or Chainlink oracle)
+  • {RESOLVE_ENS("name.eth")} → resolved address as a X'..' blob literal (Ethereum mainnet only)
+
+EXAMPLES:
+  • Total USDC transferred in the last 100 blocks:
+      blocks="100:latest", sql="SELECT u256_sum(erc20_amount) AS total FROM logs WHERE address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' AND erc20_amount IS NOT NULL"
+  • Top 10 most expensive transactions in a block:
+      blocks="22030899", sql="SELECT tx_hash, u256_to_dec(u256_mul(gas_used, effective_gas_price)) AS cost_wei FROM transactions ORDER BY cost_wei DESC LIMIT 10"
+  • Transactions from an ENS name in the last 50 blocks:
+      blocks="50:latest", sql="SELECT tx_hash, format_ether(value) AS eth FROM transactions WHERE from_address = {RESOLVE_ENS(\"vitalik.eth\")}"
+  • Failed transactions in a block:
+      blocks="22030899", sql="SELECT tx_hash, method FROM transactions WHERE success = 0""#
     )]
-    async fn get_transaction(
-        &self,
-        params: Parameters<GetTransactionParams>,
-    ) -> Result<CallToolResult, McpError> {
-        debug!(tx_hash = %params.0.tx_hash, evm_trace = ?params.0.evm_trace, "MCP get_transaction request");
-        let mut args = vec!["tx".to_string(), params.0.tx_hash];
-        if let Some(evm_trace) = params.0.evm_trace {
-            args.push("--evm-trace".to_string());
-            args.push(evm_trace);
+    async fn query(&self, params: Parameters<QueryParams>) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        debug!(blocks = ?p.blocks, skip_index = ?p.skip_index, "MCP query request");
+        let mut args = vec!["query".to_string()];
+        if let Some(blocks) = p.blocks {
+            args.push("-b".to_string());
+            args.push(blocks);
         }
-        if let Some(price) = params.0.native_token_price {
+        args.push("--sql".to_string());
+        args.push(p.sql);
+        if p.skip_index == Some(true) {
+            args.push("--skip-index".to_string());
+        }
+        if let Some(offset) = p.latest_offset {
+            args.push("--latest-offset".to_string());
+            args.push(offset.to_string());
+        }
+        if let Some(latest_block) = p.latest_block {
+            args.push("--latest-block".to_string());
+            args.push(latest_block.to_string());
+        }
+        if let Some(max_range) = p.max_range {
+            args.push("--max-range".to_string());
+            args.push(max_range.to_string());
+        }
+        if let Some(max_rows) = p.max_rows {
+            args.push("--max-rows".to_string());
+            args.push(max_rows.to_string());
+        }
+        if let Some(batch_size) = p.batch_size {
+            args.push("--batch-size".to_string());
+            args.push(batch_size.to_string());
+        }
+        if let Some(price) = p.native_token_price {
             args.push("--native-token-price".to_string());
             args.push(price.to_string());
         }
@@ -105,29 +229,179 @@ Use the 'evm_trace' parameter with 'revm' (local EVM simulation) or 'rpc' (debug
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
-    #[tool(description = r#"Query Ethereum transactions within a block range.
+    #[tool(description = r#"Show a single Ethereum transaction.
 
-Returns a JSON object with `transactions`, `duration`, `chain`, and `query` fields. Optionally enable tracing (evm_trace) to include internal calls, opcodes, and state changes.
-
-Block range examples: 'latest' (latest block), '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks)."#)]
-    async fn query_transactions(
-        &self,
-        params: Parameters<QueryTransactionsParams>,
-    ) -> Result<CallToolResult, McpError> {
-        debug!(
-            blocks = %params.0.blocks,
-            evm_trace = ?params.0.evm_trace,
-            "MCP query_transactions request"
-        );
-        let mut args = vec!["query".to_string(), "-b".to_string(), params.0.blocks];
-        if let Some(evm_trace) = params.0.evm_trace {
+Returns a `QueryResponse` envelope whose `result` holds one display-shaped transaction row (hash, block, from/to, value, gas cost, method, success). Use `evm_trace` ('revm' or 'rpc') to enable coinbase/full-cost analysis. Supply `native_token_price` to add USD value/cost columns. Use the `tx_logs` tool for this transaction's event logs."#)]
+    async fn tx(&self, params: Parameters<TxParams>) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        debug!(tx_hash = %p.tx_hash, evm_trace = ?p.evm_trace, "MCP tx request");
+        let mut args = vec!["tx".to_string(), p.tx_hash];
+        if let Some(evm_trace) = p.evm_trace {
             args.push("--evm-trace".to_string());
             args.push(evm_trace);
         }
-        if let Some(price) = params.0.native_token_price {
+        if let Some(price) = p.native_token_price {
             args.push("--native-token-price".to_string());
             args.push(price.to_string());
         }
+        self.push_conn_args(&mut args);
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Show the event logs emitted by a single Ethereum transaction.
+
+Returns a `QueryResponse` envelope whose `result` holds the transaction's log rows (address, topic0..topic3, data, decoded erc20_amount)."#
+    )]
+    async fn tx_logs(&self, params: Parameters<TxHashParams>) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        debug!(tx_hash = %p.tx_hash, "MCP tx_logs request");
+        let mut args = vec!["tx-logs".to_string(), p.tx_hash];
+        self.push_conn_args(&mut args);
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = r#"Show a single block's metadata.
+
+Accepts a block number or 'latest', or use `latest_offset` to resolve the block N behind latest. Returns a `QueryResponse` envelope whose `result` holds the block row (hash, miner, gas_used, base fee, timestamp, transaction count)."#)]
+    async fn block(&self, params: Parameters<BlockParams>) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        debug!(block = %p.block, "MCP block request");
+        let mut args = vec!["block".to_string(), p.block];
+        if let Some(offset) = p.latest_offset {
+            args.push("--latest-offset".to_string());
+            args.push(offset.to_string());
+        }
+        self.push_conn_args(&mut args);
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = r#"Show all transactions in a block.
+
+Accepts a block number or 'latest', or use `latest_offset` to resolve the block N behind latest. Supply `native_token_price` to add USD columns. Returns a `QueryResponse` envelope whose `result` holds the block's display-shaped transaction rows. Use the `block_logs` tool for the block's event logs."#)]
+    async fn block_txs(
+        &self,
+        params: Parameters<BlockTxsParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        debug!(block = %p.block, "MCP block_txs request");
+        let mut args = vec!["block-txs".to_string(), p.block];
+        if let Some(offset) = p.latest_offset {
+            args.push("--latest-offset".to_string());
+            args.push(offset.to_string());
+        }
+        if let Some(price) = p.native_token_price {
+            args.push("--native-token-price".to_string());
+            args.push(price.to_string());
+        }
+        self.push_conn_args(&mut args);
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(description = r#"Show all event logs in a block.
+
+Accepts a block number or 'latest', or use `latest_offset` to resolve the block N behind latest. Returns a `QueryResponse` envelope whose `result` holds every log row in the block (address, topic0..topic3, data, decoded erc20_amount)."#)]
+    async fn block_logs(
+        &self,
+        params: Parameters<BlockParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        debug!(block = %p.block, "MCP block_logs request");
+        let mut args = vec!["block-logs".to_string(), p.block];
+        if let Some(offset) = p.latest_offset {
+            args.push("--latest-offset".to_string());
+            args.push(offset.to_string());
+        }
+        self.push_conn_args(&mut args);
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Show stats for the local per-chain transactions database (indexed block range, row counts, file size) for the server's configured chain."#
+    )]
+    async fn db_info(&self) -> Result<CallToolResult, McpError> {
+        debug!("MCP db_info request");
+        let args = vec![
+            "db-info".to_string(),
+            "--chain-id".to_string(),
+            self.chain_id.to_string(),
+        ];
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Compute a transaction's direct ETH payment to its block's coinbase (a common MEV signal). Use `evm_trace` ('revm' or 'rpc') to select the tracing backend."#
+    )]
+    async fn evm_coinbase_transfer(
+        &self,
+        params: Parameters<EvmTxParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let output = self.run_evm_cmd("evm-coinbase-transfer", params.0).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"List the addresses affected (touched) by a transaction. Use `evm_trace` ('revm' or 'rpc') to select the tracing backend."#
+    )]
+    async fn evm_affected_addresses(
+        &self,
+        params: Parameters<EvmTxParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let output = self.run_evm_cmd("evm-affected-addresses", params.0).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Show the storage state diff (changed storage slots) produced by a transaction. Use `evm_trace` ('revm' or 'rpc') to select the tracing backend."#
+    )]
+    async fn evm_state_diff(
+        &self,
+        params: Parameters<EvmTxParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let output = self.run_evm_cmd("evm-state-diff", params.0).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Extract a transaction's decoded call traces (internal calls). Use `evm_trace` ('revm' or 'rpc') to select the tracing backend."#
+    )]
+    async fn evm_traces(
+        &self,
+        params: Parameters<EvmTxParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let output = self.run_evm_cmd("evm-traces", params.0).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Resolve an ENS name (e.g. 'vitalik.eth') to an Ethereum address. Ethereum mainnet only."#
+    )]
+    async fn ens_resolve(
+        &self,
+        params: Parameters<EnsResolveParams>,
+    ) -> Result<CallToolResult, McpError> {
+        debug!(name = %params.0.name, "MCP ens_resolve request");
+        let mut args = vec!["ens-resolve".to_string(), params.0.name];
+        self.push_conn_args(&mut args);
+        let output = self.run_mevlog_cmd(&args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Reverse-resolve an Ethereum address to its primary ENS name. Ethereum mainnet only."#
+    )]
+    async fn ens_lookup(
+        &self,
+        params: Parameters<EnsLookupParams>,
+    ) -> Result<CallToolResult, McpError> {
+        debug!(address = %params.0.address, "MCP ens_lookup request");
+        let mut args = vec!["ens-lookup".to_string(), params.0.address];
         self.push_conn_args(&mut args);
         let output = self.run_mevlog_cmd(&args).await?;
         Ok(CallToolResult::success(vec![Content::text(output)]))
@@ -181,7 +455,12 @@ Returns JSON with chain_id, name, currency symbol, and explorer URL."#)]
             "--chain-id".to_string(),
             params.0.chain_id.to_string(),
         ];
-        if params.0.include_rpcs != Some(true) {
+        if params.0.include_rpcs == Some(true) {
+            if let Some(limit) = params.0.rpcs_limit {
+                args.push("--rpcs-limit".to_string());
+                args.push(limit.to_string());
+            }
+        } else {
             args.push("--skip-rpcs".to_string());
         }
         let output = self.run_mevlog_cmd(&args).await?;
@@ -211,6 +490,17 @@ impl MevlogMcpServer {
         args.push(self.rpc_url.clone());
         args.push("--chain-id".to_string());
         args.push(self.chain_id.to_string());
+    }
+
+    async fn run_evm_cmd(&self, subcommand: &str, params: EvmTxParams) -> Result<String, McpError> {
+        debug!(subcommand, tx_hash = %params.tx_hash, evm_trace = ?params.evm_trace, "MCP evm command request");
+        let mut args = vec![subcommand.to_string(), params.tx_hash];
+        if let Some(evm_trace) = params.evm_trace {
+            args.push("--evm-trace".to_string());
+            args.push(evm_trace);
+        }
+        self.push_conn_args(&mut args);
+        self.run_mevlog_cmd(&args).await
     }
 
     fn build_cli_args(&self, args: &[String]) -> Vec<String> {
@@ -436,6 +726,8 @@ mod tests {
             "query".to_string(),
             "-b".to_string(),
             "10:latest".to_string(),
+            "--sql".to_string(),
+            "SELECT * FROM transactions".to_string(),
         ];
 
         server.push_conn_args(&mut args);
@@ -448,6 +740,8 @@ mod tests {
                 "query".to_string(),
                 "-b".to_string(),
                 "10:latest".to_string(),
+                "--sql".to_string(),
+                "SELECT * FROM transactions".to_string(),
                 "--rpc-url".to_string(),
                 "http://localhost:8545".to_string(),
                 "--chain-id".to_string(),
