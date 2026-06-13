@@ -1,4 +1,8 @@
-use crate::{controllers::*, misc::utils::deployed_at};
+use crate::{
+    content::{app_pages::APP_PAGES, doc_pages::DOC_PAGES},
+    controllers::*,
+    misc::utils::deployed_at,
+};
 use axum::{
     Router,
     body::Body,
@@ -111,26 +115,24 @@ async fn robots_txt() -> Response<Body> {
 
 async fn sitemap_xml() -> Response<Body> {
     let h = host();
+    let app_entries = APP_PAGES
+        .iter()
+        .map(|p| (p.path, p.sitemap_changefreq, p.sitemap_priority));
+    let doc_entries = DOC_PAGES
+        .iter()
+        .map(|p| (p.path, p.sitemap_changefreq, p.sitemap_priority));
+    let urls = app_entries
+        .chain(doc_entries)
+        .map(|(path, changefreq, priority)| {
+            format!(
+                "  <url>\n    <loc>{h}{path}</loc>\n    <changefreq>{changefreq}</changefreq>\n    <priority>{priority}</priority>\n  </url>\n",
+            )
+        })
+        .collect::<String>();
     let body = format!(
         r#"<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>{h}/</loc>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>{h}/explore</loc>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>{h}/search</loc>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>{h}/docs/terms</loc>
-    <priority>0.3</priority>
-  </url>
-</urlset>
+{urls}</urlset>
 "#
     );
     let mut headers = HeaderMap::new();
