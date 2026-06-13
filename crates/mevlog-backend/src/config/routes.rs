@@ -18,7 +18,6 @@ pub async fn app() -> Router {
     Router::new()
         .route("/", get(html::home_controller::home))
         .route("/search", get(html::search_controller::search))
-        .route("/terms", get(html::terms_controller::terms))
         .route("/explore", get(html::explore_controller::explore))
         .route(
             "/api/chain-info",
@@ -128,7 +127,7 @@ async fn sitemap_xml() -> Response<Body> {
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>{h}/terms</loc>
+    <loc>{h}/docs/terms</loc>
     <priority>0.3</priority>
   </url>
 </urlset>
