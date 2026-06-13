@@ -154,16 +154,18 @@ This is the primary tool. It indexes the requested `blocks` into a local per-cha
 
 Block range examples (the `blocks` param): 'latest', '22030899' (single block), '22030800:22030900' (range), '50:latest' (last 50 blocks), '50:' (50 blocks up to latest). Set `skip_index: true` to query already-indexed data without fetching.
 
-SCHEMA — three tables:
-  • transactions(block_number, tx_index, tx_hash, from_address, to_address, value, gas_used, effective_gas_price, success, method, ...)
-  • logs(block_number, tx_index, log_index, address, topic0, topic1, topic2, topic3, data, erc20_amount)
-      erc20_amount = decoded ERC20 Transfer amount as a 32-byte big-endian BLOB (NULL for non-transfer logs).
-  • blocks(block_number, block_hash, miner, gas_used, extra_data, timestamp, base_fee_per_gas)
+SCHEMA — three tables (exact column names):
+  • transactions(block_number, tx_index, tx_hash, nonce, from_address, to_address, value, gas_limit, gas_used, effective_gas_price, gas_price, max_fee_per_gas, max_priority_fee_per_gas, transaction_type, success, coinbase_transfer, signature_hash, signature)
+      signature = human-readable method signature TEXT (e.g. 'transfer(address,uint256)'), signature_hash = 4-byte selector BLOB. There is NO `method` column.
+  • logs(block_number, tx_index, log_index, address, topic0, topic1, topic2, topic3, data, erc20_amount, signature)
+      erc20_amount = decoded ERC20 Transfer amount as a 32-byte big-endian BLOB (NULL for non-transfer logs). signature = human-readable event signature TEXT.
+  • blocks(block_number, block_hash, miner, gas_used, timestamp, base_fee_per_gas)
 
 RULES:
   • Address/hash columns are BLOBs, emitted as 0x-hex. In predicates they MUST be blob literals: WHERE from_address = X'1111...1111'.
   • `success` is 0/1 (SQLite has no boolean).
   • Plain SQL SUM() cannot total U256 BLOB columns (value, erc20_amount, gas cost) — use the helper functions below.
+  • Never ORDER BY a u256_to_dec()/format_ether()/format_gwei()/format_usd() result — they return TEXT that SQLite sorts lexicographically (so '9' > '10'). Sort on the underlying BLOB/numeric expression and apply the display helper only in the projection.
 
 U256 / display helper functions:
   • u256_sum(col)            aggregate sum of 32-byte BLOB column → 0x-hex BLOB
@@ -180,24 +182,28 @@ MACROS (must be brace-wrapped; resolved over RPC only when present):
 EXAMPLES:
   • Total USDC transferred in the last 100 blocks:
       blocks="100:latest", sql="SELECT u256_sum(erc20_amount) AS total FROM logs WHERE address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' AND erc20_amount IS NOT NULL"
-  • Top 10 most expensive transactions in a block:
-      blocks="22030899", sql="SELECT tx_hash, u256_to_dec(u256_mul(gas_used, effective_gas_price)) AS cost_wei FROM transactions ORDER BY cost_wei DESC LIMIT 10"
+  • Top 10 most expensive transactions in a block (order by the raw cost, NOT by the decimal string — u256_to_dec/format_* produce TEXT that SQLite sorts lexicographically, giving a wrong ranking; sort on a numeric or blob expression and convert only in the projection). Here gas_used*effective_gas_price fits in INTEGER for ordering:
+      blocks="22030899", sql="SELECT tx_hash, u256_to_dec(u256_mul(gas_used, effective_gas_price)) AS cost_wei FROM transactions ORDER BY gas_used * effective_gas_price DESC LIMIT 10"
   • Transactions from an ENS name in the last 50 blocks:
       blocks="50:latest", sql="SELECT tx_hash, format_ether(value) AS eth FROM transactions WHERE from_address = {RESOLVE_ENS(\"vitalik.eth\")}"
-  • Failed transactions in a block:
-      blocks="22030899", sql="SELECT tx_hash, method FROM transactions WHERE success = 0""#
+  • Failed transactions in a block (decoded method signature is the `signature` column, not `method`):
+      blocks="22030899", sql="SELECT tx_hash, signature FROM transactions WHERE success = 0""#
     )]
     async fn query(&self, params: Parameters<QueryParams>) -> Result<CallToolResult, McpError> {
         let p = params.0;
         debug!(blocks = ?p.blocks, skip_index = ?p.skip_index, "MCP query request");
+        let skip_index = p.skip_index == Some(true);
         let mut args = vec!["query".to_string()];
-        if let Some(blocks) = p.blocks {
+        // `blocks` and `--skip-index` are mutually exclusive on the CLI
+        // (QueryArgs.blocks declares conflicts_with = "skip_index"), so never
+        // forward -b when skipping indexing — the param doc says blocks is ignored.
+        if !skip_index && let Some(blocks) = p.blocks {
             args.push("-b".to_string());
             args.push(blocks);
         }
         args.push("--sql".to_string());
         args.push(p.sql);
-        if p.skip_index == Some(true) {
+        if skip_index {
             args.push("--skip-index".to_string());
         }
         if let Some(offset) = p.latest_offset {
