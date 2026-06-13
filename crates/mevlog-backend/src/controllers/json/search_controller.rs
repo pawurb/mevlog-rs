@@ -61,11 +61,6 @@ pub(crate) async fn search(
 
     let shared_opts = SharedOpts {
         evm_trace: None,
-        evm_calls: false,
-        evm_ops: false,
-        evm_state_diff: false,
-        erc20_transfer_amount: false,
-        logs: false,
         native_token_price,
     };
 

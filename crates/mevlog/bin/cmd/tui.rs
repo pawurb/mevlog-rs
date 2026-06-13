@@ -4,13 +4,10 @@ mod views;
 use std::io;
 
 use app::App;
-use mevlog::misc::shared_init::{ConnOpts, SharedOpts};
+use mevlog::misc::shared_init::ConnOpts;
 
 #[derive(Debug, clap::Parser)]
 pub struct TuiArgs {
-    #[command(flatten)]
-    shared_opts: SharedOpts,
-
     #[command(flatten)]
     conn_opts: ConnOpts,
 }

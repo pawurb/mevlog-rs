@@ -76,9 +76,6 @@ pub async fn block_txs(
             blocks: Some(block_number.to_string()),
             sql: Some(sql),
             evm_trace: None,
-            evm_calls: false,
-            evm_ops: false,
-            evm_state_diff: false,
         },
     })
 }
