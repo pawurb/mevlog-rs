@@ -30,6 +30,10 @@ deploy:
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
 
+# Pull latest and reinstall the CLI on the remote node
+update-remote-cli target_node=env_var('TARGET_NODE'):
+    ssh {{target_node}} 'cd ~/mevlog-rs && git pull && . "$HOME/.cargo/env" && OPENSSL_DIR=/usr/ OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu/ cargo install mevlog --path crates/mevlog'
+
 # Run benchmarks comparing two git refs
 compare before after:
     bash scripts/compare.sh {{before}} {{after}}
