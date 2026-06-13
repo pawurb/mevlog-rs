@@ -15,7 +15,7 @@ const PRESETS = [
   },
   {
     label: 'Which 10 txs transferred the most USDC in last 1 day',
-    sql: "SELECT t.tx_hash,\n       ROUND(erc20_to_real(u256_sum(l.erc20_amount), 6), 2) AS usdc\nFROM logs l\nJOIN transactions t ON t.block_number = l.block_number AND t.tx_index = l.tx_index\nJOIN blocks b ON b.block_number = l.block_number\nWHERE l.address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n  AND l.erc20_amount IS NOT NULL\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.tx_hash\nORDER BY u256_sum(l.erc20_amount) DESC\nLIMIT 10",
+    sql: "SELECT t.tx_hash,\n       ROUND(erc20_to_real(u256_sum(l.erc20_amount), 6), 2) AS usdc\nFROM logs l\nJOIN transactions t ON t.block_number = l.block_number AND t.tx_index = l.tx_index\nJOIN blocks b ON b.block_number = l.block_number\nWHERE l.address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n  AND l.erc20_amount IS NOT NULL\n  AND l.block_number >= {LATEST_BLOCK()} - 7200\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.tx_hash\nORDER BY u256_sum(l.erc20_amount) DESC\nLIMIT 10",
   },
   {
     label: 'Which 10 txs spent the most on gas in last 1 day',
