@@ -115,6 +115,8 @@ fn run_raw_query(
     // No `SQLITE_OPEN_URI`: keeps `file:...?mode=rwc` tricks out of any filename
     // the SQL could reference. The path is resolved by us, not the user.
     let conn = Connection::open_with_flags(filename, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
+    // A C-API call, not a PRAGMA, so the authorizer (installed below) allows it.
+    conn.busy_timeout(crate::db::shared::BUSY_TIMEOUT)?;
     register_functions(&conn)?;
 
     // Defense-in-depth on top of the read-only handle and the authorizer. Set

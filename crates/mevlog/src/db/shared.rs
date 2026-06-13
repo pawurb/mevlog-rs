@@ -1,12 +1,17 @@
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use eyre::Result;
 use sqlx::{
     Sqlite, SqlitePool,
     migrate::{MigrateDatabase, Migrator},
-    sqlite::SqliteConnectOptions,
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous},
 };
 use tracing::info;
+
+// Writer and web readers run as separate processes against the same file, so
+// sqlx's 5s default is too short under contention.
+pub(crate) const BUSY_TIMEOUT: Duration = Duration::from_secs(30);
 
 fn resolve_url(db_url: Option<String>, default_path: PathBuf) -> String {
     db_url.unwrap_or_else(|| default_path.to_string_lossy().into_owned())
@@ -57,10 +62,20 @@ pub(crate) async fn conn(
         .or_else(|| db_url.strip_prefix("sqlite:"))
         .unwrap_or(&db_url);
 
-    let opts = SqliteConnectOptions::new()
+    let mut opts = SqliteConnectOptions::new()
         .filename(filename)
         .read_only(read_only)
-        .create_if_missing(false);
+        .create_if_missing(false)
+        .busy_timeout(BUSY_TIMEOUT);
+
+    // WAL lets readers run concurrently with the single writer. It's a
+    // persistent file property only a writable connection can switch, so set it
+    // on writers only; read-only connections inherit it once a writer has.
+    if !read_only {
+        opts = opts
+            .journal_mode(SqliteJournalMode::Wal)
+            .synchronous(SqliteSynchronous::Normal);
+    }
 
     match SqlitePool::connect_with(opts).await {
         Ok(sqlite) => Ok(sqlite),
