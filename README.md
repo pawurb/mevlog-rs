@@ -4,8 +4,6 @@
 
 **mevlog** is an open-source (MIT) alternative to commercial blockchain indexers and data APIs. Instead of using a hosted service and querying an external database, it downloads raw chain data straight from an RPC endpoint, stores it in a local SQLite database, and lets you query it with plain SQL. **You own the data** - no API keys, no rate limits, no vendor lock-in, just a file on your disk you can query as much as you want, offline.
 
-It follows a three-step model: **index → store → query**, against any [ChainList](https://chainlist.org/) chain or your own node.
-
 ## Quick Start
 
 mevlog is published on crates.io. Install it with Cargo:
@@ -57,4 +55,4 @@ mevlog adds EVM-native SQLite helpers (256-bit math, ERC20 decoding, ETH/gwei/US
 ## Documentation & live demo
 
 - Full documentation: https://mevlog.rs/docs
-- Live SQL demo (last week of Mainnet data): https://mevlog.rs/search
+- Live SQL demo (last 24h of Mainnet data): https://mevlog.rs/search
