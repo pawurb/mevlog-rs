@@ -1,6 +1,6 @@
 # Functions & Macros
 
-mevlog registers extra SQLite functions on the read-only `query` connection for working with the U256 BLOB columns and for display formatting, plus pre-query macros that expand to live values before the SQL runs. Plain SQL `SUM()` / `*` cannot handle 32-byte BLOBs or amounts that overflow a signed 64-bit `INTEGER`, so use these instead.
+`mevlog` registers extra SQLite functions on the read-only `query` connection for working with the U256 BLOB columns and for display formatting, plus pre-query macros that expand to live values before the SQL runs. Plain SQL `SUM()` / `*` cannot handle 32-byte BLOBs or amounts that overflow a signed 64-bit `INTEGER`, so use these instead.
 
 The functions come from the [`evm-sqlite-rs`](https://github.com/pawurb/evm-sqlite-rs) crate. Every U256 operand may be a non-negative `INTEGER` or a big-endian BLOB (≤ 32 bytes), and `NULL` generally propagates to `NULL`.
 

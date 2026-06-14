@@ -2,9 +2,9 @@
 
 The local txs DB grows with the amount of data you index. Each chain has its own file (`mevlog-txs-v1-{chain_id}.db`), plus a `-wal` / `-shm` sidecar during writes. Check actual usage at any time with `mevlog db-info --chain-id <id>`.
 
-## Rough mainnet sizing
+## Mainnet sizing estimates
 
-Measured from a contiguous week of Ethereum mainnet (~0.28 MB/block of raw data, ~307 txs and ~869 logs per block). Logs dominate - roughly 80% of the data.
+Estimated from a contiguous week of Ethereum mainnet (~0.28 MB/block of raw data, ~307 txs and ~869 logs per block). Logs dominate - roughly 80% of the data. Your numbers will vary with traffic.
 
 | Horizon | Blocks | Data only | On-disk (typical) |
 | --- | ---: | ---: | ---: |
@@ -14,7 +14,7 @@ Measured from a contiguous week of Ethereum mainnet (~0.28 MB/block of raw data,
 
 Plan for **~1.5-1.7 TB per year** of disk if you index all of Mainnet and keep indexes. Most chains are far lighter, and you rarely need the full chain - index only the ranges you query.
 
-## Keeping size down
+## Reducing storage usage
 
 - `index --live --keep N` holds a rolling window of the newest `N` blocks.
 - `purge-db --keep N --chain-id <id>` drops older data on demand; add `--reclaim` to `VACUUM` and actually shrink the file (otherwise freed pages are reused, not returned to the OS).
