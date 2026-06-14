@@ -70,6 +70,7 @@ pub mod tests {
         let mut command = Command::new("cargo");
         command
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "query"])
             .args(["-b", &format!("{FROM_BLOCK}:{TO_BLOCK}")])
             .args(["--chain-id", &CHAIN_ID.to_string()])
@@ -89,6 +90,7 @@ pub mod tests {
     fn run_tx(rpc_url: &str, tmp_dir: &Path, tx_hash: &str, native_token_price: &str) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "tx", tx_hash])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
@@ -103,6 +105,7 @@ pub mod tests {
     fn run_tx_logs(rpc_url: &str, tmp_dir: &Path, tx_hash: &str) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "tx-logs", tx_hash])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
@@ -116,6 +119,7 @@ pub mod tests {
     fn run_block(rpc_url: &str, tmp_dir: &Path, block: &str) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "block", "-b", block])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
@@ -134,6 +138,7 @@ pub mod tests {
     ) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "block-txs", "-b", block])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
@@ -148,6 +153,7 @@ pub mod tests {
     fn run_purge(tmp_dir: &Path, keep: u64) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "purge-db"])
             .args(["--keep", &keep.to_string()])
             .args(["--chain-id", &CHAIN_ID.to_string()])
@@ -160,6 +166,7 @@ pub mod tests {
     fn run_db_info(tmp_dir: &Path) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
+            .env("MEVLOG_KEEP_CRYO_CACHE", "1")
             .args(["run", "--bin", "mevlog", "--", "db-info"])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--txs-db-dir", &tmp_dir.to_string_lossy()])

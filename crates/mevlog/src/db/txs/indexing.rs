@@ -7,7 +7,7 @@ use crate::{
         models::{block::Block, log::Log, transaction::Transaction},
     },
     misc::{
-        data_fetch::fetch_blocks_batch,
+        data_fetch::{fetch_blocks_batch, prune_indexed_cache},
         shared_init::{CryoOpts, SharedDeps},
     },
 };
@@ -97,6 +97,13 @@ pub async fn index_block_range(
             Transaction::save_batch(&chunk_txs, &deps.txs).await?;
             Block::save_batch(&chunk_blocks, &deps.txs).await?;
         }
+    }
+
+    // Drop cryo parquet now fully captured in the txs DB; missing_blocks is the
+    // source of truth, so cache for indexed blocks is never read again.
+    let pruned = prune_indexed_cache(&deps.chain, &deps.txs, from, to).await?;
+    if pruned > 0 {
+        info!("Pruned {} cached parquet file(s)", pruned);
     }
 
     Ok((cached_blocks, new_blocks))

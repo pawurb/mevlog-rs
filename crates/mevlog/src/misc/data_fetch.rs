@@ -2,6 +2,7 @@ use std::{collections::HashMap, path::PathBuf, process::Command};
 
 use eyre::Result;
 use sqlx::SqlitePool;
+use tracing::warn;
 
 use crate::db::txs::models::{block::Block, log::Log, transaction::Transaction};
 use crate::misc::shared_init::CryoOpts;
@@ -19,6 +20,12 @@ fn cryo_cache_dir(chain: &EVMChain) -> PathBuf {
         chain.cryo_cache_dir_name()
     ))
 }
+
+/// When set, [`prune_indexed_cache`] is a no-op so the parquet cache survives
+/// indexing. The integration tests share one global cache dir and seed it with
+/// committed fixtures; without this, pruning during one test would delete
+/// fixtures a parallel test still needs.
+const KEEP_CRYO_CACHE_ENV: &str = "MEVLOG_KEEP_CRYO_CACHE";
 
 pub struct CachedRange {
     pub start: u64,
@@ -230,6 +237,49 @@ pub(crate) async fn fetch_blocks_batch(
         logs_by_block,
         blocks_by_block,
     })
+}
+
+/// Deletes cached cryo parquet files overlapping `[from, to]` whose full block
+/// range is already indexed. A `blocks` row lands last per chunk, so no gap from
+/// [`Block::missing_blocks`] means the file's txs and logs are saved too; files
+/// still covering an un-indexed block are kept so a retry reuses the parquet.
+pub(crate) async fn prune_indexed_cache(
+    chain: &EVMChain,
+    txs: &SqlitePool,
+    from: u64,
+    to: u64,
+) -> Result<u64> {
+    if std::env::var_os(KEEP_CRYO_CACHE_ENV).is_some() {
+        return Ok(0);
+    }
+
+    let mut removed = 0;
+
+    for data_type in ["transactions", "logs", "blocks"] {
+        for range in scan_cached_ranges(chain, data_type) {
+            if range.end < from || range.start > to {
+                continue;
+            }
+
+            if !Block::missing_blocks(range.start, range.end, txs)
+                .await?
+                .is_empty()
+            {
+                continue;
+            }
+
+            match std::fs::remove_file(&range.path) {
+                Ok(()) => removed += 1,
+                Err(e) => warn!(
+                    "Failed to remove cached parquet {}: {}",
+                    range.path.display(),
+                    e
+                ),
+            }
+        }
+    }
+
+    Ok(removed)
 }
 
 async fn parse_batch_txs_from_files(
