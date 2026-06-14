@@ -2,9 +2,9 @@
 
 The local txs DB grows with the amount of data you index. Each chain has its own file (`mevlog-txs-v1-{chain_id}.db`), plus a `-wal` / `-shm` sidecar during writes. Check actual usage at any time with `mevlog db-info --chain-id <id>`.
 
-## Mainnet sizing estimates
+## Mainnet storage estimates
 
-Estimated from a contiguous week of Ethereum mainnet (~0.28 MB/block of raw data, ~307 txs and ~869 logs per block). Logs dominate - roughly 80% of the data. Your numbers will vary with traffic.
+Estimated from a week of Ethereum mainnet indexing (~0.28 MB/block of raw data, ~307 txs and ~869 logs per block). Logs dominate - roughly 80% of the data. Your numbers will vary with traffic.
 
 | Horizon | Blocks | Data only | On-disk (typical) |
 | --- | ---: | ---: | ---: |
