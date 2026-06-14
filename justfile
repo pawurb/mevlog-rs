@@ -38,6 +38,22 @@ deploy:
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
 
+# Start the backend server on the remote node (screen session, reads .env)
+server-start target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_start.sh
+
+# Stop the backend server on the remote node
+server-stop target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_stop.sh
+
+# Start the scheduler on the remote node (screen session, reads .env)
+scheduler-start target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_start.sh
+
+# Stop the scheduler on the remote node
+scheduler-stop target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_stop.sh
+
 # Tail remote server and scheduler logs
 logs target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh
