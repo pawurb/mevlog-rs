@@ -280,10 +280,12 @@ pub fn init_logs(filename: &str) {
 
 pub(crate) fn host() -> String {
     match Env::current() {
-        Env::Development | Env::Test => "http://localhost:3002",
-        Env::Production => "https://mevlog.rs",
+        Env::Development | Env::Test => {
+            let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
+            format!("http://localhost:{port}")
+        }
+        Env::Production => "https://mevlog.rs".to_string(),
     }
-    .to_string()
 }
 
 static TITLE_RE: LazyLock<regex::Regex> =

@@ -12,9 +12,17 @@ server:
 watch-server:
     cd {{backend_dir}} && \
     stop_server() { [ -f /tmp/mevlog-server.pid ] && kill "$(cat /tmp/mevlog-server.pid)" 2>/dev/null; pkill -f 'target/debug/server' 2>/dev/null; true; }; \
-    start_server() { export DEPLOYED_AT=$(date +%s); ./timestamp_assets.sh; cargo run --bin server & echo $! > /tmp/mevlog-server.pid; }; \
-    trap 'stop_server; exit 0' INT TERM; \
+    start_server() { export DEPLOYED_AT=$(date +%s); export PORT=${PORT:-3002}; ./timestamp_assets.sh; cargo run --bin server & echo $! > /tmp/mevlog-server.pid; }; \
+    rebuild_docs() { mdbook build docs_src && cargo run --quiet --bin clean-html-links docs_html && echo "Docs rebuilt"; }; \
+    watch_docs() { fswatch -o --latency 1 docs_src/src docs_src/book.toml docs_src/theme | while read -r _; do \
+        while read -r -t 1 _; do :; done; \
+        echo "Doc change detected, rebuilding docs..."; \
+        rebuild_docs; \
+    done; }; \
+    stop_all() { stop_server; pkill -f 'fswatch.*docs_src' 2>/dev/null; true; }; \
+    trap 'stop_all; exit 0' INT TERM; \
     start_server; \
+    watch_docs & \
     fswatch -o --latency 1 -e ".*" -i "\.rs$" -i "\.html$" -i "\.css$" -i "\.js$" -i "\.jsx$" src templates styles javascripts/react javascripts/scripts.js | while read -r _; do \
         while read -r -t 1 _; do :; done; \
         echo "Change detected, rebuilding assets and restarting server..."; \
