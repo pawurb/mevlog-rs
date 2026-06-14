@@ -8,6 +8,12 @@ mevlog is published on crates.io. Install it with Cargo:
 cargo install mevlog --locked
 ```
 
+`mevlog` fetches block data using [cryo](https://github.com/paradigmxyz/cryo), so the `cryo` binary must be available in your `PATH`. Install it with Cargo:
+
+```bash
+cargo install cryo_cli --locked
+```
+
 ## Run your first command
 
 _On the first execution of the `mevlog` command a signatures DB has to be downloaded and indexed, but it should take max ~1min_.
@@ -73,7 +79,7 @@ Produces:
 ],
 ```
 
-See [SQL demo](/search) to see database structure, available SQLite helper methods, and run queries against the last week of Mainnet data.
+See [SQL demo](/search) to see database structure, available SQLite helper methods, and run queries against the last day of Mainnet data.
 
 ## mevlog TUI interface
 
