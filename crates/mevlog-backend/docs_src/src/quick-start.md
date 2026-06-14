@@ -11,13 +11,13 @@ cargo install mevlog
 
 ## Run your first command
 
+_BTW on first execution of `mevlog` command a signatures DB has to be downloaded and indexed, but it should take ~1min max_.
+
 Fetch and display the transactions in the latest Ethereum mainnet block:
 
 ```bash
 mevlog block-txs -b latest --chain-id=1
 ```
-
-_BTW on first execution of `mevlog` a signatures DB has to be downloaded and indexed, but it should take ~1min max_.
 
 It should produce a similar JSON output:
 
@@ -43,9 +43,40 @@ It should produce a similar JSON output:
   // ...
 ```
 
-What just happened? You queried a Mainnet blockchain with ZERO config. Under the hood `mevlog` fetches the fastest RPC endpoint from [Chainlist](https://chainlist.org/).
+What just happened? You queried a Mainnet blockchain with ZERO config. Under the hood `mevlog` detects the fastest RPC endpoint from [Chainlist](https://chainlist.org/) and uses it to download data.
 
 The first execution against a target block might take a few seconds. But later ALL the data is cached in a local SQLite database (located in `~/.mevlog/`) so subsequent queries against the same block ranges are almost instant!
+
+You can run any SQL query against the local database using the `query` command:
+
+```bash
+# Find the most expensive TX in the given blocks range
+mevlog query \
+  -b 25314888:25314988 \
+  --chain-id=1 \
+  --sql "
+    SELECT
+      tx_hash,
+      format_ether(u256_mul(gas_used, effective_gas_price)) AS cost
+    FROM transactions
+    ORDER BY u256_mul(gas_used, effective_gas_price) DESC
+    LIMIT 1
+  "
+```
+
+Produces:
+```json
+"result": [
+  {
+    "tx_hash": "0x6bd55342c59905fe4c8a25f43737f60c54d43334cc54472d08f4d0069748ce9a",
+    "cost": "0.044113 ETH"
+  }
+],
+```
+
+See [SQL demo](/search) to see database structure, available SQLite helper methods, and run queries against the last week's of Mainnet data.
+
+## mevlog TUI interface
 
 `mevlog` comes with a full blown chains explorer TUI interface. Install it by running:
 
@@ -59,7 +90,6 @@ and run:
 mevlog tui
 ```
 
+It allows exploring over 2k different EVM chains directly from your terminal.
 
-`--chain-id=1` selects Ethereum mainnet and auto-picks a working public RPC
-endpoint from [ChainList](https://chainlist.org). mevlog indexes the block into
-a local SQLite database under `~/.mevlog/`, then renders its transactions.
+[IMAGE here I'll add]
