@@ -14,7 +14,7 @@ cargo install mevlog
 Fetch and display the transactions in the latest Ethereum mainnet block:
 
 ```bash
-mevlog block-txs latest --chain-id=1
+mevlog block-txs -b latest --chain-id=1
 ```
 
 `--chain-id=1` selects Ethereum mainnet and auto-picks a working public RPC

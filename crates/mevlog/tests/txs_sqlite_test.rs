@@ -116,7 +116,7 @@ pub mod tests {
     fn run_block(rpc_url: &str, tmp_dir: &Path, block: &str) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
-            .args(["run", "--bin", "mevlog", "--", "block", block])
+            .args(["run", "--bin", "mevlog", "--", "block", "-b", block])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
             .arg("--skip-verify-chain-id")
@@ -134,7 +134,7 @@ pub mod tests {
     ) -> Output {
         Command::new("cargo")
             .env("RUST_LOG", "off")
-            .args(["run", "--bin", "mevlog", "--", "block-txs", block])
+            .args(["run", "--bin", "mevlog", "--", "block-txs", "-b", block])
             .args(["--chain-id", &CHAIN_ID.to_string()])
             .args(["--rpc-url", rpc_url])
             .arg("--skip-verify-chain-id")

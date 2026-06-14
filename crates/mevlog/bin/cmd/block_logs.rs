@@ -8,7 +8,7 @@ use crate::cmd::print_query_outcome;
 
 #[derive(Debug, clap::Parser)]
 pub struct BlockLogsArgs {
-    #[arg(help = "Block number or 'latest'")]
+    #[arg(short = 'b', long = "block", help = "Block number or 'latest'")]
     pub block: String,
 
     #[arg(long, help = "Get N-offset latest block")]

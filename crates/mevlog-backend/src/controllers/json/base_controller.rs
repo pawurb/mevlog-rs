@@ -25,6 +25,7 @@ pub(crate) async fn block_txs_with_logs(
     let mut txs_cmd = Command::new(mevlog_cmd_path());
     txs_cmd
         .arg("block-txs")
+        .arg("-b")
         .arg(&block_arg)
         .arg("--format")
         .arg("json")
@@ -54,6 +55,7 @@ pub(crate) async fn block_txs_with_logs(
     let mut logs_cmd = Command::new(mevlog_cmd_path());
     logs_cmd
         .arg("block-logs")
+        .arg("-b")
         .arg(&resolved_block)
         .arg("--format")
         .arg("json")
