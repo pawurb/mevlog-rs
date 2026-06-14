@@ -9,7 +9,7 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 use crate::misc::utils::uptime_ping;
 
 // ~7 days of mainnet blocks (12s block time)
-const PURGE_KEEP_BLOCKS: u64 = 50_400;
+const PURGE_KEEP_BLOCKS: u64 = 7200;
 const PURGE_CHAIN_ID: u64 = 1;
 const REINDEX_CHAIN_ID: u64 = 1;
 
