@@ -4,6 +4,7 @@ import Prism from 'prismjs/components/prism-core';
 import 'prismjs/components/prism-sql';
 import SchemaReference from './SchemaReference';
 import HelpersReference from './HelpersReference';
+import PRESETS from './presets';
 
 // Teach Prism's SQL grammar about mevlog's custom helpers and {MACRO()} tokens.
 // Guard so the insert runs only once even if the module is evaluated twice.
@@ -33,55 +34,6 @@ const highlightSql = (code) => Prism.highlight(code, Prism.languages.sql, 'sql')
 // Search only supports Ethereum mainnet.
 const CHAIN_ID = 1;
 
-// Predefined read-only SQL queries. The block range is fixed server-side.
-// Tables: transactions, logs, blocks. Macros (braces):
-// {LATEST_BLOCK()}, {NATIVE_TOKEN_PRICE()}, {RESOLVE_ENS("name.eth")}.
-const PRESETS = [
-  {
-    name: 'ens-gas-spend',
-    label: 'How much jaredfromsubway.eth spent on gas in last 1 day',
-    sql: 'SELECT COUNT(*) AS txs,\n       format_ether(u256_sum(u256_mul(t.gas_used, t.effective_gas_price))) AS gas_spent_eth,\n       format_usd(convert_usd(u256_sum(u256_mul(t.gas_used, t.effective_gas_price)), {NATIVE_TOKEN_PRICE()})) AS gas_spent_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.from_address = {RESOLVE_ENS("jaredfromsubway.eth")}\n  AND b.timestamp >= unixepoch(\'now\', \'-1 day\')',
-  },
-  {
-    name: 'usdc-top-txs',
-    label: 'Which 10 txs transferred the most USDC in last 1 day',
-    sql: "WITH agg AS (\n  SELECT block_number, tx_index, u256_sum(erc20_amount) AS amt\n  FROM logs\n  WHERE address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'\n    AND erc20_amount IS NOT NULL\n    AND block_number >= {LATEST_BLOCK()} - 7200\n  GROUP BY block_number, tx_index\n  ORDER BY amt DESC\n  LIMIT 10\n)\nSELECT t.tx_hash,\n       format_usd(erc20_to_real(agg.amt, 6)) AS usdc\nFROM agg\nJOIN transactions t\n  ON t.block_number = agg.block_number AND t.tx_index = agg.tx_index\nORDER BY agg.amt DESC",
-  },
-  {
-    name: 'top-gas-txs',
-    label: 'Which 10 txs spent the most on gas in last 1 day',
-    sql: "SELECT t.block_number, t.tx_hash,\n       format_ether(u256_mul(t.gas_used, t.effective_gas_price)) AS gas_eth,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 10",
-  },
-  {
-    name: 'top-eth-transfers',
-    label: 'Top 10 ETH transfers in last 1 day',
-    sql: "SELECT t.tx_hash,\n       format_ether(t.value) AS value_eth,\n       format_usd(convert_usd(t.value, {NATIVE_TOKEN_PRICE()})) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
-  },
-  {
-    name: 'top-methods',
-    label: 'Top 15 most-called methods in last 1 day',
-    sql: "SELECT t.signature, COUNT(*) AS calls\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.signature IS NOT NULL\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.signature\nORDER BY calls DESC\nLIMIT 15",
-  },
-  {
-    name: 'method-gas',
-    label: 'Which methods burned the most gas in last 1 day',
-    sql: "SELECT t.signature,\n       COUNT(*) AS calls,\n       format_ether(u256_sum(u256_mul(t.gas_used, t.effective_gas_price))) AS gas_eth,\n       format_usd(convert_usd(u256_sum(u256_mul(t.gas_used, t.effective_gas_price)), {NATIVE_TOKEN_PRICE()})) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.signature IS NOT NULL\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.signature\nORDER BY u256_sum(u256_mul(t.gas_used, t.effective_gas_price)) DESC\nLIMIT 10",
-  },
-  {
-    name: 'new-contracts',
-    label: 'How many new contracts deployed in last 1 day',
-    sql: "SELECT COUNT(*) AS contracts_deployed\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.signature = 'CREATE()'\n  AND t.success = 1\n  AND b.timestamp >= unixepoch('now', '-1 day')",
-  },
-  {
-    label: 'Top 5 miners by blocks mined in last 1 day',
-    sql: "SELECT miner, COUNT(*) AS blocks_mined\nFROM blocks\nWHERE timestamp >= unixepoch('now', '-1 day')\nGROUP BY miner\nORDER BY blocks_mined DESC\nLIMIT 5",
-  },
-  {
-    label: 'Get current DB stats info',
-    sql: "WITH db AS (\n  SELECT (SELECT page_count FROM pragma_page_count()) * (SELECT page_size FROM pragma_page_size()) AS bytes\n)\nSELECT (SELECT MIN(block_number) FROM blocks) AS min_block,\n       datetime((SELECT MIN(timestamp) FROM blocks), 'unixepoch') || ' UTC' AS min_block_time,\n       (SELECT MAX(block_number) FROM blocks) AS max_block,\n       datetime((SELECT MAX(timestamp) FROM blocks), 'unixepoch') || ' UTC' AS max_block_time,\n       (SELECT COUNT(*) FROM blocks) AS total_blocks,\n       (SELECT MAX(block_number) - MIN(block_number) + 1 - COUNT(*) FROM blocks) AS missing_blocks,\n       (SELECT COUNT(*) FROM logs) AS total_logs,\n       (SELECT COUNT(*) FROM transactions) AS total_txs,\n       CASE WHEN bytes < 1024 THEN bytes || ' B'\n            WHEN bytes < 1048576 THEN printf('%.2f KB', bytes / 1024.0)\n            WHEN bytes < 1073741824 THEN printf('%.2f MB', bytes / 1048576.0)\n            ELSE printf('%.2f GB', bytes / 1073741824.0) END AS db_size\nFROM db",
-  },
-];
-
 const formatTimestamp = (ts) => {
   if (ts === null || ts === undefined) return '';
   const d = new Date(ts * 1000);
@@ -105,9 +57,9 @@ const SearchForm = ({ initialValues = {} }) => {
     const params = new URLSearchParams(window.location.search);
     const slug = params.get('q');
     if (slug) {
-      const preset = PRESETS.find((p) => p.name === slug);
+      const preset = PRESETS.find((p) => p.key === slug);
       if (preset) {
-        setSql(preset.sql);
+        setSql(preset.full_sql);
         setPendingRun(true);
       }
     } else if (params.get('run') && (initialValues.sql || '').trim()) {
@@ -167,6 +119,10 @@ const SearchForm = ({ initialValues = {} }) => {
     setLoading(false);
   };
 
+  // The preset matching the current editor contents, if any, so its one-sentence
+  // description can be shown above the SQL.
+  const activePreset = PRESETS.find((p) => p.full_sql === sql);
+
   // Fire the queued auto-run once `sql` has actually been set from the URL.
   useEffect(() => {
     if (pendingRun && sql.trim()) {
@@ -195,12 +151,12 @@ const SearchForm = ({ initialValues = {} }) => {
           <span className="search-label">Preset queries</span>
         </div>
         <div className="preset-grid">
-          {PRESETS.map((p, idx) => (
+          {PRESETS.map((p) => (
             <button
-              key={idx}
+              key={p.key}
               type="button"
-              className={`preset-card${sql === p.sql ? ' active' : ''}`}
-              onClick={() => setSql(p.sql)}
+              className={`preset-card${sql === p.full_sql ? ' active' : ''}`}
+              onClick={() => setSql(p.full_sql)}
             >
               <span className="preset-label">
                 <span className="preset-marker">▸</span>
@@ -214,6 +170,9 @@ const SearchForm = ({ initialValues = {} }) => {
           <label className="search-label" htmlFor="search-sql">
             Read-only SQL
           </label>
+          {activePreset && (
+            <p className="preset-description">{activePreset.description}</p>
+          )}
           <Editor
             textareaId="search-sql"
             className="sql-editor"

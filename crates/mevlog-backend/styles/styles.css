@@ -645,6 +645,16 @@ a[href="/tui"] button.active {
   }
 }
 
+/* One-sentence description of the selected hero query, shown above the terminal. */
+.hero-desc {
+  color: var(--bright-black);
+  max-width: 620px;
+  margin: 16px auto 0 auto;
+  font-size: 0.95em;
+  line-height: 1.5;
+  text-align: center;
+}
+
 body.terminal .hero-tab {
   display: inline-flex;
   align-items: center;
@@ -1403,6 +1413,14 @@ body.terminal .project-description code::after {
   .preset-card {
     transition: none;
   }
+}
+
+/* One-sentence description of the selected preset, shown above the SQL editor. */
+.preset-description {
+  margin: 0 0 8px 0;
+  color: var(--bright-black);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 /* Search view: schema reference */

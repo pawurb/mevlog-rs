@@ -5,6 +5,10 @@ import ExploreViewer from './ExploreViewer';
 import ChainSelector from './ChainSelector';
 import SearchForm from './SearchForm';
 import CommandBuilder from './CommandBuilder';
+import PRESETS from './presets';
+
+// Shared with the non-bundled hero script (scripts.js) via this global.
+window.MEVLOG_PRESETS = PRESETS;
 
 // Export for global usage
 window.MevlogReact = {

@@ -25,13 +25,15 @@
   <p class="hero-subheader">The open-source, decentralized alternative to commercial chain indexers. Index blocks into a zero-config local SQLite database and run read-only SQL over transactions, logs, and blocks - with EVM-native functions for U256 math, ERC20 amounts, ENS, and live USD pricing. You own the data, on any of 2k+ EVM chains.</p>
 
   <div class="hero-tabs" role="tablist" aria-label="Example queries">
-    <button type="button" class="hero-tab active" data-q="0">ENS gas cost</button>
-    <button type="button" class="hero-tab" data-q="1">USDC volume</button>
-    <button type="button" class="hero-tab" data-q="2">Top ETH transfer</button>
-    <button type="button" class="hero-tab" data-q="3">Expensive tx</button>
-    <button type="button" class="hero-tab" data-q="4">Top methods</button>
-    <button type="button" class="hero-tab" data-q="5">New contracts</button>
+    <button type="button" class="hero-tab active" data-q="ens-gas-spend">ENS gas cost</button>
+    <button type="button" class="hero-tab" data-q="usdc-top-txs">USDC volume</button>
+    <button type="button" class="hero-tab" data-q="top-eth-transfers">Top ETH transfer</button>
+    <button type="button" class="hero-tab" data-q="top-gas-txs">Expensive tx</button>
+    <button type="button" class="hero-tab" data-q="top-methods">Top methods</button>
+    <button type="button" class="hero-tab" data-q="new-contracts">New contracts</button>
   </div>
+
+  <p class="hero-desc" id="hero-desc">Total gas the jaredfromsubway.eth MEV bot burned across its transactions in the last day, in ETH and USD.</p>
 
   <div class="hero-terminal" role="img" aria-label="Example mevlog SQL query rendered as a terminal session">
     <div class="hero-terminal-bar">
