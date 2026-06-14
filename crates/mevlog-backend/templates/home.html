@@ -59,7 +59,7 @@
     <div class="feature-row">
       <div class="feature-text">
         <h2>EVM-native SQL functions</h2>
-        <p>Plain SQLite cannot sum U256 values. mevlog adds the missing pieces: 256-bit math, ERC20 decoding, and display helpers that turn raw wei into readable ETH, gwei, and live USD prices. Aggregate, sort, and surface outliers - the biggest gas spenders, the top <code>USDC</code> transfers, or what <code>jaredfromsubway.eth</code> paid in gas today.</p>
+        <p>Plain SQLite cannot sum U256 values. <code></code>mevlog adds the missing pieces: 256-bit math, ERC20 decoding, and display helpers that turn raw wei into readable ETH, gwei, and live USD prices.</p>
       </div>
       <div class="feature-image-container">
         <img src="/find-outliers.png" alt="Query output: gas price, gas cost in USD, and status columns" class="feature-image" />
@@ -87,10 +87,6 @@
     </div>
   </div>
   
-  <p class="project-description">
-    mevlog.rs is an open-source, decentralized alternative to commercial EVM chain indexers. Instead of paying for a hosted API, you index blocks into a local SQLite database and query them with SQL - no account, no rate limits, no per-request billing. You own the data, it never leaves your machine, and it works against any EVM chain or your own node. It's powered by the <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a>. You can read about the origin of the project on <a target='_blank' class='yellow' href="https://pawelurbanek.com/long-tail-mev-revm">my blog</a>.
-  </p>
-
   <p class="project-description">
     The web demo indexes Ethereum mainnet over public RPCs sourced from <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>, and the Rust CLI is instrumented by the <a class='yellow' target='_blank' href="https://hotpath.rs/">hotpath.rs profiler</a>. The project received an <a class='yellow' target='_blank' href="https://builder.ensgrants.xyz/">ENS PG Builder Grant</a> which helped me implement the web interface and ChainList integration.
   </p>
