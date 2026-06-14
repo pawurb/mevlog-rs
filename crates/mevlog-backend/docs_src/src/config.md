@@ -41,6 +41,6 @@ Each `[[tables.<name>.columns]]` entry:
 | `source` | string | `topic1`..`topic3`, or a 0-based end-exclusive data byte range like `data[0:32]` (ABI word *n* is `data[n*32:(n+1)*32]`). |
 | `type` | string | `address` (20-byte BLOB), `uint256` (32-byte big-endian BLOB, works with `u256_*`/`format_ether`), or `bytes` (verbatim slice; requires a data range source). |
 
-After editing a table's definition, rebuild it with `mevlog update-db --rebuild-tables --chain-id <id>`.
+After editing a table's definition, rebuild it with `mevlog update-custom-tables --chain-id <id>`.
 
 See [Custom Tables](./custom-tables.md) for a full walkthrough, query examples, and how the tables stay in step with `logs`.

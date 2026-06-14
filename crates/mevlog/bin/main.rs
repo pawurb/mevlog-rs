@@ -13,7 +13,7 @@ use cmd::{
     debug_available::DebugAvailableArgs, ens_lookup::EnsLookupArgs, ens_resolve::EnsResolveArgs,
     evm_traces::EvmTracesArgs, index::IndexArgs, purge_db::PurgeDBArgs, query::QueryArgs,
     reindex::ReindexArgs, state_diff::StateDiffArgs, tx::TxArgs, tx_logs::TxLogsArgs,
-    update_db::UpdateDBArgs,
+    update_custom_tables::UpdateCustomTablesArgs, update_sigs_db::UpdateSigsDBArgs,
 };
 use eyre::Result;
 use mevlog::misc::shared_init::OutputFormat;
@@ -76,8 +76,13 @@ pub enum MLSubcommand {
     BlockTxs(BlockTxsArgs),
     #[command(name = "block-logs", about = "Show all logs in a block")]
     BlockLogs(BlockLogsArgs),
-    #[command(about = "Update the signatures database, or rebuild config-defined custom tables")]
-    UpdateDB(UpdateDBArgs),
+    #[command(name = "update-sigs-db", about = "Update the signatures database")]
+    UpdateSigsDB(UpdateSigsDBArgs),
+    #[command(
+        name = "update-custom-tables",
+        about = "Rebuild config-defined custom tables from indexed logs (requires --chain-id or --rpc-url; one run per chain)"
+    )]
+    UpdateCustomTables(UpdateCustomTablesArgs),
     #[command(about = "List all available chains from ChainList")]
     Chains(ChainsArgs),
     #[command(about = "Show detailed chain information")]
@@ -201,7 +206,10 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ML::BlockLogs(args) => {
             args.run(root_args.format).await?;
         }
-        ML::UpdateDB(args) => {
+        ML::UpdateSigsDB(args) => {
+            args.run().await?;
+        }
+        ML::UpdateCustomTables(args) => {
             args.run().await?;
         }
         ML::Chains(args) => {

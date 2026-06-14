@@ -337,7 +337,7 @@ impl Config {
 # params (string/bytes) occupy their data slot as an offset, not a value —
 # a range targeting such a slot stores the offset word.
 # After editing a table's definition, rebuild it with:
-# mevlog update-db --rebuild-tables --chain-id <id>
+# mevlog update-custom-tables --chain-id <id>
 #
 # Example (Uniswap V2 Swap):
 #

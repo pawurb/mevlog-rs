@@ -17,7 +17,7 @@ use crate::misc::config::{ColumnSource, ColumnType, CustomColumn, CustomTable, v
 /// Per table: missing → create, record fingerprint, backfill from the full
 /// existing `logs` table; fingerprint matches → no-op; mismatch (or an
 /// untracked table squatting on the name) → error pointing at
-/// `update-db --rebuild-tables`. Tables removed from config are left in place.
+/// `update-custom-tables`. Tables removed from config are left in place.
 pub(crate) async fn sync(
     tables: &[CustomTable],
     chain_id: u64,
@@ -48,13 +48,13 @@ pub(crate) async fn sync(
             (true, Some(stored)) if stored == fp => {}
             (true, Some(_)) => bail!(
                 "custom table '{}' no longer matches its config definition; \
-                 run 'mevlog update-db --rebuild-tables --chain-id {chain_id}' \
+                 run 'mevlog update-custom-tables --chain-id {chain_id}' \
                  to drop and rebuild it from indexed logs",
                 table.name
             ),
             (true, None) => bail!(
                 "table '{}' exists in the txs DB but is not a tracked custom table; \
-                 rename it in config or run 'mevlog update-db --rebuild-tables --chain-id {chain_id}'",
+                 rename it in config or run 'mevlog update-custom-tables --chain-id {chain_id}'",
                 table.name
             ),
             (false, _) => create_and_backfill(table, pool).await?,
@@ -478,7 +478,10 @@ type = "address"
             .await
             .unwrap_err()
             .to_string();
-        assert!(err.contains("--rebuild-tables"), "unexpected error: {err}");
+        assert!(
+            err.contains("update-custom-tables"),
+            "unexpected error: {err}"
+        );
 
         Ok(())
     }

@@ -12,7 +12,7 @@ Each table is tracked in a `custom_tables` meta table by `name` + a `fingerprint
 
 - missing table -> create it and backfill from all existing `logs`
 - fingerprint matches -> no-op
-- fingerprint changed, or a non-tracked table squats on the name -> error pointing you at `update-db --rebuild-tables`
+- fingerprint changed, or a non-tracked table squats on the name -> error pointing you at `update-custom-tables`
 
 After each indexing chunk lands, the applicable tables are populated for that block range, so they stay in step with `logs`. Row identity is `(block_number, log_index)` with `ON CONFLICT DO NOTHING`, so re-indexing is idempotent.
 
@@ -93,7 +93,7 @@ Caveat: dynamic ABI parameters (`string`, `bytes`, arrays) are stored at the hea
 Because contents are fingerprinted, editing a table's `topic0`, `addresses`, or columns changes its fingerprint, and the next run that opens the DB will refuse to continue rather than silently serve a stale shape. Rebuild it (lossless, offline, no RPC):
 
 ```bash
-mevlog update-db --rebuild-tables --chain-id <id>
+mevlog update-custom-tables --chain-id <id>
 ```
 
 This drops every tracked custom table (including ones you removed from config) plus anything squatting on a configured name, then recreates and backfills the currently-configured tables from `logs`. Only the named chain's DB is touched, so a multi-chain config needs one run per chain.

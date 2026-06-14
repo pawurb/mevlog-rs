@@ -18,7 +18,8 @@ Commands:
   block                   Show a single block's metadata
   block-txs               Show a block's transactions
   block-logs              Show all logs in a block
-  update-db               Update the signatures database, or rebuild config-defined custom tables
+  update-sigs-db          Update the signatures database
+  update-custom-tables    Rebuild config-defined custom tables from indexed logs (requires --chain-id or --rpc-url; one run per chain)
   chains                  List all available chains from ChainList
   chain-info              Show detailed chain information
   evm-coinbase-transfer   Compute a tx's direct ETH payment to its block's coinbase
@@ -225,16 +226,22 @@ Options:
 
 Plus the shared connection / fetch options.
 
-## update-db
+## update-sigs-db
 
-Update the signatures database, or rebuild config-defined custom tables.
+Update the signatures database.
 
 ```text
-Usage: mevlog update-db [OPTIONS]
+Usage: mevlog update-sigs-db [OPTIONS]
+```
 
-Options:
-      --rebuild-tables  Drop and rebuild config-defined custom tables from indexed logs
-                        (requires --chain-id or --rpc-url; one run per chain)
+Takes only the global options.
+
+## update-custom-tables
+
+Rebuild config-defined custom tables from indexed logs (requires `--chain-id` or `--rpc-url`; one run per chain).
+
+```text
+Usage: mevlog update-custom-tables [OPTIONS]
 ```
 
 Plus the shared connection options.

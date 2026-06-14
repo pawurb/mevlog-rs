@@ -50,7 +50,8 @@ pub(crate) mod state_diff;
 pub(crate) mod tui;
 pub(crate) mod tx;
 pub(crate) mod tx_logs;
-pub(crate) mod update_db;
+pub(crate) mod update_custom_tables;
+pub(crate) mod update_sigs_db;
 
 #[cfg(feature = "mcp")]
 pub(crate) mod mcp;
