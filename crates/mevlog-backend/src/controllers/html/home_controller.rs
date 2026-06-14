@@ -27,7 +27,7 @@ pub(crate) async fn home() -> impl IntoResponse {
 
     let h = host();
     let template = HomeTemplate {
-        title: "mevlog.rs - Explore EVM chains in one place, powered by Revm".to_string(),
+        title: "mevlog-rs | Open-Source SQL Analytics for Ethereum & EVM Chains".to_string(),
         description: "Open-source web interface for querying EVM transactions across 2000+ chains. Search by events, method calls, ENS names, ERC20 transfers, and more.".to_string(),
         canonical_url: format!("{h}/"),
         host: h,

@@ -2,8 +2,7 @@
 
 ## Install
 
-mevlog is published on crates.io. Install it
-with Cargo:
+mevlog is published on crates.io. Install it with Cargo:
 
 ```bash
 cargo install mevlog --locked
