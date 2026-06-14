@@ -2,7 +2,7 @@
 
 **mevlog** is a simple way to query data from *any* EVM-compatible chain - locally, on your own machine, without depending on third parties.
 
-It is an open-source (MIT) alternative to commercial blockchain indexers and data APIs. Instead of paying for a hosted service and querying an external database, `mevlog` downloads raw chain data straight from an RPC endpoint, stores it in a local SQLite database, and lets you query it with plain SQL. **You own the data.** No API keys, no rate limits, no vendor lock-in - just a file on your disk that you can query as much as you want, offline.
+It is an open-source (MIT) alternative to commercial blockchain indexers and data APIs. Instead of using a hosted service and querying an external database, `mevlog` downloads raw chain data straight from an RPC endpoint, stores it in a local SQLite database, and lets you query it with plain SQL. **You own the data.** No API keys, no rate limits, no vendor lock-in - just a file on your disk that you can query as much as you want, offline.
 
 ## What you can do with it
 

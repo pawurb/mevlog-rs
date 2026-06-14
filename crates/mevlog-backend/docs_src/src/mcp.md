@@ -12,7 +12,7 @@ and verify the subcommand is present:
 mevlog mcp --help
 ```
 
-The server speaks the **streamable HTTP** transport over a single `/mcp` endpoint. It is read-only: it never indexes or fetches new blocks. See [Indexing](/docs/indexing) for info on how to populate data.
+The server speaks the **streamable HTTP** transport over a single `/mcp` endpoint. It is read-only: it never indexes or fetches new blocks. See [Indexing](./indexing.md) for info on how to populate data.
 
 ## Running the server
 

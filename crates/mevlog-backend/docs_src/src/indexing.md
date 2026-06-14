@@ -1,10 +1,10 @@
 # Indexing
 
-`mevlog` reads RPC endpoints to cache data in a local SQLite database. This doc section describes commands you can use to control the indexing.
+`mevlog` reads RPC endpoints to cache data in a local SQLite database. This doc section describes commands you can use to control the indexing process.
 
 ## Implicit indexing
 
-You rarely call `index` directly. `mevlog query` (and every display command: `tx`, `block`, `block-txs`, ...) expects a `--blocks` / `-b` parameter naming the block range to operate on. Before the SQL runs, mevlog makes sure every block in that range is present in the local store, fetching only what is missing.
+`mevlog query` (and every display command: `tx`, `block`, `block-txs`, ...) expects a `--blocks` / `-b` parameter naming the block range to operate on. Before the SQL runs, mevlog makes sure every block in that range is present in the local store, fetching only what is missing.
 
 **The `--blocks` parameter**
 
@@ -26,6 +26,10 @@ Validation: in `N:M` the start must be `<=` the end, and neither a single block 
 3. Only the missing blocks are fetched over RPC and indexed into the store. Blocks that are already cached are reused untouched, so repeat queries over the same range hit no RPC.
 4. The JSON envelope reports the split as `cached_blocks` (already present) and `new_blocks` (fetched this run).
 
+**The `--skip-index` flag**
+
+`mevlog query --skip-index` skips indexing entirely and runs the SQL against the local store as-is: no block range resolution and no RPC fetching. Use it to query already-cached data without touching the network. It is mutually exclusive with `--blocks` (pass one or the other, not both), and both `cached_blocks` and `new_blocks` are reported as `0` since nothing is resolved or fetched.
+
 ## `index` command
 
 While `query` indexes on demand, `index` lets you populate the store ahead of time, and optionally keep it following the chain head.
@@ -45,7 +49,7 @@ mevlog index --live --keep 1000 --chain-id 1
 - **`--max-range N`** - reject a backfill whose range is larger than `N` blocks, a guard against accidentally requesting a huge range.
 - **`--batch-size N`** - how many blocks are fetched per batch (default `100`).
 
-> **Archive data and free RPCs.** Free public RPC endpoints often do not retain archive data, so they cannot serve transactions from blocks more than a short distance behind the head (historical backfills against them will fail or return gaps). You can still build up a useful local store incrementally with free endpoints: run `index --live` to capture blocks as they are produced, so the data is fetched while it is still within the endpoint's retention window and cached locally from then on. For one-off historical backfills you will need an archive-capable endpoint (see [RPC URLs](./rpc-urls.md)).
+> **Archive data and free RPCs.** Free public RPC endpoints often do not retain archive data, so they cannot serve transactions from blocks more than a short distance behind the head (historical backfills against them will fail or return gaps). You can still build up a useful local store incrementally with free endpoints: run `index --live` to capture blocks as they are produced, so the data is fetched while it is still within the endpoint's retention window and cached locally from then on. For one-off historical backfills you will need an archive-capable endpoint (see [config.toml](./config.md)).
 
 ## `reindex` command
 

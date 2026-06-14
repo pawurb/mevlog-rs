@@ -5,7 +5,7 @@
 ## Index
 
 - mevlog fetches blocks from any EVM-compatible chain over RPC.
-- With zero config it auto-selects the fastest RPC endpoint for the target chain from [ChainList](https://chainlist.org/); you can also pin your own endpoints (see [RPC URLs](./rpc-urls.md)).
+- With zero config it auto-selects the fastest RPC endpoint for the target chain from [ChainList](https://chainlist.org/); you can also pin your own endpoints (see [config.toml](./config.md)).
 - Indexing pulls transactions, blocks, and logs for a block range. The `index` command backfills a range; `--live` keeps watching for new blocks.
 - Every command that needs data first makes sure the relevant block(s) are indexed, so you rarely call `index` directly.
 
@@ -22,4 +22,4 @@
 - The `query` command runs arbitrary read-only SQL against the store via `--sql`.
 - Display commands (`tx`, `tx-logs`, `block`, `block-txs`, `block-logs`) are convenience wrappers: they index the needed block(s), then render the result with predefined SQL.
 - U256 values are stored as big-endian BLOBs, so use the [SQL functions](./evm-sqlite-helpers.md) (`u256_sum`, `u256_mul`, `format_ether`, …) instead of plain SQL arithmetic on those columns.
-- [SQL macros](./macros.md) like `{LATEST_BLOCK()}` and `{NATIVE_TOKEN_PRICE()}` expand to live values before the query runs.
+- [SQL macros](./evm-sqlite-helpers.md) like `{LATEST_BLOCK()}` and `{NATIVE_TOKEN_PRICE()}` expand to live values before the query runs.

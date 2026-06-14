@@ -2,7 +2,7 @@
 
 [![Latest Version](https://img.shields.io/crates/v/mevlog.svg)](https://crates.io/crates/mevlog) [![Downloads](https://img.shields.io/crates/d/mevlog.svg)](https://crates.io/crates/mevlog) [![GH Actions](https://github.com/pawurb/mevlog-rs/actions/workflows/rust.yml/badge.svg)](https://github.com/pawurb/mevlog-rs/actions)
 
-**mevlog** is an open-source (MIT) alternative to commercial blockchain indexers and data APIs. Instead of paying for a hosted service and querying an external database, it downloads raw chain data straight from an RPC endpoint, stores it in a local SQLite database, and lets you query it with plain SQL. **You own the data** - no API keys, no rate limits, no vendor lock-in, just a file on your disk you can query as much as you want, offline.
+**mevlog** is an open-source (MIT) alternative to commercial blockchain indexers and data APIs. Instead of using a hosted service and querying an external database, it downloads raw chain data straight from an RPC endpoint, stores it in a local SQLite database, and lets you query it with plain SQL. **You own the data** - no API keys, no rate limits, no vendor lock-in, just a file on your disk you can query as much as you want, offline.
 
 It follows a three-step model: **index → store → query**, against any [ChainList](https://chainlist.org/) chain or your own node.
 
