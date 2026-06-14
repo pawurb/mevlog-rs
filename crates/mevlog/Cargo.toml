@@ -48,6 +48,10 @@ regex = { workspace = true }
 chrono = "0.4"
 arrow = { version = "56", features = ["chrono-tz"] }
 parquet = { version = "56", features = ["arrow"] }
+# Pin alloc-no-stdlib consumers to <3 so the graph keeps a single version (mixing 2.x/3.x breaks the build)
+brotli = "=8.0.2"
+brotli-decompressor = "=5.0.1"
+alloc-stdlib = "=0.2.2"
 bigdecimal = "0.4"
 html-escape = "0.2"
 csv = "1"
