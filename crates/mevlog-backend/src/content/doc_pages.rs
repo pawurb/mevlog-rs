@@ -23,17 +23,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/getting-started/installation",
-        title: "Installation | mevlog",
-        description: "Install mevlog and enable optional feature flags such as mcp and tui.",
-        breadcrumb_label: "Installation",
-        last_updated_at: "2026-06-13",
-        sitemap_priority: "0.8",
-        sitemap_changefreq: "weekly",
-        faqs: &[],
-    },
-    DocPage {
-        path: "/docs/getting-started/quick-start",
+        path: "/docs/quick-start",
         title: "Quick Start | mevlog",
         description: "Run your first mevlog query and index a block range.",
         breadcrumb_label: "Quick Start",
@@ -43,7 +33,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/getting-started/concepts",
+        path: "/docs/concepts",
         title: "Core Concepts | mevlog",
         description: "The indexing model, the signatures DB vs the per-chain transactions DB, and how chains are selected.",
         breadcrumb_label: "Core Concepts",
@@ -53,7 +43,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/configuration/config-file",
+        path: "/docs/config-file",
         title: "Config File | mevlog",
         description: "The ~/.mevlog/config.toml format and available options.",
         breadcrumb_label: "Config File",
@@ -63,7 +53,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/configuration/rpc-urls",
+        path: "/docs/rpc-urls",
         title: "RPC URLs | mevlog",
         description: "Configuring RPC endpoints per chain, or auto-selecting them from ChainList.",
         breadcrumb_label: "RPC URLs",
@@ -73,7 +63,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/configuration/storage",
+        path: "/docs/storage",
         title: "Caching & Storage | mevlog",
         description: "What lives under ~/.mevlog/: the SQLite databases, the cacache blob store, and the ENS and ERC20 symbol caches.",
         breadcrumb_label: "Caching & Storage",
@@ -83,7 +73,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/querying/query",
+        path: "/docs/query",
         title: "The query Command | mevlog",
         description: "query (alias q) collects transactions over a block range and indexes them into the local transactions DB.",
         breadcrumb_label: "The query Command",
@@ -93,7 +83,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/querying/sql",
+        path: "/docs/sql",
         title: "SQL Query Layer | mevlog",
         description: "Running --sql against the indexed data, and the transactions, blocks, and logs table schemas.",
         breadcrumb_label: "SQL Query Layer",
@@ -103,7 +93,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/querying/u256-functions",
+        path: "/docs/u256-functions",
         title: "U256 SQL Functions | mevlog",
         description: "Custom SQLite functions for U256 BLOB columns: u256_sum, u256_mul, u256_add, u256_to_dec, erc20_to_real, and the format_ether, format_gwei, and format_usd display helpers.",
         breadcrumb_label: "U256 SQL Functions",
@@ -113,7 +103,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/querying/macros",
+        path: "/docs/macros",
         title: "SQL Macros | mevlog",
         description: "Magic tokens expanded before a query runs: {LATEST_BLOCK()}, {NATIVE_TOKEN_PRICE()}, and {RESOLVE_ENS(\"name.eth\")}.",
         breadcrumb_label: "SQL Macros",
@@ -123,7 +113,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/querying/output",
+        path: "/docs/output",
         title: "Output Formats | mevlog",
         description: "The json and json-pretty formats and the QueryResponse envelope shape.",
         breadcrumb_label: "Output Formats",
@@ -133,7 +123,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/commands/transactions",
+        path: "/docs/transactions",
         title: "Transactions | mevlog",
         description: "The tx and tx-logs commands for inspecting a single transaction and its logs.",
         breadcrumb_label: "Transactions",
@@ -143,7 +133,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/commands/blocks",
+        path: "/docs/blocks",
         title: "Blocks | mevlog",
         description: "The block and block-txs commands for block metadata and a block's transactions.",
         breadcrumb_label: "Blocks",
@@ -153,7 +143,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/commands/evm-analysis",
+        path: "/docs/evm-analysis",
         title: "EVM Analysis | mevlog",
         description: "Per-transaction analysis commands: evm-coinbase-transfer, evm-affected-addresses, evm-state-diff, and evm-traces.",
         breadcrumb_label: "EVM Analysis",
@@ -163,7 +153,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/commands/chains",
+        path: "/docs/chains",
         title: "Chains | mevlog",
         description: "Discovering chains and their metadata: chains, chain-info, and debug-available.",
         breadcrumb_label: "Chains",
@@ -173,7 +163,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/commands/ens",
+        path: "/docs/ens",
         title: "ENS | mevlog",
         description: "Resolving ENS names with ens-resolve and ens-lookup.",
         breadcrumb_label: "ENS",
@@ -183,7 +173,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/commands/database",
+        path: "/docs/database",
         title: "Database Management | mevlog",
         description: "Maintaining the local databases: update-db and db-info.",
         breadcrumb_label: "Database Management",
@@ -193,7 +183,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/integrations/mcp",
+        path: "/docs/mcp",
         title: "MCP Server | mevlog",
         description: "Running the Model Context Protocol server (requires the mcp feature).",
         breadcrumb_label: "MCP Server",
@@ -203,7 +193,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/integrations/tui",
+        path: "/docs/tui",
         title: "TUI Dashboard | mevlog",
         description: "The terminal UI dashboard (requires the tui feature).",
         breadcrumb_label: "TUI Dashboard",
@@ -213,7 +203,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/reference/schema",
+        path: "/docs/schema",
         title: "Database Schema | mevlog",
         description: "The signatures DB and per-chain transactions DB schemas, tables, and migrations.",
         breadcrumb_label: "Database Schema",
@@ -223,7 +213,7 @@ pub const DOC_PAGES: &[DocPage] = &[
         faqs: &[],
     },
     DocPage {
-        path: "/docs/reference/tracing",
+        path: "/docs/tracing",
         title: "EVM Tracing Modes | mevlog",
         description: "The two --evm-trace modes: rpc (via debug_traceTransaction) and revm (local replay).",
         breadcrumb_label: "EVM Tracing Modes",

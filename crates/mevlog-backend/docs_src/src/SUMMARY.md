@@ -4,41 +4,41 @@
 
 # Getting Started
 
-- [Quick Start](./getting-started/quick-start.md)
-- [Core Concepts](./getting-started/concepts.md)
+- [Quick Start](./quick-start.md)
+- [Core Concepts](./concepts.md)
 
 # Configuration
 
-- [Config File](./configuration/config-file.md)
-- [RPC URLs](./configuration/rpc-urls.md)
-- [Caching & Storage](./configuration/storage.md)
+- [Config File](./config-file.md)
+- [RPC URLs](./rpc-urls.md)
+- [Caching & Storage](./storage.md)
 
 # Querying
 
-- [The query Command](./querying/query.md)
-- [SQL Query Layer](./querying/sql.md)
-- [U256 SQL Functions](./querying/u256-functions.md)
-- [SQL Macros](./querying/macros.md)
-- [Output Formats](./querying/output.md)
+- [The query Command](./query.md)
+- [SQL Query Layer](./sql.md)
+- [U256 SQL Functions](./u256-functions.md)
+- [SQL Macros](./macros.md)
+- [Output Formats](./output.md)
 
 # Commands
 
-- [Transactions](./commands/transactions.md)
-- [Blocks](./commands/blocks.md)
-- [EVM Analysis](./commands/evm-analysis.md)
-- [Chains](./commands/chains.md)
-- [ENS](./commands/ens.md)
-- [Database Management](./commands/database.md)
+- [Transactions](./transactions.md)
+- [Blocks](./blocks.md)
+- [EVM Analysis](./evm-analysis.md)
+- [Chains](./chains.md)
+- [ENS](./ens.md)
+- [Database Management](./database.md)
 
 # Integrations
 
-- [MCP Server](./integrations/mcp.md)
-- [TUI Dashboard](./integrations/tui.md)
+- [MCP Server](./mcp.md)
+- [TUI Dashboard](./tui.md)
 
 # Reference
 
-- [Database Schema](./reference/schema.md)
-- [EVM Tracing Modes](./reference/tracing.md)
+- [Database Schema](./schema.md)
+- [EVM Tracing Modes](./tracing.md)
 
 ---
 

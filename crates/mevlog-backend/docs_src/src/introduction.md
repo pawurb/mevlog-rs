@@ -41,5 +41,5 @@ mevlog follows a three-step model: **index → store → query**.
 3. **Query** — run SQL against that local store. Because the data lives on your
    disk, queries are fast and free.
 
-These docs walk through each step. See [Quick Start](./getting-started/quick-start.md)
+These docs walk through each step. See [Quick Start](./quick-start.md)
 to get set up and run your first query.
