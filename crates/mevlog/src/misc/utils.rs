@@ -46,7 +46,7 @@ pub fn init_file_logs() {
 fn init_logs_inner(to_file: bool) {
     #[cfg(not(feature = "tokio-console"))]
     {
-        use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
+        use tracing_subscriber::{Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
         let offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
         let time_format =
@@ -60,22 +60,39 @@ fn init_logs_inner(to_file: bool) {
             std::fs::create_dir_all("log").expect("failed to create log directory");
             let log_file =
                 std::fs::File::create("log/development.log").expect("failed to create log file");
+            // The env filter is attached per-layer (not globally) so it only
+            // gates the file layer. A global filter would run before hotpath's
+            // SQL layer and suppress the `sqlx::query` target for the whole
+            // stack (see hotpath::sql_tracing_layer docs).
             let file_layer = fmt::layer()
                 .with_writer(log_file)
                 .with_ansi(false)
                 .with_timer(timer)
                 .with_target(false)
-                .with_thread_ids(false);
+                .with_thread_ids(false)
+                .with_filter(env_filter);
 
+            // hotpath's SQL tracing layer captures every sqlx query (including
+            // transaction-internal ones) via its own `sqlx::query` filter. It is
+            // a no-op unless the `hotpath` feature is enabled. The TUI logs to a
+            // file, so this is where its profiling subscriber gets built.
             tracing_subscriber::registry()
-                .with(env_filter)
                 .with(file_layer)
+                .with(hotpath::sql_tracing_layer())
                 .init();
         } else {
-            tracing_subscriber::fmt()
+            // Same wiring as the file branch (per-layer env filter + the
+            // hotpath SQL layer), just writing to stderr. The CLI commands use
+            // this path, so it must install the SQL layer too or `sqlx` queries
+            // are never captured under the `hotpath` feature.
+            let stderr_layer = fmt::layer()
                 .with_writer(std::io::stderr)
-                .with_env_filter(env_filter)
                 .with_timer(timer)
+                .with_filter(env_filter);
+
+            tracing_subscriber::registry()
+                .with(stderr_layer)
+                .with(hotpath::sql_tracing_layer())
                 .init();
         }
     }

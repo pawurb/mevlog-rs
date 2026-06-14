@@ -1,15 +1,12 @@
-//! In-process command logic shared by the CLI (`bin/cmd/*`) and the TUI.
-//!
-//! Each function performs the work of one CLI subcommand and **returns a value**
-//! (no printing). The clap layer is a thin wrapper that parses args, calls the
-//! matching function here, then formats and prints. The TUI calls these
-//! functions directly, receiving concrete typed values with no JSON round-trip.
+//! In-process command logic shared by the CLI (`bin/cmd/*`) and the TUI. Each
+//! function performs the work of one subcommand and returns a value rather than
+//! printing; the clap layer parses args, calls it, then formats the result.
 //!
 //! SQL-backed commands (`query`, `block`, `block_txs`, `block_logs`, `tx`,
 //! `tx_logs`) return a [`QueryOutcome`](crate::models::json::query_response::QueryOutcome)
-//! carrying the generic `columns + rows` plus envelope metadata. The
-//! TUI-consumed ones (`block_txs`, `block_logs`, `tx`) also expose typed
-//! wrappers that deserialize the rows into concrete types.
+//! of generic `columns + rows` plus envelope metadata. The TUI-consumed ones
+//! (`block_txs`, `block_logs`, `tx`) also expose typed wrappers that deserialize
+//! the rows into concrete types.
 
 pub mod affected_addresses;
 pub mod block;
