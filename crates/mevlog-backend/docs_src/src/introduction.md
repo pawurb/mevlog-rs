@@ -23,6 +23,10 @@ disk that you can query as much as you want, offline.
   any event) into typed columns via config.
 - **Inspect single transactions and blocks** — render a tx, its logs, or a whole
   block, plus deeper EVM analysis (state diffs, call traces, coinbase payments).
+- **Generate EVM tracing insights** — replay any transaction to extract storage
+  state diffs, decoded call traces, and direct coinbase payments. Tracing runs
+  either through a node's standard `debug_traceTransaction` RPC, or fully locally
+  via [Revm](https://github.com/bluealloy/revm) — no tracing-enabled RPC required.
 - **Talk to the blockchain over MCP** — expose mevlog as a Model Context
   Protocol server so an AI assistant can query chain data on your behalf.
 
