@@ -1,6 +1,6 @@
 # TUI Dashboard
 
-`mevlog` ships with a full blown chains explorer terminal UI. It is gated behind the `tui` feature, so install it with:
+`mevlog` ships with a full-blown chains explorer terminal UI. It is gated behind the `tui` feature, so install it with:
 
 ```bash
 cargo install mevlog --features=tui --locked

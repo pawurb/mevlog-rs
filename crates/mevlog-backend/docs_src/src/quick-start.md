@@ -10,7 +10,7 @@ cargo install mevlog --locked
 
 ## Run your first command
 
-_On the first execution of `mevlog` command a signatures DB has to be downloaded and indexed, but it should take max ~1min_.
+_On the first execution of the `mevlog` command a signatures DB has to be downloaded and indexed, but it should take max ~1min_.
 
 Fetch and display the transactions in the latest Ethereum mainnet block:
 
@@ -73,11 +73,11 @@ Produces:
 ],
 ```
 
-See [SQL demo](/search) to see database structure, available SQLite helper methods, and run queries against the last week's of Mainnet data.
+See [SQL demo](/search) to see database structure, available SQLite helper methods, and run queries against the last week of Mainnet data.
 
 ## mevlog TUI interface
 
-`mevlog` comes with a full blown chains explorer TUI interface. Install it by running:
+`mevlog` comes with a full-blown chains explorer TUI interface. Install it by running:
 
 ```bash
 cargo install mevlog --features=tui --locked

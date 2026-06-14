@@ -1,6 +1,6 @@
 # Database Schema
 
-The per-chain transactions store (`mevlog-txs-v1-{chain_id}.db`) has three tables you can query with `query --sql`. 
+The per-chain transactions store (`mevlog-txs-v1-{chain_id}.db`) has three tables you can query with `query --sql`.
 
 Column hints below are not part of the type, but tell you how to write working queries:
 

@@ -68,7 +68,7 @@ WHERE block_number > {LATEST_BLOCK()} - 100
   AND address = X'a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48'
   AND erc20_amount IS NOT NULL;
 
--- Failed transactions in a block 
+-- Failed transactions in a block
 SELECT tx_hash, signature
 FROM transactions
 WHERE block_number = 22030899 AND success = 0;
