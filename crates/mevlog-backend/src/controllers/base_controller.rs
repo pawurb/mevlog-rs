@@ -15,7 +15,7 @@ pub(crate) fn error_message(e: &str) -> String {
 
 pub static DATA_FETCH_ERROR: &str = "Data fetch failed. This is expected because we're using public RPCs. Please try again or select a different chain.";
 
-pub static QUERY_TIMEOUT_ERROR: &str = "SQL query timeout. The hosted playground caps SQL execution time. Install mevlog CLI and run it locally to query without limits.";
+pub static QUERY_TIMEOUT_ERROR: &str = "SQL query timed out. Try running it again, as subsequent executions may be faster once caches are warmed up. You can also simplify the query or reduce the block range. For unlimited execution, install the mevlog CLI and run it locally.";
 
 pub(crate) fn decorate_error_message(e: &str) -> String {
     if e.contains("SQL query timed out") || e.contains("Query timed out") {
