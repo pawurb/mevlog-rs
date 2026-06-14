@@ -4,7 +4,6 @@
 
 # Getting Started
 
-- [Installation](./getting-started/installation.md)
 - [Quick Start](./getting-started/quick-start.md)
 - [Core Concepts](./getting-started/concepts.md)
 
