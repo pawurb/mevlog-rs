@@ -624,37 +624,100 @@ a[href="/tui"] button.active {
 
 /* Hero query tabs: switch the example query shown in the terminal card. */
 .hero-tabs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
   justify-content: center;
-  gap: 8px;
+  justify-items: center;
+  gap: 10px 12px;
   max-width: 720px;
   margin: 26px auto 0 auto;
 }
 
+@media (max-width: 560px) {
+  .hero-tabs {
+    grid-template-columns: repeat(2, auto);
+  }
+}
+
+@media (max-width: 360px) {
+  .hero-tabs {
+    grid-template-columns: 1fr;
+  }
+}
+
 body.terminal .hero-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   font-family: monospace !important;
-  font-size: 0.82em;
-  padding: 5px 12px;
+  font-size: 0.95em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  padding: 9px 18px;
   border-radius: 999px !important;
-  border: 1px solid rgba(80, 149, 82, 0.4);
-  background-color: transparent;
+  border: 1px solid rgba(133, 197, 76, 0.5);
+  background-color: rgba(133, 197, 76, 0.08);
   color: var(--foreground);
-  opacity: 0.7;
+  opacity: 1;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: transform 0.12s ease, background-color 0.15s ease,
+    border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* Leading run-marker, signalling each chip runs a query when clicked. */
+body.terminal .hero-tab::before {
+  content: "▸";
+  font-size: 0.95em;
+  line-height: 1;
+  color: var(--green);
+  transition: color 0.15s ease, transform 0.12s ease;
 }
 
 body.terminal .hero-tab:hover {
-  opacity: 1;
-  border-color: rgba(245, 174, 46, 0.5);
+  color: var(--yellow);
+  border-color: var(--yellow);
+  background-color: rgba(245, 174, 46, 0.12);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+body.terminal .hero-tab:hover::before {
+  color: var(--yellow);
+  transform: translateX(2px);
+}
+
+body.terminal .hero-tab:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+body.terminal .hero-tab:active {
+  transform: translateY(0);
 }
 
 body.terminal .hero-tab.active {
-  opacity: 1;
   color: var(--yellow);
   border-color: var(--yellow);
-  background-color: rgba(245, 174, 46, 0.08);
+  background-color: rgba(245, 174, 46, 0.18);
+  box-shadow: 0 4px 16px rgba(245, 174, 46, 0.22);
+}
+
+body.terminal .hero-tab.active::before {
+  color: var(--yellow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.terminal .hero-tab,
+  body.terminal .hero-tab::before {
+    transition: color 0.15s ease, background-color 0.15s ease,
+      border-color 0.15s ease;
+  }
+  body.terminal .hero-tab:hover {
+    transform: none;
+  }
+  body.terminal .hero-tab:hover::before {
+    transform: none;
+  }
 }
 
 /* Hero signature: a real mevlog SQL query, rendered as a terminal card. */

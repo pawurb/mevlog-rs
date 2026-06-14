@@ -27,9 +27,10 @@
   <div class="hero-tabs" role="tablist" aria-label="Example queries">
     <button type="button" class="hero-tab active" data-q="0">ENS gas cost</button>
     <button type="button" class="hero-tab" data-q="1">USDC volume</button>
-    <button type="button" class="hero-tab" data-q="2">Expensive tx</button>
-    <button type="button" class="hero-tab" data-q="3">Top methods</button>
-    <button type="button" class="hero-tab" data-q="4">Methods cost</button>
+    <button type="button" class="hero-tab" data-q="2">Top ETH transfer</button>
+    <button type="button" class="hero-tab" data-q="3">Expensive tx</button>
+    <button type="button" class="hero-tab" data-q="4">Top methods</button>
+    <button type="button" class="hero-tab" data-q="5">New contracts</button>
   </div>
 
   <div class="hero-terminal" role="img" aria-label="Example mevlog SQL query rendered as a terminal session">
@@ -50,66 +51,7 @@
     <a href="/docs/" class="hero-cta hero-cta-ghost">Read the docs</a>
   </div>
 
-  <script>
-  (function () {
-    var KW = '<span class="t-kw">', FN = '<span class="t-fn">', MC = '<span class="t-macro">', ST = '<span class="t-str">', E = '</span>';
-    var QUERIES = [
-      {
-        cmd: 'mevlog query -b 7200:latest --sql',
-        name: 'ens-gas-spend',
-        key: 'gas_spent', val: '$48,210.34',
-        code: KW + 'SELECT' + E + ' ' + FN + 'format_usd' + E + '(' + FN + 'convert_usd' + E + '(\n         ' + FN + 'u256_sum' + E + '(' + FN + 'u256_mul' + E + '(gas_used, effective_gas_price)),\n         ' + MC + '{NATIVE_TOKEN_PRICE()}' + E + ')) ' + KW + 'AS' + E + ' gas_spent\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'WHERE' + E + ' from_address = ' + MC + '{RESOLVE_ENS(' + ST + '"jaredfromsubway.eth"' + E + ')}' + E
-      },
-      {
-        cmd: 'mevlog query -b 7200:latest --sql',
-        name: 'usdc-top-txs',
-        key: 'usdc_volume', val: '$1,284,019,442',
-        code: KW + 'SELECT' + E + ' ' + FN + 'erc20_to_real' + E + '(' + FN + 'u256_sum' + E + '(erc20_amount), 6) ' + KW + 'AS' + E + ' usdc_volume\n' + KW + 'FROM' + E + ' logs\n' + KW + 'WHERE' + E + ' address = ' + ST + "X'a0b8…eb48'" + E + '\n  ' + KW + 'AND' + E + ' erc20_amount ' + KW + 'IS NOT NULL' + E
-      },
-      {
-        cmd: 'mevlog query -b 7200:latest --sql',
-        name: 'top-gas-txs',
-        key: 'top tx gas', val: '$9,418.55',
-        code: KW + 'SELECT' + E + ' tx_hash,\n       ' + FN + 'format_usd' + E + '(' + FN + 'convert_usd' + E + '(' + FN + 'u256_mul' + E + '(gas_used,\n         effective_gas_price), ' + MC + '{NATIVE_TOKEN_PRICE()}' + E + ')) ' + KW + 'AS' + E + ' gas_usd\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'ORDER BY' + E + ' ' + FN + 'u256_mul' + E + '(gas_used, effective_gas_price) ' + KW + 'DESC' + E + '\n' + KW + 'LIMIT' + E + ' 1'
-      },
-      {
-        cmd: 'mevlog query -b 7200:latest --sql',
-        name: 'top-methods',
-        key: 'top method', val: 'transfer · 48,012',
-        code: KW + 'SELECT' + E + ' signature, COUNT(*) ' + KW + 'AS' + E + ' calls\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'WHERE' + E + ' signature ' + KW + 'IS NOT NULL' + E + '\n' + KW + 'GROUP BY' + E + ' signature\n' + KW + 'ORDER BY' + E + ' calls ' + KW + 'DESC' + E + '\n' + KW + 'LIMIT' + E + ' 15'
-      },
-      {
-        cmd: 'mevlog query -b 7200:latest --sql',
-        name: 'method-gas',
-        key: 'top gas method', val: 'execute… · 412 ETH',
-        code: KW + 'SELECT' + E + ' signature,\n       ' + FN + 'format_ether' + E + '(' + FN + 'u256_sum' + E + '(' + FN + 'u256_mul' + E + '(gas_used,\n         effective_gas_price))) ' + KW + 'AS' + E + ' gas_eth\n' + KW + 'FROM' + E + ' transactions\n' + KW + 'WHERE' + E + ' signature ' + KW + 'IS NOT NULL' + E + '\n' + KW + 'GROUP BY' + E + ' signature\n' + KW + 'ORDER BY' + E + ' ' + FN + 'u256_sum' + E + '(' + FN + 'u256_mul' + E + '(gas_used, effective_gas_price)) ' + KW + 'DESC' + E + '\n' + KW + 'LIMIT' + E + ' 10'
-      }
-    ];
-    var code = document.getElementById('hero-code'),
-        cmd = document.getElementById('hero-cmd'),
-        key = document.getElementById('hero-key'),
-        val = document.getElementById('hero-val'),
-        tryBtn = document.getElementById('hero-try'),
-        tabs = document.querySelectorAll('.hero-tab');
-    if (!code || !tabs.length) return;
-    function show(i) {
-      var q = QUERIES[i];
-      if (!q) return;
-      code.innerHTML = q.code + '<span class="hero-caret"></span>';
-      cmd.textContent = q.cmd;
-      key.textContent = q.key;
-      val.textContent = q.val;
-      // Carry the selected query to /search via its short name; it auto-runs there.
-      if (tryBtn && q.name) tryBtn.href = '/search?q=' + encodeURIComponent(q.name);
-      tabs.forEach(function (t, j) { t.classList.toggle('active', j === i); });
-    }
-    // Initialise the CTA href for the default-active tab.
-    show(0);
-    tabs.forEach(function (t) {
-      t.addEventListener('click', function () { show(parseInt(t.dataset.q, 10)); });
-    });
-  })();
-  </script>
+  <!-- Hero demo tab logic lives in javascripts/scripts.js (heroDemo module). -->
 
   <div class="features-list">
     <div class="feature-row">

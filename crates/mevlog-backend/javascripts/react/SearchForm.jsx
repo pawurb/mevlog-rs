@@ -53,6 +53,7 @@ const PRESETS = [
     sql: "SELECT t.block_number, t.tx_hash,\n       format_ether(u256_mul(t.gas_used, t.effective_gas_price)) AS gas_eth,\n       format_usd(convert_usd(u256_mul(t.gas_used, t.effective_gas_price), {NATIVE_TOKEN_PRICE()})) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY u256_mul(t.gas_used, t.effective_gas_price) DESC\nLIMIT 10",
   },
   {
+    name: 'top-eth-transfers',
     label: 'Top 10 ETH transfers in last 1 day',
     sql: "SELECT t.tx_hash,\n       format_ether(t.value) AS value_eth,\n       format_usd(convert_usd(t.value, {NATIVE_TOKEN_PRICE()})) AS value_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE b.timestamp >= unixepoch('now', '-1 day')\nORDER BY t.value DESC\nLIMIT 10",
   },
@@ -67,6 +68,7 @@ const PRESETS = [
     sql: "SELECT t.signature,\n       COUNT(*) AS calls,\n       format_ether(u256_sum(u256_mul(t.gas_used, t.effective_gas_price))) AS gas_eth,\n       format_usd(convert_usd(u256_sum(u256_mul(t.gas_used, t.effective_gas_price)), {NATIVE_TOKEN_PRICE()})) AS gas_usd\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.signature IS NOT NULL\n  AND b.timestamp >= unixepoch('now', '-1 day')\nGROUP BY t.signature\nORDER BY u256_sum(u256_mul(t.gas_used, t.effective_gas_price)) DESC\nLIMIT 10",
   },
   {
+    name: 'new-contracts',
     label: 'How many new contracts deployed in last 1 day',
     sql: "SELECT COUNT(*) AS contracts_deployed\nFROM transactions t\nJOIN blocks b ON b.block_number = t.block_number\nWHERE t.signature = 'CREATE()'\n  AND t.success = 1\n  AND b.timestamp >= unixepoch('now', '-1 day')",
   },
