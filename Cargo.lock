@@ -2905,8 +2905,9 @@ dependencies = [
 
 [[package]]
 name = "evm-sqlite"
-version = "0.1.0"
-source = "git+https://github.com/pawurb/evm-sqlite-rs#602d9c840388ba4aad15b5bb663a0e54d2b5b808"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "98ac5f7a12ec00db330d84a444f334716d1683f1d0c68a76cc10bb6163fb6add"
 dependencies = [
  "ruint",
  "rusqlite",
