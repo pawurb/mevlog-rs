@@ -12,36 +12,16 @@
 - [Custom Tables](./custom-tables.md)
 - [Storage Requirements](./sqlite-storage.md)
 
-# Database indexing
+# EVM tracing
 
-- [Config File](./config-file.md)
-- [RPC URLs](./rpc-urls.md)
-- [Caching & Storage](./storage.md)
-
-# Querying
-
-- [The query Command](./query.md)
-- [SQL Query Layer](./sql.md)
-- [SQL Macros](./macros.md)
-- [Output Formats](./output.md)
-
-# Commands
-
-- [Transactions](./transactions.md)
-- [Blocks](./blocks.md)
-- [EVM Analysis](./evm-analysis.md)
-- [Chains](./chains.md)
-- [ENS](./ens.md)
-- [Database Management](./database.md)
+- [Commands](./evm-commands.md)
+- [Coinbase transfers](./coinbase-transfers.md)
+- [RPC & Revm modes](./evm-rpc-revm-modes.md)
 
 # Integrations
 
 - [MCP Server](./mcp.md)
 - [TUI Dashboard](./tui.md)
-
-# Reference
-
-- [EVM Tracing Modes](./tracing.md)
 
 ---
 

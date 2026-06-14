@@ -13,9 +13,7 @@ Column hints below are not part of the type, but tell you how to write working q
 | `unix` | unix epoch seconds |
 | `0/1` | SQLite has no boolean; stored as `0` / `1` |
 
-A `?` after a column name means it is nullable; all other columns are `NOT
-NULL`. Addresses and hashes in predicates must be written as blob literals
-(`X'a0b8...'`).
+A `?` after a column name means it is nullable; all other columns are `NOT NULL`. Addresses and hashes in predicates must be written as blob literals (`X'a0b8...'`).
 
 ## `transactions`
 
@@ -42,8 +40,7 @@ NULL`. Addresses and hashes in predicates must be written as blob literals
 
 ## `blocks`
 
-A row exists for every indexed block (even empty ones), so this table doubles
-as the indexed-block tracker.
+A row exists for every indexed block (even empty ones), so this table doubles as the indexed-block tracker.
 
 | Column | Type | Hint |
 | --- | --- | --- |
@@ -72,5 +69,4 @@ as the indexed-block tracker.
 
 ## Signatures DB
 
-The separate `mevlog-sqlite-v5.db` holds method/event signatures and chain
-metadata. It is downloaded prebuilt from a CDN and is not queried via `--sql`.
+The separate `mevlog-sqlite-v5.db` holds method/event signatures and chain metadata. It is downloaded prebuilt from a CDN and is not queried via `--sql`.

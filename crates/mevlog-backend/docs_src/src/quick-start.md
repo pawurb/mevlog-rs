@@ -43,7 +43,7 @@ It should produce a similar JSON output:
   // ...
 ```
 
-What just happened? You queried a Mainnet blockchain with ZERO config. Under the hood `mevlog` detects the fastest RPC endpoint from [Chainlist](https://chainlist.org/) and uses it to download data.
+What just happened? You queried a Mainnet blockchain with ZERO config. Under the hood `mevlog` detects the fastest RPC endpoint from [ChainList](https://chainlist.org/) and uses it to download data.
 
 The first execution against a target block might take a few seconds. But later ALL the data is cached in a local SQLite database (located in `~/.mevlog/`) so subsequent queries against the same block ranges are almost instant!
 

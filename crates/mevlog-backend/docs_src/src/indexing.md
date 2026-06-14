@@ -1,14 +1,10 @@
 # Indexing
 
-`mevlog` reads RPC endpoints to cache data in a local SQLite database. This doc section describes commands you can use to control the indexing.  
+`mevlog` reads RPC endpoints to cache data in a local SQLite database. This doc section describes commands you can use to control the indexing.
 
 ## Implicit indexing
 
-You rarely call `index` directly. `mevlog query` (and every display command:
-`tx`, `block`, `block-txs`, ...) expects a `--blocks` / `-b` parameter naming
-the block range to operate on. Before the SQL runs, mevlog makes sure every
-block in that range is present in the local store, fetching only what is
-missing.
+You rarely call `index` directly. `mevlog query` (and every display command: `tx`, `block`, `block-txs`, ...) expects a `--blocks` / `-b` parameter naming the block range to operate on. Before the SQL runs, mevlog makes sure every block in that range is present in the local store, fetching only what is missing.
 
 **The `--blocks` parameter**
 
@@ -21,27 +17,18 @@ missing.
 | `N:M` | The inclusive range from block `N` to block `M`. |
 | `N:latest` (or `N:`) | The last `N` blocks, ending at the latest block. |
 
-Validation: in `N:M` the start must be `<=` the end, and neither a single block
-nor a range end may exceed the chain's current latest block.
+Validation: in `N:M` the start must be `<=` the end, and neither a single block nor a range end may exceed the chain's current latest block.
 
 **How missing blocks are detected**
 
-1. The range is resolved to concrete block numbers (`latest` and `N:` are
-   expanded via one RPC call for the current head).
-2. mevlog reads the `block_number`s already present in the `blocks` table for
-   that range. Because a row exists for every indexed block - including empty
-   ones - the `blocks` table itself is the indexed-block tracker; any number in
-   the range without a row is considered missing.
-3. Only the missing blocks are fetched over RPC and indexed into the store.
-   Blocks that are already cached are reused untouched, so repeat queries over
-   the same range hit no RPC.
-4. The JSON envelope reports the split as `cached_blocks` (already present) and
-   `new_blocks` (fetched this run).
+1. The range is resolved to concrete block numbers (`latest` and `N:` are expanded via one RPC call for the current head).
+2. mevlog reads the `block_number`s already present in the `blocks` table for that range. Because a row exists for every indexed block - including empty ones - the `blocks` table itself is the indexed-block tracker; any number in the range without a row is considered missing.
+3. Only the missing blocks are fetched over RPC and indexed into the store. Blocks that are already cached are reused untouched, so repeat queries over the same range hit no RPC.
+4. The JSON envelope reports the split as `cached_blocks` (already present) and `new_blocks` (fetched this run).
 
 ## `index` command
 
-While `query` indexes on demand, `index` lets you populate the store ahead of
-time, and optionally keep it following the chain head.
+While `query` indexes on demand, `index` lets you populate the store ahead of time, and optionally keep it following the chain head.
 
 ```bash
 # Backfill an explicit range
@@ -51,51 +38,26 @@ mevlog index -b 22030800:22030900 --chain-id 1
 mevlog index --live --keep 1000 --chain-id 1
 ```
 
-- **`--blocks` / `-b`** - the range to backfill, using the same four formats as
-  `query` (see above). Required unless `--live` is set. The same
-  fetch-only-missing logic applies, so re-running over an already-indexed range
-  is cheap.
-- **`--live`** - after the initial backfill, keep polling for new blocks and
-  index each new one as it arrives. With `--live` you may omit `--blocks`, in
-  which case watching starts from the current latest block.
-- **`--poll-interval-ms`** - how often to poll for a new head in live mode
-  (default `3000`).
-- **`--keep N`** - in live mode only, after each indexing round delete data more
-  than `N` blocks behind the newest indexed block, giving a rolling N-block
-  window (see `purge-db` for the exact cutoff). Requires `--live`; `--keep`
-  without `--live` is an error, and `--keep 0` is rejected (use
-  `purge-db --keep 0` to wipe). A one-time purge also runs right after the
-  initial backfill.
-- **`--max-range N`** - reject a backfill whose range is larger than `N` blocks,
-  a guard against accidentally requesting a huge range.
+- **`--blocks` / `-b`** - the range to backfill, using the same four formats as `query` (see above). Required unless `--live` is set. The same fetch-only-missing logic applies, so re-running over an already-indexed range is cheap.
+- **`--live`** - after the initial backfill, keep polling for new blocks and index each new one as it arrives. With `--live` you may omit `--blocks`, in which case watching starts from the current latest block.
+- **`--poll-interval-ms`** - how often to poll for a new head in live mode (default `3000`).
+- **`--keep N`** - in live mode only, after each indexing round delete data more than `N` blocks behind the newest indexed block, giving a rolling N-block window (see `purge-db` for the exact cutoff). Requires `--live`; `--keep` without `--live` is an error, and `--keep 0` is rejected (use `purge-db --keep 0` to wipe). A one-time purge also runs right after the initial backfill.
+- **`--max-range N`** - reject a backfill whose range is larger than `N` blocks, a guard against accidentally requesting a huge range.
 - **`--batch-size N`** - how many blocks are fetched per batch (default `100`).
 
-> **Archive data and free RPCs.** Free public RPC endpoints often do not retain
-> archive data, so they cannot serve transactions from blocks more than a short
-> distance behind the head (historical backfills against them will fail or
-> return gaps). You can still build up a useful local store incrementally with
-> free endpoints: run `index --live` to capture blocks as they are produced, so
-> the data is fetched while it is still within the endpoint's retention window
-> and cached locally from then on. For one-off historical backfills you will
-> need an archive-capable endpoint (see [RPC URLs](./rpc-urls.md)).
+> **Archive data and free RPCs.** Free public RPC endpoints often do not retain archive data, so they cannot serve transactions from blocks more than a short distance behind the head (historical backfills against them will fail or return gaps). You can still build up a useful local store incrementally with free endpoints: run `index --live` to capture blocks as they are produced, so the data is fetched while it is still within the endpoint's retention window and cached locally from then on. For one-off historical backfills you will need an archive-capable endpoint (see [RPC URLs](./rpc-urls.md)).
 
 ## `reindex` command
 
-Indexing can leave gaps: a transient RPC or network error during a backfill can
-cause individual blocks within the requested range to be skipped. `reindex`
-fills those holes.
+Indexing can leave gaps: a transient RPC or network error during a backfill can cause individual blocks within the requested range to be skipped. `reindex` fills those holes.
 
 ```bash
 mevlog reindex --chain-id 1
 ```
 
-- It reads the stored block range (`MIN`/`MAX` indexed block) from the DB and
-  re-runs indexing over that whole span.
-- Because indexing only fetches blocks that are absent from the `blocks` table,
-  a fully contiguous range is a no-op (`new_blocks = 0`) - only the missing
-  blocks are refetched.
-- This makes it safe to run repeatedly, or on a schedule, to heal a store that
-  accumulated gaps from flaky network conditions.
+- It reads the stored block range (`MIN`/`MAX` indexed block) from the DB and re-runs indexing over that whole span.
+- Because indexing only fetches blocks that are absent from the `blocks` table, a fully contiguous range is a no-op (`new_blocks = 0`) - only the missing blocks are refetched.
+- This makes it safe to run repeatedly, or on a schedule, to heal a store that accumulated gaps from flaky network conditions.
 
 ## `purge-db` command
 
@@ -106,20 +68,12 @@ Removes old data to cap disk usage, keeping only a recent window.
 mevlog purge-db --keep 1000 --chain-id 1
 ```
 
-- **`--keep N`** - keep blocks within `N` of the newest indexed block; rows with
-  `block_number < MAX(block_number) - N + 1` are deleted from `logs`,
-  `transactions`, `blocks`, and every tracked custom table in a single
-  transaction. The newest indexed block in the local DB is the reference, so no
-  RPC call is made. `--keep 0` purges everything.
-- **`--reclaim`** - run `VACUUM` afterwards to actually shrink the file on disk.
-  Off by default: freed pages are reused by later inserts, and `VACUUM` needs an
-  exclusive whole-DB lock that can block concurrent readers/writers. This is why
-  `index --live --keep` purges without reclaiming each round.
+- **`--keep N`** - keep blocks within `N` of the newest indexed block; rows with `block_number < MAX(block_number) - N + 1` are deleted from `logs`, `transactions`, `blocks`, and every tracked custom table in a single transaction. The newest indexed block in the local DB is the reference, so no RPC call is made. `--keep 0` purges everything.
+- **`--reclaim`** - run `VACUUM` afterwards to actually shrink the file on disk. Off by default: freed pages are reused by later inserts, and `VACUUM` needs an exclusive whole-DB lock that can block concurrent readers/writers. This is why `index --live --keep` purges without reclaiming each round.
 
 ## `db-info` command
 
-Reports the local store's indexed block range, row counts, file size, and any
-gaps.
+Reports the local store's indexed block range, row counts, file size, and any gaps.
 
 ```bash
 mevlog db-info --chain-id 1

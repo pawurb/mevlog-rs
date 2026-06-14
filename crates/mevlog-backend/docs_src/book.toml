@@ -1,5 +1,5 @@
 [book]
-title = "mevlog docs"
+title = "mevlog-rs docs"
 src = "src"
 
 [build]
@@ -11,3 +11,5 @@ default-theme = "ayu"
 preferred-dark-theme = "ayu"
 theme = "theme"
 additional-css = ["theme/mevlog.css"]
+git-repository-url = "https://github.com/pawurb/mevlog-rs"
+edit-url-template = "https://github.com/pawurb/mevlog-rs/edit/main/crates/mevlog-backend/docs_src/{path}"
