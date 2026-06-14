@@ -10,8 +10,11 @@ pub struct Event {
     pub signature: String,
 }
 
-static TOPIC_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Option<String>>>> =
-    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+static TOPIC_SIG_MEMORY_CACHE: std::sync::LazyLock<
+    hotpath::wrap::tokio::sync::RwLock<HashMap<String, Option<String>>>,
+> = std::sync::LazyLock::new(|| {
+    hotpath::rw_lock!(RwLock::new(HashMap::new()), label = "topic_sig_cache")
+});
 
 #[hotpath::measure_all(future = true)]
 impl Event {

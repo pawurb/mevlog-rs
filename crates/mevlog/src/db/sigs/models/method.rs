@@ -10,8 +10,11 @@ pub struct Method {
     pub signature: String,
 }
 
-static SELECTOR_SIG_MEMORY_CACHE: std::sync::LazyLock<RwLock<HashMap<String, Option<String>>>> =
-    std::sync::LazyLock::new(|| RwLock::new(HashMap::new()));
+static SELECTOR_SIG_MEMORY_CACHE: std::sync::LazyLock<
+    hotpath::wrap::tokio::sync::RwLock<HashMap<String, Option<String>>>,
+> = std::sync::LazyLock::new(|| {
+    hotpath::rw_lock!(RwLock::new(HashMap::new()), label = "selector_sig_cache")
+});
 
 #[hotpath::measure_all(future = true)]
 impl Method {
