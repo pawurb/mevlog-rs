@@ -9,6 +9,7 @@ html.ayu,
     --links: #f5ae2e;            /* was Ayu blue #0096cf */
     --sidebar-active: #f5ae2e;   /* brand orange */
     --inline-code-color: #f5ae2e;
+    --fg: #c5c5c5;               /* lift Ayu's muted #98a3ad body text to match the app */
 }
 
 /* ---- 2. Top nav — pixel-matched to the app's .sticky-nav (styles.css) ---- */

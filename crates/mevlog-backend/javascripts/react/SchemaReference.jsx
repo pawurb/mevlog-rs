@@ -33,26 +33,24 @@ const TABLES = [
       { name: 'signature_hash', type: 'BLOB', nullable: true, hint: 'selector' },
       { name: 'signature', type: 'TEXT', nullable: true },
     ],
-    footer: ['unique index: tx_hash'],
   },
   {
     name: 'blocks',
     columns: [
-      { name: 'block_number', type: 'INTEGER', pk: true },
+      { name: 'block_number', type: 'INTEGER' },
       { name: 'block_hash', type: 'BLOB', hint: 'hash' },
       { name: 'miner', type: 'BLOB', hint: 'addr' },
       { name: 'gas_used', type: 'BIGINT' },
       { name: 'timestamp', type: 'BIGINT', hint: 'unix' },
       { name: 'base_fee_per_gas', type: 'BIGINT', nullable: true },
     ],
-    footer: ['index: timestamp'],
   },
   {
     name: 'logs',
     columns: [
-      { name: 'block_number', type: 'BIGINT', pk: true },
+      { name: 'block_number', type: 'BIGINT' },
       { name: 'tx_index', type: 'BIGINT' },
-      { name: 'log_index', type: 'BIGINT', pk: true },
+      { name: 'log_index', type: 'BIGINT' },
       { name: 'address', type: 'BLOB', hint: 'addr' },
       { name: 'topic0', type: 'BLOB', nullable: true, hint: 'hash' },
       { name: 'topic1', type: 'BLOB', nullable: true, hint: 'hash' },
@@ -62,7 +60,6 @@ const TABLES = [
       { name: 'erc20_amount', type: 'BLOB', nullable: true, hint: 'u256' },
       { name: 'signature', type: 'TEXT', nullable: true },
     ],
-    footer: ['PK (block_number, log_index)'],
   },
 ];
 
@@ -93,7 +90,6 @@ const SchemaReference = () => {
                       <td className="schema-col-name">
                         {col.name}
                         {col.nullable && <span className="schema-nullable">?</span>}
-                        {col.pk && <span className="schema-pk"> PK</span>}
                       </td>
                       <td className="schema-col-type">{col.type}</td>
                       <td className="schema-col-hint">{col.hint || ''}</td>
@@ -101,11 +97,6 @@ const SchemaReference = () => {
                   ))}
                 </tbody>
               </table>
-              <div className="schema-footer">
-                {table.footer.map((line) => (
-                  <div key={line}>{line}</div>
-                ))}
-              </div>
             </div>
           ))}
         </div>

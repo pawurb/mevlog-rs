@@ -1,13 +1,18 @@
 # Summary
 
 - [Introduction](./introduction.md)
-
-# Getting Started
-
 - [Quick Start](./quick-start.md)
-- [Core Concepts](./concepts.md)
+- [Core concepts](./core-concepts.md)
 
-# Configuration
+# SQLite Database
+
+- [Indexing](./indexing.md)
+- [Schema](./schema.md)
+- [Functions & Macros](./evm-sqlite-helpers.md)
+- [Custom Tables](./custom-tables.md)
+- [Storage Requirements](./sqlite-storage.md)
+
+# Database indexing
 
 - [Config File](./config-file.md)
 - [RPC URLs](./rpc-urls.md)
@@ -17,7 +22,6 @@
 
 - [The query Command](./query.md)
 - [SQL Query Layer](./sql.md)
-- [U256 SQL Functions](./u256-functions.md)
 - [SQL Macros](./macros.md)
 - [Output Formats](./output.md)
 
@@ -37,7 +41,6 @@
 
 # Reference
 
-- [Database Schema](./schema.md)
 - [EVM Tracing Modes](./tracing.md)
 
 ---

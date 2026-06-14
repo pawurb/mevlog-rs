@@ -2,7 +2,7 @@
 
 ## Install
 
-mevlog is published on [crates.io](https://crates.io/crates/mevlog). Install it
+mevlog is published on crates.io. Install it
 with Cargo:
 
 ```bash
@@ -11,7 +11,7 @@ cargo install mevlog --locked
 
 ## Run your first command
 
-_BTW on first execution of `mevlog` command a signatures DB has to be downloaded and indexed, but it should take ~1min max_.
+_On the first execution of `mevlog` command a signatures DB has to be downloaded and indexed, but it should take max ~1min_.
 
 Fetch and display the transactions in the latest Ethereum mainnet block:
 
