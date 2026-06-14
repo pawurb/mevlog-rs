@@ -21,25 +21,25 @@
     <meta name="theme-color" content="#ffffff">
 
     {{#if favicon_svg}}
-    <link rel="icon" href="{{ resource " favicon.svg" }}">
+    <link rel="icon" href="{{ resource "favicon.svg" }}">
     {{/if}}
     {{#if favicon_png}}
-    <link rel="shortcut icon" href="{{ resource " favicon.png" }}">
+    <link rel="shortcut icon" href="{{ resource "favicon.png" }}">
     {{/if}}
-    <link rel="stylesheet" href="{{ resource " css/variables.css" }}">
-    <link rel="stylesheet" href="{{ resource " css/general.css" }}">
-    <link rel="stylesheet" href="{{ resource " css/chrome.css" }}">
+    <link rel="stylesheet" href="{{ resource "css/variables.css" }}">
+    <link rel="stylesheet" href="{{ resource "css/general.css" }}">
+    <link rel="stylesheet" href="{{ resource "css/chrome.css" }}">
     {{#if print_enable}}
-    <link rel="stylesheet" href="{{ resource " css/print.css" }}" media="print">
+    <link rel="stylesheet" href="{{ resource "css/print.css" }}" media="print">
     {{/if}}
 
     <!-- Fonts -->
-    <link rel="stylesheet" href="{{ resource " fonts/fonts.css" }}">
+    <link rel="stylesheet" href="{{ resource "fonts/fonts.css" }}">
 
     <!-- Highlight.js Stylesheets -->
-    <link rel="stylesheet" id="mdbook-highlight-css" href="{{ resource " highlight.css" }}">
-    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="{{ resource " tomorrow-night.css" }}">
-    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="{{ resource " ayu-highlight.css" }}">
+    <link rel="stylesheet" id="mdbook-highlight-css" href="{{ resource "highlight.css" }}">
+    <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="{{ resource "tomorrow-night.css" }}">
+    <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="{{ resource "ayu-highlight.css" }}">
 
     <!-- Custom theme stylesheets -->
     {{#each additional_css}}
@@ -62,7 +62,7 @@
         { {/if } }
     </script>
     <!-- Start loading toc.js asap -->
-    <script src="{{ resource " toc.js" }}"></script>
+    <script src="{{ resource "toc.js" }}"></script>
 </head>
 
 <body>
@@ -343,22 +343,22 @@
         {{/if}}
 
         {{#if playground_js}}
-        <script src="{{ resource " ace.js" }}"></script>
-        <script src="{{ resource " mode-rust.js" }}"></script>
-        <script src="{{ resource " editor.js" }}"></script>
-        <script src="{{ resource " theme-dawn.js" }}"></script>
-        <script src="{{ resource " theme-tomorrow_night.js" }}"></script>
+        <script src="{{ resource "ace.js" }}"></script>
+        <script src="{{ resource "mode-rust.js" }}"></script>
+        <script src="{{ resource "editor.js" }}"></script>
+        <script src="{{ resource "theme-dawn.js" }}"></script>
+        <script src="{{ resource "theme-tomorrow_night.js" }}"></script>
         {{/if}}
 
         {{#if search_js}}
-        <script src="{{ resource " elasticlunr.min.js" }}"></script>
-        <script src="{{ resource " mark.min.js" }}"></script>
-        <script src="{{ resource " searcher.js" }}"></script>
+        <script src="{{ resource "elasticlunr.min.js" }}"></script>
+        <script src="{{ resource "mark.min.js" }}"></script>
+        <script src="{{ resource "searcher.js" }}"></script>
         {{/if}}
 
-        <script src="{{ resource " clipboard.min.js" }}"></script>
-        <script src="{{ resource " highlight.js" }}"></script>
-        <script src="{{ resource " book.js" }}"></script>
+        <script src="{{ resource "clipboard.min.js" }}"></script>
+        <script src="{{ resource "highlight.js" }}"></script>
+        <script src="{{ resource "book.js" }}"></script>
 
         <!-- Custom JS scripts -->
         {{#each additional_js}}

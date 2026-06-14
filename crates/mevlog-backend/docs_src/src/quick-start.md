@@ -6,7 +6,7 @@ mevlog is published on [crates.io](https://crates.io/crates/mevlog). Install it
 with Cargo:
 
 ```bash
-cargo install mevlog
+cargo install mevlog --locked
 ```
 
 ## Run your first command
@@ -81,7 +81,7 @@ See [SQL demo](/search) to see database structure, available SQLite helper metho
 `mevlog` comes with a full blown chains explorer TUI interface. Install it by running:
 
 ```bash
-cargo install mevlog --features=tui
+cargo install mevlog --features=tui --locked
 ```
 
 and run:
@@ -90,6 +90,6 @@ and run:
 mevlog tui
 ```
 
-It allows exploring over 2k different EVM chains directly from your terminal.
+It allows exploring over 2k different EVM chains directly from your terminal, using the same SQLite as data storage.
 
-[IMAGE here I'll add]
+![mevlog TUI interface](./images/quick-start/tui-screenshot.png)
