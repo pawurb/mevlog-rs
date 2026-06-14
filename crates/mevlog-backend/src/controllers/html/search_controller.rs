@@ -34,7 +34,7 @@ impl SearchTemplate {
             page: "search".to_string(),
             deployed_at: deployed_at(),
             chain_id: params.chain_id.unwrap_or(1).to_string(),
-            title: "Query EVM Transactions - mevlog.rs".to_string(),
+            title: "Query EVM Transactions with SQL | mevlog-rs".to_string(),
             description: "Run read-only SQL queries against indexed EVM transactions, logs, and blocks. Aggregate ERC20 transfers, rank by gas cost, resolve ENS names, and more.".to_string(),
             canonical_url,
         }

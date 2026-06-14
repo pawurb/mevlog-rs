@@ -23,7 +23,7 @@ impl ExploreTemplate {
         let h = host();
         let canonical_url = format!("{h}/explore");
         Self {
-            title: "Explore EVM Blocks - mevlog.rs".to_string(),
+            title: "Explore EVM Blocks & Transactions | mevlog-rs".to_string(),
             description: "Explore the latest blocks and transactions across 2000+ EVM-compatible chains. View transaction details with EVM tracing insights.".to_string(),
             canonical_url,
             host: h,
