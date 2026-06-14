@@ -79,8 +79,8 @@ pub async fn app() -> Router {
             from_fn(cache_control).layer(ServeFile::new("assets/favicon.ico")),
         )
         .route_service(
-            "/sql-functions.jpeg",
-            from_fn(cache_control).layer(ServeFile::new("assets/sql-functions.jpeg")),
+            "/sql-functions.png",
+            from_fn(cache_control).layer(ServeFile::new("assets/sql-functions.png")),
         )
         .route_service(
             "/github-stars.svg",

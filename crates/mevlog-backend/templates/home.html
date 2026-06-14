@@ -62,7 +62,7 @@
         <p>Plain SQLite cannot sum U256 values. <code>mevlog</code> adds the missing pieces: 256-bit math, ERC20 decoding, and display helpers that turn raw wei into readable ETH, gwei, and live USD prices.</p>
       </div>
       <div class="feature-image-container">
-        <img src="/sql-functions.jpeg" alt="SQL query using format_usd, convert_usd, and u256_mul to compute per-transaction gas cost in USD" class="feature-image" />
+        <img src="/sql-functions.png" alt="SQL query using format_usd, convert_usd, and u256_mul to compute per-transaction gas cost in USD" class="feature-image" />
       </div>
     </div>
 
@@ -72,14 +72,14 @@
       </div>
       <div class="feature-text">
         <h2>Every chain, and you own the data</h2>
-        <p>No hosted API, no rate limits, no per-request billing. Index blocks into a local SQLite database that never leaves your machine. The web demo runs Ethereum mainnet; the <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> works against any <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a> chain or your own node.</p>
+        <p>No hosted APIs, rate limits, or per-request fees. Index blockchain data into a local SQLite database that stays on your machine. The web demo uses Ethereum mainnet, while the <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> works with any <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>-supported network or your own node.</p>
       </div>
     </div>
 
     <div class="feature-row">
       <div class="feature-text">
         <h2>Open-source and free to use</h2>
-        <p>Powered by the MIT-licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>. The same query engine runs in the web demo and the CLI.</p>
+        <p>Built on the MIT-licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>. The same query engine powers the web demo and CLI, making it easy to move from experimentation to local analysis.</p>
       </div>
       <div class="feature-image-container">
         <img src="/open-source.png" alt="Open Source" class="feature-image" />
