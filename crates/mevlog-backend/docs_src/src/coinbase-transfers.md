@@ -14,7 +14,7 @@ When you pass `--evm-trace` (mode `rpc` or `revm`), `query` traces every newly i
 mevlog query -b 100:latest --evm-trace rpc \
   --sql "SELECT tx_hash, format_ether(coinbase_transfer) AS bribe
          FROM transactions
-         WHERE coinbase_transfer IS NOT NULL AND coinbase_transfer > 0
+         WHERE coinbase_transfer IS NOT NULL AND coinbase_transfer != zeroblob(32)
          ORDER BY coinbase_transfer DESC LIMIT 20"
 ```
 
