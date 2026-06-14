@@ -1,6 +1,6 @@
 [package]
 name = "mevlog"
-version = "0.9.3"
+version = "0.10.0"
 edition = "2024"
 repository = "https://github.com/pawurb/mevlog-rs"
 description = "Index EVM transactions into a local SQLite DB and query them with SQL across 2k+ chains"
