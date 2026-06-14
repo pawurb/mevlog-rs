@@ -200,7 +200,7 @@ impl IndexArgs {
 }
 
 async fn purge_and_log(keep: u64, conn: &sqlx::SqlitePool) -> Result<()> {
-    let stats = purge_old_blocks(keep, conn).await?;
+    let stats = purge_old_blocks(keep, false, conn).await?;
     if stats.purged_blocks > 0 {
         info!(
             "Purged {} blocks below {} ({} txs, {} logs)",

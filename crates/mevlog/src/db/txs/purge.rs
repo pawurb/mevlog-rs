@@ -1,5 +1,6 @@
 use eyre::Result;
 use sqlx::SqlitePool;
+use tracing::debug;
 
 use crate::db::{shared::truncate_wal, txs::custom_tables};
 
@@ -15,6 +16,13 @@ pub struct PurgeStats {
     pub purged_logs: u64,
 }
 
+/// Number of indexed blocks deleted (and committed) per chunk. A one-off purge
+/// of a large backlog would otherwise delete millions of rows in a single
+/// transaction, ballooning the `-wal` and discarding every deleted row if the
+/// process is interrupted. Chunking commits incrementally so the WAL stays
+/// bounded and already-committed chunks survive a kill.
+const PURGE_CHUNK_BLOCKS: u64 = 1000;
+
 /// Deletes all indexed data below a `keep`-sized block-number window ending at
 /// the newest indexed block. With gapless indexing this equals keeping the
 /// `keep` newest indexed blocks; with disjoint indexed ranges, older islands
@@ -23,14 +31,18 @@ pub struct PurgeStats {
 ///
 /// The highest block present in the local DB is the reference (no RPC calls):
 /// rows with `block_number < MAX(blocks.block_number) - keep + 1` are removed
-/// from `logs`, `transactions`, `blocks`, and every tracked custom table in a
-/// single transaction (`keep = 0` purges everything). Custom-table rows are
-/// derived from `logs`, so they must not outlive their source rows; their
-/// counts are not reported in [`PurgeStats`]. Disk space is not reclaimed; call
-/// [`reclaim_space`] afterwards for one-off purges. Frequent purges (e.g.
-/// `index --live`) should skip it — freed pages get reused by subsequent
-/// inserts, and a full DB rewrite per round would be wasteful.
-pub async fn purge_old_blocks(keep: u64, conn: &SqlitePool) -> Result<PurgeStats> {
+/// from `logs`, `transactions`, `blocks`, and every tracked custom table
+/// (`keep = 0` purges everything). Custom-table rows are derived from `logs`,
+/// so they must not outlive their source rows; their counts are not reported in
+/// [`PurgeStats`].
+///
+/// The deletion is chunked into [`PURGE_CHUNK_BLOCKS`]-block transactions
+/// (oldest first), each committed independently. When `reclaim` is set,
+/// [`reclaim_space`] runs after every chunk so freed pages are returned to the
+/// filesystem incrementally rather than via one giant `VACUUM` at the end;
+/// frequent purges (e.g. `index --live`) pass `reclaim = false`, letting freed
+/// pages get reused by subsequent inserts instead.
+pub async fn purge_old_blocks(keep: u64, reclaim: bool, conn: &SqlitePool) -> Result<PurgeStats> {
     let latest_block: Option<i64> = sqlx::query_scalar("SELECT MAX(block_number) FROM blocks")
         .fetch_one(conn)
         .await?;
@@ -43,44 +55,82 @@ pub async fn purge_old_blocks(keep: u64, conn: &SqlitePool) -> Result<PurgeStats
 
     let custom_tables = custom_tables::tracked_table_names(conn).await?;
 
-    let mut db_tx = conn.begin().await?;
-
-    for name in &custom_tables {
-        sqlx::query(sqlx::AssertSqlSafe(format!(
-            "DELETE FROM \"{name}\" WHERE block_number < ?"
-        )))
-        .bind(cutoff_block as i64)
-        .execute(&mut *db_tx)
-        .await?;
-    }
-
-    let purged_logs = sqlx::query("DELETE FROM logs WHERE block_number < ?")
-        .bind(cutoff_block as i64)
-        .execute(&mut *db_tx)
-        .await?
-        .rows_affected();
-
-    let purged_transactions = sqlx::query("DELETE FROM transactions WHERE block_number < ?")
-        .bind(cutoff_block as i64)
-        .execute(&mut *db_tx)
-        .await?
-        .rows_affected();
-
-    let purged_blocks = sqlx::query("DELETE FROM blocks WHERE block_number < ?")
-        .bind(cutoff_block as i64)
-        .execute(&mut *db_tx)
-        .await?
-        .rows_affected();
-
-    db_tx.commit().await?;
-
-    Ok(PurgeStats {
+    let mut stats = PurgeStats {
         latest_block: Some(latest_block),
         cutoff_block: Some(cutoff_block),
-        purged_blocks,
-        purged_transactions,
-        purged_logs,
-    })
+        purged_blocks: 0,
+        purged_transactions: 0,
+        purged_logs: 0,
+    };
+
+    loop {
+        // Upper bound of the next chunk: the highest of the lowest
+        // PURGE_CHUNK_BLOCKS indexed blocks still below the cutoff. Selecting
+        // real block numbers (rather than stepping fixed numeric windows) keeps
+        // each chunk bounded to PURGE_CHUNK_BLOCKS blocks regardless of gaps in
+        // the indexed range. Always `< cutoff_block`, so kept data is untouched.
+        let chunk_upper: Option<i64> = sqlx::query_scalar(
+            "SELECT MAX(block_number) FROM (
+                 SELECT block_number FROM blocks
+                 WHERE block_number < ?
+                 ORDER BY block_number
+                 LIMIT ?
+             )",
+        )
+        .bind(cutoff_block as i64)
+        .bind(PURGE_CHUNK_BLOCKS as i64)
+        .fetch_one(conn)
+        .await?;
+
+        let Some(chunk_upper) = chunk_upper else {
+            break;
+        };
+
+        let mut db_tx = conn.begin().await?;
+
+        for name in &custom_tables {
+            sqlx::query(sqlx::AssertSqlSafe(format!(
+                "DELETE FROM \"{name}\" WHERE block_number <= ?"
+            )))
+            .bind(chunk_upper)
+            .execute(&mut *db_tx)
+            .await?;
+        }
+
+        stats.purged_logs += sqlx::query("DELETE FROM logs WHERE block_number <= ?")
+            .bind(chunk_upper)
+            .execute(&mut *db_tx)
+            .await?
+            .rows_affected();
+
+        stats.purged_transactions += sqlx::query("DELETE FROM transactions WHERE block_number <= ?")
+            .bind(chunk_upper)
+            .execute(&mut *db_tx)
+            .await?
+            .rows_affected();
+
+        stats.purged_blocks += sqlx::query("DELETE FROM blocks WHERE block_number <= ?")
+            .bind(chunk_upper)
+            .execute(&mut *db_tx)
+            .await?
+            .rows_affected();
+
+        db_tx.commit().await?;
+
+        if reclaim {
+            reclaim_space(conn).await?;
+        }
+
+        debug!(
+            "Purge chunk committed: deleted through block {chunk_upper}, cutoff {cutoff_block} (cumulative {} blocks, {} txs, {} logs{})",
+            stats.purged_blocks,
+            stats.purged_transactions,
+            stats.purged_logs,
+            if reclaim { ", reclaimed" } else { "" }
+        );
+    }
+
+    Ok(stats)
 }
 
 /// Reclaims disk space freed by [`purge_old_blocks`] via `VACUUM` plus a WAL
@@ -165,7 +215,7 @@ mod test {
         let (conn, _cl) = setup_test_db().await;
         seed_blocks(100..=104, &conn).await?;
 
-        let stats = purge_old_blocks(2, &conn).await?;
+        let stats = purge_old_blocks(2, false, &conn).await?;
 
         assert_eq!(
             stats,
@@ -201,7 +251,7 @@ mod test {
         let (conn, _cl) = setup_test_db().await;
         seed_blocks(100..=104, &conn).await?;
 
-        let stats = purge_old_blocks(1000, &conn).await?;
+        let stats = purge_old_blocks(1000, false, &conn).await?;
 
         assert_eq!(stats.latest_block, Some(104));
         assert_eq!(stats.cutoff_block, Some(0));
@@ -218,7 +268,7 @@ mod test {
         let (conn, _cl) = setup_test_db().await;
         seed_blocks(100..=104, &conn).await?;
 
-        let stats = purge_old_blocks(0, &conn).await?;
+        let stats = purge_old_blocks(0, false, &conn).await?;
 
         assert_eq!(stats.cutoff_block, Some(105));
         assert_eq!(stats.purged_blocks, 5);
@@ -271,7 +321,7 @@ type = "uint256"
             .await?;
         assert_eq!(count, 5);
 
-        purge_old_blocks(2, &conn).await?;
+        purge_old_blocks(2, false, &conn).await?;
 
         let remaining: Vec<i64> =
             sqlx::query_scalar("SELECT block_number FROM events ORDER BY block_number")
@@ -286,7 +336,7 @@ type = "uint256"
     async fn purge_on_empty_db_is_a_noop() -> Result<()> {
         let (conn, _cl) = setup_test_db().await;
 
-        let stats = purge_old_blocks(10, &conn).await?;
+        let stats = purge_old_blocks(10, false, &conn).await?;
         assert_eq!(stats, PurgeStats::default());
 
         Ok(())

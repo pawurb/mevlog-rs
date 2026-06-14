@@ -2,10 +2,7 @@ use std::time::Instant;
 
 use eyre::{Result, bail};
 use mevlog::{
-    db::txs::{
-        self,
-        purge::{purge_old_blocks, reclaim_space},
-    },
+    db::txs::{self, purge::purge_old_blocks},
     misc::shared_init::OutputFormat,
     models::json::purge_response::{PurgeResponse, serialize_purge_response},
 };
@@ -49,10 +46,7 @@ impl PurgeDBArgs {
         .await?;
 
         let start_time = Instant::now();
-        let stats = purge_old_blocks(self.keep, &conn).await?;
-        if self.reclaim {
-            reclaim_space(&conn).await?;
-        }
+        let stats = purge_old_blocks(self.keep, self.reclaim, &conn).await?;
         let duration_ns = start_time.elapsed().as_nanos() as u64;
 
         let resp = PurgeResponse::new(self.keep, self.chain_id, stats, duration_ns);
