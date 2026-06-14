@@ -45,7 +45,7 @@ var sqlHighlight = (function () {
 
 // Hero demo: switch the example query shown in the terminal card. Each tab's
 // `data-q` is a preset key; the preset data (trimmed demo_sql, sample result,
-// one-sentence description) comes from the shared window.MEVLOG_PRESETS source
+// one-sentence demo_label) comes from the shared window.MEVLOG_PRESETS source
 // that the /search form also uses, so the two never drift apart.
 (function heroDemo() {
   'use strict';
@@ -76,7 +76,7 @@ var sqlHighlight = (function () {
         key.textContent = q.result.key;
         val.textContent = q.result.val;
       }
-      if (desc) desc.textContent = q.description || '';
+      if (desc) desc.textContent = q.demo_label || '';
       // Carry the selected query to /search via its key; it auto-runs there.
       if (tryBtn) tryBtn.href = '/search?q=' + encodeURIComponent(q.key);
       tabs.forEach(function (other) { other.classList.toggle('active', other === t); });

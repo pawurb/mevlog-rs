@@ -647,7 +647,7 @@ a[href="/tui"] button.active {
 
 /* One-sentence description of the selected hero query, shown above the terminal. */
 .hero-desc {
-  color: var(--bright-black);
+  color: #9c958a;
   max-width: 620px;
   margin: 16px auto 0 auto;
   font-size: 0.95em;

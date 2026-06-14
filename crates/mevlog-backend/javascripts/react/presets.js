@@ -6,11 +6,15 @@
 // Each entry:
 //   key         - short slug; links a hero tab to /search?q=<key> (auto-runs there)
 //   label       - full question shown on the search preset card
-//   description - one-sentence explanation shown above the SQL once selected
+//   full_label  - one-sentence explanation of full_sql, shown above the search SQL
+//   demo_label  - one-sentence explanation of demo_sql, shown under the hero card (hero entries only)
 //   full_sql    - complete query loaded into the search editor and run by /search
 //   tab         - hero tab label                  (hero entries only)
 //   demo_sql    - trimmed SQL rendered in the hero terminal card (hero entries only)
 //   result      - sample { key, val } row shown under the hero SQL (hero entries only)
+//
+// full_label must describe what full_sql returns; demo_label what the trimmed
+// demo_sql returns. They differ because the demo SQL is simplified.
 //
 // Tables: transactions, logs, blocks. Macros (braces): {LATEST_BLOCK()},
 // {NATIVE_TOKEN_PRICE()}, {RESOLVE_ENS("name.eth")}.
@@ -19,7 +23,8 @@ const PRESETS = [
     key: 'ens-gas-spend',
     tab: 'ENS gas cost',
     label: 'How much jaredfromsubway.eth spent on gas in last 1 day',
-    description: 'Total gas the jaredfromsubway.eth MEV bot burned across its transactions in the last day, in ETH and USD.',
+    full_label: 'Total gas the jaredfromsubway.eth MEV bot burned across its transactions in the last day, with tx count in ETH and USD.',
+    demo_label: 'Total gas the jaredfromsubway.eth MEV bot burned across its transactions in the last day, in USD.',
     result: { key: 'gas_spent', val: '$48,210.34' },
     demo_sql:
 `SELECT format_usd(convert_usd(
@@ -40,7 +45,8 @@ WHERE t.from_address = {RESOLVE_ENS("jaredfromsubway.eth")}
     key: 'usdc-top-txs',
     tab: 'USDC volume',
     label: 'Which 10 txs transferred the most USDC in last 1 day',
-    description: 'The ten single transactions that moved the largest USDC amounts in the last day.',
+    full_label: 'The ten transactions that moved the largest USDC amounts in the last day.',
+    demo_label: 'Total USDC volume transferred across all logs in the last day.',
     result: { key: 'usdc_volume', val: '1,284,019,442' },
     demo_sql:
 `SELECT erc20_to_real(u256_sum(erc20_amount), 6) AS usdc_volume
@@ -69,7 +75,8 @@ ORDER BY agg.amt DESC`,
     key: 'top-gas-txs',
     tab: 'Expensive tx',
     label: 'Which 10 txs spent the most on gas in last 1 day',
-    description: 'The ten transactions that paid the most for gas in the last day, in ETH and USD.',
+    full_label: 'The ten transactions that paid the most for gas in the last day, in ETH and USD.',
+    demo_label: 'The single transaction that paid the most for gas, in USD.',
     result: { key: 'gas_usd', val: '$9,418.55' },
     demo_sql:
 `SELECT tx_hash,
@@ -92,7 +99,8 @@ LIMIT 10`,
     key: 'top-eth-transfers',
     tab: 'Top ETH transfer',
     label: 'Top 10 ETH transfers in last 1 day',
-    description: 'The ten largest native ETH transfers in the last day, in ETH and USD.',
+    full_label: 'The ten largest native ETH transfers in the last day, in ETH and USD.',
+    demo_label: 'The single largest native ETH transfer, in ETH.',
     result: { key: 'value_eth', val: '4,512.337000 ETH' },
     demo_sql:
 `SELECT tx_hash,
@@ -114,7 +122,8 @@ LIMIT 10`,
     key: 'top-methods',
     tab: 'Top methods',
     label: 'Top 15 most-called methods in last 1 day',
-    description: 'The fifteen most frequently called contract methods over the last day.',
+    full_label: 'The fifteen most frequently called contract methods over the last day.',
+    demo_label: 'The fifteen most frequently called contract methods.',
     result: { key: 'signature', val: 'transfer()' },
     demo_sql:
 `SELECT signature, COUNT(*) AS calls
@@ -136,7 +145,7 @@ LIMIT 15`,
   {
     key: 'method-gas',
     label: 'Which methods burned the most gas in last 1 day',
-    description: 'Which contract methods burned the most total gas over the last day, with call counts.',
+    full_label: 'Which contract methods burned the most total gas over the last day, with call counts.',
     full_sql:
 `SELECT t.signature,
        COUNT(*) AS calls,
@@ -154,7 +163,8 @@ LIMIT 10`,
     key: 'new-contracts',
     tab: 'New contracts',
     label: 'How many new contracts deployed in last 1 day',
-    description: 'How many contracts were successfully deployed in the last day.',
+    full_label: 'How many contracts were successfully deployed in the last day.',
+    demo_label: 'How many contracts were successfully deployed.',
     result: { key: 'contracts_deployed', val: '1,204' },
     demo_sql:
 `SELECT COUNT(*) AS contracts_deployed
@@ -172,7 +182,7 @@ WHERE t.signature = 'CREATE()'
   {
     key: 'top-miners',
     label: 'Top 5 miners by blocks mined in last 1 day',
-    description: 'The five block producers that mined the most blocks in the last day.',
+    full_label: 'The five block producers that mined the most blocks in the last day.',
     full_sql:
 `SELECT miner, COUNT(*) AS blocks_mined
 FROM blocks
@@ -184,7 +194,7 @@ LIMIT 5`,
   {
     key: 'db-stats',
     label: 'Get current DB stats info',
-    description: 'Current local index stats: block range, row counts, missing blocks, and database size.',
+    full_label: 'Current local index stats: block range, row counts, missing blocks, and database size.',
     full_sql:
 `WITH db AS (
   SELECT (SELECT page_count FROM pragma_page_count()) * (SELECT page_size FROM pragma_page_size()) AS bytes

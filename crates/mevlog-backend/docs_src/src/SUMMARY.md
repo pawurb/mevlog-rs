@@ -18,8 +18,10 @@
 - [Coinbase transfers](./coinbase-transfers.md)
 - [RPC & Revm modes](./evm-rpc-revm-modes.md)
 
-# Integrations
+# Other
 
+- [CLI Reference](./cli-reference.md)
+- [config.toml](./config.md)
 - [MCP Server](./mcp.md)
 - [TUI Dashboard](./tui.md)
 

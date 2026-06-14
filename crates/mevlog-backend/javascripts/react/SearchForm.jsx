@@ -44,6 +44,9 @@ const formatTimestamp = (ts) => {
 
 const SearchForm = ({ initialValues = {} }) => {
   const [sql, setSql] = useState(initialValues.sql || '');
+  // The key of the preset currently loaded into the editor, or null when the SQL
+  // was typed/edited by hand. Drives the active card highlight and the full_label.
+  const [activeKey, setActiveKey] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [response, setResponse] = useState(null);
@@ -59,7 +62,7 @@ const SearchForm = ({ initialValues = {} }) => {
     if (slug) {
       const preset = PRESETS.find((p) => p.key === slug);
       if (preset) {
-        setSql(preset.full_sql);
+        loadPreset(preset);
         setPendingRun(true);
       }
     } else if (params.get('run') && (initialValues.sql || '').trim()) {
@@ -119,9 +122,22 @@ const SearchForm = ({ initialValues = {} }) => {
     setLoading(false);
   };
 
-  // The preset matching the current editor contents, if any, so its one-sentence
-  // description can be shown above the SQL.
-  const activePreset = PRESETS.find((p) => p.full_sql === sql);
+  // Load a preset into the editor, remembering its key so the active card and
+  // full_label track it even if another preset shares identical SQL.
+  const loadPreset = (preset) => {
+    setSql(preset.full_sql);
+    setActiveKey(preset.key);
+  };
+
+  // Editing the SQL by hand detaches it from any preset.
+  const editSql = (next) => {
+    setSql(next);
+    setActiveKey(null);
+  };
+
+  // The preset currently loaded, if any, so its one-sentence full_label can be
+  // shown above the SQL.
+  const activePreset = PRESETS.find((p) => p.key === activeKey);
 
   // Fire the queued auto-run once `sql` has actually been set from the URL.
   useEffect(() => {
@@ -155,8 +171,8 @@ const SearchForm = ({ initialValues = {} }) => {
             <button
               key={p.key}
               type="button"
-              className={`preset-card${sql === p.full_sql ? ' active' : ''}`}
-              onClick={() => setSql(p.full_sql)}
+              className={`preset-card${activeKey === p.key ? ' active' : ''}`}
+              onClick={() => loadPreset(p)}
             >
               <span className="preset-label">
                 <span className="preset-marker">▸</span>
@@ -171,13 +187,13 @@ const SearchForm = ({ initialValues = {} }) => {
             Read-only SQL
           </label>
           {activePreset && (
-            <p className="preset-description">{activePreset.description}</p>
+            <p className="preset-description">{activePreset.full_label}</p>
           )}
           <Editor
             textareaId="search-sql"
             className="sql-editor"
             value={sql}
-            onValueChange={setSql}
+            onValueChange={editSql}
             highlight={highlightSql}
             padding={10}
             placeholder={'SELECT block_number, tx_index, tx_hash, gas_used\nFROM transactions\nORDER BY gas_used DESC\nLIMIT 20'}

@@ -29,7 +29,7 @@ pub enum ColorMode {
 #[command(
     version,
     about,
-    long_about = "mevlog: EVM activity log monitoring CLI
+    long_about = "mevlog: Index EVM transactions into a local SQLite DB and query them with SQL across 2k+ chains
 
 https://github.com/pawurb/mevlog-rs"
 )]
@@ -51,7 +51,10 @@ pub struct MLArgs {
 
 #[derive(Subcommand, Debug)]
 pub enum MLSubcommand {
-    #[command(about = "Query txs within a block range", alias = "q")]
+    #[command(
+        about = "Collect txs from a block range and run read-only SQL against the local txs DB",
+        alias = "q"
+    )]
     Query(Box<QueryArgs>),
     #[command(about = "Index a block range into the local txs DB")]
     Index(IndexArgs),
@@ -73,7 +76,7 @@ pub enum MLSubcommand {
     BlockTxs(BlockTxsArgs),
     #[command(name = "block-logs", about = "Show all logs in a block")]
     BlockLogs(BlockLogsArgs),
-    #[command(about = "Update signatures database")]
+    #[command(about = "Update the signatures database, or rebuild config-defined custom tables")]
     UpdateDB(UpdateDBArgs),
     #[command(about = "List all available chains from ChainList")]
     Chains(ChainsArgs),
