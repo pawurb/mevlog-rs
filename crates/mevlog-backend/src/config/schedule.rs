@@ -1,9 +1,12 @@
+use std::sync::Arc;
+
 use eyre::Result;
 use mevlog::{
     misc::shared_init::mevlog_cmd_path,
     models::json::{index_response::IndexResponse, purge_response::PurgeResponse},
 };
 use tokio::process::Command as AsyncCommand;
+use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
 
 use crate::misc::utils::uptime_ping;
@@ -13,7 +16,9 @@ const PURGE_KEEP_BLOCKS: u64 = 7200;
 const PURGE_CHAIN_ID: u64 = 1;
 const REINDEX_CHAIN_ID: u64 = 1;
 
-pub async fn get_schedule() -> Result<JobScheduler> {
+/// `job_lock` is shared with the live indexer in `bin/scheduler.rs` so that only
+/// one writer touches the per-chain txs DB and cryo cache dir at a time.
+pub async fn get_schedule(job_lock: Arc<Mutex<()>>) -> Result<JobScheduler> {
     let mut sched = JobScheduler::new().await?;
 
     sched
@@ -32,9 +37,20 @@ pub async fn get_schedule() -> Result<JobScheduler> {
         })?)
         .await?;
 
+    let purge_lock = job_lock.clone();
     sched
-        .add(Job::new_async("every 1 hour", |_uuid, _l| {
+        .add(Job::new_async("every 1 hour", move |_uuid, _l| {
+            let purge_lock = purge_lock.clone();
             Box::pin(async move {
+                let _guard = match purge_lock.try_lock() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        tracing::warn!(
+                            "Skipping scheduled purge: another indexing job is still running"
+                        );
+                        return;
+                    }
+                };
                 let purged = async {
                     let mut cmd = AsyncCommand::new(mevlog_cmd_path());
                     cmd.arg("purge-db")
@@ -84,9 +100,20 @@ pub async fn get_schedule() -> Result<JobScheduler> {
         })?)
         .await?;
 
+    let reindex_lock = job_lock.clone();
     sched
-        .add(Job::new_async("every 10 minutes", |_uuid, _l| {
+        .add(Job::new_async("every 10 minutes", move |_uuid, _l| {
+            let reindex_lock = reindex_lock.clone();
             Box::pin(async move {
+                let _guard = match reindex_lock.try_lock() {
+                    Ok(guard) => guard,
+                    Err(_) => {
+                        tracing::warn!(
+                            "Skipping scheduled reindex: another indexing job is still running"
+                        );
+                        return;
+                    }
+                };
                 let reindexed = async {
                     let rpc_url = std::env::var("ARCHIVE_ETH_RPC_URL")?;
 

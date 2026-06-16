@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use futures::FutureExt;
 use mevlog::misc::shared_init::mevlog_cmd_path;
 use tokio::process::Command;
+use tokio::sync::Mutex;
 
 use alloy::providers::{Provider, ProviderBuilder};
 use eyre::Result;
@@ -21,8 +24,14 @@ async fn main() -> Result<()> {
 
 async fn run() -> Result<()> {
     middleware::init_logs("scheduler.log");
+
+    // Shared across the live indexer and the scheduled reindex/purge jobs so that
+    // only one writer touches the per-chain txs DB and cryo cache dir at a time.
+    let job_lock = Arc::new(Mutex::new(()));
+
+    let cache_lock = job_lock.clone();
     tokio::spawn(async move {
-        let result = std::panic::AssertUnwindSafe(populate_mainnet_cache())
+        let result = std::panic::AssertUnwindSafe(populate_mainnet_cache(cache_lock))
             .catch_unwind()
             .await;
 
@@ -33,7 +42,7 @@ async fn run() -> Result<()> {
         }
     });
 
-    let sched = get_schedule().await?;
+    let sched = get_schedule(job_lock).await?;
     sched.start().await?;
 
     tokio::signal::ctrl_c().await?;
@@ -43,7 +52,7 @@ async fn run() -> Result<()> {
     Ok(())
 }
 
-async fn populate_mainnet_cache() -> Result<()> {
+async fn populate_mainnet_cache(job_lock: Arc<Mutex<()>>) -> Result<()> {
     let rpc_url = std::env::var("REMOTE_ETH_RPC_URL").expect("Missing REMOTE_ETH_RPC_URL env var");
     let uptime_url = std::env::var("UPTIME_URL_MAINNET_CACHE")
         .expect("Missing UPTIME_URL_MAINNET_CACHE env var");
@@ -68,19 +77,24 @@ async fn populate_mainnet_cache() -> Result<()> {
         }
 
         let range = format!("{}:{}", last_indexed + 1, latest);
-        let status = match Command::new(mevlog_cmd_path())
-            .arg("index")
-            .arg("-b")
-            .arg(&range)
-            .arg("--rpc-url")
-            .arg(&rpc_url)
-            .status()
-            .await
-        {
-            Ok(status) => status,
-            Err(e) => {
-                error!("Failed to run mevlog index: {}", &e);
-                continue;
+        // Hold the shared lock only while indexing runs, so reindex/purge can
+        // take their turn during the caught-up sleep below.
+        let status = {
+            let _guard = job_lock.lock().await;
+            match Command::new(mevlog_cmd_path())
+                .arg("index")
+                .arg("-b")
+                .arg(&range)
+                .arg("--rpc-url")
+                .arg(&rpc_url)
+                .status()
+                .await
+            {
+                Ok(status) => status,
+                Err(e) => {
+                    error!("Failed to run mevlog index: {}", &e);
+                    continue;
+                }
             }
         };
 
