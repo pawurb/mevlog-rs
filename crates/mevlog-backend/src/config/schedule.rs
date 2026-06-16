@@ -42,15 +42,10 @@ pub async fn get_schedule(job_lock: Arc<Mutex<()>>) -> Result<JobScheduler> {
         .add(Job::new_async("every 1 hour", move |_uuid, _l| {
             let purge_lock = purge_lock.clone();
             Box::pin(async move {
-                let _guard = match purge_lock.try_lock() {
-                    Ok(guard) => guard,
-                    Err(_) => {
-                        tracing::warn!(
-                            "Skipping scheduled purge: another indexing job is still running"
-                        );
-                        return;
-                    }
-                };
+                // Wait for the lock rather than skipping: purge must run or the
+                // DB grows unbounded. The Mutex is fair, so it queues behind the
+                // in-flight job instead of starving.
+                let _guard = purge_lock.lock().await;
                 let purged = async {
                     let mut cmd = AsyncCommand::new(mevlog_cmd_path());
                     cmd.arg("purge-db")
@@ -102,18 +97,11 @@ pub async fn get_schedule(job_lock: Arc<Mutex<()>>) -> Result<JobScheduler> {
 
     let reindex_lock = job_lock.clone();
     sched
-        .add(Job::new_async("every 10 minutes", move |_uuid, _l| {
+        .add(Job::new_async("every 20 minutes", move |_uuid, _l| {
             let reindex_lock = reindex_lock.clone();
             Box::pin(async move {
-                let _guard = match reindex_lock.try_lock() {
-                    Ok(guard) => guard,
-                    Err(_) => {
-                        tracing::warn!(
-                            "Skipping scheduled reindex: another indexing job is still running"
-                        );
-                        return;
-                    }
-                };
+                // Wait for the lock rather than skipping, same as purge.
+                let _guard = reindex_lock.lock().await;
                 let reindexed = async {
                     let rpc_url = std::env::var("ARCHIVE_ETH_RPC_URL")?;
 

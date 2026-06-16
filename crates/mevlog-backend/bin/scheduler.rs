@@ -77,10 +77,18 @@ async fn populate_mainnet_cache(job_lock: Arc<Mutex<()>>) -> Result<()> {
         }
 
         let range = format!("{}:{}", last_indexed + 1, latest);
-        // Hold the shared lock only while indexing runs, so reindex/purge can
-        // take their turn during the caught-up sleep below.
+        // Per-block updates yield to the sync jobs: if reindex/purge holds the
+        // lock, skip this round and retry. `last_indexed` stays put, so the next
+        // round re-covers this range once the lock is free.
         let status = {
-            let _guard = job_lock.lock().await;
+            let _guard = match job_lock.try_lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    debug!("Sync job running, deferring block index: {}", range);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(4)).await;
+                    continue;
+                }
+            };
             match Command::new(mevlog_cmd_path())
                 .arg("index")
                 .arg("-b")
