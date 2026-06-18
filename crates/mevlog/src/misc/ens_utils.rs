@@ -1,12 +1,54 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    path::PathBuf,
+    sync::{Arc, LazyLock},
+};
 
 use alloy::{primitives::Keccak256, sol};
 use eyre::{Result, bail};
 use revm::primitives::{Address, B256, address};
+use tokio::sync::RwLock;
 
 use crate::GenericProvider;
 
 pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
+
+/// In-memory cache of forward ENS resolutions (name -> address), backed by the
+/// on-disk cache under `~/.mevlog/.ens-cache` so repeated lookups skip the RPC
+/// `eth_call` the resolver would otherwise need.
+static ENS_ADDR_CACHE: LazyLock<RwLock<HashMap<String, Address>>> =
+    LazyLock::new(|| RwLock::new(HashMap::new()));
+
+fn ens_cache_dir() -> PathBuf {
+    home::home_dir().unwrap().join(".mevlog").join(".ens-cache")
+}
+
+/// Reads a cached forward resolution: in-memory first, then the on-disk cache
+/// (whose 20-byte address records are promoted into memory on a hit).
+async fn read_ens_addr_cache(name: &str) -> Option<Address> {
+    let key = name.to_lowercase();
+    {
+        let cache = ENS_ADDR_CACHE.read().await;
+        if let Some(addr) = cache.get(&key) {
+            return Some(*addr);
+        }
+    }
+
+    let bytes = cacache::read(&ens_cache_dir(), &key).await.ok()?;
+    let addr = Address::try_from(bytes.as_slice()).ok()?;
+    ENS_ADDR_CACHE.write().await.insert(key, addr);
+    Some(addr)
+}
+
+/// Persists a forward resolution to both the in-memory and on-disk caches.
+async fn write_ens_addr_cache(name: &str, addr: Address) {
+    let key = name.to_lowercase();
+    ENS_ADDR_CACHE.write().await.insert(key.clone(), addr);
+    if let Err(e) = cacache::write(&ens_cache_dir(), &key, addr.as_slice()).await {
+        tracing::error!("Error writing ENS cache: {}", e);
+    }
+}
 
 sol! {
     #[sol(rpc)]
@@ -34,6 +76,10 @@ pub(crate) async fn ens_addr_lookup(
     name: &str,
     provider: &Arc<GenericProvider>,
 ) -> Result<Option<Address>> {
+    if let Some(addr) = read_ens_addr_cache(name).await {
+        return Ok(Some(addr));
+    }
+
     let node = namehash(name);
     let ens_lookup = ENSLookupOracle::new(ENS_LOOKUP, provider);
     let addr = ens_lookup.getAddressForNode(node).call().await?;
@@ -41,6 +87,7 @@ pub(crate) async fn ens_addr_lookup(
     if addr.is_zero() {
         Ok(None)
     } else {
+        write_ens_addr_cache(name, addr).await;
         Ok(Some(addr))
     }
 }
@@ -122,6 +169,18 @@ mod tests {
             reverse_address(&addr),
             "d8da6bf26964af9d7eed9e03e53415d37aa96045.addr.reverse"
         );
+    }
+
+    #[tokio::test]
+    async fn addr_cache_roundtrips_case_insensitively() {
+        let addr = address!("0xd8da6bf26964af9d7eed9e03e53415d37aa96045");
+        // Use a name unlikely to collide with the shared on-disk cache.
+        write_ens_addr_cache("Mevlog-Test-Roundtrip.eth", addr).await;
+        assert_eq!(
+            read_ens_addr_cache("mevlog-test-roundtrip.eth").await,
+            Some(addr)
+        );
+        assert_eq!(read_ens_addr_cache("never-cached-xyz.eth").await, None);
     }
 
     #[test]
