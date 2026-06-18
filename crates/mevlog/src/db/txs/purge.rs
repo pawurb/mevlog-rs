@@ -103,11 +103,12 @@ pub async fn purge_old_blocks(keep: u64, reclaim: bool, conn: &SqlitePool) -> Re
             .await?
             .rows_affected();
 
-        stats.purged_transactions += sqlx::query("DELETE FROM transactions WHERE block_number <= ?")
-            .bind(chunk_upper)
-            .execute(&mut *db_tx)
-            .await?
-            .rows_affected();
+        stats.purged_transactions +=
+            sqlx::query("DELETE FROM transactions WHERE block_number <= ?")
+                .bind(chunk_upper)
+                .execute(&mut *db_tx)
+                .await?
+                .rows_affected();
 
         stats.purged_blocks += sqlx::query("DELETE FROM blocks WHERE block_number <= ?")
             .bind(chunk_upper)

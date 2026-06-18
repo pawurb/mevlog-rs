@@ -22,6 +22,12 @@ pub struct ReindexArgs {
         default_value = "100"
     )]
     batch_size: std::num::NonZeroUsize,
+
+    #[arg(
+        long,
+        help = "Only reindex blocks within this distance of the newest indexed block; older gaps are left alone. Defaults to the whole indexed range. Mirror the purge --keep window to keep reindex from backfilling blocks that purge would immediately drop"
+    )]
+    keep: Option<std::num::NonZeroU64>,
 }
 
 impl ReindexArgs {
@@ -36,8 +42,17 @@ impl ReindexArgs {
         // blocks absent from the DB, so this backfills the gaps. A contiguous
         // range is a no-op (`new_blocks = 0`), keeping it safe to run on a schedule.
         let stats = db_info(&deps.txs).await?;
-        let (Some(from), Some(to)) = (stats.min_block, stats.max_block) else {
+        let (Some(min_block), Some(to)) = (stats.min_block, stats.max_block) else {
             bail!("Txs DB has no indexed blocks; nothing to reindex");
+        };
+
+        // Clamp the floor to a `keep`-sized window behind the newest block so a
+        // single stray old block (e.g. one indexed by an on-demand `block-txs`
+        // web request) can't make reindex backfill the entire gap up to the tip.
+        // Mirror the purge --keep window: anything below it would be purged anyway.
+        let from = match self.keep {
+            Some(keep) => min_block.max(to.saturating_add(1).saturating_sub(keep.get())),
+            None => min_block,
         };
 
         let start_time = Instant::now();

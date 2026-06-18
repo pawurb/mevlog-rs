@@ -120,6 +120,10 @@ Usage: mevlog reindex [OPTIONS]
 
 Options:
       --batch-size <N>       Batch size for data fetching [default: 100]
+      --keep <KEEP>          Only reindex blocks within this distance of the newest indexed
+                             block; older gaps are left alone. Defaults to the whole indexed
+                             range. Mirror the purge --keep window so reindex does not backfill
+                             blocks that purge would immediately drop
 ```
 
 Plus the shared connection / fetch options.

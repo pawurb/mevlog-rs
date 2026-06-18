@@ -111,6 +111,8 @@ pub async fn get_schedule(job_lock: Arc<Mutex<()>>) -> Result<JobScheduler> {
                         .arg(REINDEX_CHAIN_ID.to_string())
                         .arg("--rpc-url")
                         .arg(&rpc_url)
+                        .arg("--keep")
+                        .arg(PURGE_KEEP_BLOCKS.to_string())
                         .arg("--format")
                         .arg("json");
                     cmd.env("RUST_LOG", "off");
