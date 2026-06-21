@@ -49,9 +49,10 @@ fn init_logs_inner(to_file: bool) {
         use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
         let offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
-        let time_format =
-            time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
-                .unwrap();
+        let time_format = time::format_description::parse_borrowed::<2>(
+            "[year]-[month]-[day]T[hour]:[minute]:[second]",
+        )
+        .unwrap();
         let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, time_format);
         let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("error"));

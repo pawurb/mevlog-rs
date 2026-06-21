@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-use crossbeam_channel::Sender;
+use hotpath::wrap::crossbeam_channel::Sender;
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 
 use crate::cmd::tui::app::{App, AppEvent, AppMode, TxPopupTab};

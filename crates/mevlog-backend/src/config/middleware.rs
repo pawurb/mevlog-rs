@@ -259,9 +259,10 @@ pub fn init_logs(filename: &str) {
             let file_appender = tracing_appender::rolling::never("./", filename);
 
             let offset = UtcOffset::from_hms(2, 0, 0).expect("should get CET offset");
-            let time_format =
-                time::format_description::parse("[year]-[month]-[day]T[hour]:[minute]:[second]")
-                    .unwrap();
+            let time_format = time::format_description::parse_borrowed::<2>(
+                "[year]-[month]-[day]T[hour]:[minute]:[second]",
+            )
+            .unwrap();
             let timer = OffsetTime::new(offset, time_format);
 
             tracing_subscriber::fmt()

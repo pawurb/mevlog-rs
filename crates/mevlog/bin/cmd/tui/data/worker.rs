@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use crossbeam_channel::{Receiver, Sender};
+use hotpath::wrap::crossbeam_channel::{Receiver, Sender};
 use mevlog::{
     ChainEntryJson,
     misc::{
