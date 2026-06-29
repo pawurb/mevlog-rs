@@ -49,7 +49,7 @@ pub(crate) async fn search(
     };
 
     let conn_opts = ConnOpts {
-        rpc_url,
+        rpc_url: rpc_url.into_iter().collect(),
         chain_id: Some(chain_id),
         rpc_timeout_ms: 500,
         block_timeout_ms: 10000,
