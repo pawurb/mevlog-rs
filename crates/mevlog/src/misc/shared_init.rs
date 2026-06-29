@@ -35,6 +35,10 @@ pub struct SharedDeps {
     pub provider: Arc<GenericProvider>,
     pub chain: Arc<EVMChain>,
     pub rpc_url: String,
+    /// All RPC URLs to fan out block fetching across while indexing. Holds a
+    /// single entry (equal to `rpc_url`) unless multiple `--rpc-url` flags were
+    /// passed; the indexing pool only parallelizes when this has 2+ entries.
+    pub(crate) rpc_urls: Vec<String>,
     /// Config-defined custom tables applicable to this chain, already synced
     /// into the txs DB; the indexing path populates them per chunk.
     pub(crate) custom_tables: Vec<CustomTable>,
@@ -49,7 +53,12 @@ impl SharedDeps {
 
 pub struct ResolvedConn {
     pub provider: Arc<GenericProvider>,
+    /// Primary RPC URL (first of `rpc_urls`); used for the alloy provider and
+    /// all single-endpoint paths.
     pub rpc_url: String,
+    /// All RPC URLs to use for concurrent block fetching. Holds a single entry
+    /// (the primary) unless multiple `--rpc-url` flags were passed.
+    pub rpc_urls: Vec<String>,
     pub chain_id: u64,
 }
 
@@ -57,29 +66,30 @@ pub async fn resolve_conn(conn_opts: &ConnOpts) -> Result<ResolvedConn> {
     Config::init_if_missing()?;
     let config = Config::load()?;
 
-    let rpc_url = match (&conn_opts.rpc_url, conn_opts.chain_id) {
-        (Some(url), _) => url.clone(),
-        (None, Some(chain_id)) => {
+    let rpc_urls: Vec<String> = match (conn_opts.rpc_url.as_slice(), conn_opts.chain_id) {
+        ([], None) => bail!("Either --rpc-url or --chain-id must be specified"),
+        ([], Some(chain_id)) => {
             if let Some(chain_cfg) = config.get_chain(chain_id) {
-                chain_cfg.rpc_url.clone()
+                vec![chain_cfg.rpc_url.clone()]
             } else {
                 let chain_info = get_chain_info(chain_id, conn_opts.rpc_timeout_ms, 1).await?;
                 if chain_info.benchmarked_rpc_urls.is_empty() {
                     bail!("No working RPC URLs found for chain ID {}", chain_id)
                 }
-                chain_info.benchmarked_rpc_urls[0].0.clone()
+                vec![chain_info.benchmarked_rpc_urls[0].0.clone()]
             }
         }
-        _ => {
-            bail!("Either --rpc-url or --chain-id must be specified")
-        }
+        (urls, _) => urls.to_vec(),
     };
+
+    let rpc_url = rpc_urls[0].clone();
 
     let provider = init_provider(&rpc_url).await?;
     let provider = Arc::new(provider);
 
-    let chain_id = match (conn_opts.rpc_url.as_ref(), conn_opts.chain_id) {
-        (Some(_), Some(expected_chain_id)) => {
+    let explicit_rpc_url = !conn_opts.rpc_url.is_empty();
+    let chain_id = match (explicit_rpc_url, conn_opts.chain_id) {
+        (true, Some(expected_chain_id)) => {
             if conn_opts.skip_verify_chain_id {
                 expected_chain_id
             } else {
@@ -97,9 +107,25 @@ pub async fn resolve_conn(conn_opts: &ConnOpts) -> Result<ResolvedConn> {
         (_, None) => provider.get_chain_id().await?,
     };
 
+    // Only the primary endpoint backs the alloy provider above; the rest are
+    // used solely for concurrent block fetching in `index_block_range`. Verify
+    // each reports the same chain ID so a misconfigured secondary URL can't
+    // fetch foreign blocks and mark them indexed in the primary chain's DB.
+    if !conn_opts.skip_verify_chain_id {
+        for url in &rpc_urls[1..] {
+            let secondary_chain_id = init_provider(url).await?.get_chain_id().await?;
+            if secondary_chain_id != chain_id {
+                bail!(
+                    "Chain ID mismatch: --rpc-url {url} reports chain {secondary_chain_id}, expected {chain_id}"
+                );
+            }
+        }
+    }
+
     Ok(ResolvedConn {
         provider,
         rpc_url,
+        rpc_urls,
         chain_id,
     })
 }
@@ -149,6 +175,7 @@ pub async fn init_deps(conn_opts: &ConnOpts) -> Result<SharedDeps> {
         provider: resolved.provider,
         chain,
         rpc_url: resolved.rpc_url,
+        rpc_urls: resolved.rpc_urls,
         custom_tables,
     })
 }
@@ -191,8 +218,11 @@ pub struct SharedOpts {
 
 #[derive(Clone, Debug, clap::Parser)]
 pub struct ConnOpts {
-    #[arg(long, help = "The URL of the HTTP provider")]
-    pub rpc_url: Option<String>,
+    #[arg(
+        long,
+        help = "The URL of the HTTP provider. Pass repeatedly to fetch block data from multiple RPCs concurrently when indexing (e.g. --rpc-url A --rpc-url B)"
+    )]
+    pub rpc_url: Vec<String>,
 
     #[arg(long, help = "Chain ID to automatically select RPC URL from ChainList")]
     pub chain_id: Option<u64>,
@@ -219,6 +249,14 @@ pub struct ConnOpts {
         help = "Override the directory holding the per-chain transactions SQLite DB (mainly for tests); filename stays mevlog-txs-v{N}-{chain_id}.db"
     )]
     pub txs_db_dir: Option<String>,
+}
+
+impl ConnOpts {
+    /// First explicitly-passed `--rpc-url`, if any. Used by single-endpoint
+    /// consumers (e.g. the TUI) that don't fan out across multiple RPCs.
+    pub fn primary_rpc_url(&self) -> Option<&str> {
+        self.rpc_url.first().map(String::as_str)
+    }
 }
 
 const DEFAULT_CRYO_REQUESTS_PER_SECOND: u64 = 25;

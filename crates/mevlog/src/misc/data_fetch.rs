@@ -1,7 +1,8 @@
-use std::{collections::HashMap, path::PathBuf, process::Command};
+use std::{collections::HashMap, path::PathBuf};
 
 use eyre::Result;
 use sqlx::SqlitePool;
+use tokio::process::Command;
 use tracing::warn;
 
 use crate::db::txs::models::{block::Block, log::Log, transaction::Transaction};
@@ -137,10 +138,11 @@ fn collect_files_for_range(
         .collect()
 }
 
-fn run_cryo_batch(
+async fn run_cryo_batch(
     data_type: &str,
     start_block: u64,
     end_block: u64,
+    rpc_url: &str,
     chain: &EVMChain,
     cryo_opts: &CryoOpts,
 ) -> Result<()> {
@@ -151,7 +153,7 @@ fn run_cryo_batch(
             "-b",
             &range,
             "--rpc",
-            &chain.rpc_url,
+            rpc_url,
             "--output-dir",
             cryo_cache_dir(chain).display().to_string().as_str(),
             "--requests-per-second",
@@ -163,7 +165,13 @@ fn run_cryo_batch(
             "--initial-backoff",
             &cryo_opts.cryo_initial_backoff.to_string(),
         ])
-        .output();
+        // Reap the cryo child if this future is dropped (a query timeout, or a
+        // sibling batch erroring out of `buffer_unordered` and tearing down the
+        // stream); otherwise orphaned cryo processes keep hitting RPCs and
+        // writing the shared cache after mevlog has already returned.
+        .kill_on_drop(true)
+        .output()
+        .await;
 
     if let Err(e) = cmd {
         eyre::bail!("cryo batch command failed: {}", e);
@@ -186,6 +194,7 @@ fn run_cryo_batch(
 pub(crate) async fn fetch_blocks_batch(
     start_block: u64,
     end_block: u64,
+    rpc_url: &str,
     chain: &EVMChain,
     sqlite: &SqlitePool,
     cryo_opts: &CryoOpts,
@@ -200,21 +209,21 @@ pub(crate) async fn fetch_blocks_batch(
     let tx_coverage = analyze_coverage(&tx_ranges, start_block, end_block);
 
     for (gap_start, gap_end) in &tx_coverage.missing_ranges {
-        run_cryo_batch("txs", *gap_start, *gap_end, chain, cryo_opts)?;
+        run_cryo_batch("txs", *gap_start, *gap_end, rpc_url, chain, cryo_opts).await?;
     }
 
     let log_ranges = scan_cached_ranges(chain, "logs");
     let log_coverage = analyze_coverage(&log_ranges, start_block, end_block);
 
     for (gap_start, gap_end) in &log_coverage.missing_ranges {
-        run_cryo_batch("logs", *gap_start, *gap_end, chain, cryo_opts)?;
+        run_cryo_batch("logs", *gap_start, *gap_end, rpc_url, chain, cryo_opts).await?;
     }
 
     let block_ranges = scan_cached_ranges(chain, "blocks");
     let block_coverage = analyze_coverage(&block_ranges, start_block, end_block);
 
     for (gap_start, gap_end) in &block_coverage.missing_ranges {
-        run_cryo_batch("blocks", *gap_start, *gap_end, chain, cryo_opts)?;
+        run_cryo_batch("blocks", *gap_start, *gap_end, rpc_url, chain, cryo_opts).await?;
     }
 
     let tx_ranges = scan_cached_ranges(chain, "transactions");
