@@ -6,8 +6,8 @@ mod state;
 
 use std::{io, time::Instant};
 
-use hotpath::wrap::crossbeam_channel::{Receiver, Sender};
 use crossterm::event::KeyCode;
+use hotpath::wrap::crossbeam_channel::{Receiver, Sender};
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Direction, Flex, Layout, Rect},
@@ -144,7 +144,7 @@ impl App {
         let (state_tx, state_rx) =
             hotpath::channel!(crossbeam_channel::unbounded(), log = true, wrap = true);
 
-        let mode = if conn_opts.rpc_url.is_none() && conn_opts.chain_id.is_none() {
+        let mode = if conn_opts.primary_rpc_url().is_none() && conn_opts.chain_id.is_none() {
             AppMode::SelectNetwork
         } else {
             AppMode::Main
@@ -157,7 +157,7 @@ impl App {
                 .map(|c| c.to_chain_entry())
         });
 
-        let rpc_url = conn_opts.rpc_url.clone();
+        let rpc_url = conn_opts.primary_rpc_url().map(str::to_string);
         let chain_id = conn_opts.chain_id;
         let rpc_timeout_ms = conn_opts.rpc_timeout_ms;
         let block_timeout_ms = conn_opts.block_timeout_ms;
