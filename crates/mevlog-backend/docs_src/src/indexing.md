@@ -51,6 +51,26 @@ mevlog index --live --keep 1000 --chain-id 1
 
 > **Archive data and free RPCs.** Free public RPC endpoints often do not retain archive data, so they cannot serve transactions from blocks more than a short distance behind the head (historical backfills against them will fail or return gaps). You can still build up a useful local store incrementally with free endpoints: run `index --live` to capture blocks as they are produced, so the data is fetched while it is still within the endpoint's retention window and cached locally from then on. For one-off historical backfills you will need an archive-capable endpoint (see [config.toml](./config.md)).
 
+## Passing multiple RPC URLs
+
+`--rpc-url` is repeatable. Passing it more than once spreads the batch fetch across every endpoint, which speeds up large backfills when a single provider rate-limits you or is the bottleneck.
+
+```bash
+# Fan the backfill out across three endpoints
+mevlog index -b 22030800:22040800 --chain-id 1 \
+  --rpc-url https://rpc-a.example \
+  --rpc-url https://rpc-b.example \
+  --rpc-url https://rpc-c.example
+```
+
+- **Parallel fetch, single writer.** Each batch of blocks is fetched concurrently, one process per URL round-robined across the endpoints, while writes to the local SQLite store stay single-writer. More endpoints means more fetch throughput without contending on the DB.
+- **First URL is primary.** The first `--rpc-url` backs everything single-endpoint: the alloy provider, chain-head resolution, and chain-id verification. The rest are used only for concurrent block fetching. Ordering only matters in that the first is the one used for non-fetch RPC calls.
+- **A single `--rpc-url` is unchanged.** With one endpoint the original sequential fetch-then-persist loop runs, so there is no behavior change unless you actually pass the flag twice or more.
+
+> **All endpoints must be the same chain.** Every secondary URL is checked against the primary's chain ID before any indexing runs; if one reports a different chain, the command aborts rather than fetch foreign blocks and mark them indexed in the primary chain's store. Point every `--rpc-url` at the same network. Pass `--skip-verify-chain-id` to bypass the check (only when you are certain the endpoints match - a misconfigured URL or proxy will otherwise silently corrupt the local DB).
+
+The same fan-out applies to `query`'s implicit indexing and every display command - repeat `--rpc-url` there too when resolving a large range.
+
 ## `reindex` command
 
 Indexing can leave gaps: a transient RPC or network error during a backfill can cause individual blocks within the requested range to be skipped. `reindex` fills those holes.
