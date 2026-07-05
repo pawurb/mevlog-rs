@@ -39,12 +39,26 @@ Commands:
 Available on every command (`mcp` and `tui` require their feature flags):
 
 ```text
-      --color <COLOR>    [default: auto] [possible values: always, auto, never]
-      --format <FORMAT>  Output format ('json', 'json-pretty', 'csv', 'table');
-                         'csv' and 'table' are query-only [default: json-pretty]
-  -h, --help             Print help
-  -V, --version          Print version (root command only)
+      --color <COLOR>                  [default: auto] [possible values: always, auto, never]
+      --format <FORMAT>                Output format ('json', 'json-pretty', 'csv', 'table', 'html');
+                                       'csv', 'table' and 'html' are query-only [default: json-pretty]
+      --html-path <HTML_PATH>          Directory for --format html output (default: current directory)
+      --html-filename <HTML_FILENAME>  Filename for --format html output (default: mevlog-<content-hash>.html)
+      --ipfs                           Upload the rendered --format output to IPFS and print a CID +
+                                       gateway URL (query commands only; configure the [ipfs] block in
+                                       config.toml)
+  -h, --help                           Print help
+  -V, --version                        Print version (root command only)
 ```
+
+The `html` format renders a self-contained, click-to-sort HTML page and writes
+it to `<--html-path or cwd>/<--html-filename or mevlog-<content-hash>.html>`,
+printing the file path. With `--ipfs`, the rendered `--format` output is uploaded
+to IPFS (Pinata or a local Kubo node, selected by the `[ipfs]` block in
+`config.toml`) and a CID + gateway URL is printed instead. Both are only
+meaningful for the query commands (`query`, `tx`, `tx-logs`, `block`,
+`block-txs`, `block-logs`); the other commands reject `csv`/`table`/`html` and
+ignore `--ipfs`.
 
 Most data commands also share these connection / fetch options (omitted from the
 per-command listings below to keep them short):
