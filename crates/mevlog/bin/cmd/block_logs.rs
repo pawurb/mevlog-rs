@@ -22,7 +22,12 @@ pub struct BlockLogsArgs {
 }
 
 impl BlockLogsArgs {
-    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
+    pub(crate) async fn run(
+        &self,
+        format: OutputFormat,
+        html: &HtmlOpts,
+        ipfs: bool,
+    ) -> Result<()> {
         let outcome = cmds::block_logs::block_logs(
             &self.block,
             self.latest_offset,
@@ -30,6 +35,6 @@ impl BlockLogsArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format, html)
+        print_query_outcome(outcome, format, html, ipfs).await
     }
 }

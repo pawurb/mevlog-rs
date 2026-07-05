@@ -78,7 +78,12 @@ pub struct QueryArgs {
 }
 
 impl QueryArgs {
-    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
+    pub(crate) async fn run(
+        &self,
+        format: OutputFormat,
+        html: &HtmlOpts,
+        ipfs: bool,
+    ) -> Result<()> {
         let outcome = cmds::query::query(
             self.blocks.as_deref(),
             self.latest_offset,
@@ -94,6 +99,6 @@ impl QueryArgs {
             self.timeout_ms,
         )
         .await?;
-        print_query_outcome(outcome, format, html)
+        print_query_outcome(outcome, format, html, ipfs).await
     }
 }

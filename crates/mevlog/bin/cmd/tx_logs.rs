@@ -20,9 +20,14 @@ pub struct TxLogsArgs {
 }
 
 impl TxLogsArgs {
-    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
+    pub(crate) async fn run(
+        &self,
+        format: OutputFormat,
+        html: &HtmlOpts,
+        ipfs: bool,
+    ) -> Result<()> {
         let outcome =
             cmds::tx_logs::tx_logs(self.tx_hash, &self.conn_opts, &self.cryo_opts).await?;
-        print_query_outcome(outcome, format, html)
+        print_query_outcome(outcome, format, html, ipfs).await
     }
 }

@@ -3,6 +3,7 @@ pub mod coinbase_bribe;
 pub mod config;
 pub mod data_fetch;
 pub mod ens_utils;
+pub mod ipfs;
 #[cfg(feature = "tui")]
 pub mod opcode_color;
 pub mod parquet_utils;

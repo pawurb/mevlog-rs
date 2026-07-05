@@ -20,7 +20,7 @@ sha2 = "0.10"
 url = { workspace = true }
 revm = { workspace = true, features = ["std", "alloydb", "parse"] }
 foundry-fork-db = "0.21"
-reqwest = { workspace = true, features = ["json", "stream"] }
+reqwest = { workspace = true, features = ["json", "stream", "multipart"] }
 futures-util = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["time", "env-filter"] }
 time = { workspace = true, features = ["local-offset"] }
