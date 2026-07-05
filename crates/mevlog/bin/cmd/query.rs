@@ -4,7 +4,7 @@ use mevlog::{
     misc::shared_init::{ConnOpts, CryoOpts, OutputFormat, SharedOpts},
 };
 
-use crate::cmd::print_query_outcome;
+use crate::cmd::{HtmlOpts, print_query_outcome};
 
 #[derive(Debug, clap::Parser)]
 pub struct QueryArgs {
@@ -78,7 +78,7 @@ pub struct QueryArgs {
 }
 
 impl QueryArgs {
-    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
         let outcome = cmds::query::query(
             self.blocks.as_deref(),
             self.latest_offset,
@@ -94,6 +94,6 @@ impl QueryArgs {
             self.timeout_ms,
         )
         .await?;
-        print_query_outcome(outcome, format)
+        print_query_outcome(outcome, format, html)
     }
 }

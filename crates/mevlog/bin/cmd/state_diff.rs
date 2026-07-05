@@ -62,6 +62,9 @@ impl StateDiffArgs {
                     }
                 }
             }
+            OutputFormat::Html => {
+                eyre::bail!("'html' format is only supported by the query command")
+            }
         }
 
         Ok(())

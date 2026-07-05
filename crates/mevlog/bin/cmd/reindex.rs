@@ -32,8 +32,11 @@ pub struct ReindexArgs {
 
 impl ReindexArgs {
     pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
-        if matches!(format, OutputFormat::Csv | OutputFormat::Table) {
-            bail!("'csv' and 'table' formats are only supported by the query command");
+        if matches!(
+            format,
+            OutputFormat::Csv | OutputFormat::Table | OutputFormat::Html
+        ) {
+            bail!("'csv', 'table' and 'html' formats are only supported by the query command");
         }
 
         let deps = init_deps(&self.conn_opts).await?;

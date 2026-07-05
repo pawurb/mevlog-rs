@@ -31,8 +31,10 @@ impl ChainsArgs {
             OutputFormat::JsonPretty => {
                 println!("{}", serde_json::to_string_pretty(&chains_entries)?);
             }
-            OutputFormat::Csv | OutputFormat::Table => {
-                eyre::bail!("'csv' and 'table' formats are only supported by the query command")
+            OutputFormat::Csv | OutputFormat::Table | OutputFormat::Html => {
+                eyre::bail!(
+                    "'csv', 'table' and 'html' formats are only supported by the query command"
+                )
             }
         }
 

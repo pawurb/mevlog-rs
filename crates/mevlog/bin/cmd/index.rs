@@ -75,8 +75,11 @@ impl IndexArgs {
             bail!("--keep must be at least 1; use 'purge-db --keep 0' to wipe the DB");
         }
 
-        if matches!(format, OutputFormat::Csv | OutputFormat::Table) {
-            bail!("'csv' and 'table' formats are only supported by the query command");
+        if matches!(
+            format,
+            OutputFormat::Csv | OutputFormat::Table | OutputFormat::Html
+        ) {
+            bail!("'csv', 'table' and 'html' formats are only supported by the query command");
         }
 
         let deps = init_deps(&self.conn_opts).await?;

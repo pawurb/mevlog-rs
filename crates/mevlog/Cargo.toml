@@ -16,6 +16,7 @@ eyre = { workspace = true }
 serde_json = { workspace = true }
 serde = { workspace = true }
 hex = "0.4"
+sha2 = "0.10"
 url = { workspace = true }
 revm = { workspace = true, features = ["std", "alloydb", "parse"] }
 foundry-fork-db = "0.21"

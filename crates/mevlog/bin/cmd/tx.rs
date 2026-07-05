@@ -5,7 +5,7 @@ use mevlog::{
     misc::shared_init::{ConnOpts, CryoOpts, OutputFormat, TraceMode},
 };
 
-use crate::cmd::print_query_outcome;
+use crate::cmd::{HtmlOpts, print_query_outcome};
 
 #[derive(Debug, clap::Parser)]
 pub struct TxArgs {
@@ -29,7 +29,7 @@ pub struct TxArgs {
 }
 
 impl TxArgs {
-    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
         let outcome = cmds::tx::tx(
             self.tx_hash,
             self.evm_trace.as_ref(),
@@ -38,6 +38,6 @@ impl TxArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format)
+        print_query_outcome(outcome, format, html)
     }
 }
