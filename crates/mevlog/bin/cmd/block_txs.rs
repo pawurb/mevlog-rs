@@ -25,7 +25,12 @@ pub struct BlockTxsArgs {
 }
 
 impl BlockTxsArgs {
-    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
+    pub(crate) async fn run(
+        &self,
+        format: OutputFormat,
+        html: &HtmlOpts,
+        ipfs: bool,
+    ) -> Result<()> {
         let outcome = cmds::block_txs::block_txs(
             &self.block,
             self.latest_offset,
@@ -34,6 +39,6 @@ impl BlockTxsArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format, html)
+        print_query_outcome(outcome, format, html, ipfs).await
     }
 }

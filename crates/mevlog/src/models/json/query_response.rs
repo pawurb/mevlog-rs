@@ -449,10 +449,8 @@ mod test {
         assert!(html.contains("<th>block_number</th>"));
         assert!(html.contains("transfer(address,uint256)"));
         assert!(html.contains("0xbb"));
-        // Meta block.
         assert!(html.contains("Ethereum"));
         assert!(html.contains("SELECT * FROM transactions"));
-        // success pills.
         assert!(html.contains("pill ok"));
         assert!(html.contains("pill fail"));
     }
@@ -474,7 +472,6 @@ mod test {
         let long = format!("0x{}", "é".repeat(20));
         let rows = vec![json!({ "note": long })];
         let html = rows_to_html(&columns, &rows, &sample_meta());
-        // Rendered in full (escaped), not truncated with an ellipsis.
         assert!(html.contains(&"é".repeat(20)));
     }
 

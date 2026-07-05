@@ -61,6 +61,13 @@ pub struct MLArgs {
         global = true
     )]
     pub html_filename: Option<String>,
+
+    #[arg(
+        long,
+        help = "Upload the rendered --format output to IPFS and print a CID + gateway URL (query commands only; configure the [ipfs] block in config.toml)",
+        global = true
+    )]
+    pub ipfs: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -193,10 +200,11 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         path: root_args.html_path,
         filename: root_args.html_filename,
     };
+    let ipfs = root_args.ipfs;
 
     match root_args.cmd {
         ML::Query(args) => {
-            args.run(root_args.format, &html_opts).await?;
+            args.run(root_args.format, &html_opts, ipfs).await?;
         }
         ML::Index(args) => {
             args.run(root_args.format).await?;
@@ -211,19 +219,19 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
-            args.run(root_args.format, &html_opts).await?;
+            args.run(root_args.format, &html_opts, ipfs).await?;
         }
         ML::TxLogs(args) => {
-            args.run(root_args.format, &html_opts).await?;
+            args.run(root_args.format, &html_opts, ipfs).await?;
         }
         ML::Block(args) => {
-            args.run(root_args.format, &html_opts).await?;
+            args.run(root_args.format, &html_opts, ipfs).await?;
         }
         ML::BlockTxs(args) => {
-            args.run(root_args.format, &html_opts).await?;
+            args.run(root_args.format, &html_opts, ipfs).await?;
         }
         ML::BlockLogs(args) => {
-            args.run(root_args.format, &html_opts).await?;
+            args.run(root_args.format, &html_opts, ipfs).await?;
         }
         ML::UpdateSigsDB(args) => {
             args.run().await?;

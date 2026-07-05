@@ -29,7 +29,12 @@ pub struct TxArgs {
 }
 
 impl TxArgs {
-    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
+    pub(crate) async fn run(
+        &self,
+        format: OutputFormat,
+        html: &HtmlOpts,
+        ipfs: bool,
+    ) -> Result<()> {
         let outcome = cmds::tx::tx(
             self.tx_hash,
             self.evm_trace.as_ref(),
@@ -38,6 +43,6 @@ impl TxArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format, html)
+        print_query_outcome(outcome, format, html, ipfs).await
     }
 }

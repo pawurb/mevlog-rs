@@ -12,11 +12,60 @@ pub struct Config {
     chains: HashMap<String, ChainConfig>,
     #[serde(default)]
     tables: HashMap<String, CustomTableConfig>,
+    #[serde(default)]
+    ipfs: Option<IpfsConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChainConfig {
     pub rpc_url: String,
+}
+
+/// IPFS upload backend selected by the `[ipfs]` config block.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IpfsBackendKind {
+    /// Managed pinning service (persistent shareable links; needs a JWT).
+    #[default]
+    Pinata,
+    /// Local Kubo daemon RPC (`/api/v0/add`; no account, needs `ipfs daemon`).
+    Kubo,
+}
+
+/// `[ipfs]` config: how `--ipfs` uploads rendered query output.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IpfsConfig {
+    #[serde(default)]
+    pub backend: IpfsBackendKind,
+    /// Pinata JWT; the `MEVLOG_PINATA_JWT` env var overrides this at upload time.
+    pub pinata_jwt: Option<String>,
+    #[serde(default = "default_pinata_api")]
+    pub pinata_api: String,
+    #[serde(default = "default_kubo_api")]
+    pub kubo_api: String,
+    /// Overrides the backend's default gateway used to build the shareable URL.
+    pub gateway: Option<String>,
+}
+
+fn default_pinata_api() -> String {
+    // Pinata V3 Files uploads use the dedicated uploads host, not api.pinata.cloud.
+    "https://uploads.pinata.cloud".to_string()
+}
+
+fn default_kubo_api() -> String {
+    "http://127.0.0.1:5001".to_string()
+}
+
+impl Default for IpfsConfig {
+    fn default() -> Self {
+        Self {
+            backend: IpfsBackendKind::default(),
+            pinata_jwt: None,
+            pinata_api: default_pinata_api(),
+            kubo_api: default_kubo_api(),
+            gateway: None,
+        }
+    }
 }
 
 /// Raw `[tables.<name>]` config entry: a custom txs-DB table populated from
@@ -360,12 +409,28 @@ impl Config {
 # name = "to_address"
 # source = "topic2"
 # type = "address"
+#
+# IPFS upload target for `--ipfs` (uploads the rendered --format output and
+# prints a CID + gateway URL). Two backends:
+#   pinata - managed pinning; persistent link; needs a JWT (or MEVLOG_PINATA_JWT)
+#   kubo   - local IPFS daemon (/api/v0/add); no account; requires `ipfs daemon`
+#
+# [ipfs]
+# backend = "pinata"                       # or "kubo"
+# pinata_jwt = "eyJ..."                     # or set MEVLOG_PINATA_JWT (needs Files: Write scope)
+# pinata_api = "https://uploads.pinata.cloud"
+# kubo_api = "http://127.0.0.1:5001"
+# gateway = "https://your-gateway.mypinata.cloud"  # overrides default (https://ipfs.io)
 "#
     }
 
     pub fn get_chain(&self, chain_id: u64) -> Option<&ChainConfig> {
         let key = chain_id.to_string();
         self.chains.get(&key)
+    }
+
+    pub fn ipfs(&self) -> Option<&IpfsConfig> {
+        self.ipfs.as_ref()
     }
 }
 
