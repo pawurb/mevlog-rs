@@ -4,7 +4,7 @@ use mevlog::{
     misc::shared_init::{ConnOpts, CryoOpts, OutputFormat},
 };
 
-use crate::cmd::print_query_outcome;
+use crate::cmd::{HtmlOpts, print_query_outcome};
 
 #[derive(Debug, clap::Parser)]
 pub struct BlockTxsArgs {
@@ -25,7 +25,7 @@ pub struct BlockTxsArgs {
 }
 
 impl BlockTxsArgs {
-    pub(crate) async fn run(&self, format: OutputFormat) -> Result<()> {
+    pub(crate) async fn run(&self, format: OutputFormat, html: &HtmlOpts) -> Result<()> {
         let outcome = cmds::block_txs::block_txs(
             &self.block,
             self.latest_offset,
@@ -34,6 +34,6 @@ impl BlockTxsArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format)
+        print_query_outcome(outcome, format, html)
     }
 }

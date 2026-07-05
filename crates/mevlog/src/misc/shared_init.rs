@@ -341,6 +341,7 @@ pub enum OutputFormat {
     JsonPretty,
     Csv,
     Table,
+    Html,
 }
 
 impl FromStr for OutputFormat {
@@ -352,6 +353,7 @@ impl FromStr for OutputFormat {
             "json-pretty" => Ok(Self::JsonPretty),
             "csv" => Ok(Self::Csv),
             "table" => Ok(Self::Table),
+            "html" => Ok(Self::Html),
             _ => Err(eyre::eyre!("Invalid output format")),
         }
     }

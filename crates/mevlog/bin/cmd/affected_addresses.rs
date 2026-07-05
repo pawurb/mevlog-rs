@@ -40,6 +40,9 @@ impl AffectedAddressesArgs {
                     println!("{address}");
                 }
             }
+            OutputFormat::Html => {
+                eyre::bail!("'html' format is only supported by the query command")
+            }
         }
 
         Ok(())

@@ -42,11 +42,25 @@ pub struct MLArgs {
 
     #[arg(
         long,
-        help = "Output format ('json', 'json-pretty', 'csv', 'table'); 'csv' and 'table' are query-only",
+        help = "Output format ('json', 'json-pretty', 'csv', 'table', 'html'); 'csv', 'table' and 'html' are query-only",
         default_value = "json-pretty",
         global = true
     )]
     pub format: OutputFormat,
+
+    #[arg(
+        long,
+        help = "Directory for --format html output (default: current directory)",
+        global = true
+    )]
+    pub html_path: Option<std::path::PathBuf>,
+
+    #[arg(
+        long,
+        help = "Filename for --format html output (default: mevlog-<content-hash>.html)",
+        global = true
+    )]
+    pub html_filename: Option<String>,
 }
 
 #[derive(Subcommand, Debug)]
@@ -160,7 +174,7 @@ fn print_error(e: &eyre::Error, format: &OutputFormat) {
         OutputFormat::JsonPretty => {
             eprintln!("{}", serde_json::to_string_pretty(&error_json).unwrap());
         }
-        OutputFormat::Json | OutputFormat::Csv | OutputFormat::Table => {
+        OutputFormat::Json | OutputFormat::Csv | OutputFormat::Table | OutputFormat::Html => {
             eprintln!("{}", serde_json::to_string(&error_json).unwrap());
         }
     }
@@ -175,9 +189,14 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ColorMode::Auto => {}
     }
 
+    let html_opts = cmd::HtmlOpts {
+        path: root_args.html_path,
+        filename: root_args.html_filename,
+    };
+
     match root_args.cmd {
         ML::Query(args) => {
-            args.run(root_args.format).await?;
+            args.run(root_args.format, &html_opts).await?;
         }
         ML::Index(args) => {
             args.run(root_args.format).await?;
@@ -192,19 +211,19 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
-            args.run(root_args.format).await?;
+            args.run(root_args.format, &html_opts).await?;
         }
         ML::TxLogs(args) => {
-            args.run(root_args.format).await?;
+            args.run(root_args.format, &html_opts).await?;
         }
         ML::Block(args) => {
-            args.run(root_args.format).await?;
+            args.run(root_args.format, &html_opts).await?;
         }
         ML::BlockTxs(args) => {
-            args.run(root_args.format).await?;
+            args.run(root_args.format, &html_opts).await?;
         }
         ML::BlockLogs(args) => {
-            args.run(root_args.format).await?;
+            args.run(root_args.format, &html_opts).await?;
         }
         ML::UpdateSigsDB(args) => {
             args.run().await?;

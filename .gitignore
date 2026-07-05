@@ -20,4 +20,5 @@ crates/mevlog/Cargo.lock
 crates/mevlog-backend/Cargo.lock
 tmp/
 varlogs/
+*.html
 

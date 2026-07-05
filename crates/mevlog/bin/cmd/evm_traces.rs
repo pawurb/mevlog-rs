@@ -45,6 +45,9 @@ impl EvmTracesArgs {
                 let bytes = writer.into_inner().map_err(|e| eyre::eyre!(e))?;
                 print!("{}", String::from_utf8(bytes)?);
             }
+            OutputFormat::Html => {
+                eyre::bail!("'html' format is only supported by the query command")
+            }
         }
 
         Ok(())
