@@ -13,7 +13,7 @@ pub(crate) mod worker;
 /// their CLI defaults.
 pub(crate) fn conn_opts(rpc_url: String) -> ConnOpts {
     ConnOpts {
-        rpc_url: Some(rpc_url),
+        rpc_url: vec![rpc_url],
         chain_id: None,
         rpc_timeout_ms: 1000,
         block_timeout_ms: 10000,

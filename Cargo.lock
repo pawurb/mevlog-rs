@@ -928,7 +928,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -939,7 +939,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2158,7 +2158,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2885,7 +2885,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3461,8 +3461,8 @@ dependencies = [
 
 [[package]]
 name = "hotpath"
-version = "0.17.0"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#54da7174bb31f1f64457f8097b601175824926a0"
+version = "0.19.1"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#b9fc82e5bcb97aa9d01bf2ced8e592b02c04336a"
 dependencies = [
  "arc-swap",
  "axum 0.8.9",
@@ -3479,7 +3479,7 @@ dependencies = [
  "prettytable-rs",
  "quanta",
  "regex",
- "rmcp 0.13.0",
+ "rmcp",
  "rustc-demangle",
  "schemars 1.2.1",
  "serde",
@@ -3491,8 +3491,8 @@ dependencies = [
 
 [[package]]
 name = "hotpath-macros"
-version = "0.17.0"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#54da7174bb31f1f64457f8097b601175824926a0"
+version = "0.19.1"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#b9fc82e5bcb97aa9d01bf2ced8e592b02c04336a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3501,13 +3501,13 @@ dependencies = [
 
 [[package]]
 name = "hotpath-macros-meta"
-version = "0.17.0"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#54da7174bb31f1f64457f8097b601175824926a0"
+version = "0.19.1"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#b9fc82e5bcb97aa9d01bf2ced8e592b02c04336a"
 
 [[package]]
 name = "hotpath-meta"
-version = "0.17.0"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#54da7174bb31f1f64457f8097b601175824926a0"
+version = "0.19.1"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#b9fc82e5bcb97aa9d01bf2ced8e592b02c04336a"
 dependencies = [
  "hotpath-macros-meta",
 ]
@@ -3679,7 +3679,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -3939,7 +3939,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4377,7 +4377,7 @@ dependencies = [
  "reqwest 0.12.28",
  "revm",
  "revm-inspectors",
- "rmcp 1.7.0",
+ "rmcp",
  "rusqlite",
  "ruzstd",
  "schemars 1.2.1",
@@ -4556,7 +4556,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5241,7 +5241,7 @@ dependencies = [
  "quinn-udp",
  "rustc-hash",
  "rustls",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -5250,9 +5250,9 @@ dependencies = [
 
 [[package]]
 name = "quinn-proto"
-version = "0.11.14"
+version = "0.11.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "434b42fec591c96ef50e21e886936e66d3cc3f737104fdb9b737c40ffb94c098"
+checksum = "4fcb935c5bec503c2f0e306bdd3e58bb9029dcb14fa8d9ac76e3a5256ac0763e"
 dependencies = [
  "aws-lc-rs",
  "bytes",
@@ -5279,7 +5279,7 @@ dependencies = [
  "cfg_aliases",
  "libc",
  "once_cell",
- "socket2 0.6.4",
+ "socket2 0.5.10",
  "tracing",
  "windows-sys 0.60.2",
 ]
@@ -5863,38 +5863,6 @@ dependencies = [
 
 [[package]]
 name = "rmcp"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1815dbc06c414d720f8bc1951eccd66bc99efc6376331f1e7093a119b3eb508"
-dependencies = [
- "async-trait",
- "axum 0.8.9",
- "base64 0.22.1",
- "bytes",
- "chrono",
- "futures",
- "http",
- "http-body",
- "http-body-util",
- "pastey",
- "pin-project-lite",
- "rand 0.9.4",
- "rmcp-macros 0.13.0",
- "schemars 1.2.1",
- "serde",
- "serde_json",
- "sse-stream",
- "thiserror 2.0.18",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tower-service",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "rmcp"
 version = "1.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0810a9f717d9828f475fe1f629f4c305c8464b7f496c3a854b58d29e65f4058e"
@@ -5910,7 +5878,7 @@ dependencies = [
  "pastey",
  "pin-project-lite",
  "rand 0.10.1",
- "rmcp-macros 1.7.0",
+ "rmcp-macros",
  "schemars 1.2.1",
  "serde",
  "serde_json",
@@ -5922,19 +5890,6 @@ dependencies = [
  "tower-service",
  "tracing",
  "uuid",
-]
-
-[[package]]
-name = "rmcp-macros"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11f0bc7008fa102e771a76c6d2c9b253be3f2baa5964e060464d038ae1cbc573"
-dependencies = [
- "darling",
- "proc-macro2",
- "quote",
- "serde_json",
- "syn 2.0.118",
 ]
 
 [[package]]
@@ -6069,7 +6024,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6127,7 +6082,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -6702,7 +6657,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "52d1cfed4120b4d927bf7c0f86d2087a4a7d6027c906d9f9d525a80573b9be51"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -7100,7 +7055,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -8069,7 +8024,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
