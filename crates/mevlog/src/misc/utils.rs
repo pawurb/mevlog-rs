@@ -46,7 +46,7 @@ pub fn init_file_logs() {
 fn init_logs_inner(to_file: bool) {
     #[cfg(not(feature = "tokio-console"))]
     {
-        use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
+        use tracing_subscriber::{Layer, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
         let offset = time::UtcOffset::current_local_offset().unwrap_or(time::UtcOffset::UTC);
         let time_format = time::format_description::parse_borrowed::<2>(
@@ -54,6 +54,9 @@ fn init_logs_inner(to_file: bool) {
         )
         .unwrap();
         let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, time_format);
+        // The EnvFilter is attached per-layer, not to the registry: a global
+        // filter would suppress the `sqlx::query` events that hotpath's SQL
+        // tracing layer listens for.
         let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
             .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("error"));
 
@@ -66,17 +69,22 @@ fn init_logs_inner(to_file: bool) {
                 .with_ansi(false)
                 .with_timer(timer)
                 .with_target(false)
-                .with_thread_ids(false);
+                .with_thread_ids(false)
+                .with_filter(env_filter);
 
             tracing_subscriber::registry()
-                .with(env_filter)
+                .with(hotpath::sqlx_tracing_layer())
                 .with(file_layer)
                 .init();
         } else {
-            tracing_subscriber::fmt()
+            let stderr_layer = fmt::layer()
                 .with_writer(std::io::stderr)
-                .with_env_filter(env_filter)
                 .with_timer(timer)
+                .with_filter(env_filter);
+
+            tracing_subscriber::registry()
+                .with(hotpath::sqlx_tracing_layer())
+                .with(stderr_layer)
                 .init();
         }
     }
