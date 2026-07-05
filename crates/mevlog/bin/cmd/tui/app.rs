@@ -140,9 +140,8 @@ impl App {
         let current_block = items.first().map(|tx| tx.block_number);
 
         let (data_req_tx, data_req_rx) =
-            hotpath::channel!(crossbeam_channel::unbounded(), log = true, wrap = true);
-        let (state_tx, state_rx) =
-            hotpath::channel!(crossbeam_channel::unbounded(), log = true, wrap = true);
+            hotpath::channel!(crossbeam_channel::unbounded(), log = true);
+        let (state_tx, state_rx) = hotpath::channel!(crossbeam_channel::unbounded(), log = true);
 
         let mode = if conn_opts.primary_rpc_url().is_none() && conn_opts.chain_id.is_none() {
             AppMode::SelectNetwork
