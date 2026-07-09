@@ -96,7 +96,7 @@ async fn fetch_prices_from_api() -> Result<PriceResponse> {
     {
         Ok(response) => response,
         Err(e) => {
-            let msg = format!("Failed to fetch prices from API: {}", &e);
+            let msg = format!("Failed to fetch prices from API: {}", e);
             tracing::error!("{}", &msg);
             bail!("{}", &msg)
         }
