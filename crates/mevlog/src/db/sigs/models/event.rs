@@ -89,7 +89,7 @@ pub mod test {
         let db_url = format!("sqlite://{db_path}");
 
         if fs::remove_file(&db_url).is_ok() {
-            println!("DB {} removed", &db_url);
+            println!("DB {} removed", db_url);
         }
 
         init_db(Some(db_url.clone()))
