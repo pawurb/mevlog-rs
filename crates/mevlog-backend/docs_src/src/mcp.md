@@ -84,6 +84,7 @@ Parameters:
 |-------|------|----------|-------------|
 | `sql` | string | yes | Same as `query`. |
 | `format` | string | no | `"json"` (default) uploads the `QueryResponse` envelope and returns `{"cid", "gateway_url", "filename"}`; `"html"` uploads a self-contained click-to-sort results page and returns a short text receipt with the same fields. |
+| `description` | string | no | Optional description of the query, max 960 characters. Echoed as the `description` field in the uploaded JSON envelope, or used as the page title for `"html"`. |
 | `native_token_price` | number | no | Same as `query`. |
 | `max_rows` | integer | no | Same as `query`. |
 

@@ -16,7 +16,7 @@ use cmd::{
     update_custom_tables::UpdateCustomTablesArgs, update_sigs_db::UpdateSigsDBArgs,
 };
 use eyre::Result;
-use mevlog::misc::shared_init::OutputFormat;
+use mevlog::{misc::shared_init::OutputFormat, models::json::query_response::MAX_QUERY_DESC_CHARS};
 
 #[derive(Clone, Debug, ValueEnum)]
 pub enum ColorMode {
@@ -68,6 +68,24 @@ pub struct MLArgs {
         global = true
     )]
     pub ipfs: bool,
+
+    #[arg(
+        long,
+        help = "Optional query description, max 960 characters (query commands only): echoed as the 'description' field in the JSON envelope, printed above table output and used as the HTML page title",
+        global = true,
+        value_parser = parse_desc
+    )]
+    pub desc: Option<String>,
+}
+
+fn parse_desc(desc: &str) -> Result<String, String> {
+    let len = desc.chars().count();
+    if len > MAX_QUERY_DESC_CHARS {
+        return Err(format!(
+            "description is {len} characters, max is {MAX_QUERY_DESC_CHARS}"
+        ));
+    }
+    Ok(desc.to_string())
 }
 
 #[derive(Subcommand, Debug)]
@@ -196,15 +214,19 @@ async fn execute(root_args: MLArgs) -> Result<()> {
         ColorMode::Auto => {}
     }
 
-    let html_opts = cmd::HtmlOpts {
-        path: root_args.html_path,
-        filename: root_args.html_filename,
+    let render = cmd::RenderOpts {
+        format: root_args.format.clone(),
+        html: cmd::HtmlOpts {
+            path: root_args.html_path,
+            filename: root_args.html_filename,
+        },
+        ipfs: root_args.ipfs,
+        desc: root_args.desc,
     };
-    let ipfs = root_args.ipfs;
 
     match root_args.cmd {
         ML::Query(args) => {
-            args.run(root_args.format, &html_opts, ipfs).await?;
+            args.run(&render).await?;
         }
         ML::Index(args) => {
             args.run(root_args.format).await?;
@@ -219,19 +241,19 @@ async fn execute(root_args: MLArgs) -> Result<()> {
             args.run(root_args.format).await?;
         }
         ML::Tx(args) => {
-            args.run(root_args.format, &html_opts, ipfs).await?;
+            args.run(&render).await?;
         }
         ML::TxLogs(args) => {
-            args.run(root_args.format, &html_opts, ipfs).await?;
+            args.run(&render).await?;
         }
         ML::Block(args) => {
-            args.run(root_args.format, &html_opts, ipfs).await?;
+            args.run(&render).await?;
         }
         ML::BlockTxs(args) => {
-            args.run(root_args.format, &html_opts, ipfs).await?;
+            args.run(&render).await?;
         }
         ML::BlockLogs(args) => {
-            args.run(root_args.format, &html_opts, ipfs).await?;
+            args.run(&render).await?;
         }
         ML::UpdateSigsDB(args) => {
             args.run().await?;

@@ -1,10 +1,10 @@
 use eyre::Result;
 use mevlog::{
     cmds,
-    misc::shared_init::{ConnOpts, CryoOpts, OutputFormat},
+    misc::shared_init::{ConnOpts, CryoOpts},
 };
 
-use crate::cmd::{HtmlOpts, print_query_outcome};
+use crate::cmd::{RenderOpts, print_query_outcome};
 
 #[derive(Debug, clap::Parser)]
 pub struct BlockTxsArgs {
@@ -25,12 +25,7 @@ pub struct BlockTxsArgs {
 }
 
 impl BlockTxsArgs {
-    pub(crate) async fn run(
-        &self,
-        format: OutputFormat,
-        html: &HtmlOpts,
-        ipfs: bool,
-    ) -> Result<()> {
+    pub(crate) async fn run(&self, render: &RenderOpts) -> Result<()> {
         let outcome = cmds::block_txs::block_txs(
             &self.block,
             self.latest_offset,
@@ -39,6 +34,6 @@ impl BlockTxsArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format, html, ipfs).await
+        print_query_outcome(outcome, render).await
     }
 }

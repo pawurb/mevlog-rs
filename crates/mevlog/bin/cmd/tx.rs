@@ -2,10 +2,10 @@ use alloy::primitives::TxHash;
 use eyre::Result;
 use mevlog::{
     cmds,
-    misc::shared_init::{ConnOpts, CryoOpts, OutputFormat, TraceMode},
+    misc::shared_init::{ConnOpts, CryoOpts, TraceMode},
 };
 
-use crate::cmd::{HtmlOpts, print_query_outcome};
+use crate::cmd::{RenderOpts, print_query_outcome};
 
 #[derive(Debug, clap::Parser)]
 pub struct TxArgs {
@@ -29,12 +29,7 @@ pub struct TxArgs {
 }
 
 impl TxArgs {
-    pub(crate) async fn run(
-        &self,
-        format: OutputFormat,
-        html: &HtmlOpts,
-        ipfs: bool,
-    ) -> Result<()> {
+    pub(crate) async fn run(&self, render: &RenderOpts) -> Result<()> {
         let outcome = cmds::tx::tx(
             self.tx_hash,
             self.evm_trace.as_ref(),
@@ -43,6 +38,6 @@ impl TxArgs {
             &self.cryo_opts,
         )
         .await?;
-        print_query_outcome(outcome, format, html, ipfs).await
+        print_query_outcome(outcome, render).await
     }
 }

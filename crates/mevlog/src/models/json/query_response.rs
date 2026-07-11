@@ -7,6 +7,10 @@ use sha2::{Digest, Sha256};
 
 use crate::{ChainInfoNoRpcsJson, misc::shared_init::TraceMode};
 
+/// Maximum length (in characters) of the user-provided `--desc` query
+/// description.
+pub const MAX_QUERY_DESC_CHARS: usize = 960;
+
 /// Renders a single cell value as a flat string: strings as-is (blob columns
 /// are already 0x-hex), null as empty, everything else via its JSON form.
 fn cell(value: Option<&Value>) -> String {
@@ -56,17 +60,19 @@ pub struct HtmlMeta<'a> {
     pub chain_id: u64,
     pub blocks: Option<&'a str>,
     pub sql: Option<&'a str>,
+    pub description: Option<&'a str>,
     pub row_count: usize,
     pub duration: &'a str,
 }
 
 /// A deterministic, collision-resistant hash of the query's rendered content
-/// (chain + query + columns + rows, excluding the volatile duration). Used to
-/// name the standalone HTML file so an identical result always maps to the same
-/// filename. Truncated to 16 hex chars.
+/// (chain + query + description + columns + rows, excluding the volatile
+/// duration). Used to name the standalone HTML file so an identical result
+/// always maps to the same filename. Truncated to 16 hex chars.
 pub fn content_hash(
     chain: &ChainInfoNoRpcsJson,
     query: &QueryParams,
+    description: Option<&str>,
     columns: &[String],
     rows: &[Value],
 ) -> String {
@@ -74,6 +80,8 @@ pub fn content_hash(
     struct HashInput<'a> {
         chain: &'a ChainInfoNoRpcsJson,
         query: &'a QueryParams,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        description: Option<&'a str>,
         columns: &'a [String],
         rows: &'a [Value],
     }
@@ -81,6 +89,7 @@ pub fn content_hash(
     let bytes = serde_json::to_vec(&HashInput {
         chain,
         query,
+        description,
         columns,
         rows,
     })
@@ -153,6 +162,7 @@ pub fn rows_to_html(columns: &[String], rows: &[Value], meta: &HtmlMeta) -> Stri
     let blocks = meta.blocks.map(encode_text).unwrap_or_default();
     let sql = meta.sql.map(encode_text).unwrap_or_default();
     let chain = encode_text(meta.chain_name);
+    let title = encode_text(meta.description.unwrap_or("mevlog query results"));
 
     format!(
         r#"<!doctype html>
@@ -160,7 +170,7 @@ pub fn rows_to_html(columns: &[String], rows: &[Value], meta: &HtmlMeta) -> Stri
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mevlog query results</title>
+<title>{title}</title>
 <style>
 :root {{ color-scheme: light dark; }}
 * {{ box-sizing: border-box; }}
@@ -187,7 +197,7 @@ td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 </style>
 </head>
 <body>
-<h1>mevlog query results</h1>
+<h1>{title}</h1>
 <div class="meta">
 <dl>
 <dt>chain</dt><dd>{chain} <span style="color:#8b93a3">(id {chain_id})</span></dd>
@@ -235,6 +245,7 @@ td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 </body>
 </html>
 "#,
+        title = title,
         chain = chain,
         chain_id = meta.chain_id,
         blocks = blocks,
@@ -303,6 +314,8 @@ pub fn format_duration(ns: u64) -> String {
 /// Standard response envelope emitted by the SQLite-backed query path.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct QueryResponse {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     pub result: Vec<Value>,
     pub result_count: usize,
     pub cached_blocks: u64,
@@ -314,6 +327,7 @@ pub struct QueryResponse {
 
 /// Serializes SQL result rows into the standard response envelope used by the
 /// SQLite-backed query path.
+#[allow(clippy::too_many_arguments)]
 pub fn serialize_query_response(
     results: Vec<Value>,
     pretty: bool,
@@ -322,8 +336,10 @@ pub fn serialize_query_response(
     cached_blocks: u64,
     new_blocks: u64,
     query: QueryParams,
+    description: Option<String>,
 ) -> serde_json::Result<String> {
     let envelope = QueryResponse {
+        description,
         result_count: results.len(),
         result: results,
         cached_blocks,
@@ -438,6 +454,7 @@ mod test {
             chain_id: 1,
             blocks: Some("100:101"),
             sql: Some("SELECT * FROM transactions"),
+            description: None,
             row_count: 2,
             duration: "1.23 ms",
         }
@@ -487,14 +504,69 @@ mod test {
     fn content_hash_is_stable_and_sensitive() {
         let cols = sample_columns();
         let rows = sample_rows();
-        let h1 = content_hash(&sample_chain(), &sample_query(), &cols, &rows);
-        let h2 = content_hash(&sample_chain(), &sample_query(), &cols, &rows);
+        let h1 = content_hash(&sample_chain(), &sample_query(), None, &cols, &rows);
+        let h2 = content_hash(&sample_chain(), &sample_query(), None, &cols, &rows);
         assert_eq!(h1, h2);
         assert_eq!(h1.len(), 16);
 
         let mut changed = rows.clone();
         changed.push(json!({ "block_number": 999 }));
-        let h3 = content_hash(&sample_chain(), &sample_query(), &cols, &changed);
+        let h3 = content_hash(&sample_chain(), &sample_query(), None, &cols, &changed);
         assert_ne!(h1, h3);
+
+        let h4 = content_hash(
+            &sample_chain(),
+            &sample_query(),
+            Some("weekly USDC report"),
+            &cols,
+            &rows,
+        );
+        assert_ne!(h1, h4);
+    }
+
+    #[test]
+    fn html_title_uses_description_when_present() {
+        let meta = HtmlMeta {
+            description: Some("Top gas burners <script>"),
+            ..sample_meta()
+        };
+        let html = rows_to_html(&sample_columns(), &sample_rows(), &meta);
+        assert!(html.contains("<title>Top gas burners &lt;script&gt;</title>"));
+        assert!(html.contains("<h1>Top gas burners &lt;script&gt;</h1>"));
+        assert!(!html.contains("mevlog query results"));
+
+        let html = rows_to_html(&sample_columns(), &sample_rows(), &sample_meta());
+        assert!(html.contains("<title>mevlog query results</title>"));
+        assert!(html.contains("<h1>mevlog query results</h1>"));
+    }
+
+    #[test]
+    fn envelope_includes_description_only_when_present() {
+        let body = serialize_query_response(
+            sample_rows(),
+            false,
+            sample_chain(),
+            1_000,
+            0,
+            0,
+            sample_query(),
+            Some("weekly USDC report".to_string()),
+        )
+        .unwrap();
+        let parsed: QueryResponse = serde_json::from_str(&body).unwrap();
+        assert_eq!(parsed.description.as_deref(), Some("weekly USDC report"));
+
+        let body = serialize_query_response(
+            sample_rows(),
+            false,
+            sample_chain(),
+            1_000,
+            0,
+            0,
+            sample_query(),
+            None,
+        )
+        .unwrap();
+        assert!(!body.contains("description"));
     }
 }

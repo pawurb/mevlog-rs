@@ -47,6 +47,9 @@ Available on every command (`mcp` and `tui` require their feature flags):
       --ipfs                           Upload the rendered --format output to IPFS and print a CID +
                                        gateway URL (query commands only; configure the [ipfs] block in
                                        config.toml)
+      --desc <DESC>                    Optional query description, max 960 characters (query commands
+                                       only): echoed as the 'description' field in the JSON envelope,
+                                       printed above table output and used as the HTML page title
   -h, --help                           Print help
   -V, --version                        Print version (root command only)
 ```
@@ -55,10 +58,15 @@ The `html` format renders a self-contained, click-to-sort HTML page and writes
 it to `<--html-path or cwd>/<--html-filename or mevlog-<content-hash>.html>`,
 printing the file path. With `--ipfs`, the rendered `--format` output is uploaded
 to IPFS (Pinata or a local Kubo node, selected by the `[ipfs]` block in
-`config.toml`) and a CID + gateway URL is printed instead. Both are only
-meaningful for the query commands (`query`, `tx`, `tx-logs`, `block`,
-`block-txs`, `block-logs`); the other commands reject `csv`/`table`/`html` and
-ignore `--ipfs`.
+`config.toml`) and a CID + gateway URL is printed instead. `--desc` attaches a
+human-readable description (max 960 characters) to the result: it becomes the
+`description` field in the JSON envelope, a line above the table output and the
+HTML page title (CSV output is unchanged, since a description line would break
+CSV parsers). The description also feeds the content hash, so the same rows
+with a different description map to a different `mevlog-<hash>` filename. All
+three flags are only meaningful for the query commands (`query`, `tx`,
+`tx-logs`, `block`, `block-txs`, `block-logs`); the other commands reject
+`csv`/`table`/`html` and ignore `--ipfs`/`--desc`.
 
 Most data commands also share these connection / fetch options (omitted from the
 per-command listings below to keep them short):

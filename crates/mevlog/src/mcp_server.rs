@@ -13,6 +13,8 @@ use rmcp::{
 };
 use schemars::JsonSchema;
 use serde::Deserialize;
+
+use crate::models::json::query_response::MAX_QUERY_DESC_CHARS;
 use tokio_util::sync::CancellationToken;
 use tracing::{debug, error, info};
 
@@ -71,6 +73,10 @@ struct UploadQueryParams {
         description = "Rendered artifact to upload: 'json' (the QueryResponse envelope, default) or 'html' (a self-contained click-to-sort results page)"
     )]
     format: Option<UploadFormat>,
+    #[schemars(
+        description = "Optional description of the query, max 960 characters; echoed as the 'description' field in the uploaded JSON envelope, or used as the page title for 'html'"
+    )]
+    description: Option<String>,
     #[schemars(
         description = "Native token price in USD (e.g. 3500.0 for ETH); also feeds the {NATIVE_TOKEN_PRICE()} macro and convert_usd(wei, price)"
     )]
@@ -160,6 +166,7 @@ The upload is PUBLIC and effectively permanent - anyone with the CID can fetch i
 Accepts the same `sql` / `native_token_price` / `max_rows` as `query` (same schema, U256 helpers and {MACRO()} reference - see the `query` tool description), plus `format`:
   • "json" (default) - uploads the QueryResponse envelope; returns {"cid", "gateway_url", "filename"}
   • "html" - uploads a self-contained click-to-sort results page; returns a short text receipt with the same cid / gateway / filename fields
+and an optional `description` (max 960 characters) that is echoed as the envelope's `description` field ("json") or used as the page title ("html").
 
 The uploaded object is named mevlog-<content-hash>.<ext>, so identical results map to the same filename. The IPFS backend comes from the server operator's ~/.mevlog/config.toml `[ipfs]` block: `pinata` (default; needs a JWT with the Files: Write scope via ipfs.pinata_jwt or the MEVLOG_PINATA_JWT env var) or `kubo` (local `ipfs daemon`). Fails with a config error when no backend is usable."#
     )]
@@ -172,6 +179,17 @@ The uploaded object is named mevlog-<content-hash>.<ext>, so identical results m
         debug!(format = format.as_cli_arg(), "MCP upload_query request");
         let mut args = self.query_cli_args(p.sql, p.max_rows, p.native_token_price);
         args.push("--ipfs".to_string());
+        if let Some(desc) = p.description {
+            let len = desc.chars().count();
+            if len > MAX_QUERY_DESC_CHARS {
+                return Err(McpError::invalid_params(
+                    format!("description is {len} characters, max is {MAX_QUERY_DESC_CHARS}"),
+                    None,
+                ));
+            }
+            args.push("--desc".to_string());
+            args.push(desc);
+        }
         let output = self
             .run_mevlog_cmd_with_extra_budget(format.as_cli_arg(), &args, IPFS_UPLOAD_BUDGET)
             .await?;

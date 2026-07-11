@@ -104,6 +104,7 @@ pub(crate) async fn search(
         outcome.cached_blocks,
         outcome.new_blocks,
         outcome.query,
+        None,
     ) {
         Ok(body) => body,
         Err(error) => {

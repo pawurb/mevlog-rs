@@ -17,23 +17,35 @@ pub(crate) struct HtmlOpts {
     pub filename: Option<String>,
 }
 
+/// Rendering controls shared by the SQL-backed query commands, populated from
+/// the global `--format` / `--html-*` / `--ipfs` / `--desc` flags.
+#[derive(Debug, Clone)]
+pub(crate) struct RenderOpts {
+    pub format: OutputFormat,
+    pub html: HtmlOpts,
+    pub ipfs: bool,
+    pub desc: Option<String>,
+}
+
 /// Renders a SQL-backed command's [`QueryOutcome`] for the chosen output format
 /// (CSV/table emit the rows, JSON wraps them in the response envelope, HTML is a
-/// self-contained page). Without `--ipfs` the result is printed (HTML is written
-/// to a file and its path printed); with `--ipfs` the rendered bytes are
-/// uploaded to IPFS and a CID + gateway URL is printed instead.
-pub(crate) async fn print_query_outcome(
-    outcome: QueryOutcome,
-    format: OutputFormat,
-    html: &HtmlOpts,
-    ipfs: bool,
-) -> Result<()> {
+/// self-contained page). `--desc` becomes the envelope's `description` field, a
+/// line above the table output and the HTML page title (CSV stays bare - a
+/// description line would corrupt parsers). Without `--ipfs` the result is
+/// printed (HTML is written to a file and its path printed); with `--ipfs` the
+/// rendered bytes are uploaded to IPFS and a CID + gateway URL is printed
+/// instead.
+pub(crate) async fn print_query_outcome(outcome: QueryOutcome, render: &RenderOpts) -> Result<()> {
+    let format = render.format.clone();
+    let desc = render.desc.as_deref();
+
     // The content hash names the html/ipfs artifact; skip it on the hot path
     // (plain stdout formats) where it is never used.
-    let hash = if ipfs || matches!(format, OutputFormat::Html) {
+    let hash = if render.ipfs || matches!(format, OutputFormat::Html) {
         content_hash(
             &outcome.chain,
             &outcome.query,
+            desc,
             &outcome.columns,
             &outcome.rows,
         )
@@ -47,11 +59,14 @@ pub(crate) async fn print_query_outcome(
             "text/csv",
             "csv",
         ),
-        OutputFormat::Table => (
-            rows_to_table(&outcome.columns, &outcome.rows),
-            "text/plain",
-            "txt",
-        ),
+        OutputFormat::Table => {
+            let table = rows_to_table(&outcome.columns, &outcome.rows);
+            let body = match desc {
+                Some(desc) => format!("{desc}\n{table}"),
+                None => table,
+            };
+            (body, "text/plain", "txt")
+        }
         OutputFormat::Html => {
             let duration = format_duration(outcome.duration_ns);
             let meta = HtmlMeta {
@@ -59,6 +74,7 @@ pub(crate) async fn print_query_outcome(
                 chain_id: outcome.chain.chain_id,
                 blocks: outcome.query.blocks.as_deref(),
                 sql: outcome.query.sql.as_deref(),
+                description: desc,
                 row_count: outcome.rows.len(),
                 duration: &duration,
             };
@@ -78,17 +94,18 @@ pub(crate) async fn print_query_outcome(
                 outcome.cached_blocks,
                 outcome.new_blocks,
                 outcome.query,
+                render.desc.clone(),
             )?;
             (output, "application/json", "json")
         }
     };
 
-    if ipfs {
+    if render.ipfs {
         return upload_to_ipfs(body, content_type, &hash, ext, format).await;
     }
 
     match format {
-        OutputFormat::Html => write_html_file(&body, &hash, html)?,
+        OutputFormat::Html => write_html_file(&body, &hash, &render.html)?,
         OutputFormat::Json | OutputFormat::JsonPretty => println!("{body}"),
         OutputFormat::Csv | OutputFormat::Table => print!("{body}"),
     }

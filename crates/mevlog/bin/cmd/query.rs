@@ -1,10 +1,10 @@
 use eyre::Result;
 use mevlog::{
     cmds,
-    misc::shared_init::{ConnOpts, CryoOpts, OutputFormat, SharedOpts},
+    misc::shared_init::{ConnOpts, CryoOpts, SharedOpts},
 };
 
-use crate::cmd::{HtmlOpts, print_query_outcome};
+use crate::cmd::{RenderOpts, print_query_outcome};
 
 #[derive(Debug, clap::Parser)]
 pub struct QueryArgs {
@@ -78,12 +78,7 @@ pub struct QueryArgs {
 }
 
 impl QueryArgs {
-    pub(crate) async fn run(
-        &self,
-        format: OutputFormat,
-        html: &HtmlOpts,
-        ipfs: bool,
-    ) -> Result<()> {
+    pub(crate) async fn run(&self, render: &RenderOpts) -> Result<()> {
         let outcome = cmds::query::query(
             self.blocks.as_deref(),
             self.latest_offset,
@@ -99,6 +94,6 @@ impl QueryArgs {
             self.timeout_ms,
         )
         .await?;
-        print_query_outcome(outcome, format, html, ipfs).await
+        print_query_outcome(outcome, render).await
     }
 }
