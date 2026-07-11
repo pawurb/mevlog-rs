@@ -164,7 +164,7 @@ EXAMPLES:
 The upload is PUBLIC and effectively permanent - anyone with the CID can fetch it. Use it to share or persist query results, not as a substitute for `query`.
 
 Accepts the same `sql` / `native_token_price` / `max_rows` as `query` (same schema, U256 helpers and {MACRO()} reference - see the `query` tool description), plus `format`:
-  • "json" (default) - uploads the QueryResponse envelope; returns {"cid", "gateway_url", "filename"}
+  • "json" (default) - uploads the QueryResponse envelope; returns {"cid", "gateway_url", "pinata_gateway_url", "filename"} (pinata_gateway_url is the account's dedicated Pinata gateway, which serves the file immediately; null when unknown or on the kubo backend)
   • "html" - uploads a self-contained click-to-sort results page; returns a short text receipt with the same cid / gateway / filename fields
 and an optional `description` (max 960 characters) that is echoed as the envelope's `description` field ("json") or used as the page title ("html").
 

@@ -45,6 +45,11 @@ pub struct IpfsConfig {
     pub kubo_api: String,
     /// Overrides the backend's default gateway used to build the shareable URL.
     pub gateway: Option<String>,
+    /// Dedicated Pinata gateway domain (e.g. `example-123.mypinata.cloud`);
+    /// skips the gateway-discovery API call that otherwise needs the
+    /// `Gateways: Read` JWT scope. The `MEVLOG_PINATA_GATEWAY` env var
+    /// overrides this at upload time.
+    pub pinata_gateway: Option<String>,
 }
 
 fn default_pinata_api() -> String {
@@ -64,6 +69,7 @@ impl Default for IpfsConfig {
             pinata_api: default_pinata_api(),
             kubo_api: default_kubo_api(),
             gateway: None,
+            pinata_gateway: None,
         }
     }
 }
@@ -420,7 +426,11 @@ impl Config {
 # pinata_jwt = "eyJ..."                     # or set MEVLOG_PINATA_JWT (needs Files: Write scope)
 # pinata_api = "https://uploads.pinata.cloud"
 # kubo_api = "http://127.0.0.1:5001"
-# gateway = "https://your-gateway.mypinata.cloud"  # overrides default (https://ipfs.io)
+# gateway = "https://ipfs.io"              # public gateway used for the shareable URL
+# pinata_gateway = "example-123.mypinata.cloud"  # or MEVLOG_PINATA_GATEWAY; your dedicated
+#                                          # Pinata gateway (serves uploads immediately).
+#                                          # When unset, auto-discovered via the Pinata API,
+#                                          # which needs the Gateways: Read JWT scope.
 "#
     }
 

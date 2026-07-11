@@ -124,6 +124,7 @@ Sample response:
   "cached_blocks": 1000,
   "new_blocks": 0,
   "duration": "182.44 ms",
+  "generated_at": "2026-07-11T13:19:35Z",
   "chain": {
     "chain_id": 1,
     "name": "Ethereum Mainnet",

@@ -2,7 +2,7 @@
 
 `mevlog` reads optional settings from a TOML config file at `~/.mevlog/config.toml`. The file is created with a commented-out template on first run; running without it is fine, every option has a default.
 
-Two top-level sections are supported: `[chains.<id>]` and `[tables.<name>]`.
+Three top-level sections are supported: `[chains.<id>]`, `[tables.<name>]` and `[ipfs]`.
 
 ## `[chains.<id>]` - custom RPC endpoints
 
@@ -44,3 +44,34 @@ Each `[[tables.<name>.columns]]` entry:
 After editing a table's definition, rebuild it with `mevlog update-custom-tables --chain-id <id>`.
 
 See [Custom Tables](./custom-tables.md) for a full walkthrough, query examples, and how the tables stay in step with `logs`.
+
+## `[ipfs]` - IPFS uploads (`--ipfs`)
+
+Configures where the `--ipfs` flag uploads the rendered query output:
+
+```toml
+[ipfs]
+backend = "pinata"                             # or "kubo"
+pinata_jwt = "eyJ..."                          # or set MEVLOG_PINATA_JWT
+pinata_gateway = "example-123.mypinata.cloud"  # or set MEVLOG_PINATA_GATEWAY
+```
+
+| Key | Type | Required | Description |
+|-----|------|----------|-------------|
+| `backend` | string | no | `pinata` (default) uploads to the managed [Pinata](https://pinata.cloud) pinning service (persistent link, needs a JWT); `kubo` adds the file to a local IPFS daemon via `/api/v0/add` (no account, requires a running `ipfs daemon`). |
+| `pinata_jwt` | string | for `pinata` | Pinata API JWT. The `MEVLOG_PINATA_JWT` env var overrides this, so the secret can stay out of the file. |
+| `pinata_gateway` | string | no | Your account's dedicated Pinata gateway domain (find it on the Pinata dashboard's Gateways page). Uploads are served from it immediately, so the result carries a `pinata_gateway_url` next to the public `gateway_url`. The `MEVLOG_PINATA_GATEWAY` env var overrides this. When unset, the domain is auto-discovered via the Pinata API - see the JWT scopes below. |
+| `gateway` | string | no | Public gateway used to build the shareable URL. Default: `https://ipfs.io`. |
+| `pinata_api` | string | no | Pinata upload API base. Default: `https://uploads.pinata.cloud`. |
+| `kubo_api` | string | no | Kubo daemon RPC address. Default: `http://127.0.0.1:5001`. |
+
+### Pinata JWT scopes
+
+Create the API key on the Pinata dashboard with these scopes:
+
+| Scope | Needed for |
+|-------|-----------|
+| `Files: Write` | Required - the upload itself. |
+| `Gateways: Read` | Optional - auto-discovery of your dedicated gateway domain when `pinata_gateway` is not set. Without it (and without `pinata_gateway`), uploads still work but no `pinata_gateway_url` is reported, only the public gateway URL. |
+
+Note that public gateways like `https://ipfs.io` must first discover a fresh CID via the IPFS DHT, which can take minutes; your dedicated Pinata gateway serves the upload immediately.
