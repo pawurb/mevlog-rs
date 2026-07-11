@@ -9,7 +9,7 @@ use crate::{
         raw_query::run_raw_query_async,
     },
     misc::{
-        args_parsing::BlocksRange,
+        args_parsing::{BlocksRange, get_latest_block},
         shared_init::{ConnOpts, CryoOpts, init_deps},
     },
     models::json::{
@@ -32,6 +32,13 @@ pub async fn block_logs(
         bail!("block-logs expects a single block number or 'latest', not a range");
     }
     let block_number = range.from;
+
+    // 'latest' already resolved the chain head; only a numeric arg needs a fetch.
+    let latest_block = if block == "latest" {
+        Some(range.to)
+    } else {
+        Some(get_latest_block(&deps.provider, latest_offset).await?)
+    };
 
     let start_time = Instant::now();
 
@@ -57,6 +64,7 @@ pub async fn block_logs(
         rows: result.rows,
         cached_blocks,
         new_blocks,
+        latest_block,
         duration_ns,
         chain: chain_info,
         query: QueryParams {

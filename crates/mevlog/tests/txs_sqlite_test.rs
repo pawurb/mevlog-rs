@@ -508,7 +508,9 @@ pub mod tests {
 | 25215353     | 0        | swapExactTokensForETHSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint256,address) |
 +--------------+----------+-------------------------------------------------------------------------------------------------------+";
 
-        assert_eq!(stdout.trim_end(), expected, "table output mismatch");
+        // `contains` rather than exact equality: table output ends with a
+        // volatile `generated_at: <timestamp>` line.
+        assert!(stdout.contains(expected), "table output mismatch: {stdout}");
 
         fs::remove_dir_all(&tmp_dir).ok();
         Ok(())

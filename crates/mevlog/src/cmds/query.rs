@@ -6,7 +6,7 @@ use crate::{
     ChainInfoNoRpcsJson,
     db::txs::{indexing::index_block_range, raw_query::run_raw_query_async},
     misc::{
-        args_parsing::BlocksRange,
+        args_parsing::{BlocksRange, get_latest_block},
         shared_init::{ConnOpts, CryoOpts, SharedOpts, init_deps},
         sql_macros::substitute_sql_macros,
         tx_tracing::backfill_coinbase_transfers,
@@ -46,6 +46,16 @@ pub async fn query(
         let native_token_price =
             get_native_token_price(&deps.chain, &deps.provider, shared_opts.native_token_price)
                 .await?;
+
+        // Chain's latest block, echoed in every output format for context on
+        // how fresh the queried data is. An explicit `latest_block` (e.g. the
+        // backend's indexed head) wins; with --skip-index no RPC is made, so
+        // without one the value stays unresolved.
+        let latest_block = match latest_block {
+            Some(n) => Some(n),
+            None if skip_index => None,
+            None => Some(get_latest_block(&deps.provider, latest_offset).await?),
+        };
 
         // With --skip-index the local store is queried as-is: no block range
         // resolution (so no RPC for 'latest'), no fetching, no backfill.
@@ -118,18 +128,19 @@ pub async fn query(
             chain_info,
             cached_blocks,
             new_blocks,
+            latest_block,
             sql,
             deps.custom_table_names(),
         ))
     };
 
-    let (txs_read_path, chain_info, cached_blocks, new_blocks, sql, custom_tables) = match deadline
-    {
-        Some(dl) => tokio::time::timeout_at(tokio::time::Instant::from_std(dl), prep)
-            .await
-            .map_err(|_| eyre!("Query timed out after {}ms", timeout_ms.unwrap()))??,
-        None => prep.await?,
-    };
+    let (txs_read_path, chain_info, cached_blocks, new_blocks, latest_block, sql, custom_tables) =
+        match deadline {
+            Some(dl) => tokio::time::timeout_at(tokio::time::Instant::from_std(dl), prep)
+                .await
+                .map_err(|_| eyre!("Query timed out after {}ms", timeout_ms.unwrap()))??,
+            None => prep.await?,
+        };
 
     // The SQL runs in a blocking task a dropped future can't cancel, so the
     // remaining budget is enforced inside SQLite via its progress handler.
@@ -150,6 +161,7 @@ pub async fn query(
         rows: result.rows,
         cached_blocks,
         new_blocks,
+        latest_block,
         duration_ns,
         chain: chain_info,
         query: QueryParams {

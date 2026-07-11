@@ -10,6 +10,7 @@ use crate::{
         models::transaction::Transaction, raw_query::run_raw_query_async,
     },
     misc::{
+        args_parsing::get_latest_block,
         shared_init::{ConnOpts, CryoOpts, TraceMode, init_deps},
         sql_macros::{NATIVE_TOKEN_PRICE_MACRO, substitute_sql_macros},
         tx_tracing::coinbase_transfer_for_tx,
@@ -34,6 +35,8 @@ pub async fn tx(
 
     let native_token_price =
         get_native_token_price(&deps.chain, &deps.provider, native_token_price).await?;
+
+    let latest_block = Some(get_latest_block(&deps.provider, None).await?);
 
     let receipt = deps
         .provider
@@ -94,6 +97,7 @@ pub async fn tx(
         rows: result.rows,
         cached_blocks,
         new_blocks,
+        latest_block,
         duration_ns,
         chain: chain_info,
         query: QueryParams {

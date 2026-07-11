@@ -103,6 +103,7 @@ pub(crate) async fn search(
         outcome.duration_ns,
         outcome.cached_blocks,
         outcome.new_blocks,
+        outcome.latest_block,
         outcome.query,
         None,
     ) {

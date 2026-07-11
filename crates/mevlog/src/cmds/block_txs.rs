@@ -8,7 +8,7 @@ use crate::{
         display_sql::tx_display_query, indexing::index_block_range, raw_query::run_raw_query_async,
     },
     misc::{
-        args_parsing::BlocksRange,
+        args_parsing::{BlocksRange, get_latest_block},
         shared_init::{ConnOpts, CryoOpts, init_deps},
         sql_macros::{NATIVE_TOKEN_PRICE_MACRO, substitute_sql_macros},
         utils::get_native_token_price,
@@ -37,6 +37,13 @@ pub async fn block_txs(
         bail!("block-txs expects a single block number or 'latest', not a range");
     }
     let block_number = range.from;
+
+    // 'latest' already resolved the chain head; only a numeric arg needs a fetch.
+    let latest_block = if block == "latest" {
+        Some(range.to)
+    } else {
+        Some(get_latest_block(&deps.provider, latest_offset).await?)
+    };
 
     let start_time = Instant::now();
 
@@ -77,6 +84,7 @@ pub async fn block_txs(
         rows: result.rows,
         cached_blocks,
         new_blocks,
+        latest_block,
         duration_ns,
         chain: chain_info,
         query: QueryParams {

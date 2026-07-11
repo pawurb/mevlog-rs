@@ -22,6 +22,7 @@
 
 - [CLI Reference](./cli-reference.md)
 - [config.toml](./config.md)
+- [IPFS Uploads](./ipfs.md)
 - [MCP Server](./mcp.md)
 - [TUI Dashboard](./tui.md)
 

@@ -37,6 +37,7 @@ It should produce a similar JSON output:
   "result_count": 156,
   "cached_blocks": 0,
   "new_blocks": 1,
+  "latest_block": 25314990,
   "duration": "1.49 s",
   "generated_at": "2026-07-11T13:19:35Z",
   "chain": {
