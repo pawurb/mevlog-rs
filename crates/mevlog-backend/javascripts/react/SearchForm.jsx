@@ -103,7 +103,7 @@ const SearchForm = ({ initialValues = {} }) => {
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        // Non-JSON response (timeout, panic, proxy error) — surface the raw body.
+        // Non-JSON response (timeout, panic, proxy error) - surface the raw body.
         setError(text.trim() || `HTTP ${res.status}: ${res.statusText}`);
         setResponse(null);
         setLoading(false);

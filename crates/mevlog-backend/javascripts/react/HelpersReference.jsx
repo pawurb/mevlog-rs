@@ -37,7 +37,7 @@ const GROUPS = [
       { sig: 'format_gwei(col)', desc: 'Wei to gwei, 2 decimal places.' },
       {
         sig: 'format_usd(x)',
-        desc: 'Pure formatter: a REAL/INTEGER USD value to a $-prefixed string with thousands commas and 2 decimals (e.g. $1,234,567.89). Does NOT convert from wei — wrap a wei amount in convert_usd first.',
+        desc: 'Pure formatter: a REAL/INTEGER USD value to a $-prefixed string with thousands commas and 2 decimals (e.g. $1,234,567.89). Does NOT convert from wei - wrap a wei amount in convert_usd first.',
       },
       {
         sig: 'convert_usd(wei, price)',

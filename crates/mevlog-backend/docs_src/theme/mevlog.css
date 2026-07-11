@@ -1,6 +1,6 @@
 /* mevlog.rs docs theme overlay
    1. Retint Ayu's blue accent to the mevlog brand orange (navy bg kept as-is).
-   2. Style the injected app top-nav (self-contained — app CSS is not loaded here).
+   2. Style the injected app top-nav (self-contained - app CSS is not loaded here).
    3. Offset mdbook's fixed sidebar + sticky menu-bar below the nav. */
 
 /* ---- 1. Accent harmonization (keep Ayu navy background) ---- */
@@ -12,7 +12,7 @@ html.ayu,
     --fg: #c5c5c5;               /* lift Ayu's muted #98a3ad body text to match the app */
 }
 
-/* ---- 2. Top nav — pixel-matched to the app's .sticky-nav (styles.css) ---- */
+/* ---- 2. Top nav - pixel-matched to the app's .sticky-nav (styles.css) ---- */
 :root {
     --mevlog-nav-h: 86px;                  /* app bar height: 60px logo + 10px/10px pad + border */
     --mevlog-nav-bg: hsl(210, 25%, 8%);    /* app --background (navy) */
@@ -37,7 +37,7 @@ html.ayu,
     gap: 8px;
     height: 100%;
     padding: 0 20px;             /* match app body's 20px horizontal inset */
-    overflow-x: auto;            /* don't wrap on narrow viewports — scroll instead */
+    overflow-x: auto;            /* don't wrap on narrow viewports - scroll instead */
 }
 
 .mevlog-logo-link {

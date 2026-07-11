@@ -146,7 +146,7 @@ pub(crate) async fn docs_html_ext(mut request: Request, next: Next) -> Response 
     let path = request.uri().path().to_string();
 
     // The first SUMMARY entry (introduction.md) is also emitted as index.html,
-    // so "/introduction" duplicates "/docs/" — collapse both onto "/docs/" to
+    // so "/introduction" duplicates "/docs/" - collapse both onto "/docs/" to
     // keep a single canonical URL that docs_seo can rewrite.
     if path == "/introduction" {
         return Redirect::permanent("/docs/").into_response();
@@ -183,7 +183,7 @@ fn should_append_html(path: &str) -> bool {
         return false;
     }
     // A dot in the last segment means it already has an extension (`.html`,
-    // `.css`, `.js`, `.png`, …) — leave it untouched.
+    // `.css`, `.js`, `.png`, …) - leave it untouched.
     let last_segment = path.rsplit('/').next().unwrap_or("");
     !last_segment.contains('.')
 }
@@ -211,7 +211,7 @@ pub(crate) async fn cache_control(request: Request, next: Next) -> Response {
     } else if Env::current().is_dev() || is_html {
         // "no-cache" (not "no-store"): the browser keeps the asset and revalidates
         // with a conditional request (fast 304), instead of re-downloading the
-        // render-blocking CSS on every navigation — which caused the FOUC/flash.
+        // render-blocking CSS on every navigation - which caused the FOUC/flash.
         HeaderValue::from_static("no-cache")
     } else {
         HeaderValue::from_static("public, max-age=1382400, immutable")

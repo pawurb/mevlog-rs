@@ -57,16 +57,16 @@
         const path_to_root = "{{ path_to_root }}";
         const default_light_theme = "{{ default_theme }}";
         const default_dark_theme = "{{ preferred_dark_theme }}";
-        { { #if search_js } }
+        {{#if search_js}}
         window.path_to_searchindex_js = "{{ resource "searchindex.js" }}";
-        { {/if } }
+        {{/if}}
     </script>
     <!-- Start loading toc.js asap -->
     <script src="{{ resource "toc.js" }}"></script>
 </head>
 
 <body>
-    <!-- mevlog.rs top nav — replicated from the main app so docs and app read as one site -->
+    <!-- mevlog.rs top nav - replicated from the main app so docs and app read as one site -->
     <nav class="mevlog-topnav" aria-label="mevlog.rs">
         <div class="mevlog-topnav-inner">
             <a class="mevlog-logo-link" href="/" title="mevlog.rs home">
