@@ -4,8 +4,8 @@ use eyre::Result;
 use mevlog::{
     misc::{config::Config, ipfs, shared_init::OutputFormat},
     models::json::query_response::{
-        HtmlMeta, QueryOutcome, content_hash, format_duration, rows_to_csv, rows_to_html,
-        rows_to_table, serialize_query_response,
+        HtmlMeta, QueryOutcome, content_hash, format_duration, generated_at_utc, rows_to_csv,
+        rows_to_html, rows_to_table, serialize_query_response,
     },
 };
 
@@ -65,10 +65,12 @@ pub(crate) async fn print_query_outcome(outcome: QueryOutcome, render: &RenderOp
                 Some(desc) => format!("{desc}\n{table}"),
                 None => table,
             };
+            let body = format!("{body}\ngenerated_at: {}", generated_at_utc());
             (body, "text/plain", "txt")
         }
         OutputFormat::Html => {
             let duration = format_duration(outcome.duration_ns);
+            let generated_at = generated_at_utc();
             let meta = HtmlMeta {
                 chain_name: &outcome.chain.name,
                 chain_id: outcome.chain.chain_id,
@@ -77,6 +79,7 @@ pub(crate) async fn print_query_outcome(outcome: QueryOutcome, render: &RenderOp
                 description: desc,
                 row_count: outcome.rows.len(),
                 duration: &duration,
+                generated_at: &generated_at,
             };
             (
                 rows_to_html(&outcome.columns, &outcome.rows, &meta),
@@ -150,6 +153,7 @@ async fn upload_to_ipfs(
             let payload = serde_json::json!({
                 "cid": result.cid,
                 "gateway_url": result.gateway_url,
+                "pinata_gateway_url": result.pinata_gateway_url,
                 "filename": filename,
             });
             let out = if matches!(format, OutputFormat::JsonPretty) {
@@ -163,6 +167,9 @@ async fn upload_to_ipfs(
             println!("Uploaded to IPFS");
             println!("  cid:     {}", result.cid);
             println!("  gateway: {}", result.gateway_url);
+            if let Some(pinata_url) = &result.pinata_gateway_url {
+                println!("  pinata:  {pinata_url}");
+            }
             println!("  file:    {filename}");
         }
     }

@@ -22,12 +22,18 @@ use crate::misc::config::{IpfsBackendKind, IpfsConfig};
 // users with a dedicated Pinata gateway set `ipfs.gateway` to override.
 const PINATA_DEFAULT_GATEWAY: &str = "https://ipfs.io";
 const KUBO_DEFAULT_GATEWAY: &str = "https://ipfs.io";
+const PINATA_GATEWAYS_API: &str = "https://api.pinata.cloud/v3/gateways";
 
 /// Outcome of a successful upload: the content CID and a gateway URL that
 /// resolves it.
 pub struct IpfsResult {
     pub cid: String,
     pub gateway_url: String,
+    /// The account's dedicated Pinata gateway URL, which serves the upload
+    /// immediately (public gateways must first discover the CID via the DHT,
+    /// which can take minutes). Pinata backend only, and only when the domain
+    /// is known via `ipfs.pinata_gateway` or the gateway-discovery API.
+    pub pinata_gateway_url: Option<String>,
 }
 
 /// Uploads `bytes` to IPFS via the configured backend and returns the resulting
@@ -38,9 +44,16 @@ pub async fn upload(
     filename: &str,
     content_type: &str,
 ) -> Result<IpfsResult> {
-    let cid = match cfg.backend {
-        IpfsBackendKind::Pinata => upload_pinata(cfg, bytes, filename, content_type).await?,
-        IpfsBackendKind::Kubo => upload_kubo(cfg, bytes, filename, content_type).await?,
+    let (cid, pinata_gateway_url) = match cfg.backend {
+        IpfsBackendKind::Pinata => {
+            let jwt = resolve_pinata_jwt(cfg)?;
+            let cid = upload_pinata(cfg, &jwt, bytes, filename, content_type).await?;
+            let pinata_url = pinata_gateway_domain(cfg, &jwt)
+                .await
+                .map(|domain| build_gateway_url(&format!("https://{domain}"), &cid));
+            (cid, pinata_url)
+        }
+        IpfsBackendKind::Kubo => (upload_kubo(cfg, bytes, filename, content_type).await?, None),
     };
 
     let gateway = cfg.gateway.as_deref().unwrap_or(match cfg.backend {
@@ -51,6 +64,7 @@ pub async fn upload(
     Ok(IpfsResult {
         gateway_url: build_gateway_url(gateway, &cid),
         cid,
+        pinata_gateway_url,
     })
 }
 
@@ -65,15 +79,10 @@ fn multipart_form(
     Ok(reqwest::multipart::Form::new().part("file", part))
 }
 
-async fn upload_pinata(
-    cfg: &IpfsConfig,
-    bytes: Vec<u8>,
-    filename: &str,
-    content_type: &str,
-) -> Result<String> {
-    // The env var wins over the config value so the secret can stay out of the
-    // TOML file.
-    let jwt = std::env::var("MEVLOG_PINATA_JWT")
+/// The env var wins over the config value so the secret can stay out of the
+/// TOML file.
+fn resolve_pinata_jwt(cfg: &IpfsConfig) -> Result<String> {
+    std::env::var("MEVLOG_PINATA_JWT")
         .ok()
         .filter(|s| !s.is_empty())
         .or_else(|| cfg.pinata_jwt.clone())
@@ -81,8 +90,43 @@ async fn upload_pinata(
             eyre!(
                 "Pinata IPFS upload needs a JWT: set MEVLOG_PINATA_JWT or ipfs.pinata_jwt in config.toml"
             )
-        })?;
+        })
+}
 
+/// Best-effort lookup of the account's dedicated gateway domain: the
+/// `MEVLOG_PINATA_GATEWAY` env var, then the `ipfs.pinata_gateway` config
+/// value, otherwise the gateway-discovery API (which requires the
+/// `Gateways: Read` JWT scope). Returns `None` on any failure so uploads keep
+/// working with a `Files: Write`-only JWT.
+async fn pinata_gateway_domain(cfg: &IpfsConfig, jwt: &str) -> Option<String> {
+    // The env var wins over the config value, mirroring MEVLOG_PINATA_JWT.
+    if let Some(domain) = std::env::var("MEVLOG_PINATA_GATEWAY")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .or_else(|| cfg.pinata_gateway.clone())
+    {
+        return Some(domain);
+    }
+
+    let res = reqwest::Client::new()
+        .get(PINATA_GATEWAYS_API)
+        .bearer_auth(jwt)
+        .send()
+        .await
+        .ok()?;
+    if !res.status().is_success() {
+        return None;
+    }
+    parse_pinata_gateway_domain(&res.text().await.ok()?)
+}
+
+async fn upload_pinata(
+    cfg: &IpfsConfig,
+    jwt: &str,
+    bytes: Vec<u8>,
+    filename: &str,
+    content_type: &str,
+) -> Result<String> {
     let url = format!("{}/v3/files", cfg.pinata_api.trim_end_matches('/'));
     // `network=public` puts the content on the public IPFS network so any
     // gateway can resolve it (the V3 default is private, gateway-only access).
@@ -132,6 +176,24 @@ async fn upload_kubo(
     }
 
     parse_kubo_cid(&body)
+}
+
+/// `GET /v3/gateways` returns `{ "data": { "rows": [ { "domain": "<slug>", ... } ] } }`
+/// where `domain` is the subdomain slug without the `.mypinata.cloud` suffix
+/// (custom domains appear separately and do contain dots).
+fn parse_pinata_gateway_domain(body: &str) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_str(body).ok()?;
+    let domain = value
+        .get("data")?
+        .get("rows")?
+        .get(0)?
+        .get("domain")?
+        .as_str()?;
+    if domain.contains('.') {
+        Some(domain.to_string())
+    } else {
+        Some(format!("{domain}.mypinata.cloud"))
+    }
 }
 
 /// Pinata's V3 Files API returns `{ "data": { "cid": "<cid>", ... } }`.
@@ -198,6 +260,21 @@ mod tests {
     fn kubo_empty_or_bad_errors() {
         assert!(parse_kubo_cid("").is_err());
         assert!(parse_kubo_cid("{\"Name\":\"a\"}").is_err());
+    }
+
+    #[test]
+    fn parses_pinata_gateway_domain() {
+        let body =
+            r#"{"data":{"count":1,"rows":[{"id":"01","domain":"example-123","restrict":false}]}}"#;
+        assert_eq!(
+            parse_pinata_gateway_domain(body).unwrap(),
+            "example-123.mypinata.cloud"
+        );
+        // A full domain (containing a dot) is used as-is.
+        let body = r#"{"data":{"rows":[{"domain":"gw.example.com"}]}}"#;
+        assert_eq!(parse_pinata_gateway_domain(body).unwrap(), "gw.example.com");
+        assert!(parse_pinata_gateway_domain(r#"{"data":{"rows":[]}}"#).is_none());
+        assert!(parse_pinata_gateway_domain("not json").is_none());
     }
 
     #[test]

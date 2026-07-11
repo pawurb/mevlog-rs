@@ -11,6 +11,12 @@ use crate::{ChainInfoNoRpcsJson, misc::shared_init::TraceMode};
 /// description.
 pub const MAX_QUERY_DESC_CHARS: usize = 960;
 
+/// The current UTC time in RFC 3339 format (`2026-07-11T13:19:35Z`), stamped
+/// on rendered query output as `generated_at`.
+pub fn generated_at_utc() -> String {
+    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+}
+
 /// Renders a single cell value as a flat string: strings as-is (blob columns
 /// are already 0x-hex), null as empty, everything else via its JSON form.
 fn cell(value: Option<&Value>) -> String {
@@ -63,12 +69,14 @@ pub struct HtmlMeta<'a> {
     pub description: Option<&'a str>,
     pub row_count: usize,
     pub duration: &'a str,
+    pub generated_at: &'a str,
 }
 
 /// A deterministic, collision-resistant hash of the query's rendered content
 /// (chain + query + description + columns + rows, excluding the volatile
-/// duration). Used to name the standalone HTML file so an identical result
-/// always maps to the same filename. Truncated to 16 hex chars.
+/// duration and generated_at). Used to name the standalone HTML file so an
+/// identical result always maps to the same filename. Truncated to 16 hex
+/// chars.
 pub fn content_hash(
     chain: &ChainInfoNoRpcsJson,
     query: &QueryParams,
@@ -172,38 +180,60 @@ pub fn rows_to_html(columns: &[String], rows: &[Value], meta: &HtmlMeta) -> Stri
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{title}</title>
 <style>
-:root {{ color-scheme: light dark; }}
+/* Palette mirrors the mevlog.rs landing page (ayu-based terminal theme):
+   bg hsl(210,25%,8%), hero orange #f5ae2e, terminal-command orange #ffb454,
+   green #aad94c, foreground #c5c5c5. */
+:root {{
+  color-scheme: dark;
+  --bg: hsl(210, 25%, 8%);
+  --panel: hsl(210, 22%, 11%);
+  --panel-2: hsl(210, 20%, 14%);
+  --line: hsl(210, 18%, 18%);
+  --ink: #c5c5c5;
+  --ink-strong: #e6e1d6;
+  --muted: #87919c;
+  --orange: #f5ae2e;
+  --orange-code: #ffb454;
+  --green: #aad94c;
+  --red: #ff645a;
+}}
 * {{ box-sizing: border-box; }}
-body {{ margin: 0; padding: 1.5rem; font: 14px/1.5 system-ui, -apple-system, sans-serif; background: #0f1116; color: #e6e6e6; }}
-h1 {{ font-size: 1.1rem; margin: 0 0 1rem; }}
-.meta {{ background: #171a21; border: 1px solid #262b36; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }}
-.meta dl {{ display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0; }}
-.meta dt {{ color: #8b93a3; }}
-.meta dd {{ margin: 0; }}
-.meta code {{ display: block; white-space: pre-wrap; word-break: break-word; background: #0f1116; border: 1px solid #262b36; border-radius: 6px; padding: .5rem .6rem; font: 12px/1.4 ui-monospace, monospace; }}
-.tablewrap {{ overflow-x: auto; border: 1px solid #262b36; border-radius: 8px; }}
+body {{ margin: 0; padding: 1.5rem; font: 14px/1.5 system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); border-top: 2px solid var(--orange); }}
+h1 {{ font-size: 1.15rem; font-weight: 650; letter-spacing: -.01em; margin: 0 0 1rem; color: var(--orange); }}
+.meta {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }}
+.meta dl {{ display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1.25rem; margin: 0; }}
+.meta dt {{ color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; line-height: 21px; }}
+.meta dd {{ margin: 0; color: var(--ink-strong); }}
+.meta code {{ display: block; white-space: pre-wrap; word-break: break-word; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .6rem; font: 12px/1.4 ui-monospace, monospace; color: var(--orange-code); }}
+.tablewrap {{ overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }}
 table {{ border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }}
-thead th {{ position: sticky; top: 0; background: #202634; color: #cfd6e4; text-align: left; padding: .5rem .7rem; cursor: pointer; user-select: none; white-space: nowrap; border-bottom: 1px solid #303748; }}
-thead th:hover {{ background: #262d3d; }}
-tbody td {{ padding: .4rem .7rem; border-bottom: 1px solid #1c212b; white-space: nowrap; }}
-tbody tr:nth-child(even) {{ background: #141821; }}
-tbody tr:hover {{ background: #1b2130; }}
+thead th {{ position: sticky; top: 0; background: var(--panel-2); color: var(--ink-strong); text-align: left; padding: .5rem .7rem; cursor: pointer; user-select: none; white-space: nowrap; border-bottom: 1px solid var(--line); }}
+thead th:hover {{ color: var(--orange); }}
+thead th[data-asc]::after {{ color: var(--orange); font-size: 11px; }}
+thead th[data-asc="true"]::after {{ content: " \2191"; }}
+thead th[data-asc="false"]::after {{ content: " \2193"; }}
+tbody td {{ padding: .4rem .7rem; border-bottom: 1px solid hsl(210, 20%, 12%); white-space: nowrap; }}
+tbody tr:nth-child(even) {{ background: hsl(210, 23%, 9.5%); }}
+tbody tr:hover {{ background: hsl(210, 22%, 12%); }}
 td.mono {{ font-family: ui-monospace, monospace; }}
 td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 .pill {{ display: inline-block; padding: .05rem .5rem; border-radius: 999px; font-size: 12px; font-weight: 600; }}
-.pill.ok {{ background: #16351f; color: #4ade80; }}
-.pill.fail {{ background: #3a1717; color: #f87171; }}
-.empty {{ padding: 1rem; color: #8b93a3; }}
+.pill.ok {{ background: hsl(80, 45%, 14%); color: var(--green); }}
+.pill.fail {{ background: hsl(4, 45%, 15%); color: var(--red); }}
+.empty {{ padding: 1rem; color: var(--muted); }}
+.footer {{ margin-top: 1rem; color: var(--muted); }}
+.footer a {{ color: var(--orange); }}
 </style>
 </head>
 <body>
 <h1>{title}</h1>
 <div class="meta">
 <dl>
-<dt>chain</dt><dd>{chain} <span style="color:#8b93a3">(id {chain_id})</span></dd>
+<dt>chain</dt><dd>{chain} <span style="color:var(--muted)">(id {chain_id})</span></dd>
 <dt>blocks</dt><dd>{blocks}</dd>
 <dt>rows</dt><dd>{row_count}</dd>
 <dt>duration</dt><dd>{duration}</dd>
+<dt>generated</dt><dd>{generated_at}</dd>
 <dt>sql</dt><dd><code>{sql}</code></dd>
 </dl>
 </div>
@@ -214,6 +244,7 @@ td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 </table>
 </div>
 {empty}
+<p class="footer">Generated with <a href="https://mevlog.rs" target="_blank" rel="noopener">mevlog.rs</a></p>
 <script>
 (function () {{
   var table = document.getElementById('results');
@@ -225,6 +256,7 @@ td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
         var tbody = table.tBodies[0];
         var rows = Array.prototype.slice.call(tbody.rows);
         var asc = headers[col].dataset.asc !== 'true';
+        for (var j = 0; j < headers.length; j++) delete headers[j].dataset.asc;
         headers[col].dataset.asc = asc ? 'true' : 'false';
         var decimal = /^-?\d+(\.\d+)?$/;
         rows.sort(function (a, b) {{
@@ -251,6 +283,7 @@ td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
         blocks = blocks,
         row_count = meta.row_count,
         duration = encode_text(meta.duration),
+        generated_at = encode_text(meta.generated_at),
         sql = sql,
         header_cells = header_cells,
         body = body,
@@ -321,6 +354,9 @@ pub struct QueryResponse {
     pub cached_blocks: u64,
     pub new_blocks: u64,
     pub duration: String,
+    /// UTC render time (RFC 3339); absent in envelopes predating the field.
+    #[serde(default)]
+    pub generated_at: String,
     pub chain: ChainInfoNoRpcsJson,
     pub query: QueryParams,
 }
@@ -345,6 +381,7 @@ pub fn serialize_query_response(
         cached_blocks,
         new_blocks,
         duration: format_duration(duration_ns),
+        generated_at: generated_at_utc(),
         chain,
         query,
     };
@@ -457,6 +494,7 @@ mod test {
             description: None,
             row_count: 2,
             duration: "1.23 ms",
+            generated_at: "2026-07-11T13:19:35Z",
         }
     }
 
@@ -470,6 +508,10 @@ mod test {
         assert!(html.contains("SELECT * FROM transactions"));
         assert!(html.contains("pill ok"));
         assert!(html.contains("pill fail"));
+        assert!(html.contains("<dt>generated</dt><dd>2026-07-11T13:19:35Z</dd>"));
+        assert!(html.contains(
+            r#"Generated with <a href="https://mevlog.rs" target="_blank" rel="noopener">mevlog.rs</a>"#
+        ));
     }
 
     #[test]
@@ -555,6 +597,8 @@ mod test {
         .unwrap();
         let parsed: QueryResponse = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed.description.as_deref(), Some("weekly USDC report"));
+        // RFC 3339 UTC stamp, e.g. 2026-07-11T13:19:35Z.
+        assert!(parsed.generated_at.ends_with('Z') && parsed.generated_at.contains('T'));
 
         let body = serialize_query_response(
             sample_rows(),

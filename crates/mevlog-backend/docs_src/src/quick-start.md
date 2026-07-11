@@ -38,6 +38,7 @@ It should produce a similar JSON output:
   "cached_blocks": 0,
   "new_blocks": 1,
   "duration": "1.49 s",
+  "generated_at": "2026-07-11T13:19:35Z",
   "chain": {
     "chain_id": 1,
     "name": "Ethereum Mainnet",
