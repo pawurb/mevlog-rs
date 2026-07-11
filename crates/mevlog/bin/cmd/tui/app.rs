@@ -124,8 +124,6 @@ pub(super) struct App {
     pub(crate) rpc_timeout_ms: u64,
     pub(crate) block_timeout_ms: u64,
     pub(crate) selected_chain: Option<ChainEntryJson>,
-    #[allow(dead_code)]
-    state_tx: Sender<AppEvent>,
     pub(crate) pending_g: Option<Instant>,
     pub(crate) tx_popup_max_scroll: u16,
     pub(crate) block_input_popup_open: bool,
@@ -162,7 +160,7 @@ impl App {
         let block_timeout_ms = conn_opts.block_timeout_ms;
 
         spawn_data_worker(data_req_rx, state_tx.clone());
-        spawn_input_reader(state_tx.clone());
+        spawn_input_reader(state_tx);
 
         if mode == AppMode::Main {
             if let Some(ref url) = rpc_url {
@@ -216,7 +214,6 @@ impl App {
             rpc_timeout_ms,
             block_timeout_ms,
             selected_chain,
-            state_tx,
             pending_g: None,
             tx_popup_max_scroll: 0,
             block_input_popup_open: false,

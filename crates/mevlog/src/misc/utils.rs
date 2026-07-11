@@ -6,15 +6,9 @@ use revm::primitives::U256;
 
 use crate::{GenericProvider, models::evm_chain::EVMChain};
 
-pub const SEPARATORER: &str = "===============================================================================================";
-pub const SEPARATOR: &str = "-----------------------------------------------------------------------------------------------";
-
 pub const ETH_TRANSFER: &str = "<ETH transfer>";
-pub const UNKNOWN: &str = "<Unknown>";
 
-pub const ETHER: U256 = uint!(1_000_000_000_000_000_000_U256);
-pub const GWEI: U256 = uint!(1_000_000_000_U256);
-pub const GWEI_U128: u128 = 1_000_000_000_u128;
+const ETHER: U256 = uint!(1_000_000_000_000_000_000_U256);
 pub const GWEI_F64: f64 = 1_000_000_000_f64;
 
 pub(crate) fn block_cache_key(chain: &EVMChain, block_number: u64) -> String {
@@ -93,26 +87,6 @@ fn init_logs_inner(to_file: bool) {
     {
         let _ = to_file; // suppress unused warning
         console_subscriber::init();
-    }
-}
-
-pub trait ToU64 {
-    fn to_u64(&self) -> u64;
-}
-
-impl ToU64 for U256 {
-    fn to_u64(&self) -> u64 {
-        U256::to::<u64>(self)
-    }
-}
-
-pub trait ToU128 {
-    fn to_u128(&self) -> u128;
-}
-
-impl ToU128 for U256 {
-    fn to_u128(&self) -> u128 {
-        U256::to::<u128>(self)
     }
 }
 

@@ -48,12 +48,6 @@ pub struct SearchParams {
     pub chain_id: Option<u64>,
 }
 
-impl SearchParams {
-    pub(crate) async fn validate(&self) -> Result<()> {
-        Ok(())
-    }
-}
-
 #[hotpath::measure]
 pub(crate) async fn search(
     query: Result<Query<SearchParams>, axum::extract::rejection::QueryRejection>,
@@ -63,12 +57,7 @@ pub(crate) async fn search(
         Err(e) => return error_message(&e).into_response(),
     };
 
-    let status = match params.validate().await {
-        Ok(_) => StatusCode::OK,
-        Err(_) => StatusCode::BAD_REQUEST,
-    };
-
     let template = SearchTemplate::new(params);
 
-    html_response(template.render().unwrap(), status)
+    html_response(template.render().unwrap(), StatusCode::OK)
 }

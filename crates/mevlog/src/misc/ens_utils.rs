@@ -12,7 +12,7 @@ use tokio::sync::RwLock;
 
 use crate::GenericProvider;
 
-pub const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
+const ENS_REVERSE_REGISTRAR_DOMAIN: &str = "addr.reverse";
 
 /// In-memory cache of forward ENS resolutions (name -> address), backed by the
 /// on-disk cache under `~/.mevlog/.ens-cache` so repeated lookups skip the RPC

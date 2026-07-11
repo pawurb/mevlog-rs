@@ -4,8 +4,6 @@ pub mod config;
 pub mod data_fetch;
 pub mod ens_utils;
 pub mod ipfs;
-#[cfg(feature = "tui")]
-pub mod opcode_color;
 pub mod parquet_utils;
 pub mod revm_tracing;
 pub mod rpc_capability;

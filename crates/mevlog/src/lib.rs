@@ -18,15 +18,6 @@ pub type GenericProvider = FillProvider<
     RootProvider,
 >;
 
-pub type RevmProvider = FillProvider<
-    JoinFill<
-        Identity,
-        JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
-    >,
-    RootProvider<alloy::network::AnyNetwork>,
-    alloy::network::AnyNetwork,
->;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

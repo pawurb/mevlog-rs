@@ -11,7 +11,6 @@ pub struct EVMChain {
     pub explorer_url: Option<String>,
     pub currency_symbol: String,
     pub chainlink_oracle: Option<Address>,
-    pub uniswap_v2_pool: Option<Address>,
     pub rpc_url: String,
 }
 
@@ -26,10 +25,6 @@ impl EVMChain {
             chainlink_oracle: db_chain.chainlink_oracle.map(|s| {
                 s.parse()
                     .unwrap_or_else(|_| panic!("Invalid chainlink oracle address {s}"))
-            }),
-            uniswap_v2_pool: db_chain.uniswap_v2_pool.map(|s| {
-                s.parse()
-                    .unwrap_or_else(|_| panic!("Invalid uniswap v2 pool address {s}"))
             }),
             rpc_url,
         })

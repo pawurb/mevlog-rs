@@ -28,11 +28,9 @@ pub(crate) struct RpcOpts {
     pub block_timeout_ms: u64,
 }
 
-#[allow(dead_code, clippy::large_enum_variant)]
 #[derive(Debug)]
 pub(crate) enum DataRequest {
     Block(BlockId, RpcOpts),
-    Tx(String, RpcOpts),
     Chains(Option<String>),
     ChainInfo(String),
     RefreshRpc(u64, u64),
@@ -44,7 +42,6 @@ pub(crate) enum BlockId {
     Number(u64),
 }
 
-#[allow(dead_code, clippy::large_enum_variant)]
 #[derive(Debug)]
 pub(crate) enum DataResponse {
     Block(u64, Vec<TransactionJson>),
