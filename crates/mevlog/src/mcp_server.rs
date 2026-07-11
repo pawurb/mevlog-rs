@@ -21,6 +21,11 @@ use tracing::{debug, error, info};
 /// lets the CLI's own timeout error surface ahead of this hard kill.
 const KILL_GRACE: Duration = Duration::from_secs(5);
 
+/// Extra subprocess budget for `upload_query`: the SQL work can legitimately
+/// consume the whole `--timeout-ms` budget, and the IPFS upload only starts
+/// after it, so the upload needs its own headroom before the hard kill.
+const IPFS_UPLOAD_BUDGET: Duration = Duration::from_secs(60);
+
 #[derive(Debug, Deserialize, JsonSchema)]
 // Reject stale clients still sending the removed `blocks`/`skip_index` params
 // instead of silently querying the whole DB.
@@ -30,6 +35,42 @@ struct QueryParams {
         description = "Read-only SQL run against the local txs DB. Tables: transactions, logs, blocks. See the tool description for the full schema, U256 helper functions and {MACRO()} reference."
     )]
     sql: String,
+    #[schemars(
+        description = "Native token price in USD (e.g. 3500.0 for ETH); also feeds the {NATIVE_TOKEN_PRICE()} macro and convert_usd(wei, price)"
+    )]
+    native_token_price: Option<f64>,
+    #[schemars(description = "Maximum number of rows the query may return (errors when exceeded)")]
+    max_rows: Option<usize>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+enum UploadFormat {
+    #[default]
+    Json,
+    Html,
+}
+
+impl UploadFormat {
+    fn as_cli_arg(self) -> &'static str {
+        match self {
+            UploadFormat::Json => "json",
+            UploadFormat::Html => "html",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct UploadQueryParams {
+    #[schemars(
+        description = "Read-only SQL run against the local txs DB; same schema, helper functions and {MACRO()} reference as the `query` tool."
+    )]
+    sql: String,
+    #[schemars(
+        description = "Rendered artifact to upload: 'json' (the QueryResponse envelope, default) or 'html' (a self-contained click-to-sort results page)"
+    )]
+    format: Option<UploadFormat>,
     #[schemars(
         description = "Native token price in USD (e.g. 3500.0 for ETH); also feeds the {NATIVE_TOKEN_PRICE()} macro and convert_usd(wei, price)"
     )]
@@ -106,27 +147,34 @@ EXAMPLES:
     async fn query(&self, params: Parameters<QueryParams>) -> Result<CallToolResult, McpError> {
         let p = params.0;
         debug!("MCP query request");
-        // Always --skip-index: this tool is read-only and never fetches or
-        // writes blocks. The local store is populated out-of-band by the
-        // operator (e.g. `mevlog index --live`).
-        let mut args = vec![
-            "query".to_string(),
-            "--skip-index".to_string(),
-            "--timeout-ms".to_string(),
-            self.timeout.as_millis().to_string(),
-            "--sql".to_string(),
-            p.sql,
-        ];
-        if let Some(max_rows) = p.max_rows {
-            args.push("--max-rows".to_string());
-            args.push(max_rows.to_string());
-        }
-        if let Some(price) = p.native_token_price {
-            args.push("--native-token-price".to_string());
-            args.push(price.to_string());
-        }
-        self.push_conn_args(&mut args);
-        let output = self.run_mevlog_cmd(&args).await?;
+        let args = self.query_cli_args(p.sql, p.max_rows, p.native_token_price);
+        let output = self.run_mevlog_cmd("json", &args).await?;
+        Ok(CallToolResult::success(vec![Content::text(output)]))
+    }
+
+    #[tool(
+        description = r#"Run the same read-only SQL as the `query` tool, render the result as JSON or HTML, and upload it to IPFS instead of returning the rows.
+
+The upload is PUBLIC and effectively permanent - anyone with the CID can fetch it. Use it to share or persist query results, not as a substitute for `query`.
+
+Accepts the same `sql` / `native_token_price` / `max_rows` as `query` (same schema, U256 helpers and {MACRO()} reference - see the `query` tool description), plus `format`:
+  • "json" (default) - uploads the QueryResponse envelope; returns {"cid", "gateway_url", "filename"}
+  • "html" - uploads a self-contained click-to-sort results page; returns a short text receipt with the same cid / gateway / filename fields
+
+The uploaded object is named mevlog-<content-hash>.<ext>, so identical results map to the same filename. The IPFS backend comes from the server operator's ~/.mevlog/config.toml `[ipfs]` block: `pinata` (default; needs a JWT with the Files: Write scope via ipfs.pinata_jwt or the MEVLOG_PINATA_JWT env var) or `kubo` (local `ipfs daemon`). Fails with a config error when no backend is usable."#
+    )]
+    async fn upload_query(
+        &self,
+        params: Parameters<UploadQueryParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let p = params.0;
+        let format = p.format.unwrap_or_default();
+        debug!(format = format.as_cli_arg(), "MCP upload_query request");
+        let mut args = self.query_cli_args(p.sql, p.max_rows, p.native_token_price);
+        args.push("--ipfs".to_string());
+        let output = self
+            .run_mevlog_cmd_with_extra_budget(format.as_cli_arg(), &args, IPFS_UPLOAD_BUDGET)
+            .await?;
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 
@@ -140,12 +188,42 @@ EXAMPLES:
             "--chain-id".to_string(),
             self.chain_id.to_string(),
         ];
-        let output = self.run_mevlog_cmd(&args).await?;
+        let output = self.run_mevlog_cmd("json", &args).await?;
         Ok(CallToolResult::success(vec![Content::text(output)]))
     }
 }
 
 impl MevlogMcpServer {
+    /// CLI args shared by the `query` and `upload_query` tools. Always
+    /// --skip-index: these tools are read-only and never fetch or write
+    /// blocks. The local store is populated out-of-band by the operator
+    /// (e.g. `mevlog index --live`).
+    fn query_cli_args(
+        &self,
+        sql: String,
+        max_rows: Option<usize>,
+        native_token_price: Option<f64>,
+    ) -> Vec<String> {
+        let mut args = vec![
+            "query".to_string(),
+            "--skip-index".to_string(),
+            "--timeout-ms".to_string(),
+            self.timeout.as_millis().to_string(),
+            "--sql".to_string(),
+            sql,
+        ];
+        if let Some(max_rows) = max_rows {
+            args.push("--max-rows".to_string());
+            args.push(max_rows.to_string());
+        }
+        if let Some(price) = native_token_price {
+            args.push("--native-token-price".to_string());
+            args.push(price.to_string());
+        }
+        self.push_conn_args(&mut args);
+        args
+    }
+
     fn push_conn_args(&self, args: &mut Vec<String>) {
         args.push("--rpc-url".to_string());
         args.push(self.rpc_url.clone());
@@ -153,14 +231,24 @@ impl MevlogMcpServer {
         args.push(self.chain_id.to_string());
     }
 
-    fn build_cli_args(&self, args: &[String]) -> Vec<String> {
-        let mut cli_args = vec!["--format".to_string(), "json".to_string()];
+    fn build_cli_args(&self, format: &str, args: &[String]) -> Vec<String> {
+        let mut cli_args = vec!["--format".to_string(), format.to_string()];
         cli_args.extend_from_slice(args);
         cli_args
     }
 
-    async fn run_mevlog_cmd(&self, args: &[String]) -> Result<String, McpError> {
-        let cli_args = self.build_cli_args(args);
+    async fn run_mevlog_cmd(&self, format: &str, args: &[String]) -> Result<String, McpError> {
+        self.run_mevlog_cmd_with_extra_budget(format, args, Duration::ZERO)
+            .await
+    }
+
+    async fn run_mevlog_cmd_with_extra_budget(
+        &self,
+        format: &str,
+        args: &[String],
+        extra_budget: Duration,
+    ) -> Result<String, McpError> {
+        let cli_args = self.build_cli_args(format, args);
         let logged: Vec<_> = {
             let mut out = Vec::new();
             let mut skip_next = false;
@@ -189,7 +277,9 @@ impl MevlogMcpServer {
         // a hard-kill backstop for cases the CLI can't self-bound — db_info (no
         // internal timeout) or a wedged child. KILL_GRACE covers process startup
         // before the CLI's own clock starts and lets its cleaner error win.
-        let backstop = self.timeout + KILL_GRACE;
+        // extra_budget covers work outside the --timeout-ms budget (the IPFS
+        // upload in upload_query, which only starts after the SQL finishes).
+        let backstop = self.timeout + extra_budget + KILL_GRACE;
         let output = match tokio::time::timeout(backstop, cmd.output()).await {
             Ok(res) => res.map_err(|e| {
                 McpError::internal_error(format!("Failed to execute mevlog: {e}"), None)
@@ -235,7 +325,7 @@ impl ServerHandler for MevlogMcpServer {
                 Implementation::new("mevlog", env!("CARGO_PKG_VERSION")),
             )
             .with_instructions(
-                "mevlog MCP server. Exposes two read-only tools: `query` runs SQL against a local store of indexed Ethereum transactions (no indexing or writes), and `db_info` reports the local store's indexed block range, row counts and file size.",
+                "mevlog MCP server. Exposes three tools: `query` runs read-only SQL against a local store of indexed Ethereum transactions (no indexing or writes), `upload_query` runs the same SQL but uploads the rendered JSON/HTML result to IPFS and returns a CID + gateway URL, and `db_info` reports the local store's indexed block range, row counts and file size.",
             )
     }
 }
@@ -349,7 +439,9 @@ pub async fn run_mcp_server(
 
 #[cfg(test)]
 mod tests {
-    use crate::mcp_server::{bearer_token, check_auth, constant_time_eq};
+    use crate::mcp_server::{
+        UploadFormat, UploadQueryParams, bearer_token, check_auth, constant_time_eq,
+    };
 
     #[test]
     fn constant_time_eq_works() {
@@ -412,7 +504,7 @@ mod tests {
         server.push_conn_args(&mut args);
 
         assert_eq!(
-            server.build_cli_args(&args),
+            server.build_cli_args("json", &args),
             vec![
                 "--format".to_string(),
                 "json".to_string(),
@@ -427,5 +519,50 @@ mod tests {
                 "1".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn upload_query_cli_args_render_requested_format_and_ipfs_flag() {
+        let server = crate::mcp_server::MevlogMcpServer::new(
+            "http://localhost:8545".into(),
+            1,
+            std::time::Duration::from_millis(30000),
+        );
+
+        let mut args = server.query_cli_args("SELECT 1".to_string(), Some(10), Some(3500.0));
+        args.push("--ipfs".to_string());
+
+        assert_eq!(
+            server.build_cli_args(UploadFormat::Html.as_cli_arg(), &args),
+            vec![
+                "--format".to_string(),
+                "html".to_string(),
+                "query".to_string(),
+                "--skip-index".to_string(),
+                "--timeout-ms".to_string(),
+                "30000".to_string(),
+                "--sql".to_string(),
+                "SELECT 1".to_string(),
+                "--max-rows".to_string(),
+                "10".to_string(),
+                "--native-token-price".to_string(),
+                "3500".to_string(),
+                "--rpc-url".to_string(),
+                "http://localhost:8545".to_string(),
+                "--chain-id".to_string(),
+                "1".to_string(),
+                "--ipfs".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn upload_format_defaults_to_json() {
+        let p: UploadQueryParams = serde_json::from_str(r#"{"sql": "SELECT 1"}"#).unwrap();
+        assert!(matches!(p.format.unwrap_or_default(), UploadFormat::Json));
+
+        let p: UploadQueryParams =
+            serde_json::from_str(r#"{"sql": "SELECT 1", "format": "html"}"#).unwrap();
+        assert!(matches!(p.format, Some(UploadFormat::Html)));
     }
 }

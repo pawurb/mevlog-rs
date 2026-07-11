@@ -64,7 +64,9 @@ Most data commands also share these connection / fetch options (omitted from the
 per-command listings below to keep them short):
 
 ```text
-      --rpc-url <RPC_URL>                The URL of the HTTP provider
+      --rpc-url <RPC_URL>                The URL of the HTTP provider. Pass repeatedly to fetch block data
+                                         from multiple RPCs concurrently when indexing
+                                         (e.g. --rpc-url A --rpc-url B)
       --chain-id <CHAIN_ID>              Chain ID to automatically select RPC URL from ChainList
       --rpc-timeout-ms <MS>              Timeout for filtering RPC URLs [default: 1000]
       --block-timeout-ms <MS>            Timeout for block fetching [default: 10000]

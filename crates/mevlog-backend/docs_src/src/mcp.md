@@ -42,7 +42,7 @@ Authorization: Bearer <token>
 
 ## Tools
 
-The server exposes two read-only tools.
+The server exposes three tools. None of them write to the local store; `upload_query` additionally publishes rendered results to IPFS.
 
 ### `query`
 
@@ -73,6 +73,21 @@ SELECT tx_hash, signature
 FROM transactions
 WHERE block_number = 22030899 AND success = 0;
 ```
+
+### `upload_query`
+
+Runs the same read-only SQL as `query`, renders the result as JSON or HTML, and uploads it to IPFS instead of returning the rows. The upload is **public and effectively permanent** - anyone with the CID can fetch it.
+
+Parameters:
+
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `sql` | string | yes | Same as `query`. |
+| `format` | string | no | `"json"` (default) uploads the `QueryResponse` envelope and returns `{"cid", "gateway_url", "filename"}`; `"html"` uploads a self-contained click-to-sort results page and returns a short text receipt with the same fields. |
+| `native_token_price` | number | no | Same as `query`. |
+| `max_rows` | integer | no | Same as `query`. |
+
+The uploaded object is named `mevlog-<content-hash>.<ext>`, so identical results map to the same filename. The IPFS backend comes from the server operator's `~/.mevlog/config.toml` `[ipfs]` block: `pinata` (default; needs a JWT with the `Files: Write` scope via `ipfs.pinata_jwt` or the `MEVLOG_PINATA_JWT` env var) or `kubo` (local `ipfs daemon`). The tool fails with a config error when no backend is usable. Equivalent to the `mevlog query --ipfs` CLI command.
 
 ### `db_info`
 
