@@ -65,6 +65,10 @@ pub(crate) async fn print_query_outcome(outcome: QueryOutcome, render: &RenderOp
                 Some(desc) => format!("{desc}\n{table}"),
                 None => table,
             };
+            let body = match outcome.latest_block {
+                Some(latest_block) => format!("{body}\nlatest_block: {latest_block}"),
+                None => body,
+            };
             let body = format!("{body}\ngenerated_at: {}", generated_at_utc());
             (body, "text/plain", "txt")
         }
@@ -75,6 +79,7 @@ pub(crate) async fn print_query_outcome(outcome: QueryOutcome, render: &RenderOp
                 chain_name: &outcome.chain.name,
                 chain_id: outcome.chain.chain_id,
                 blocks: outcome.query.blocks.as_deref(),
+                latest_block: outcome.latest_block,
                 sql: outcome.query.sql.as_deref(),
                 description: desc,
                 row_count: outcome.rows.len(),
@@ -96,6 +101,7 @@ pub(crate) async fn print_query_outcome(outcome: QueryOutcome, render: &RenderOp
                 outcome.duration_ns,
                 outcome.cached_blocks,
                 outcome.new_blocks,
+                outcome.latest_block,
                 outcome.query,
                 render.desc.clone(),
             )?;

@@ -83,12 +83,12 @@ Parameters:
 | Param | Type | Required | Description |
 |-------|------|----------|-------------|
 | `sql` | string | yes | Same as `query`. |
-| `format` | string | no | `"json"` (default) uploads the `QueryResponse` envelope and returns `{"cid", "gateway_url", "pinata_gateway_url", "filename"}` (`pinata_gateway_url` is the account's dedicated Pinata gateway, which serves the file immediately; `null` when unknown or on the `kubo` backend); `"html"` uploads a self-contained click-to-sort results page and returns a short text receipt with the same fields. |
+| `format` | string | no | `"json"` (default) uploads the `QueryResponse` envelope and returns `{"cid", "gateway_url", "pinata_gateway_url", "filename"}` (`pinata_gateway_url` is the account's dedicated Pinata gateway, which serves the file immediately; `null` when unknown or on the `kubo` backend); `"html"` uploads a self-contained static results page (no JavaScript) and returns a short text receipt with the same fields. |
 | `description` | string | no | Optional description of the query, max 960 characters. Echoed as the `description` field in the uploaded JSON envelope, or used as the page title for `"html"`. |
 | `native_token_price` | number | no | Same as `query`. |
 | `max_rows` | integer | no | Same as `query`. |
 
-The uploaded object is named `mevlog-<content-hash>.<ext>`, so identical results map to the same filename. The IPFS backend comes from the server operator's `~/.mevlog/config.toml` `[ipfs]` block: `pinata` (default; needs a JWT with the `Files: Write` scope via `ipfs.pinata_jwt` or the `MEVLOG_PINATA_JWT` env var) or `kubo` (local `ipfs daemon`). For `pinata`, the dedicated gateway behind `pinata_gateway_url` comes from `ipfs.pinata_gateway` / `MEVLOG_PINATA_GATEWAY`, or is auto-discovered when the JWT also has the `Gateways: Read` scope - see [config.toml](./config.md#ipfs---ipfs-uploads---ipfs). The tool fails with a config error when no backend is usable. Equivalent to the `mevlog query --ipfs` CLI command.
+The uploaded object is named `mevlog-<content-hash>.<ext>`, so identical results map to the same filename. The IPFS backend comes from the server operator's `~/.mevlog/config.toml` `[ipfs]` block: `pinata` (default; needs a JWT with the `Files: Write` scope via `ipfs.pinata_jwt` or the `MEVLOG_PINATA_JWT` env var) or `kubo` (local `ipfs daemon`). For `pinata`, the dedicated gateway behind `pinata_gateway_url` comes from `ipfs.pinata_gateway` / `MEVLOG_PINATA_GATEWAY`, or is auto-discovered when the JWT also has the `Gateways: Read` scope - see [IPFS Uploads](./ipfs.md) and [config.toml](./config.md#ipfs---ipfs-uploads---ipfs). The tool fails with a config error when no backend is usable. Equivalent to the `mevlog query --ipfs` CLI command.
 
 ### `db_info`
 

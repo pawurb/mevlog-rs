@@ -65,6 +65,7 @@ pub struct HtmlMeta<'a> {
     pub chain_name: &'a str,
     pub chain_id: u64,
     pub blocks: Option<&'a str>,
+    pub latest_block: Option<u64>,
     pub sql: Option<&'a str>,
     pub description: Option<&'a str>,
     pub row_count: usize,
@@ -149,8 +150,9 @@ fn html_cell(column: &str, value: Option<&Value>) -> String {
 }
 
 /// Renders query results as a self-contained HTML page: inline styling, a
-/// metadata header, and a click-to-sort table. No external assets, so the file
-/// works offline and when served from any host.
+/// metadata header, and a static results table. Strictly HTML + CSS - no
+/// JavaScript (shared/IPFS-hosted files must not carry scripts) and no
+/// external assets, so the file works offline and when served from any host.
 pub fn rows_to_html(columns: &[String], rows: &[Value], meta: &HtmlMeta) -> String {
     let mut header_cells = String::new();
     for col in columns {
@@ -167,10 +169,35 @@ pub fn rows_to_html(columns: &[String], rows: &[Value], meta: &HtmlMeta) -> Stri
         body.push_str("</tr>");
     }
 
-    let blocks = meta.blocks.map(encode_text).unwrap_or_default();
-    let sql = meta.sql.map(encode_text).unwrap_or_default();
     let chain = encode_text(meta.chain_name);
     let title = encode_text(meta.description.unwrap_or("mevlog query results"));
+
+    let blocks_segment = meta
+        .blocks
+        .map(|b| {
+            format!(
+                "blocks <b>{}</b><span class=\"sep\">\u{b7}</span>",
+                encode_text(b)
+            )
+        })
+        .unwrap_or_default();
+
+    let latest_block_segment = meta
+        .latest_block
+        .map(|n| format!("latest block <b>{n}</b><span class=\"sep\">\u{b7}</span>"))
+        .unwrap_or_default();
+
+    let sql_details = meta
+        .sql
+        .map(|s| {
+            format!(
+                "<details class=\"sql\" open>\n<summary>sql</summary>\n<pre>{}</pre>\n</details>",
+                encode_text(s)
+            )
+        })
+        .unwrap_or_default();
+
+    let row_word = if meta.row_count == 1 { "row" } else { "rows" };
 
     format!(
         r#"<!doctype html>
@@ -186,57 +213,94 @@ pub fn rows_to_html(columns: &[String], rows: &[Value], meta: &HtmlMeta) -> Stri
 :root {{
   color-scheme: dark;
   --bg: hsl(210, 25%, 8%);
-  --panel: hsl(210, 22%, 11%);
+  --panel: hsl(210, 22%, 10.5%);
   --panel-2: hsl(210, 20%, 14%);
-  --line: hsl(210, 18%, 18%);
+  --line: hsl(210, 18%, 17%);
   --ink: #c5c5c5;
   --ink-strong: #e6e1d6;
-  --muted: #87919c;
+  --muted: #7d8894;
   --orange: #f5ae2e;
   --orange-code: #ffb454;
   --green: #aad94c;
   --red: #ff645a;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }}
 * {{ box-sizing: border-box; }}
-body {{ margin: 0; padding: 1.5rem; font: 14px/1.5 system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--ink); border-top: 2px solid var(--orange); }}
-h1 {{ font-size: 1.15rem; font-weight: 650; letter-spacing: -.01em; margin: 0 0 1rem; color: var(--orange); }}
-.meta {{ background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }}
-.meta dl {{ display: grid; grid-template-columns: max-content 1fr; gap: .4rem 1.25rem; margin: 0; }}
-.meta dt {{ color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; line-height: 21px; }}
-.meta dd {{ margin: 0; color: var(--ink-strong); }}
-.meta code {{ display: block; white-space: pre-wrap; word-break: break-word; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .6rem; font: 12px/1.4 ui-monospace, monospace; color: var(--orange-code); }}
-.tablewrap {{ overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }}
+body {{
+  margin: 0; padding: 0 1.5rem 3rem;
+  font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg); color: var(--ink);
+  border-top: 2px solid var(--orange);
+}}
+.page {{ max-width: 1080px; margin: 0 auto; }}
+.prompt {{
+  display: flex; align-items: baseline; justify-content: space-between; gap: .3rem 1rem; flex-wrap: wrap;
+  padding: 1.4rem 0 0; font: 13px/1.4 var(--mono);
+}}
+.prompt .cmd {{ color: var(--orange-code); }}
+.prompt .cmd::before {{ content: "\276F\00a0"; color: var(--orange); font-weight: 700; }}
+.prompt .chain {{ color: var(--muted); font-size: 12px; letter-spacing: .05em; white-space: nowrap; }}
+.prompt .chain b {{ color: var(--ink); font-weight: 500; }}
+h1 {{
+  margin: 1.6rem 0 .7rem; max-width: 46ch;
+  font-size: clamp(1.4rem, 3.2vw, 1.85rem); line-height: 1.28;
+  font-weight: 620; letter-spacing: -.018em; color: var(--ink-strong);
+  text-wrap: balance;
+}}
+.metaline {{ font: 12px/1.6 var(--mono); color: var(--muted); margin: 0 0 1.1rem; }}
+.metaline b {{ color: var(--ink); font-weight: 500; }}
+.metaline .sep {{ margin: 0 .55em; color: var(--line); }}
+.tablewrap {{ overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }}
 table {{ border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }}
-thead th {{ position: sticky; top: 0; background: var(--panel-2); color: var(--ink-strong); text-align: left; padding: .5rem .7rem; cursor: pointer; user-select: none; white-space: nowrap; border-bottom: 1px solid var(--line); }}
-thead th:hover {{ color: var(--orange); }}
-thead th[data-asc]::after {{ color: var(--orange); font-size: 11px; }}
-thead th[data-asc="true"]::after {{ content: " \2191"; }}
-thead th[data-asc="false"]::after {{ content: " \2193"; }}
-tbody td {{ padding: .4rem .7rem; border-bottom: 1px solid hsl(210, 20%, 12%); white-space: nowrap; }}
-tbody tr:nth-child(even) {{ background: hsl(210, 23%, 9.5%); }}
-tbody tr:hover {{ background: hsl(210, 22%, 12%); }}
-td.mono {{ font-family: ui-monospace, monospace; }}
-td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+thead th {{
+  position: sticky; top: 0; background: var(--panel-2);
+  color: var(--muted); font-size: 11px; font-weight: 600;
+  letter-spacing: .09em; text-transform: uppercase;
+  text-align: left; padding: .6rem .85rem;
+  white-space: nowrap; border-bottom: 1px solid var(--line);
+}}
+tbody td {{ padding: .55rem .85rem; border-bottom: 1px solid hsl(210, 20%, 12.5%); white-space: nowrap; font-size: 13.5px; }}
+tbody tr:last-child td {{ border-bottom: 0; }}
+tbody tr:hover {{ background: hsl(210, 22%, 13%); }}
+td.mono {{ font-family: var(--mono); font-size: 12.5px; }}
+td.num {{ text-align: right; font-family: var(--mono); font-size: 12.5px; }}
 .pill {{ display: inline-block; padding: .05rem .5rem; border-radius: 999px; font-size: 12px; font-weight: 600; }}
 .pill.ok {{ background: hsl(80, 45%, 14%); color: var(--green); }}
 .pill.fail {{ background: hsl(4, 45%, 15%); color: var(--red); }}
 .empty {{ padding: 1rem; color: var(--muted); }}
-.footer {{ margin-top: 1rem; color: var(--muted); }}
-.footer a {{ color: var(--orange); }}
+details.sql {{ margin: 0 0 1.6rem; }}
+details.sql summary {{
+  cursor: pointer; user-select: none; display: inline-block;
+  font: 600 11px/1 var(--mono); letter-spacing: .09em; text-transform: uppercase;
+  color: var(--muted); padding: .3rem 0;
+}}
+details.sql summary::marker {{ content: ""; }}
+details.sql summary::-webkit-details-marker {{ display: none; }}
+details.sql summary::before {{ content: "\25B8\00a0"; color: var(--orange); }}
+details.sql[open] summary::before {{ content: "\25BE\00a0"; }}
+details.sql summary:hover, details.sql summary:focus-visible {{ color: var(--orange); }}
+details.sql pre {{
+  margin: .5rem 0 0; padding: .8rem 1rem;
+  background: var(--panel); border: 1px solid var(--line); border-left: 2px solid var(--orange);
+  border-radius: 0 8px 8px 0;
+  font: 12.5px/1.55 var(--mono); color: var(--ink);
+  white-space: pre-wrap; word-break: break-word;
+}}
+:focus-visible {{ outline: 2px solid var(--orange); outline-offset: 2px; }}
+.footer {{ margin-top: 2rem; padding-top: .9rem; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }}
+.footer a {{ color: var(--orange); text-decoration: none; }}
+.footer a:hover {{ text-decoration: underline; }}
+@media (max-width: 600px) {{
+  body {{ padding: 0 1rem 2rem; }}
+}}
 </style>
 </head>
 <body>
+<div class="page">
+<div class="prompt"><span class="cmd">mevlog query</span><span class="chain"><b>{chain}</b> &middot; id {chain_id}</span></div>
 <h1>{title}</h1>
-<div class="meta">
-<dl>
-<dt>chain</dt><dd>{chain} <span style="color:var(--muted)">(id {chain_id})</span></dd>
-<dt>blocks</dt><dd>{blocks}</dd>
-<dt>rows</dt><dd>{row_count}</dd>
-<dt>duration</dt><dd>{duration}</dd>
-<dt>generated</dt><dd>{generated_at}</dd>
-<dt>sql</dt><dd><code>{sql}</code></dd>
-</dl>
-</div>
+<p class="metaline">{blocks_segment}{latest_block_segment}<b>{row_count}</b> {row_word}<span class="sep">&middot;</span><b>{duration}</b><span class="sep">&middot;</span>{generated_at}</p>
+{sql_details}
 <div class="tablewrap">
 <table id="results">
 <thead><tr>{header_cells}</tr></thead>
@@ -245,46 +309,20 @@ td.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
 </div>
 {empty}
 <p class="footer">Generated with <a href="https://mevlog.rs" target="_blank" rel="noopener">mevlog.rs</a></p>
-<script>
-(function () {{
-  var table = document.getElementById('results');
-  if (!table) return;
-  var headers = table.tHead.rows[0].cells;
-  for (var i = 0; i < headers.length; i++) {{
-    (function (col) {{
-      headers[col].addEventListener('click', function () {{
-        var tbody = table.tBodies[0];
-        var rows = Array.prototype.slice.call(tbody.rows);
-        var asc = headers[col].dataset.asc !== 'true';
-        for (var j = 0; j < headers.length; j++) delete headers[j].dataset.asc;
-        headers[col].dataset.asc = asc ? 'true' : 'false';
-        var decimal = /^-?\d+(\.\d+)?$/;
-        rows.sort(function (a, b) {{
-          var x = a.cells[col].textContent.trim();
-          var y = b.cells[col].textContent.trim();
-          // Only compare numerically when both cells are plain decimals; hex
-          // values like 0xaa parseFloat to 0 and must sort lexicographically.
-          var num = decimal.test(x) && decimal.test(y);
-          var cmp = num ? parseFloat(x) - parseFloat(y) : x.localeCompare(y);
-          return asc ? cmp : -cmp;
-        }});
-        rows.forEach(function (r) {{ tbody.appendChild(r); }});
-      }});
-    }})(i);
-  }}
-}})();
-</script>
+</div>
 </body>
 </html>
 "#,
         title = title,
         chain = chain,
         chain_id = meta.chain_id,
-        blocks = blocks,
+        blocks_segment = blocks_segment,
+        latest_block_segment = latest_block_segment,
         row_count = meta.row_count,
+        row_word = row_word,
         duration = encode_text(meta.duration),
         generated_at = encode_text(meta.generated_at),
-        sql = sql,
+        sql_details = sql_details,
         header_cells = header_cells,
         body = body,
         empty = if rows.is_empty() {
@@ -316,6 +354,10 @@ pub struct QueryOutcome {
     pub rows: Vec<Value>,
     pub cached_blocks: u64,
     pub new_blocks: u64,
+    /// Chain's latest block at query time, for context on how fresh the data
+    /// is. `None` when it was never resolved (`--skip-index` without an
+    /// explicit latest block).
+    pub latest_block: Option<u64>,
     pub duration_ns: u64,
     pub chain: ChainInfoNoRpcsJson,
     pub query: QueryParams,
@@ -353,6 +395,10 @@ pub struct QueryResponse {
     pub result_count: usize,
     pub cached_blocks: u64,
     pub new_blocks: u64,
+    /// Chain's latest block at query time; absent when never resolved
+    /// (`--skip-index` without an explicit latest block).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latest_block: Option<u64>,
     pub duration: String,
     /// UTC render time (RFC 3339); absent in envelopes predating the field.
     #[serde(default)]
@@ -371,6 +417,7 @@ pub fn serialize_query_response(
     duration_ns: u64,
     cached_blocks: u64,
     new_blocks: u64,
+    latest_block: Option<u64>,
     query: QueryParams,
     description: Option<String>,
 ) -> serde_json::Result<String> {
@@ -380,6 +427,7 @@ pub fn serialize_query_response(
         result: results,
         cached_blocks,
         new_blocks,
+        latest_block,
         duration: format_duration(duration_ns),
         generated_at: generated_at_utc(),
         chain,
@@ -490,6 +538,7 @@ mod test {
             chain_name: "Ethereum",
             chain_id: 1,
             blocks: Some("100:101"),
+            latest_block: Some(102),
             sql: Some("SELECT * FROM transactions"),
             description: None,
             row_count: 2,
@@ -508,10 +557,19 @@ mod test {
         assert!(html.contains("SELECT * FROM transactions"));
         assert!(html.contains("pill ok"));
         assert!(html.contains("pill fail"));
-        assert!(html.contains("<dt>generated</dt><dd>2026-07-11T13:19:35Z</dd>"));
         assert!(html.contains(
             r#"Generated with <a href="https://mevlog.rs" target="_blank" rel="noopener">mevlog.rs</a>"#
         ));
+        // Shared/IPFS-hosted artifacts must stay script-free: HTML + CSS only.
+        assert!(!html.contains("<script"));
+        assert!(html.contains("latest block <b>102</b>"));
+
+        let meta = HtmlMeta {
+            latest_block: None,
+            ..sample_meta()
+        };
+        let html = rows_to_html(&sample_columns(), &sample_rows(), &meta);
+        assert!(!html.contains("latest block"));
     }
 
     #[test]
@@ -591,12 +649,14 @@ mod test {
             1_000,
             0,
             0,
+            Some(102),
             sample_query(),
             Some("weekly USDC report".to_string()),
         )
         .unwrap();
         let parsed: QueryResponse = serde_json::from_str(&body).unwrap();
         assert_eq!(parsed.description.as_deref(), Some("weekly USDC report"));
+        assert_eq!(parsed.latest_block, Some(102));
         // RFC 3339 UTC stamp, e.g. 2026-07-11T13:19:35Z.
         assert!(parsed.generated_at.ends_with('Z') && parsed.generated_at.contains('T'));
 
@@ -607,10 +667,12 @@ mod test {
             1_000,
             0,
             0,
+            None,
             sample_query(),
             None,
         )
         .unwrap();
         assert!(!body.contains("description"));
+        assert!(!body.contains("latest_block"));
     }
 }

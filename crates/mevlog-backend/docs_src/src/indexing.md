@@ -24,11 +24,11 @@ Validation: in `N:M` the start must be `<=` the end, and neither a single block 
 1. The range is resolved to concrete block numbers (`latest` and `N:` are expanded via one RPC call for the current head).
 2. mevlog reads the `block_number`s already present in the `blocks` table for that range. Because a row exists for every indexed block - including empty ones - the `blocks` table itself is the indexed-block tracker; any number in the range without a row is considered missing.
 3. Only the missing blocks are fetched over RPC and indexed into the store. Blocks that are already cached are reused untouched, so repeat queries over the same range hit no RPC.
-4. The JSON envelope reports the split as `cached_blocks` (already present) and `new_blocks` (fetched this run).
+4. The JSON envelope reports the split as `cached_blocks` (already present) and `new_blocks` (fetched this run). Every output format also echoes the chain's latest block at query time (`latest_block` in JSON, a `latest_block:` line after table output, a `latest block` entry in the HTML meta line; CSV stays bare) for context on how fresh the queried data is.
 
 **The `--skip-index` flag**
 
-`mevlog query --skip-index` skips indexing entirely and runs the SQL against the local store as-is: no block range resolution and no RPC fetching. Use it to query already-cached data without touching the network. It is mutually exclusive with `--blocks` (pass one or the other, not both), and both `cached_blocks` and `new_blocks` are reported as `0` since nothing is resolved or fetched.
+`mevlog query --skip-index` skips indexing entirely and runs the SQL against the local store as-is: no block range resolution and no RPC fetching. Use it to query already-cached data without touching the network. It is mutually exclusive with `--blocks` (pass one or the other, not both), and both `cached_blocks` and `new_blocks` are reported as `0` since nothing is resolved or fetched. `latest_block` is omitted too - the chain head is never resolved - unless an explicit `--latest-block` value is passed.
 
 ## `index` command
 

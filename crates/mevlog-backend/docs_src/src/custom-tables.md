@@ -123,6 +123,7 @@ Sample response:
   "result_count": 1,
   "cached_blocks": 1000,
   "new_blocks": 0,
+  "latest_block": 25314990,
   "duration": "182.44 ms",
   "generated_at": "2026-07-11T13:19:35Z",
   "chain": {

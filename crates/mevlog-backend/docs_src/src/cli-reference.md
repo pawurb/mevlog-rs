@@ -54,11 +54,12 @@ Available on every command (`mcp` and `tui` require their feature flags):
   -V, --version                        Print version (root command only)
 ```
 
-The `html` format renders a self-contained, click-to-sort HTML page and writes
+The `html` format renders a self-contained, static HTML page (pure HTML + CSS, no JavaScript) and writes
 it to `<--html-path or cwd>/<--html-filename or mevlog-<content-hash>.html>`,
 printing the file path. With `--ipfs`, the rendered `--format` output is uploaded
 to IPFS (Pinata or a local Kubo node, selected by the `[ipfs]` block in
-`config.toml`) and a CID + gateway URL is printed instead. `--desc` attaches a
+`config.toml`) and a CID + gateway URL is printed instead - see
+[IPFS Uploads](./ipfs.md). `--desc` attaches a
 human-readable description (max 960 characters) to the result: it becomes the
 `description` field in the JSON envelope, a line above the table output and the
 HTML page title (CSV output is unchanged, since a description line would break

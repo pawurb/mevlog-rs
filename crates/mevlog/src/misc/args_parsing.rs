@@ -97,7 +97,10 @@ impl BlocksRange {
     }
 }
 
-async fn get_latest_block(provider: &impl Provider, latest_offset: Option<u64>) -> Result<u64> {
+pub(crate) async fn get_latest_block(
+    provider: &impl Provider,
+    latest_offset: Option<u64>,
+) -> Result<u64> {
     let mut latest_block = provider
         .get_block_number()
         .await

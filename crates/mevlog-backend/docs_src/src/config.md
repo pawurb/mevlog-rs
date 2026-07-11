@@ -47,7 +47,7 @@ See [Custom Tables](./custom-tables.md) for a full walkthrough, query examples, 
 
 ## `[ipfs]` - IPFS uploads (`--ipfs`)
 
-Configures where the `--ipfs` flag uploads the rendered query output:
+Configures where the `--ipfs` flag uploads the rendered query output. See [IPFS Uploads](./ipfs.md) for a walkthrough of the feature.
 
 ```toml
 [ipfs]

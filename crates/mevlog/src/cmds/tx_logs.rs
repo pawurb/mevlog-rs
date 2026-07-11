@@ -9,7 +9,10 @@ use crate::{
         display_sql::logs_display_query, indexing::index_block_range,
         raw_query::run_raw_query_async,
     },
-    misc::shared_init::{ConnOpts, CryoOpts, init_deps},
+    misc::{
+        args_parsing::get_latest_block,
+        shared_init::{ConnOpts, CryoOpts, init_deps},
+    },
     models::json::query_response::{QueryOutcome, QueryParams},
 };
 
@@ -21,6 +24,8 @@ pub async fn tx_logs(
     cryo_opts: &CryoOpts,
 ) -> Result<QueryOutcome> {
     let deps = init_deps(conn_opts).await?;
+
+    let latest_block = Some(get_latest_block(&deps.provider, None).await?);
 
     let receipt = deps
         .provider
@@ -60,6 +65,7 @@ pub async fn tx_logs(
         rows: result.rows,
         cached_blocks,
         new_blocks,
+        latest_block,
         duration_ns,
         chain: chain_info,
         query: QueryParams {
