@@ -13,7 +13,7 @@ use sqlx::SqlitePool;
 
 use crate::db::sigs::{SCHEMA_VERSION, db_file_name, default_db_path};
 
-pub const PROGRESS_CHARS: &str = "█▓▒░─";
+const PROGRESS_CHARS: &str = "█▓▒░─";
 
 pub(crate) fn file_exists() -> bool {
     default_db_path().exists()

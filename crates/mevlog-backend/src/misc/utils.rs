@@ -1,18 +1,7 @@
 use eyre::Result;
-use std::time::{Duration, Instant};
 
 pub(crate) fn deployed_at() -> String {
     std::env::var("DEPLOYED_AT").unwrap_or_else(|_| "unknown".to_string())
-}
-
-pub fn measure_start(label: &str) -> (String, Instant) {
-    (label.to_string(), Instant::now())
-}
-
-pub fn measure_end(start: (String, Instant)) -> Duration {
-    let elapsed = start.1.elapsed();
-    tracing::info!("Elapsed: {:.2?} for '{}'", elapsed, start.0);
-    elapsed
 }
 
 #[hotpath::measure]

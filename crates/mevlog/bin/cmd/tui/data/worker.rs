@@ -20,7 +20,6 @@ use crate::cmd::tui::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum RequestKey {
     Block,
-    Tx,
     Chains,
     ChainInfo,
     RefreshRpc,
@@ -30,7 +29,6 @@ impl DataRequest {
     fn key(&self) -> RequestKey {
         match self {
             DataRequest::Block(..) => RequestKey::Block,
-            DataRequest::Tx(..) => RequestKey::Tx,
             DataRequest::Chains(_) => RequestKey::Chains,
             DataRequest::ChainInfo(_) => RequestKey::ChainInfo,
             DataRequest::RefreshRpc(..) => RequestKey::RefreshRpc,
@@ -120,8 +118,6 @@ pub(crate) fn spawn_data_worker(
                         }
                     })
                 }
-
-                DataRequest::Tx(_tx_hash, _opts) => rt.spawn(async move { todo!() }),
 
                 DataRequest::Chains(filter) => {
                     info!(?filter, "fetching chains");

@@ -1,9 +1,7 @@
 //! UI state management - navigation and selection
 
-use ratatui::widgets::TableState;
-
 use crate::cmd::tui::{
-    app::{App, AppMode, DEFAULT_CHAINS, TxPopupTab},
+    app::{App, AppMode, DEFAULT_CHAINS},
     data::{BlockId, DataRequest},
 };
 
@@ -123,31 +121,6 @@ impl App {
             self.available_chains.clear();
             self.search_query.clear();
         }
-    }
-
-    pub(crate) fn return_to_network_selection(&mut self) {
-        self.items.clear();
-        self.table_state = TableState::default();
-        self.current_block = None;
-        self.loading_block = None;
-        self.is_loading = false;
-        self.tx_popup_open = false;
-        self.tx_popup_scroll = 0;
-        self.tx_popup_tab = TxPopupTab::default();
-        self.selected_chain = None;
-        self.error_message = None;
-        self.chain_id = None;
-        self.rpc_url = None;
-        self.info_popup_open = false;
-        self.rpc_refreshing = false;
-
-        self.available_chains = DEFAULT_CHAINS.iter().map(|c| c.to_chain_entry()).collect();
-
-        self.network_table_state = TableState::default().with_selected(Some(0));
-        self.search_query.clear();
-        self.search_popup_open = false;
-
-        self.mode = AppMode::SelectNetwork;
     }
 
     pub(crate) fn request_rpc_refresh(&mut self) {

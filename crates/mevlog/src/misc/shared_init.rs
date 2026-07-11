@@ -1,4 +1,4 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 use alloy::{
     providers::{Provider, ProviderBuilder},
@@ -306,7 +306,7 @@ impl Default for CryoOpts {
     }
 }
 
-#[derive(Debug, Clone, clap::Parser, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, clap::ValueEnum, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TraceMode {
     Revm,
@@ -323,18 +323,6 @@ impl std::fmt::Display for TraceMode {
     }
 }
 
-impl FromStr for TraceMode {
-    type Err = eyre::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "revm" => Ok(Self::Revm),
-            "rpc" => Ok(Self::RPC),
-            _ => Err(eyre::eyre!("Invalid tracing mode")),
-        }
-    }
-}
-
 #[derive(Debug, Clone, clap::ValueEnum, PartialEq)]
 pub enum OutputFormat {
     Json,
@@ -342,19 +330,4 @@ pub enum OutputFormat {
     Csv,
     Table,
     Html,
-}
-
-impl FromStr for OutputFormat {
-    type Err = eyre::Error;
-
-    fn from_str(s: &str) -> Result<Self> {
-        match s {
-            "json" => Ok(Self::Json),
-            "json-pretty" => Ok(Self::JsonPretty),
-            "csv" => Ok(Self::Csv),
-            "table" => Ok(Self::Table),
-            "html" => Ok(Self::Html),
-            _ => Err(eyre::eyre!("Invalid output format")),
-        }
-    }
 }

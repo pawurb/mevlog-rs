@@ -11,8 +11,8 @@ use crate::{
 /// The `query` command's `--sql` macros, each wrapped in braces. The plain-token
 /// macros are constants; the `RESOLVE_ENS` token carries an argument, so its
 /// grammar lives in [`extract_ens_names`] / [`ens_macro_token`].
-pub const LATEST_BLOCK_MACRO: &str = "{LATEST_BLOCK()}";
-pub const NATIVE_TOKEN_PRICE_MACRO: &str = "{NATIVE_TOKEN_PRICE()}";
+pub(crate) const LATEST_BLOCK_MACRO: &str = "{LATEST_BLOCK()}";
+pub(crate) const NATIVE_TOKEN_PRICE_MACRO: &str = "{NATIVE_TOKEN_PRICE()}";
 const ENS_MACRO_OPEN: &str = "{RESOLVE_ENS(\"";
 const ENS_MACRO_CLOSE: &str = "\")}";
 
