@@ -157,6 +157,7 @@ mod test {
         Block {
             block_number,
             block_hash: FixedBytes::<32>::from([0xab; 32]),
+            parent_hash: None,
             miner: Address::from([0x11; 20]),
             gas_used: 16_000_000,
             timestamp: 1_693_066_895,

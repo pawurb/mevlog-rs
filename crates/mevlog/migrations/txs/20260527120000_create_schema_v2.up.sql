@@ -24,6 +24,7 @@ CREATE UNIQUE INDEX idx_transactions_hash ON transactions (tx_hash);
 CREATE TABLE blocks (
     block_number INTEGER PRIMARY KEY NOT NULL,
     block_hash BLOB NOT NULL,
+    parent_hash BLOB,
     miner BLOB NOT NULL,
     gas_used BIGINT NOT NULL,
     timestamp BIGINT NOT NULL,

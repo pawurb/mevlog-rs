@@ -16,6 +16,9 @@ use crate::misc::parquet_utils::get_parquet_string_value;
 pub struct Block {
     pub block_number: u64,
     pub block_hash: FixedBytes<32>,
+    /// Hash of the parent block, used by reorg checks to verify chain
+    /// continuity. `None` when the source parquet predates the column.
+    pub parent_hash: Option<FixedBytes<32>>,
     /// Fee recipient (cryo `author`).
     pub miner: Address,
     pub gas_used: u64,
@@ -27,20 +30,26 @@ pub struct Block {
 
 #[hotpath::measure_all(future = true)]
 impl Block {
-    // Default cryo `blocks` columns: 0 block_hash, 1 author, 2 block_number,
-    // 3 gas_used, 4 extra_data, 5 timestamp, 6 base_fee_per_gas.
+    // Columns are looked up by name: `parent_hash` is a non-default cryo
+    // column (added via `--include-columns`), which shifts positions, and
+    // pre-v2 cache files lack it entirely.
     pub(crate) fn from_parquet_row(batch: &RecordBatch, row_idx: usize) -> Result<(Block, u64)> {
-        let get = |col_idx: usize| -> String { get_parquet_string_value(batch, col_idx, row_idx) };
+        let get = |name: &str| -> Option<String> {
+            let col_idx = batch.schema().index_of(name).ok()?;
+            let value = get_parquet_string_value(batch, col_idx, row_idx);
+            if value.is_empty() { None } else { Some(value) }
+        };
 
-        let block_number = get(2).parse::<u64>().unwrap();
+        let block_number = get("block_number").unwrap().parse::<u64>().unwrap();
 
         let block = Block {
             block_number,
-            block_hash: FixedBytes::<32>::from_str(&get(0)).unwrap(),
-            miner: Address::from_str(&get(1)).unwrap(),
-            gas_used: get(3).parse::<u64>().unwrap(),
-            timestamp: get(5).parse::<u64>().unwrap(),
-            base_fee_per_gas: get(6).parse::<u64>().ok(),
+            block_hash: FixedBytes::<32>::from_str(&get("block_hash").unwrap()).unwrap(),
+            parent_hash: get("parent_hash").map(|v| FixedBytes::<32>::from_str(&v).unwrap()),
+            miner: Address::from_str(&get("author").unwrap()).unwrap(),
+            gas_used: get("gas_used").unwrap().parse::<u64>().unwrap(),
+            timestamp: get("timestamp").unwrap().parse::<u64>().unwrap(),
+            base_fee_per_gas: get("base_fee_per_gas").and_then(|v| v.parse::<u64>().ok()),
         };
 
         Ok((block, block_number))
@@ -63,14 +72,15 @@ impl Block {
         sqlx::query(
             r#"
             INSERT INTO blocks (
-                block_number, block_hash, miner, gas_used,
+                block_number, block_hash, parent_hash, miner, gas_used,
                 timestamp, base_fee_per_gas
-            ) VALUES (?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(block_number) DO NOTHING
             "#,
         )
         .bind(self.block_number as i64)
         .bind(self.block_hash.as_slice())
+        .bind(self.parent_hash.as_ref().map(|h| h.to_vec()))
         .bind(self.miner.as_slice())
         .bind(self.gas_used as i64)
         .bind(self.timestamp as i64)
@@ -90,6 +100,31 @@ impl Block {
 
         db_tx.commit().await?;
         Ok(())
+    }
+
+    /// Returns `(block_number, block_hash)` for up to `limit` indexed blocks at
+    /// or below `tip`, newest first. Used by reorg detection to compare local
+    /// hashes against the canonical chain.
+    pub(crate) async fn tip_hashes(
+        tip: u64,
+        limit: u64,
+        conn: &SqlitePool,
+    ) -> Result<Vec<(u64, FixedBytes<32>)>> {
+        let rows: Vec<(i64, Vec<u8>)> = sqlx::query_as(
+            "SELECT block_number, block_hash FROM blocks
+             WHERE block_number <= ?
+             ORDER BY block_number DESC
+             LIMIT ?",
+        )
+        .bind(tip as i64)
+        .bind(limit as i64)
+        .fetch_all(conn)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|(number, hash)| (number as u64, FixedBytes::<32>::from_slice(&hash)))
+            .collect())
     }
 
     pub(crate) async fn missing_blocks(from: u64, to: u64, conn: &SqlitePool) -> Result<Vec<u64>> {
@@ -117,6 +152,7 @@ impl Block {
     fn from_row(row: &SqliteRow) -> Result<Block> {
         let block_number: i64 = row.try_get("block_number")?;
         let block_hash: Vec<u8> = row.try_get("block_hash")?;
+        let parent_hash: Option<Vec<u8>> = row.try_get("parent_hash")?;
         let miner: Vec<u8> = row.try_get("miner")?;
         let gas_used: i64 = row.try_get("gas_used")?;
         let timestamp: i64 = row.try_get("timestamp")?;
@@ -125,6 +161,7 @@ impl Block {
         Ok(Block {
             block_number: block_number as u64,
             block_hash: FixedBytes::<32>::from_slice(&block_hash),
+            parent_hash: parent_hash.map(|h| FixedBytes::<32>::from_slice(&h)),
             miner: Address::from_slice(&miner),
             gas_used: gas_used as u64,
             timestamp: timestamp as u64,
@@ -142,6 +179,7 @@ mod test {
         Block {
             block_number,
             block_hash: FixedBytes::<32>::from([0xab; 32]),
+            parent_hash: Some(FixedBytes::<32>::from([0xac; 32])),
             miner: Address::from([0x11; 20]),
             gas_used: 16_000_000,
             timestamp: 1_693_066_895,

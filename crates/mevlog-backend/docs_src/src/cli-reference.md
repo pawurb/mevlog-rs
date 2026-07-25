@@ -129,6 +129,8 @@ Options:
       --poll-interval-ms <MS>  Polling interval when --live is set [default: 3000]
       --keep <KEEP>          With --live: after each round, delete data older than this many
                              blocks behind the newest indexed block
+      --max-reorg-depth <N>  With --live: maximum number of blocks scanned below the local tip
+                             when checking for a chain reorg [default: 64]
       --latest-offset <N>    Get N-offset latest block
       --max-range <N>        Maximum allowed block range size
       --batch-size <N>       Batch size for data fetching [default: 100]

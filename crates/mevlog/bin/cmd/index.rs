@@ -1,17 +1,22 @@
 use std::time::{Duration, Instant};
 
-use alloy::providers::Provider;
+use alloy::{eips::BlockNumberOrTag, providers::Provider};
 use eyre::{Result, bail};
 use mevlog::{
     ChainInfoNoRpcsJson,
-    db::txs::{indexing::index_block_range, purge::purge_old_blocks},
+    db::txs::{
+        indexing::index_block_range,
+        purge::purge_old_blocks,
+        reorg::{find_fork_point, first_parent_link_break, rollback_from},
+    },
     misc::{
         args_parsing::BlocksRange,
-        shared_init::{ConnOpts, CryoOpts, OutputFormat, init_deps},
+        data_fetch::purge_cache_range,
+        shared_init::{ConnOpts, CryoOpts, OutputFormat, SharedDeps, init_deps},
     },
     models::json::index_response::{IndexResponse, serialize_index_response},
 };
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Debug, clap::Parser)]
 pub struct IndexArgs {
@@ -59,6 +64,13 @@ pub struct IndexArgs {
         help = "With --live: after each indexing round, delete data older than this many blocks behind the newest indexed block"
     )]
     keep: Option<u64>,
+
+    #[arg(
+        long,
+        help = "With --live: maximum number of blocks scanned below the local tip when checking for a chain reorg (default: 64)",
+        default_value = "64"
+    )]
+    max_reorg_depth: std::num::NonZeroU64,
 }
 
 impl IndexArgs {
@@ -177,6 +189,17 @@ impl IndexArgs {
 
         loop {
             let latest = deps.provider.get_block_number().await?;
+
+            // The head moved (forward, or backward after a reorg): verify the
+            // local tip is still canonical before extending it.
+            if latest != last_indexed
+                && let Some(fork_point) =
+                    detect_fork_point(&deps, last_indexed, self.max_reorg_depth.get()).await?
+            {
+                rollback_and_log(fork_point + 1, last_indexed, &deps).await?;
+                last_indexed = fork_point;
+            }
+
             if latest > last_indexed {
                 let from = last_indexed + 1;
                 let start_time = Instant::now();
@@ -191,7 +214,16 @@ impl IndexArgs {
                     cached_blocks,
                     start_time.elapsed()
                 );
-                last_indexed = latest;
+
+                // A reorg racing the fetch can land a mix of pre- and
+                // post-reorg blocks in one round; broken parent links inside
+                // the freshly indexed range expose it without extra RPC calls.
+                if let Some(break_block) = first_parent_link_break(from, latest, &deps.txs).await? {
+                    rollback_and_log(break_block, latest, &deps).await?;
+                    last_indexed = break_block - 1;
+                } else {
+                    last_indexed = latest;
+                }
 
                 if let Some(keep) = self.keep {
                     purge_and_log(keep, &deps.txs).await?;
@@ -200,6 +232,35 @@ impl IndexArgs {
             tokio::time::sleep(poll).await;
         }
     }
+}
+
+/// Compares locally stored block hashes against the canonical chain, walking
+/// back from `tip`. `None` means the local tip is canonical; `Some(fork_point)`
+/// means every block above `fork_point` is stale.
+async fn detect_fork_point(deps: &SharedDeps, tip: u64, max_depth: u64) -> Result<Option<u64>> {
+    let provider = deps.provider.clone();
+    find_fork_point(tip, max_depth, &deps.txs, move |block_number| {
+        let provider = provider.clone();
+        async move {
+            let block = provider
+                .get_block_by_number(BlockNumberOrTag::Number(block_number))
+                .await?;
+            Ok(block.map(|b| b.header.hash))
+        }
+    })
+    .await
+}
+
+/// Deletes indexed data for blocks `first_stale..=tip` plus any cryo parquet
+/// cache overlapping them (a refetch must not reuse pre-reorg rows).
+async fn rollback_and_log(first_stale: u64, tip: u64, deps: &SharedDeps) -> Result<()> {
+    let stats = rollback_from(first_stale, &deps.txs).await?;
+    purge_cache_range(&deps.chain, first_stale, tip);
+    warn!(
+        "Reorg detected: rolled back blocks {}..={} ({} blocks, {} txs, {} logs)",
+        first_stale, tip, stats.blocks, stats.transactions, stats.logs
+    );
+    Ok(())
 }
 
 async fn purge_and_log(keep: u64, conn: &sqlx::SqlitePool) -> Result<()> {

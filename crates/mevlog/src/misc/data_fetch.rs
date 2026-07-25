@@ -147,24 +147,34 @@ async fn run_cryo_batch(
     cryo_opts: &CryoOpts,
 ) -> Result<()> {
     let range = format!("{}:{}", start_block, end_block + 1);
+    let output_dir = cryo_cache_dir(chain).display().to_string();
+    let mut args = vec![
+        data_type.to_string(),
+        "-b".to_string(),
+        range,
+        "--rpc".to_string(),
+        rpc_url.to_string(),
+        "--output-dir".to_string(),
+        output_dir,
+        "--requests-per-second".to_string(),
+        cryo_opts.cryo_requests_per_second.to_string(),
+        "--max-concurrent-requests".to_string(),
+        cryo_opts.cryo_max_concurrent_requests.to_string(),
+        "--max-retries".to_string(),
+        cryo_opts.cryo_max_retries.to_string(),
+        "--initial-backoff".to_string(),
+        cryo_opts.cryo_initial_backoff.to_string(),
+    ];
+
+    // parent_hash is not in cryo's default `blocks` schema; reorg detection
+    // needs it to verify chain continuity between indexed blocks.
+    if data_type == "blocks" {
+        args.push("--include-columns".to_string());
+        args.push("parent_hash".to_string());
+    }
+
     let cmd = Command::new("cryo")
-        .args([
-            data_type,
-            "-b",
-            &range,
-            "--rpc",
-            rpc_url,
-            "--output-dir",
-            cryo_cache_dir(chain).display().to_string().as_str(),
-            "--requests-per-second",
-            &cryo_opts.cryo_requests_per_second.to_string(),
-            "--max-concurrent-requests",
-            &cryo_opts.cryo_max_concurrent_requests.to_string(),
-            "--max-retries",
-            &cryo_opts.cryo_max_retries.to_string(),
-            "--initial-backoff",
-            &cryo_opts.cryo_initial_backoff.to_string(),
-        ])
+        .args(&args)
         // Reap the cryo child if this future is dropped (a query timeout, or a
         // sibling batch erroring out of `buffer_unordered` and tearing down the
         // stream); otherwise orphaned cryo processes keep hitting RPCs and
@@ -289,6 +299,40 @@ pub(crate) async fn prune_indexed_cache(
     }
 
     Ok(removed)
+}
+
+/// Deletes every cached cryo parquet file overlapping `[from, to]`, regardless
+/// of indexing state. Used after a reorg rollback: the cache holds pre-reorg
+/// rows for the rolled-back blocks, and [`prune_indexed_cache`] would keep
+/// those files (their blocks are no longer fully indexed), so a refetch would
+/// silently reuse stale data. Files also covering still-indexed blocks are
+/// safe to drop - [`Block::missing_blocks`] never asks for indexed blocks
+/// again. Returns the number of files removed.
+pub fn purge_cache_range(chain: &EVMChain, from: u64, to: u64) -> u64 {
+    if std::env::var_os(KEEP_CRYO_CACHE_ENV).is_some() {
+        return 0;
+    }
+
+    let mut removed = 0;
+
+    for data_type in ["transactions", "logs", "blocks"] {
+        for range in scan_cached_ranges(chain, data_type) {
+            if range.end < from || range.start > to {
+                continue;
+            }
+
+            match std::fs::remove_file(&range.path) {
+                Ok(()) => removed += 1,
+                Err(e) => warn!(
+                    "Failed to remove cached parquet {}: {}",
+                    range.path.display(),
+                    e
+                ),
+            }
+        }
+    }
+
+    removed
 }
 
 async fn parse_batch_txs_from_files(
