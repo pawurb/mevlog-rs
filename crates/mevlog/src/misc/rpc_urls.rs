@@ -120,6 +120,7 @@ pub async fn get_chain_info(chain_id: u64, timeout_ms: u64, limit: usize) -> Res
     Ok(chain)
 }
 
+#[hotpath::measure]
 pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
     let cache_dir = get_cache_dir();
 
@@ -127,7 +128,7 @@ pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
         return Ok(cached_data);
     }
 
-    let client = reqwest::Client::new();
+    let client = hotpath::http!(reqwest::Client::new());
     let response = client.get(CHAINLIST_URL).send().await?;
     let status = response.status();
     let body = response.text().await?;

@@ -42,9 +42,10 @@ pub(crate) async fn remove_files() -> Result<()> {
     Ok(())
 }
 
+#[hotpath::measure]
 pub(crate) async fn download_file() -> Result<()> {
     let url = file_url();
-    let client = Client::new();
+    let client = hotpath::http!(Client::new(), label = "sigs-db");
     let db_path = default_db_path().to_string_lossy().into_owned();
 
     let zst_path = format!("{db_path}.zst");

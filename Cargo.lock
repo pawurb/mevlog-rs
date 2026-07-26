@@ -2158,7 +2158,7 @@ version = "3.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "faf9468729b8cbcea668e36183cb69d317348c2e08e994829fb56ebfdfbaac34"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2885,7 +2885,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3461,25 +3461,51 @@ dependencies = [
 
 [[package]]
 name = "hotpath"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ff6b552a6afa29d9e33f8d555bee9093c142dd449501ae128e6494a303f03dc"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#473eac880ef8d641872782310945053457f65d4c"
 dependencies = [
  "arc-swap",
+ "cfg-if",
+ "crossbeam-channel",
+ "futures-util",
+ "hdrhistogram",
+ "hotpath-macros 0.21.5 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
+ "hotpath-meta 0.21.5 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
+ "libc",
+ "pin-project-lite",
+ "prettytable-rs",
+ "quanta",
+ "regex",
+ "serde",
+ "serde_json",
+ "tiny_http",
+ "tokio",
+]
+
+[[package]]
+name = "hotpath"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs#473eac880ef8d641872782310945053457f65d4c"
+dependencies = [
+ "arc-swap",
+ "async-trait",
  "axum 0.8.9",
  "cfg-if",
  "crossbeam-channel",
  "flate2",
  "futures-util",
  "hdrhistogram",
- "hotpath-macros 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "hotpath-meta 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hotpath-macros 0.21.5 (git+https://github.com/pawurb/hotpath-rs)",
+ "hotpath-meta 0.21.5 (git+https://github.com/pawurb/hotpath-rs)",
+ "http",
  "libc",
  "object",
  "pin-project-lite",
  "prettytable-rs",
  "quanta",
  "regex",
+ "reqwest 0.12.28",
+ "reqwest-middleware",
  "rmcp",
  "rustc-demangle",
  "schemars 1.2.1",
@@ -3493,33 +3519,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "hotpath"
-version = "0.21.1"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#e911292ab4406ef115f36f5654383b89eaafc7d4"
-dependencies = [
- "arc-swap",
- "cfg-if",
- "crossbeam-channel",
- "futures-util",
- "hdrhistogram",
- "hotpath-macros 0.21.1 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
- "hotpath-meta 0.21.1 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
- "libc",
- "pin-project-lite",
- "prettytable-rs",
- "quanta",
- "regex",
- "serde",
- "serde_json",
- "tiny_http",
- "tokio",
-]
-
-[[package]]
 name = "hotpath-macros"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f15322569d3cfadf84c0de7ef72be435b8f4b4839ee4ace78a7eaca48a87ded"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#473eac880ef8d641872782310945053457f65d4c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3528,8 +3530,8 @@ dependencies = [
 
 [[package]]
 name = "hotpath-macros"
-version = "0.21.1"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#e911292ab4406ef115f36f5654383b89eaafc7d4"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs#473eac880ef8d641872782310945053457f65d4c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3538,30 +3540,28 @@ dependencies = [
 
 [[package]]
 name = "hotpath-macros-meta"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3675e29d16c844ccad12763672b33e51d9a000c346720c4f354f7a3bdc649a8"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#473eac880ef8d641872782310945053457f65d4c"
 
 [[package]]
 name = "hotpath-macros-meta"
-version = "0.21.1"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#e911292ab4406ef115f36f5654383b89eaafc7d4"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs#473eac880ef8d641872782310945053457f65d4c"
 
 [[package]]
 name = "hotpath-meta"
-version = "0.21.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d558d972ddc9483fb4e713af3dd41634edf895c7cb18ed13dc58c56431d42e27"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#473eac880ef8d641872782310945053457f65d4c"
 dependencies = [
- "hotpath-macros-meta 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hotpath-macros-meta 0.21.5 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
 ]
 
 [[package]]
 name = "hotpath-meta"
-version = "0.21.1"
-source = "git+https://github.com/pawurb/hotpath-rs?branch=main#e911292ab4406ef115f36f5654383b89eaafc7d4"
+version = "0.21.5"
+source = "git+https://github.com/pawurb/hotpath-rs#473eac880ef8d641872782310945053457f65d4c"
 dependencies = [
- "hotpath-macros-meta 0.21.1 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
+ "hotpath-macros-meta 0.21.5 (git+https://github.com/pawurb/hotpath-rs)",
 ]
 
 [[package]]
@@ -3991,7 +3991,7 @@ checksum = "3640c1c38b8e4e43584d8df18be5fc6b0aa314ce6ebf51b53313d4306cca8e46"
 dependencies = [
  "hermit-abi",
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4419,7 +4419,7 @@ dependencies = [
  "glob",
  "hex",
  "home",
- "hotpath 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "hotpath 0.21.5 (git+https://github.com/pawurb/hotpath-rs)",
  "html-escape",
  "indicatif",
  "parquet",
@@ -4460,7 +4460,7 @@ dependencies = [
  "eyre",
  "futures",
  "glob",
- "hotpath 0.21.1 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
+ "hotpath 0.21.5 (git+https://github.com/pawurb/hotpath-rs?branch=main)",
  "http-body-util",
  "mevlog",
  "mockito",
@@ -5660,6 +5660,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "reqwest-middleware"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57f17d28a6e6acfe1733fe24bcd30774d13bffa4b8a22535b4c8c98423088d4e"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "http",
+ "reqwest 0.12.28",
+ "serde",
+ "thiserror 1.0.69",
+ "tower-service",
+]
+
+[[package]]
 name = "revm"
 version = "33.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6078,7 +6093,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6136,7 +6151,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7109,7 +7124,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -8078,7 +8093,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

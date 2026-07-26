@@ -98,6 +98,7 @@ fn resolve_pinata_jwt(cfg: &IpfsConfig) -> Result<String> {
 /// value, otherwise the gateway-discovery API (which requires the
 /// `Gateways: Read` JWT scope). Returns `None` on any failure so uploads keep
 /// working with a `Files: Write`-only JWT.
+#[hotpath::measure]
 async fn pinata_gateway_domain(cfg: &IpfsConfig, jwt: &str) -> Option<String> {
     // The env var wins over the config value, mirroring MEVLOG_PINATA_JWT.
     if let Some(domain) = std::env::var("MEVLOG_PINATA_GATEWAY")
@@ -108,7 +109,7 @@ async fn pinata_gateway_domain(cfg: &IpfsConfig, jwt: &str) -> Option<String> {
         return Some(domain);
     }
 
-    let res = reqwest::Client::new()
+    let res = hotpath::http!(reqwest::Client::new(), label = "pinata-gateways")
         .get(PINATA_GATEWAYS_API)
         .bearer_auth(jwt)
         .send()
@@ -120,6 +121,7 @@ async fn pinata_gateway_domain(cfg: &IpfsConfig, jwt: &str) -> Option<String> {
     parse_pinata_gateway_domain(&res.text().await.ok()?)
 }
 
+#[hotpath::measure]
 async fn upload_pinata(
     cfg: &IpfsConfig,
     jwt: &str,
@@ -134,7 +136,7 @@ async fn upload_pinata(
         .text("network", "public")
         .text("name", filename.to_string());
 
-    let res = reqwest::Client::new()
+    let res = hotpath::http!(reqwest::Client::new(), label = "pinata-upload")
         .post(&url)
         .bearer_auth(jwt)
         .multipart(form)
@@ -151,6 +153,7 @@ async fn upload_pinata(
     parse_pinata_cid(&body)
 }
 
+#[hotpath::measure]
 async fn upload_kubo(
     cfg: &IpfsConfig,
     bytes: Vec<u8>,
@@ -160,7 +163,7 @@ async fn upload_kubo(
     let url = format!("{}/api/v0/add?pin=true", cfg.kubo_api.trim_end_matches('/'));
     let form = multipart_form(bytes, filename, content_type)?;
 
-    let res = reqwest::Client::new()
+    let res = hotpath::http!(reqwest::Client::new(), label = "kubo")
         .post(&url)
         .multipart(form)
         .send()

@@ -254,13 +254,17 @@ impl SeedDBArgs {
         Ok(())
     }
 
+    #[hotpath::measure]
     async fn download_files(&self, prefix: &str, sub_dir: &str) -> Result<Vec<PathBuf>> {
         let dir = std::env::temp_dir().join(sub_dir);
         std::fs::create_dir_all(&dir)?;
 
+        let client = hotpath::http!(reqwest::Client::new(), label = "sourcify");
         let listing_url = format!("{SOURCIFY_BASE_URL}/?prefix={prefix}");
         info!("Fetching file listing from: {}", listing_url);
-        let body = reqwest::get(&listing_url)
+        let body = client
+            .get(&listing_url)
+            .send()
             .await?
             .error_for_status()?
             .text()
@@ -291,7 +295,7 @@ impl SeedDBArgs {
             // Download to a temp file first so an interrupted run never leaves a
             // truncated file that a later run would treat as a valid cache hit.
             let part = dir.join(format!("{file_name}.part"));
-            let response = reqwest::get(&url).await?.error_for_status()?;
+            let response = client.get(&url).send().await?.error_for_status()?;
             let mut file = std::fs::File::create(&part)?;
             let mut stream = response.bytes_stream();
 
