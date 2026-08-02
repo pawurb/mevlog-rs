@@ -60,7 +60,7 @@ comfy-table = "7"
 which = "7"
 alloy-chains = "0.2"
 console-subscriber = { version = "0.4", optional = true }
-hotpath = { version = "0.21", git = "https://github.com/pawurb/hotpath-rs", features = ["tokio", "crossbeam", "sqlx", "reqwest-0-12"] }
+hotpath = { version = "0.23", features = ["tokio", "crossbeam", "sqlx", "reqwest-0-12"] }
 crossterm = { version = "0.28", optional = true }
 ratatui = { version = "0.29", optional = true, features = [
   "unstable-rendered-line-info",
