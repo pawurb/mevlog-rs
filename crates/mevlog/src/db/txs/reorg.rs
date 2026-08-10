@@ -23,10 +23,13 @@ pub struct RollbackStats {
 /// Returns `Ok(None)` when there is no reorg: the stored hash at `tip` matches
 /// the canonical one, or the local store has no row at `tip` to compare.
 /// Returns `Ok(Some(fork_point))` when hashes diverge; every stored block
-/// above `fork_point` is stale and must be rolled back. Errors when no match
-/// is found within `max_depth` blocks (or within the contiguous run of stored
-/// blocks below `tip`) - the reorg is deeper than the scan window and the
-/// store needs a manual purge.
+/// above `fork_point` is stale and must be rolled back. When the contiguous
+/// run of stored blocks below `tip` ends (purged history, e.g. a small
+/// `--keep`, or a gap) before a canonical match is found, every compared row
+/// has already mismatched, so the whole run is stale: `fork_point` is the
+/// unstored block right below it. Errors only when no match is found within
+/// `max_depth` fully stored blocks - the reorg is deeper than the scan window
+/// and the store needs a manual purge.
 pub async fn find_fork_point<F, Fut>(
     tip: u64,
     max_depth: u64,
@@ -50,16 +53,28 @@ where
         _ => return Ok(None),
     }
 
+    let mut contiguous: u64 = 0;
     for (i, (number, local_hash)) in stored.iter().enumerate() {
         if *number != tip - i as u64 {
             // Gap in the stored run: blocks below it cannot extend the
-            // verification chain, so treat like an exhausted scan window.
+            // verification chain.
             break;
         }
+        contiguous += 1;
 
         if remote_hash(*number).await? == Some(*local_hash) {
             return if i == 0 { Ok(None) } else { Ok(Some(*number)) };
         }
+    }
+
+    // The stored run ended before the scan window was exhausted (history
+    // purged below it, or a gap): every row in the run mismatched the
+    // canonical chain, so the entire run is stale and the fork point is the
+    // unstored block right below it.
+    if contiguous < max_depth + 1
+        && let Some(fork_point) = tip.checked_sub(contiguous)
+    {
+        return Ok(Some(fork_point));
     }
 
     eyre::bail!(
@@ -282,6 +297,37 @@ mod test {
 
         let fork = find_fork_point(104, 3, &conn, remote(canonical)).await?;
         assert_eq!(fork, Some(101));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rolls_back_stale_run_when_history_purged() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+        // `--keep 1` style store: only the tip is retained.
+        seed_chain(104..=104, &conn).await?;
+
+        // Tip replaced at the same height; no stored ancestor to match.
+        let canonical: HashMap<u64, FixedBytes<32>> = [(104, hash(0xff))].into();
+
+        let fork = find_fork_point(104, 64, &conn, remote(canonical)).await?;
+        assert_eq!(fork, Some(103));
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn rolls_back_stale_run_above_gap() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+        seed_chain(100..=101, &conn).await?;
+        seed_chain(103..=104, &conn).await?;
+
+        // Blocks 103 and 104 replaced; block 102 was never indexed, so the
+        // verification run cannot reach the intact 100..=101.
+        let canonical: HashMap<u64, FixedBytes<32>> = (100..=104)
+            .map(|n| (n, if n >= 103 { hash(0xff) } else { hash(n as u8) }))
+            .collect();
+
+        let fork = find_fork_point(104, 64, &conn, remote(canonical)).await?;
+        assert_eq!(fork, Some(102));
         Ok(())
     }
 
