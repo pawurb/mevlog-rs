@@ -30,7 +30,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p ~/.cargo/bin
-          gh release download cryo-release -p cryo -D ~/.cargo/bin --repo ${{ github.repository }}
+          gh release download cryo-release -p cryo -D ~/.cargo/bin --clobber --repo ${{ github.repository }}
           chmod +x ~/.cargo/bin/cryo
       - name: Download SQLite DB from release
         env:
