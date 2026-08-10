@@ -144,7 +144,7 @@ impl IndexArgs {
                     println!("{}", serialize_index_response(&resp, pretty)?);
                 }
 
-                Some(range.to)
+                Some((range.from, range.to))
             }
             None => None,
         };
@@ -154,8 +154,8 @@ impl IndexArgs {
         }
 
         // Live mode: poll for new blocks and index them as they arrive.
-        let mut last_indexed = match backfilled_to {
-            Some(to) => to,
+        let (backfill_from, mut last_indexed) = match backfilled_to {
+            Some((from, to)) => (from, to),
             None => {
                 // No backfill range given: start from the current latest block.
                 let latest = deps.provider.get_block_number().await?;
@@ -171,9 +171,21 @@ impl IndexArgs {
                     "Indexed latest block {} ({} new, {} cached)",
                     latest, new_blocks, cached_blocks
                 );
-                latest
+                (latest, latest)
             }
         };
+
+        // The initial backfill is exposed to the same reorg race as the live
+        // rounds below, but the loop's checks cannot see it: once the head
+        // moves, the tip-hash walk finds a canonical tip and stops, and the
+        // parent-link check only covers newly appended blocks. Verify the
+        // backfilled range itself before trusting its endpoint.
+        if let Some(break_block) =
+            first_parent_link_break(backfill_from, last_indexed, &deps.txs).await?
+        {
+            rollback_and_log(break_block, last_indexed, &deps).await?;
+            last_indexed = break_block - 1;
+        }
 
         // One-time purge after the backfill, instead of waiting for the first
         // new block.
