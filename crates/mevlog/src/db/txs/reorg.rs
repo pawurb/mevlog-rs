@@ -37,7 +37,11 @@ where
     F: Fn(u64) -> Fut,
     Fut: Future<Output = Result<Option<FixedBytes<32>>>>,
 {
-    let stored = Block::tip_hashes(tip, max_depth, conn).await?;
+    // One row beyond `max_depth`: when exactly `max_depth` blocks are stale,
+    // the fork point is their common ancestor at `tip - max_depth`, which must
+    // be fetched to be recognized. Rolled-back blocks stay capped at
+    // `max_depth`.
+    let stored = Block::tip_hashes(tip, max_depth + 1, conn).await?;
 
     // Nothing indexed at `tip` (empty store, or a gap right below it): there
     // is no local hash to contradict the canonical chain.
@@ -262,6 +266,22 @@ mod test {
         // No stored row at 105: nothing to verify.
         let fork = find_fork_point(105, 64, &conn, remote(HashMap::new())).await?;
         assert_eq!(fork, None);
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn finds_fork_point_at_exact_scan_depth() -> Result<()> {
+        let (conn, _cl) = setup_test_db().await;
+        seed_chain(100..=104, &conn).await?;
+
+        // Blocks 102..=104 replaced: exactly max_depth (3) stale blocks, fork
+        // ancestor at 101.
+        let canonical: HashMap<u64, FixedBytes<32>> = (100..=104)
+            .map(|n| (n, if n >= 102 { hash(0xff) } else { hash(n as u8) }))
+            .collect();
+
+        let fork = find_fork_point(104, 3, &conn, remote(canonical)).await?;
+        assert_eq!(fork, Some(101));
         Ok(())
     }
 
