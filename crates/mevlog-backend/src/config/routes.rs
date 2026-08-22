@@ -19,7 +19,7 @@ use super::{cache_control, docs_html_ext, docs_seo, host};
 pub async fn app() -> Router {
     let deployed_at = deployed_at();
 
-    Router::new()
+    let router = Router::new()
         .route("/", get(html::home_controller::home))
         .route("/search", get(html::search_controller::search))
         .route("/explore", get(html::explore_controller::explore))
@@ -99,7 +99,9 @@ pub async fn app() -> Router {
             from_fn(cache_control).layer(ServeFile::new("assets/mevlog-demo.mp4")),
         )
         .fallback(html::not_found_controller::not_found)
-        .layer(from_fn(docs_seo))
+        .layer(from_fn(docs_seo));
+
+    hotpath::axum!(router)
 }
 
 async fn robots_txt() -> Response<Body> {

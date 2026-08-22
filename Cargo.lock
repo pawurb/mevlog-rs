@@ -3547,8 +3547,8 @@ dependencies = [
  "flate2",
  "futures-util",
  "hdrhistogram",
- "hotpath-macros",
- "hotpath-meta",
+ "hotpath-macros 0.23.0",
+ "hotpath-meta 0.23.0",
  "http",
  "libc",
  "object",
@@ -3571,10 +3571,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "hotpath"
+version = "0.23.3"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#4cef72dd20d794e16603364d2441a57a08a1fa6d"
+dependencies = [
+ "arc-swap",
+ "axum 0.8.9",
+ "cfg-if",
+ "crossbeam-channel",
+ "futures-util",
+ "hdrhistogram",
+ "hotpath-macros 0.23.3",
+ "hotpath-meta 0.23.3",
+ "libc",
+ "pin-project-lite",
+ "prettytable-rs",
+ "quanta",
+ "regex",
+ "serde",
+ "serde_json",
+ "tiny_http",
+ "tokio",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
 name = "hotpath-macros"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4777d4dd3474c9b9c9391be713c6b570da0ac49e992a8cbfed67f60ca0f7e33d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
+name = "hotpath-macros"
+version = "0.23.3"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#4cef72dd20d794e16603364d2441a57a08a1fa6d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3588,12 +3624,44 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "833200923e0ba8150fb91d6a3a39643eef95e604c7394c2f2679905cae13862c"
 
 [[package]]
+name = "hotpath-macros-meta"
+version = "0.23.3"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#4cef72dd20d794e16603364d2441a57a08a1fa6d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.118",
+]
+
+[[package]]
 name = "hotpath-meta"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eca34dbbafc05f5da2a2696ce2640018fbe29e9932736309efbf3a990f0b2832"
 dependencies = [
- "hotpath-macros-meta",
+ "hotpath-macros-meta 0.23.0",
+]
+
+[[package]]
+name = "hotpath-meta"
+version = "0.23.3"
+source = "git+https://github.com/pawurb/hotpath-rs?branch=main#4cef72dd20d794e16603364d2441a57a08a1fa6d"
+dependencies = [
+ "arc-swap",
+ "base64 0.22.1",
+ "cfg-if",
+ "crossbeam-channel",
+ "futures-util",
+ "hdrhistogram",
+ "hotpath-macros-meta 0.23.3",
+ "libc",
+ "pin-project-lite",
+ "prettytable-rs",
+ "quanta",
+ "regex",
+ "serde",
+ "serde_json",
+ "tiny_http",
 ]
 
 [[package]]
@@ -4451,7 +4519,7 @@ dependencies = [
  "glob",
  "hex",
  "home",
- "hotpath",
+ "hotpath 0.23.0",
  "html-escape",
  "indicatif",
  "parquet",
@@ -4492,7 +4560,7 @@ dependencies = [
  "eyre",
  "futures",
  "glob",
- "hotpath",
+ "hotpath 0.23.3",
  "http-body-util",
  "mevlog",
  "mockito",
