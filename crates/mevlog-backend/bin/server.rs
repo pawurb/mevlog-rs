@@ -30,6 +30,7 @@ async fn main() -> Result<()> {
 
 async fn run() -> Result<()> {
     middleware::init_logs("server.log");
+    hotpath::tokio_runtime!();
 
     // Keep the process-local price cache warm so web queries pass
     // `--native-token-price` and never fall back to the Chainlink oracle RPC.

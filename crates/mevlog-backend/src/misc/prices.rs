@@ -9,7 +9,8 @@ use tokio::sync::RwLock;
 const COINGECKO_API_URL: &str =
     "https://api.coingecko.com/api/v3/simple/price?ids=ethereum,binancecoin&vs_currencies=usd";
 
-static PRICE_CACHE: LazyLock<RwLock<Option<PriceResponse>>> = LazyLock::new(|| RwLock::new(None));
+static PRICE_CACHE: LazyLock<hotpath::wrap::tokio::sync::RwLock<Option<PriceResponse>>> =
+    LazyLock::new(|| hotpath::rw_lock!(RwLock::new(None), label = "price_cache"));
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TokenPrice {
@@ -87,7 +88,7 @@ pub async fn spawn_price_refresh() {
 }
 
 async fn fetch_prices_from_api() -> Result<PriceResponse> {
-    let client = reqwest::Client::new();
+    let client = hotpath::http!(reqwest::Client::new(), label = "coingecko");
     let response = match client
         .get(COINGECKO_API_URL)
         .header("User-Agent", "mevlog-backend/1.0")

@@ -40,7 +40,7 @@ askama = "0.12.1"
 regex = { workspace = true }
 mevlog = { workspace = true }
 rand = { workspace = true }
-hotpath = { git = "https://github.com/pawurb/hotpath-rs", branch = "main", features = ["axum-0-8"] }
+hotpath = { git = "https://github.com/pawurb/hotpath-rs", branch = "main", features = ["axum-0-8", "reqwest-0-12", "tokio"] }
 
 [dev-dependencies]
 glob = { workspace = true }

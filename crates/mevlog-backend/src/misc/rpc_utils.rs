@@ -16,9 +16,13 @@ struct CachedRpcUrls {
     cached_at: Instant,
 }
 
-type RpcCache = Arc<RwLock<HashMap<u64, CachedRpcUrls>>>;
-static RPC_URL_MEMORY_CACHE: std::sync::LazyLock<RpcCache> =
-    std::sync::LazyLock::new(|| Arc::new(RwLock::new(HashMap::new())));
+type RpcCache = Arc<hotpath::wrap::tokio::sync::RwLock<HashMap<u64, CachedRpcUrls>>>;
+static RPC_URL_MEMORY_CACHE: std::sync::LazyLock<RpcCache> = std::sync::LazyLock::new(|| {
+    Arc::new(hotpath::rw_lock!(
+        RwLock::new(HashMap::new()),
+        label = "rpc_url_cache"
+    ))
+});
 const CACHE_DURATION: Duration = Duration::from_secs(60); // 1 minute
 
 #[hotpath::measure(log = true)]

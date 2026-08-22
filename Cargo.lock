@@ -3576,6 +3576,7 @@ version = "0.23.3"
 source = "git+https://github.com/pawurb/hotpath-rs?branch=main#4cef72dd20d794e16603364d2441a57a08a1fa6d"
 dependencies = [
  "arc-swap",
+ "async-trait",
  "axum 0.8.9",
  "cfg-if",
  "crossbeam-channel",
@@ -3583,11 +3584,14 @@ dependencies = [
  "hdrhistogram",
  "hotpath-macros 0.23.3",
  "hotpath-meta 0.23.3",
+ "http",
  "libc",
  "pin-project-lite",
  "prettytable-rs",
  "quanta",
  "regex",
+ "reqwest 0.12.28",
+ "reqwest-middleware",
  "serde",
  "serde_json",
  "tiny_http",

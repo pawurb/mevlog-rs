@@ -6,7 +6,7 @@ pub(crate) fn deployed_at() -> String {
 
 #[hotpath::measure]
 pub async fn uptime_ping(uptime_url: &str) -> Result<()> {
-    let client = reqwest::Client::new();
+    let client = hotpath::http!(reqwest::Client::new(), label = "uptime");
     match client.get(uptime_url).send().await {
         Ok(_) => {}
         Err(e) => {
