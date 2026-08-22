@@ -5,6 +5,7 @@ pub mod info;
 pub mod models;
 pub mod purge;
 pub mod raw_query;
+pub mod reorg;
 
 use std::path::PathBuf;
 
@@ -16,7 +17,7 @@ use crate::{db::shared, misc::shared_init::config_path};
 // Transactions database (locally built tx store). Its migrations live in
 // `migrations/txs` and are applied independently from the signatures database.
 static MIGRATOR: Migrator = sqlx::migrate!("migrations/txs");
-pub const SCHEMA_VERSION: u64 = 1;
+pub const SCHEMA_VERSION: u64 = 2;
 
 pub(crate) async fn init_db(db_url: Option<String>, chain_id: u64) -> Result<()> {
     shared::init_db(db_url, default_db_path(chain_id), &MIGRATOR).await
