@@ -21,4 +21,5 @@ crates/mevlog-backend/Cargo.lock
 tmp/
 varlogs/
 *.html
+AGENTS.md
 
