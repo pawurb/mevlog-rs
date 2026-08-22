@@ -14,7 +14,7 @@ openssl = { version = "0.10", features = ["vendored"] }
 reqwest = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true, features = ["derive"] }
-tracing-subscriber = { workspace = true, features = ["time"] }
+tracing-subscriber = { workspace = true }
 tracing = { workspace = true }
 tracing-futures = "0.2"
 tower-http = { version = "0.6.2", features = [
@@ -31,8 +31,6 @@ tower-http = { version = "0.6.2", features = [
 tower = "0.5.2"
 futures = "0.3.31"
 tokio-cron-scheduler = { version = "0.13.0", features = ["signal", "english"] }
-tracing-appender = "0.2.3"
-time = { workspace = true }
 axum = { workspace = true }
 unicode-normalization = "0.1.24"
 ansi-to-html = "0.2.2"

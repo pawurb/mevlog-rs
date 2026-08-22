@@ -30,15 +30,23 @@ watch-server:
         start_server; \
     done
 
-# Deploy backend using the deployment script
+# Build and rsync backend binaries + assets to the remote node (no restart)
 deploy:
     cd {{backend_dir}} && ./deploy.sh
 
-# Deploy backend and restart
+# Deploy backend and restart both systemd units (server + scheduler)
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
 
-# Start the backend server on the remote node (screen session, reads .env)
+# Restart both systemd units on the remote node
+restart target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/restart.sh
+
+# Show systemd status of server + scheduler on the remote node
+status target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/status.sh
+
+# Start the backend server unit on the remote node
 server-start target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_start.sh
 
@@ -46,7 +54,7 @@ server-start target_node=env_var('TARGET_NODE'):
 server-stop target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_stop.sh
 
-# Start the scheduler on the remote node (screen session, reads .env)
+# Start the scheduler unit on the remote node
 scheduler-start target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_start.sh
 
@@ -54,9 +62,9 @@ scheduler-start target_node=env_var('TARGET_NODE'):
 scheduler-stop target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_stop.sh
 
-# Tail remote server and scheduler logs
-logs target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh
+# Follow journald logs on the remote node (optionally `server` or `scheduler` only)
+logs unit='' target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh {{unit}}
 
 # Pull latest and reinstall the CLI on the remote node
 update-remote-cli target_node=env_var('TARGET_NODE'):

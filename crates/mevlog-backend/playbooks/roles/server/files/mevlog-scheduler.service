@@ -1,0 +1,22 @@
+# mevlog.rs scheduler (live indexer + cron jobs). Logs: journalctl -fu mevlog-scheduler
+[Unit]
+Description=mevlog-scheduler
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/mevlog-backend
+ExecStart=/bin/bash -c 'source /root/mevlog-backend/.env && exec /root/mevlog-backend/scheduler'
+# mevlog CLI (spawned as subprocess) lives in ~/.cargo/bin
+Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mevlog-scheduler
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

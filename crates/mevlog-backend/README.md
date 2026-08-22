@@ -48,8 +48,10 @@ cargo clippy
 
 ## Deployment
 
-Deployment is automated using Ansible playbooks in `playbooks/` with nginx configuration.
+Deployment is automated using Ansible playbooks in `playbooks/` (nginx config +
+systemd units `mevlog-server` / `mevlog-scheduler`, logging to journald).
 
 ```bash
-./deploy.sh
+just release   # build, rsync, restart units
+just logs      # follow journald logs
 ```

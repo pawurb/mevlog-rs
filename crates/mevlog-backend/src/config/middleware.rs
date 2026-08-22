@@ -10,13 +10,11 @@ use reqwest::header::{CACHE_CONTROL, CONTENT_TYPE};
 use tower_http::cors::{Any, CorsLayer};
 
 use reqwest::StatusCode;
-use time::UtcOffset;
 
 use std::sync::LazyLock;
 use std::time::Instant;
 use tracing::info_span;
 use tracing_futures::Instrument;
-use tracing_subscriber::fmt::time::OffsetTime;
 use uuid::Uuid;
 
 use crate::content::doc_pages::DOC_PAGES;
@@ -253,29 +251,18 @@ pub async fn only_ssl(request: Request, next: Next) -> Response {
     }
 }
 
-pub fn init_logs(filename: &str) {
+/// Logs go to stdout in every environment. In production systemd captures
+/// them into journald (`journalctl -fu mevlog-server`), which supplies its
+/// own timestamps, so the production formatter omits the time field.
+pub fn init_logs() {
+    let filter = tracing_subscriber::EnvFilter::from_default_env();
     match Env::current() {
-        Env::Production => {
-            let file_appender = tracing_appender::rolling::never("./", filename);
-
-            let offset = UtcOffset::from_hms(2, 0, 0).expect("should get CET offset");
-            let time_format = time::format_description::parse_borrowed::<2>(
-                "[year]-[month]-[day]T[hour]:[minute]:[second]",
-            )
-            .unwrap();
-            let timer = OffsetTime::new(offset, time_format);
-
-            tracing_subscriber::fmt()
-                .with_writer(file_appender)
-                .with_timer(timer)
-                .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-                .init();
-        }
-        _ => {
-            let filter = tracing_subscriber::EnvFilter::from_default_env();
-
-            tracing_subscriber::fmt().with_env_filter(filter).init()
-        }
+        Env::Production => tracing_subscriber::fmt()
+            .with_env_filter(filter)
+            .without_time()
+            .with_ansi(false)
+            .init(),
+        _ => tracing_subscriber::fmt().with_env_filter(filter).init(),
     }
 }
 

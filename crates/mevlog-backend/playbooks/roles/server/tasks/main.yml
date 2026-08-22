@@ -1,0 +1,27 @@
+---
+- name: Install mevlog systemd units
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - mevlog-server.service
+    - mevlog-scheduler.service
+  register: mevlog_units
+
+- name: Reload systemd if units changed
+  systemd:
+    daemon_reload: yes
+  when: mevlog_units.changed
+
+# Enable only (boot start). Actual start/restart is done by remote/restart.sh
+# after deploy.sh has put the binaries and .env in place.
+- name: Enable mevlog services
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+  loop:
+    - mevlog-server
+    - mevlog-scheduler

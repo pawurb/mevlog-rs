@@ -1,0 +1,23 @@
+# mevlog.rs web server. Logs go to journald: journalctl -fu mevlog-server
+[Unit]
+Description=mevlog-server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/mevlog-backend
+# .env uses `export KEY=val` lines, which EnvironmentFile= rejects, so source it
+# through a shell and exec the binary so systemd tracks the real PID.
+ExecStart=/bin/bash -c 'source /root/mevlog-backend/.env && exec /root/mevlog-backend/server'
+Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Restart=always
+RestartSec=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mevlog-server
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

@@ -6,3 +6,4 @@
     home: /root
   roles:
     - role: nginx
+    - role: server

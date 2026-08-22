@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
 }
 
 async fn run() -> Result<()> {
-    middleware::init_logs("scheduler.log");
+    middleware::init_logs();
 
     // Shared across the live indexer and the scheduled reindex/purge jobs so that
     // only one writer touches the per-chain txs DB and cryo cache dir at a time.

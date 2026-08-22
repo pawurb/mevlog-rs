@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
 }
 
 async fn run() -> Result<()> {
-    middleware::init_logs("server.log");
+    middleware::init_logs();
     hotpath::tokio_runtime!();
 
     // Keep the process-local price cache warm so web queries pass
