@@ -5,7 +5,6 @@
 cache/
 out/
 backup.sh
-deploy.sh
 .cryo/
 *.parquet
 !crates/mevlog/tests/fixtures/**/*.parquet
