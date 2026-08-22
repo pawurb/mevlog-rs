@@ -6,7 +6,7 @@ bash timestamp_assets.sh
 (cd docs_src && mdbook clean && mdbook build)
 cargo run --bin clean-html-links docs_html
 
-cross build --release --target x86_64-unknown-linux-musl
+cross build --release --target x86_64-unknown-linux-musl --features hotpath,hotpath-alloc,hotpath-meta
 
 rsync -avz ../../target/x86_64-unknown-linux-musl/release/server $TARGET_NODE:/root/mevlog-backend/server
 rsync -avz ../../target/x86_64-unknown-linux-musl/release/scheduler $TARGET_NODE:/root/mevlog-backend/scheduler
