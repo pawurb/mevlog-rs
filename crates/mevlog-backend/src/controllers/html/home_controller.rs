@@ -8,7 +8,7 @@ use crate::{
 };
 
 // force html views recompilation by changing this value
-const _VIEW_VERSION: u64 = 19;
+const _VIEW_VERSION: u64 = 20;
 
 #[derive(Template)]
 #[template(path = "home.html")]
@@ -27,8 +27,8 @@ pub(crate) async fn home() -> impl IntoResponse {
 
     let h = host();
     let template = HomeTemplate {
-        title: "mevlog-rs | Open-Source SQL Analytics for Ethereum & EVM Chains".to_string(),
-        description: "Open-source web interface for querying EVM transactions across 2000+ chains. Search by events, method calls, ENS names, ERC20 transfers, and more.".to_string(),
+        title: "mevlog-rs | Free Open-Source Dune Alternative - SQL Analytics for Ethereum & EVM Chains".to_string(),
+        description: "Free, open-source Dune Analytics alternative. Query EVM transactions across 2000+ chains with SQL - no paid plans, no rate limits. Search by events, method calls, ENS names, ERC20 transfers, and more.".to_string(),
         canonical_url: format!("{h}/"),
         host: h,
         page: "home".to_string(),
