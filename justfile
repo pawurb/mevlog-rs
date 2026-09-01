@@ -34,7 +34,7 @@ watch-server:
 deploy:
     cd {{backend_dir}} && ./deploy.sh
 
-# Deploy backend and restart both systemd units (server + scheduler)
+# Deploy backend and restart both systemd units (server first, health-checked, then scheduler)
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
 
@@ -54,6 +54,10 @@ server-start target_node=env_var('TARGET_NODE'):
 server-stop target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_stop.sh
 
+# Stop both units (server + scheduler) on the remote node
+stop target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/kill_server.sh
+
 # Start the scheduler unit on the remote node
 scheduler-start target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_start.sh
@@ -68,19 +72,7 @@ logs unit='' target_node=env_var('TARGET_NODE'):
 
 # Pull latest and reinstall the CLI on the remote node
 update-remote-cli target_node=env_var('TARGET_NODE'):
-    ssh {{target_node}} 'cd ~/mevlog-rs && git pull && . "$HOME/.cargo/env" && OPENSSL_DIR=/usr/ OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu/ cargo install mevlog --path crates/mevlog --features mcp'
-
-# Start the MCP server on the remote node (screen session, reads .env)
-mcp-start target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/mcp_start.sh
-
-# Stop the MCP server on the remote node
-mcp-stop target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/mcp_stop.sh
-
-# Show MCP server status on the remote node
-mcp-status target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/mcp_status.sh
+    ssh {{target_node}} 'cd ~/mevlog-rs && git pull && . "$HOME/.cargo/env" && OPENSSL_DIR=/usr/ OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu/ cargo install mevlog --path crates/mevlog'
 
 # Run benchmarks comparing two git refs
 compare before after:

@@ -3,7 +3,7 @@ set -euo pipefail
 
 REMOTE_ENV_FILE="../../.env-remote"
 CURRENT_TIMESTAMP="${DEPLOYED_AT:-$(date +%s)}"
-sed -i '' "s/^export DEPLOYED_AT=.*/export DEPLOYED_AT=$CURRENT_TIMESTAMP/" "$REMOTE_ENV_FILE"
+sed -i "" -E "s/^(export )?DEPLOYED_AT=.*/DEPLOYED_AT=$CURRENT_TIMESTAMP/" "$REMOTE_ENV_FILE"
 
 ASSETS_FOLDER="assets"
 SCRIPTS_FOLDER="javascripts"

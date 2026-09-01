@@ -48,10 +48,12 @@ cargo clippy
 
 ## Deployment
 
-Deployment is automated using Ansible playbooks in `playbooks/` (nginx config +
-systemd units `mevlog-server` / `mevlog-scheduler`, logging to journald).
+Single-instance systemd deploy modeled on hotpath-backend (`mevlog-server` /
+`mevlog-scheduler` units, `EnvironmentFile=.env`, journald logs; nginx config and
+units installed by the Ansible playbook in `playbooks/`). A release restarts the
+server in place, so expect a ~1s gap.
 
 ```bash
-just release   # build, rsync, restart units
+just release   # build, rsync, restart units (server health-checked on /uptime)
 just logs      # follow journald logs
 ```

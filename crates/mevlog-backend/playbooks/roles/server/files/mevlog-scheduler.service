@@ -7,10 +7,14 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
+Group=root
 WorkingDirectory=/root/mevlog-backend
-ExecStart=/bin/bash -c 'source /root/mevlog-backend/.env && exec /root/mevlog-backend/scheduler'
+# Plain KEY=value lines, no `export` (see mevlog-server.service)
+EnvironmentFile=/root/mevlog-backend/.env
 # mevlog CLI (spawned as subprocess) lives in ~/.cargo/bin
 Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=HOTPATH_OUTPUT_FORMAT=none
+ExecStart=/root/mevlog-backend/scheduler
 Restart=always
 RestartSec=5
 StandardOutput=journal

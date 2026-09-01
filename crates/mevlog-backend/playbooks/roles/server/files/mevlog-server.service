@@ -1,4 +1,5 @@
-# mevlog.rs web server. Logs go to journald: journalctl -fu mevlog-server
+# mevlog.rs web server (single instance behind nginx, port from .env PORT).
+# Logs go to journald: journalctl -fu mevlog-server
 [Unit]
 Description=mevlog-server
 After=network-online.target
@@ -7,11 +8,18 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=root
+Group=root
 WorkingDirectory=/root/mevlog-backend
-# .env uses `export KEY=val` lines, which EnvironmentFile= rejects, so source it
-# through a shell and exec the binary so systemd tracks the real PID.
-ExecStart=/bin/bash -c 'source /root/mevlog-backend/.env && exec /root/mevlog-backend/server'
+# Plain KEY=value lines, no `export` - systemd silently ignores export-prefixed
+# lines and the server then panics on the missing var. deploy.sh copies
+# .env-remote here.
+EnvironmentFile=/root/mevlog-backend/.env
+# mevlog CLI (spawned as subprocess) lives in ~/.cargo/bin
 Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# No hotpath report dump to journald on restart; metrics still served via the
+# metrics ports (6770 / 6780, exposed by nginx at hotpath[-meta].mevlog.rs)
+Environment=HOTPATH_OUTPUT_FORMAT=none
+ExecStart=/root/mevlog-backend/server
 Restart=always
 RestartSec=1
 StandardOutput=journal
