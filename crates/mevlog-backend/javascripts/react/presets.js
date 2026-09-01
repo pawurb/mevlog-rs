@@ -184,10 +184,17 @@ WHERE t.signature = 'CREATE()'
     label: 'Top 5 miners by blocks mined in last 1 day',
     full_label: 'The five block producers that mined the most blocks in the last day.',
     full_sql:
-`SELECT miner, COUNT(*) AS blocks_mined
-FROM blocks
-WHERE timestamp >= unixepoch('now', '-1 day')
-GROUP BY miner
+`WITH miner_blocks AS (
+  SELECT miner, COUNT(*) AS blocks_mined
+  FROM blocks
+  WHERE timestamp >= unixepoch('now', '-1 day')
+  GROUP BY miner
+)
+SELECT
+  miner,
+  blocks_mined,
+  ROUND(100.0 * blocks_mined / SUM(blocks_mined) OVER (), 2) AS market_share
+FROM miner_blocks
 ORDER BY blocks_mined DESC
 LIMIT 5`,
   },
