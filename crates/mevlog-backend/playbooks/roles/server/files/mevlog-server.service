@@ -16,9 +16,10 @@ WorkingDirectory=/root/mevlog-backend
 EnvironmentFile=/root/mevlog-backend/.env
 # mevlog CLI (spawned as subprocess) lives in ~/.cargo/bin
 Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-# No hotpath report dump to journald on restart; metrics still served via the
-# metrics ports (6770 / 6780, exposed by nginx at hotpath[-meta].mevlog.rs)
+# No hotpath or hotpath-meta report dump to journald on restart; metrics are
+# still served via ports 6770 / 6780, exposed at hotpath[-meta].mevlog.rs.
 Environment=HOTPATH_OUTPUT_FORMAT=none
+Environment=HOTPATH_META_OUTPUT_FORMAT=none
 ExecStart=/root/mevlog-backend/server
 Restart=always
 RestartSec=1
