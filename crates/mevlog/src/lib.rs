@@ -62,7 +62,7 @@ impl ChainInfoNoRpcsJson {
 pub struct ChainEntryJson {
     pub chain_id: u64,
     pub name: String,
-    pub chain: String,
+    pub chain: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub explorer_url: Option<String>,
 }

@@ -62,7 +62,7 @@ impl<'a> NetworkSelector<'a> {
                 Row::new(vec![
                     Cell::from(chain.chain_id.to_string()),
                     Cell::from(chain.name.clone()),
-                    Cell::from(chain.chain.clone()),
+                    Cell::from(chain.chain.clone().unwrap_or_default()),
                 ])
             })
             .collect();

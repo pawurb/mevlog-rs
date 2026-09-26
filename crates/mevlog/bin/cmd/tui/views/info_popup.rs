@@ -56,7 +56,7 @@ pub(crate) fn render_info_popup(
     let chain_id = chain
         .map(|c| c.chain_id.to_string())
         .unwrap_or_else(|| "Unknown".to_string());
-    let network = chain.map(|c| c.chain.as_str()).unwrap_or("Unknown");
+    let network = chain.and_then(|c| c.chain.as_deref()).unwrap_or("Unknown");
     let explorer = chain
         .and_then(|c| c.explorer_url.as_deref())
         .unwrap_or("N/A");

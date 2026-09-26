@@ -162,7 +162,7 @@ pub(crate) fn spawn_data_worker(
                                         let entry = ChainEntryJson {
                                             chain_id,
                                             name: format!("Chain {chain_id}"),
-                                            chain: "Unknown".to_string(),
+                                            chain: None,
                                             explorer_url: None,
                                         };
                                         let _ =

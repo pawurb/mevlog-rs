@@ -56,7 +56,7 @@ impl DefaultChain {
         ChainEntryJson {
             chain_id: self.chain_id,
             name: self.name.to_string(),
-            chain: self.chain.to_string(),
+            chain: Some(self.chain.to_string()),
             explorer_url: Some(self.explorer_url.to_string()),
         }
     }

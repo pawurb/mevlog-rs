@@ -15,7 +15,10 @@ pub async fn chains(
         let filter_lower = filter.to_lowercase();
         filtered_chains.retain(|chain| {
             chain.name.to_lowercase().contains(&filter_lower)
-                || chain.chain.to_lowercase().contains(&filter_lower)
+                || chain
+                    .chain
+                    .as_ref()
+                    .is_some_and(|c| c.to_lowercase().contains(&filter_lower))
         });
     }
 

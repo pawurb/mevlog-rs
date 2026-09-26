@@ -54,7 +54,8 @@ pub struct ChainInfo {
     #[serde(rename = "chainId")]
     pub chain_id: u64,
     pub name: String,
-    pub chain: String,
+    // Missing on some ChainList entries (e.g. chain ID 402).
+    pub chain: Option<String>,
     #[serde(rename = "rpc")]
     pub rpc_endpoints: Vec<RpcEndpoint>,
     #[serde(rename = "nativeCurrency")]
@@ -132,7 +133,7 @@ pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
     let response = client.get(CHAINLIST_URL).send().await?;
     let status = response.status();
     let body = response.text().await?;
-    let chains: Vec<ChainInfo> = serde_json::from_str(&body).map_err(|e| {
+    let entries: Vec<serde_json::Value> = serde_json::from_str(&body).map_err(|e| {
         let snippet: String = body.chars().take(500).collect();
         eyre::eyre!(
             "Failed to parse chainlist JSON (status {}, {} bytes): {}\nbody snippet: {}",
@@ -142,12 +143,29 @@ pub async fn get_all_chains() -> Result<Vec<ChainInfo>> {
             snippet
         )
     })?;
+    let chains = parse_chain_entries(entries);
 
     if let Err(e) = cache_chains(&cache_dir, &chains).await {
         eprintln!("Warning: Failed to cache chains data: {e}");
     }
 
     Ok(chains)
+}
+
+// ChainList is community-maintained: a single malformed entry must not make
+// every chain unavailable, so entries that fail to parse are skipped.
+fn parse_chain_entries(entries: Vec<serde_json::Value>) -> Vec<ChainInfo> {
+    entries
+        .into_iter()
+        .filter_map(|entry| {
+            let chain_id = entry.get("chainId").cloned();
+            serde_json::from_value::<ChainInfo>(entry)
+                .inspect_err(|e| {
+                    tracing::warn!(?chain_id, error = %e, "skipping malformed ChainList entry");
+                })
+                .ok()
+        })
+        .collect()
 }
 
 fn get_cache_dir() -> std::path::PathBuf {
@@ -203,5 +221,30 @@ pub(crate) async fn benchmark_url(url: String, timeout_ms: u64) -> Result<u64> {
         _ = sleep(Duration::from_millis(timeout_ms)) => {
             bail!("RPC URL timed out");
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_chain_entries_skips_malformed_and_keeps_missing_chain() {
+        let body = r#"[
+            {"chainId": 1, "name": "Ethereum Mainnet", "chain": "ETH", "rpc": [{"url": "https://a"}],
+             "nativeCurrency": {"name": "Ether", "symbol": "ETH", "decimals": 18}},
+            {"chainId": 402, "name": "Actumic Mainnet", "rpc": [],
+             "nativeCurrency": {"name": "USD Coin", "symbol": "USDC", "decimals": 6}},
+            {"chainId": 999, "name": "Broken", "chain": "X", "rpc": []}
+        ]"#;
+        let entries: Vec<serde_json::Value> = serde_json::from_str(body).unwrap();
+
+        let chains = parse_chain_entries(entries);
+
+        let ids: Vec<(u64, Option<&str>)> = chains
+            .iter()
+            .map(|c| (c.chain_id, c.chain.as_deref()))
+            .collect();
+        assert_eq!(ids, vec![(1, Some("ETH")), (402, None)]);
     }
 }
