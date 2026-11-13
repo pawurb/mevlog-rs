@@ -21,16 +21,6 @@ pub async fn app() -> Router {
 
     let router = Router::new()
         .route("/", get(html::home_controller::home))
-        .route("/search", get(html::search_controller::search))
-        .route("/explore", get(html::explore_controller::explore))
-        .route(
-            "/api/chain-info",
-            get(json::chain_info_controller::chain_info),
-        )
-        .route("/api/chains", get(json::chains_controller::chains))
-        .route("/api/db-info", get(json::db_info_controller::db_info))
-        .route("/api/explore", get(json::explore_controller::explore))
-        .route("/api/search", get(json::search_controller::search))
         .route("/uptime", get(|| async move { "OK".into_response() }))
         .route("/robots.txt", get(robots_txt))
         .route("/sitemap.xml", get(sitemap_xml))
@@ -49,16 +39,13 @@ pub async fn app() -> Router {
             from_fn(cache_control)
                 .layer(ServeFile::new(format!("assets/{deployed_at}-terminal.css"))),
         )
-        .route_service(
-            &format!("/{deployed_at}-react-bundle.js"),
-            from_fn(cache_control).layer(ServeFile::new(format!(
-                "assets/{deployed_at}-react-bundle.js"
-            ))),
-        )
         .nest_service(
             "/assets",
             from_fn(cache_control).layer(ServeDir::new("assets")),
         )
+        // The hosted SQL demo and explorer were removed; keep their indexed URLs alive.
+        .route("/search", get(|| async { Redirect::permanent("/") }))
+        .route("/explore", get(|| async { Redirect::permanent("/") }))
         .route("/docs", get(|| async { Redirect::permanent("/docs/") }))
         .nest_service(
             "/docs/",

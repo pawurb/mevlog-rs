@@ -81,7 +81,7 @@ Produces:
 ],
 ```
 
-See [SQL demo](/search) to see database structure, available SQLite helper methods, and run queries against the last day of Mainnet data.
+See [Schema](schema.md) for the database structure and [Functions & Macros](evm-sqlite-helpers.md) for the available SQLite helpers.
 
 ## mevlog TUI interface
 

@@ -1,4 +1,4 @@
-use axum::http::Method;
+use axum::http::header::{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE};
 use axum::{
     body::Body,
     extract::Request,
@@ -6,10 +6,8 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Redirect, Response},
 };
-use reqwest::header::{CACHE_CONTROL, CONTENT_TYPE};
-use tower_http::cors::{Any, CorsLayer};
 
-use reqwest::StatusCode;
+use axum::http::StatusCode;
 
 use std::sync::LazyLock;
 use std::time::Instant;
@@ -104,38 +102,6 @@ pub async fn security_headers(request: Request, next: Next) -> Response {
     response
 }
 
-// Rewrite non-JSON `/api` error responses (timeout 408, panic 500) into `{"error": ...}`.
-pub async fn api_json_errors(request: Request, next: Next) -> Response {
-    let is_api = request.uri().path().starts_with("/api");
-    let response = next.run(request).await;
-
-    if !is_api || response.status().is_success() {
-        return response;
-    }
-
-    let is_json = response
-        .headers()
-        .get(CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.starts_with("application/json"));
-    if is_json {
-        return response;
-    }
-
-    let status = response.status();
-    let message = match status {
-        StatusCode::REQUEST_TIMEOUT => "Query timed out. Narrow the block range and try again.",
-        _ => status.canonical_reason().unwrap_or("Request failed"),
-    };
-    (status, axum::Json(serde_json::json!({ "error": message }))).into_response()
-}
-
-pub fn cors() -> CorsLayer {
-    CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST])
-        .allow_origin(Any)
-}
-
 /// Rewrites extensionless paths to their `.html` file so the docs `ServeDir`
 /// (which does not append `.html`) can serve mdBook's now-clean URLs.
 /// Runs on the nested `/docs/` service, so it sees the prefix-stripped path
@@ -195,7 +161,7 @@ pub(crate) async fn cache_control(request: Request, next: Next) -> Response {
     // window would otherwise be cached by Cloudflare for the full max-age.
     let cacheable = status.is_success() || status == StatusCode::NOT_MODIFIED;
 
-    // HTML lives at stable URLs (`/explore`, `/docs/introduction.html`) and changes
+    // HTML lives at stable URLs (`/`, `/docs/quick-start`) and changes
     // on every deploy, so it must revalidate; only fingerprinted assets (timestamped
     // app bundles, mdbook-hashed files) are safe to mark immutable.
     let is_html = response
@@ -317,7 +283,7 @@ pub(crate) async fn docs_seo(request: Request, next: Next) -> Response {
     let (mut parts, body) = response.into_parts();
     // Body length changes below; a stale Content-Length (from ServeDir) makes
     // hyper panic on the mismatch.
-    parts.headers.remove(reqwest::header::CONTENT_LENGTH);
+    parts.headers.remove(CONTENT_LENGTH);
 
     let bytes = match axum::body::to_bytes(body, usize::MAX).await {
         Ok(bytes) => bytes,

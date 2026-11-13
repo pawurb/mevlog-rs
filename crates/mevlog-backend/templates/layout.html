@@ -19,13 +19,8 @@
   <meta name="twitter:image" content="{{ host }}/mevlog-logo.png">
   {% block head_extra %}{% endblock %}
   <link rel="icon" href="/favicon.ico" type="image/x-icon">
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="stylesheet" href="{{ host }}/{{ deployed_at }}-styles.css">
   <link rel="stylesheet" href="{{ host }}/{{ deployed_at }}-terminal.css">
-  <!-- defer: don't block first paint; scripts run after parse in document order -->
-  <script defer crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script defer crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script defer src="{{ host }}/{{ deployed_at }}-react-bundle.js"></script>
   <script defer src="{{ host }}/{{ deployed_at }}-scripts.js"></script>
   <script data-collect-dnt="true" async src="https://api2.mevlog.rs/latest.js"></script>
 </head>
@@ -35,12 +30,6 @@
     <div class="nav-left">
       <a href="/">
         <img src="/mevlog-logo.png" alt="mevlog-rs" class="sticky-nav-logo" />
-      </a>
-      <a href="/search">
-        <button class="btn btn-default btn-ghost{% if page == "search" %} active{% endif %}">SQL demo</button>
-      </a>
-      <a href="/explore">
-        <button class="btn btn-default btn-ghost{% if page == "explore" %} active{% endif %}">Explorer</button>
       </a>
       <a href="/docs/">
         <button class="btn btn-default btn-ghost">Docs</button>

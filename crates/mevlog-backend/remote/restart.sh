@@ -1,13 +1,12 @@
 #!/bin/bash
 set -euo pipefail
 
-# Restart the two systemd units (mevlog-server, mevlog-scheduler). Single
-# server instance, so there is a short gap while it comes back up (nginx
-# 502s for ~1s).
+# Restart the mevlog-server systemd unit. Single server instance, so there is
+# a short gap while it comes back up (nginx 502s for ~1s).
 #
-# The server is restarted first and polled on /uptime. A failed health check
-# aborts before touching the scheduler (the old scheduler process keeps
-# running) and dumps the unit status.
+# The server is polled on /uptime; a failed health check dumps the unit status
+# and exits 1. Also exits 1 if the retired mevlog-scheduler unit is still
+# installed (remove it with the ansible playbook).
 ssh "$TARGET_NODE" 'bash -s' << 'EOF_REMOTE'
 set -euo pipefail
 cd /root/mevlog-backend
@@ -32,13 +31,13 @@ if [ "$healthy" -ne 1 ]; then
 fi
 echo "mevlog-server healthy on port $port"
 
-systemctl restart mevlog-scheduler
-sleep 1
-if ! systemctl is-active --quiet mevlog-scheduler; then
-    echo "mevlog-scheduler FAILED to start" >&2
-    systemctl status mevlog-scheduler --no-pager -l | tail -n 20 >&2 || true
+# The scheduler was retired; its unit is removed only by the ansible server
+# role (units are never managed from the release path). Fail loudly so a
+# release cannot silently leave the old indexer running.
+if systemctl list-unit-files mevlog-scheduler.service --no-legend 2>/dev/null | grep -q mevlog-scheduler; then
+    echo "Retired mevlog-scheduler unit is still installed." >&2
+    echo "Run 'ansible-playbook playbooks/setup.yml' from crates/mevlog-backend to stop and remove it." >&2
     exit 1
 fi
-echo "mevlog-scheduler active"
 EOF_REMOTE
 echo "Restart complete"

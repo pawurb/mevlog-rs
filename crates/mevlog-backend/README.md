@@ -1,59 +1,30 @@
 # MEV Log Backend
 
-Backend crate for [mevlog-rs](https://github.com/pawurb/mevlog-rs) hosted at [mevlog.rs](https://mevlog.rs).
-
-This Rust-based backend provides a web interface for querying EVM-compatible chains transactions.
+Backend crate serving [mevlog.rs](https://mevlog.rs): the landing page and the documentation for [mevlog-rs](https://github.com/pawurb/mevlog-rs).
 
 ## Architecture
 
-The application consists of two main binaries:
-
-- **Server** (`bin/server.rs`): Axum-based web server with REST endpoints and WebSocket connections
-- **Scheduler** (`bin/scheduler.rs`): Background service for scheduled tasks and blockchain data collection
-
-### Tech Stack
-
-- **Axum** - Web framework with WebSocket support
-- **mevlog** - Workspace dependency for MEV analysis functionality
-- **Alloy** - Ethereum RPC interactions
-- **REVM** - EVM execution and inspection
-- **Askama** - HTML templating
-- **Tokio-cron-scheduler** - Background job scheduling
+- **Server** (`bin/server.rs`): Axum web server rendering the landing page (Askama templates) and serving the mdBook docs from `docs_html/`.
 
 ## Development
 
-### Building and Running
-
 ```bash
-# Build the project
-cargo build
-
-# Run the web server (default port 3000)
+# Run the web server (timestamps assets and builds docs)
 just server
 
-# Run the scheduler
-cargo run --bin scheduler
-```
-
-### Testing and Linting
-
-```bash
-# Run tests
-cargo test
-
-# Format and lint
-cargo fmt
-cargo clippy
+# Tests, format, lint
+cargo test -p mevlog-backend
+cargo fmt -p mevlog-backend
+cargo clippy -p mevlog-backend
 ```
 
 ## Deployment
 
-Single-instance systemd deploy modeled on hotpath-backend (`mevlog-server` /
-`mevlog-scheduler` units, `EnvironmentFile=.env`, journald logs; nginx config and
-units installed by the Ansible playbook in `playbooks/`). A release restarts the
-server in place, so expect a ~1s gap.
+Single-instance systemd deploy (`mevlog-server` unit, `EnvironmentFile=.env`, journald
+logs; nginx config and unit installed by the Ansible playbook in `playbooks/`). A release
+restarts the server in place, so expect a ~1s gap.
 
 ```bash
-just release   # build, rsync, restart units (server health-checked on /uptime)
+just release   # build, rsync, restart unit (health-checked on /uptime)
 just logs      # follow journald logs
 ```
