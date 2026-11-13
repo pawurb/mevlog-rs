@@ -23,7 +23,7 @@ watch-server:
     trap 'stop_all; exit 0' INT TERM; \
     start_server; \
     watch_docs & \
-    fswatch -o --latency 1 -e ".*" -i "\.rs$" -i "\.html$" -i "\.css$" -i "\.js$" -i "\.jsx$" src templates styles javascripts/react javascripts/scripts.js | while read -r _; do \
+    fswatch -o --latency 1 -e ".*" -i "\.rs$" -i "\.html$" -i "\.css$" -i "\.js$" src templates styles javascripts/scripts.js | while read -r _; do \
         while read -r -t 1 _; do :; done; \
         echo "Change detected, rebuilding assets and restarting server..."; \
         stop_server; \
@@ -34,15 +34,15 @@ watch-server:
 deploy:
     cd {{backend_dir}} && ./deploy.sh
 
-# Deploy backend and restart both systemd units (server first, health-checked, then scheduler)
+# Deploy backend and restart the server unit (health-checked on /uptime)
 release:
     cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
 
-# Restart both systemd units on the remote node
+# Restart the server unit on the remote node
 restart target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/restart.sh
 
-# Show systemd status of server + scheduler on the remote node
+# Show systemd status of the server on the remote node
 status target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/status.sh
 
@@ -54,25 +54,13 @@ server-start target_node=env_var('TARGET_NODE'):
 server-stop target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_stop.sh
 
-# Stop both units (server + scheduler) on the remote node
+# Stop the server unit on the remote node
 stop target_node=env_var('TARGET_NODE'):
     cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/kill_server.sh
 
-# Start the scheduler unit on the remote node
-scheduler-start target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_start.sh
-
-# Stop the scheduler on the remote node
-scheduler-stop target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/scheduler_stop.sh
-
-# Follow journald logs on the remote node (optionally `server` or `scheduler` only)
-logs unit='' target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh {{unit}}
-
-# Pull latest and reinstall the CLI on the remote node
-update-remote-cli target_node=env_var('TARGET_NODE'):
-    ssh {{target_node}} 'cd ~/mevlog-rs && git pull && . "$HOME/.cargo/env" && OPENSSL_DIR=/usr/ OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu/ cargo install mevlog --path crates/mevlog'
+# Follow the server's journald logs on the remote node
+logs target_node=env_var('TARGET_NODE'):
+    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh
 
 # Run benchmarks comparing two git refs
 compare before after:

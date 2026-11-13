@@ -8,10 +8,9 @@ cargo run --bin clean-html-links docs_html
 
 cross build --release --target x86_64-unknown-linux-musl --features hotpath,hotpath-alloc,hotpath-meta
 
-# Ensure app dir exists, then rsync binaries
+# Ensure app dir exists, then rsync the server binary
 ssh $TARGET_NODE mkdir -p /root/mevlog-backend
 rsync -avz ../../target/x86_64-unknown-linux-musl/release/server $TARGET_NODE:/root/mevlog-backend/server
-rsync -avz ../../target/x86_64-unknown-linux-musl/release/scheduler $TARGET_NODE:/root/mevlog-backend/scheduler
 
 rsync -azr --delete templates/ $TARGET_NODE:/root/mevlog-backend/templates
 rsync -azr --delete assets/ $TARGET_NODE:/root/mevlog-backend/assets

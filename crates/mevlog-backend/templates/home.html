@@ -7,12 +7,7 @@
   "@type": "WebSite",
   "name": "mevlog.rs",
   "url": "https://mevlog.rs/",
-  "description": "Free, open-source Dune Analytics alternative for querying EVM transactions, logs, and blocks with SQL. Index any chain locally and run read-only queries with EVM-native functions.",
-  "potentialAction": {
-    "@type": "SearchAction",
-    "target": "https://mevlog.rs/search?event={search_term}",
-    "query-input": "required name=search_term"
-  }
+  "description": "Free, open-source Dune Analytics alternative for querying EVM transactions, logs, and blocks with SQL. Index any chain locally and run read-only queries with EVM-native functions."
 }
 </script>
 {% endblock %}
@@ -51,7 +46,7 @@
   </div>
 
   <div class="hero-cta-row">
-    <a href="/search" id="hero-try" class="hero-cta hero-cta-primary">Try a live query &rarr;</a>
+    <a href="/docs/quick-start" class="hero-cta hero-cta-primary">Get started &rarr;</a>
     <a href="/docs/" class="hero-cta hero-cta-ghost">Read the docs</a>
   </div>
 
@@ -74,14 +69,14 @@
       </div>
       <div class="feature-text">
         <h2>Every chain, and you own the data</h2>
-        <p>No hosted APIs, rate limits, or per-request fees. Index blockchain data into a local SQLite database that stays on your machine. The web demo uses Ethereum mainnet, while the <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> works with any <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>-supported network or your own node.</p>
+        <p>No hosted APIs, rate limits, or per-request fees. Index blockchain data into a local SQLite database that stays on your machine. The <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs CLI</a> works with any <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>-supported network or your own node.</p>
       </div>
     </div>
 
     <div class="feature-row">
       <div class="feature-text">
         <h2>Open-source and free to use</h2>
-        <p>Built on the MIT-licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>. The same query engine powers the web demo and CLI, making it easy to move from experimentation to local analysis. Unlike Dune and other hosted analytics platforms, there is no free-tier limit to outgrow - the whole stack is free, forever.</p>
+        <p>Built on the MIT-licensed Rust crate <a class='yellow' target='_blank' href="https://github.com/pawurb/mevlog-rs">mevlog-rs</a>. Unlike Dune and other hosted analytics platforms, there is no free-tier limit to outgrow - the whole stack is free, forever.</p>
       </div>
       <div class="feature-image-container">
         <img src="/open-source.png" alt="Open Source" class="feature-image" />
@@ -90,7 +85,7 @@
   </div>
   
   <p class="project-description">
-    The web demo indexes Ethereum mainnet over public RPCs sourced from <a class='yellow' target='_blank' href="https://chainlist.org/">ChainList</a>, and the Rust CLI is instrumented by the <a class='yellow' target='_blank' href="https://hotpath.rs/">hotpath.rs profiler</a>. 
+    The Rust CLI is instrumented by the <a class='yellow' target='_blank' href="https://hotpath.rs/">hotpath.rs profiler</a>.
   </p>
   
   <p class="project-description">

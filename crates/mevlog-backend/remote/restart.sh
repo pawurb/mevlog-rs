@@ -1,13 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-# Restart the two systemd units (mevlog-server, mevlog-scheduler). Single
-# server instance, so there is a short gap while it comes back up (nginx
-# 502s for ~1s).
+# Restart the mevlog-server systemd unit. Single server instance, so there is
+# a short gap while it comes back up (nginx 502s for ~1s).
 #
-# The server is restarted first and polled on /uptime. A failed health check
-# aborts before touching the scheduler (the old scheduler process keeps
-# running) and dumps the unit status.
+# The server is polled on /uptime; a failed health check dumps the unit status
+# and exits 1.
 ssh "$TARGET_NODE" 'bash -s' << 'EOF_REMOTE'
 set -euo pipefail
 cd /root/mevlog-backend
@@ -31,14 +29,5 @@ if [ "$healthy" -ne 1 ]; then
     exit 1
 fi
 echo "mevlog-server healthy on port $port"
-
-systemctl restart mevlog-scheduler
-sleep 1
-if ! systemctl is-active --quiet mevlog-scheduler; then
-    echo "mevlog-scheduler FAILED to start" >&2
-    systemctl status mevlog-scheduler --no-pager -l | tail -n 20 >&2 || true
-    exit 1
-fi
-echo "mevlog-scheduler active"
 EOF_REMOTE
 echo "Restart complete"

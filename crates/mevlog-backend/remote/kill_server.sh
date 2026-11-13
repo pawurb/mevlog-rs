@@ -1,3 +1,3 @@
 #!/bin/bash
-# Stop both units and show their state.
-ssh "$TARGET_NODE" "systemctl stop mevlog-server mevlog-scheduler; systemctl list-units 'mevlog-*' --all --no-pager"
+# Stop the server unit and show its state.
+ssh "$TARGET_NODE" "systemctl stop mevlog-server; systemctl list-units 'mevlog-*' --all --no-pager"

@@ -103,7 +103,7 @@ Reports the local store's indexed block range, row counts, file size, and any ga
 mevlog db-info --chain-id 1
 ```
 
-Sample output (from the [SQL demo](/search) store):
+Sample output:
 
 ```json
 {

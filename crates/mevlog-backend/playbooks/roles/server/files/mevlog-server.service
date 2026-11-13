@@ -14,8 +14,6 @@ WorkingDirectory=/root/mevlog-backend
 # lines and the server then panics on the missing var. deploy.sh copies
 # .env-remote here.
 EnvironmentFile=/root/mevlog-backend/.env
-# mevlog CLI (spawned as subprocess) lives in ~/.cargo/bin
-Environment=PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # No hotpath or hotpath-meta report dump to journald on restart; metrics are
 # still served via ports 6770 / 6780, exposed at hotpath[-meta].mevlog.rs.
 Environment=HOTPATH_OUTPUT_FORMAT=none

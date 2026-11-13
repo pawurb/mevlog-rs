@@ -1,8 +1,7 @@
 use axum::http::StatusCode;
 use axum::middleware::from_fn;
 use eyre::Result;
-use mevlog_backend::config::{cors, middleware, routes::app};
-use mevlog_backend::misc::prices::spawn_price_refresh;
+use mevlog_backend::config::{middleware, routes::app};
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tower_http::{
@@ -32,10 +31,6 @@ async fn run() -> Result<()> {
     middleware::init_logs();
     hotpath::tokio_runtime!();
 
-    // Keep the process-local price cache warm so web queries pass
-    // `--native-token-price` and never fall back to the Chainlink oracle RPC.
-    spawn_price_refresh().await;
-
     let app = hotpath::future!(app(), log = true)
         .await
         .layer(from_fn(middleware::request_tracing))
@@ -46,9 +41,7 @@ async fn run() -> Result<()> {
         ))
         .layer(CompressionLayer::new())
         .layer(CatchPanicLayer::new())
-        .layer(from_fn(middleware::api_json_errors))
-        .layer(from_fn(middleware::security_headers))
-        .layer(cors());
+        .layer(from_fn(middleware::security_headers));
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
 

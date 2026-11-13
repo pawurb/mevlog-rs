@@ -52,7 +52,6 @@ Produces:
 
 mevlog adds EVM-native SQLite helpers (256-bit math, ERC20 decoding, ETH/gwei/USD formatting, ENS resolution) that plain SQL cannot do.
 
-## Documentation & live demo
+## Documentation
 
 - Full documentation: https://mevlog.rs/docs
-- Live SQL demo (last 24h of Mainnet data): https://mevlog.rs/search

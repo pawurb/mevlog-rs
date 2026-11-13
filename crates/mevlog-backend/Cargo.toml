@@ -5,20 +5,13 @@ publish = false
 edition = "2024"
 
 [dependencies]
-url = { workspace = true }
-alloy = { workspace = true, features = ["full", "node-bindings"] }
 uuid = { version = "1.11.0", features = ["v4"] }
 eyre = { workspace = true }
-serde_json = { workspace = true }
-openssl = { version = "0.10", features = ["vendored"] }
-reqwest = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
-serde = { workspace = true, features = ["derive"] }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing = { workspace = true }
 tracing-futures = "0.2"
 tower-http = { version = "0.6.2", features = [
-  "cors",
   "fs",
   "trace",
   "timeout",
@@ -29,30 +22,17 @@ tower-http = { version = "0.6.2", features = [
   "set-header",
 ] }
 tower = "0.5.2"
-futures = "0.3.31"
-tokio-cron-scheduler = { version = "0.13.0", features = ["signal", "english"] }
 axum = { workspace = true }
-unicode-normalization = "0.1.24"
-ansi-to-html = "0.2.2"
 askama = "0.12.1"
 regex = { workspace = true }
-mevlog = { workspace = true }
-rand = { workspace = true }
-hotpath = { git = "https://github.com/pawurb/hotpath-rs", branch = "main", features = ["axum-0-8", "reqwest-0-12", "tokio"] }
+hotpath = { git = "https://github.com/pawurb/hotpath-rs", branch = "main", features = ["axum-0-8", "tokio"] }
 
 [dev-dependencies]
-glob = { workspace = true }
-reqwest = { workspace = true, features = ["json"] }
-mockito = "1.5.0"
 http-body-util = "0.1.2"
 
 [[bin]]
 name = "server"
 path = "bin/server.rs"
-
-[[bin]]
-name = "scheduler"
-path = "bin/scheduler.rs"
 
 [[bin]]
 name = "clean-html-links"
