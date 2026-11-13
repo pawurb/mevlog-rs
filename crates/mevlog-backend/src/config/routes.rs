@@ -43,6 +43,9 @@ pub async fn app() -> Router {
             "/assets",
             from_fn(cache_control).layer(ServeDir::new("assets")),
         )
+        // The hosted SQL demo and explorer were removed; keep their indexed URLs alive.
+        .route("/search", get(|| async { Redirect::permanent("/") }))
+        .route("/explore", get(|| async { Redirect::permanent("/") }))
         .route("/docs", get(|| async { Redirect::permanent("/docs/") }))
         .nest_service(
             "/docs/",
