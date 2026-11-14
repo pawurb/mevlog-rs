@@ -30,38 +30,6 @@ watch-server:
         start_server; \
     done
 
-# Build and rsync backend binaries + assets to the remote node (no restart)
-deploy:
-    cd {{backend_dir}} && ./deploy.sh
-
-# Deploy backend and restart the server unit (health-checked on /uptime)
-release:
-    cd {{backend_dir}} && ./deploy.sh && ./remote/restart.sh
-
-# Restart the server unit on the remote node
-restart target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/restart.sh
-
-# Show systemd status of the server on the remote node
-status target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/status.sh
-
-# Start the backend server unit on the remote node
-server-start target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_start.sh
-
-# Stop the backend server on the remote node
-server-stop target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/server_stop.sh
-
-# Stop the server unit on the remote node
-stop target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/kill_server.sh
-
-# Follow the server's journald logs on the remote node
-logs target_node=env_var('TARGET_NODE'):
-    cd {{backend_dir}} && TARGET_NODE={{target_node}} ./remote/logs.sh
-
 # Run benchmarks comparing two git refs
 compare before after:
     bash scripts/compare.sh {{before}} {{after}}
@@ -73,19 +41,3 @@ refresh-stars:
     curl -sf "https://img.shields.io/badge/Stars-${stars}-blue?style=social&logo=github" -o media/github-stars.svg && \
     mkdir -p assets && cp media/github-stars.svg assets/github-stars.svg && \
     echo "Badge updated: ${stars} stars"
-
-# Live TUI against the prod hotpath metrics server (mevlog-server profiling)
-hotpath:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    token="$(grep -E '^(export )?HOTPATH_METRICS_AUTH_TOKEN=' .env-remote | cut -d= -f2-)"
-    [ -n "$token" ] || { echo ".env-remote has no HOTPATH_METRICS_AUTH_TOKEN"; exit 1; }
-    hotpath console --metrics-host https://hotpath.mevlog.rs --metrics-port 443 --metrics-auth-token "$token"
-
-# Live TUI against the prod hotpath-meta (self-profiling) metrics server
-hotpath-meta:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    token="$(grep -E '^(export )?HOTPATH_META_METRICS_AUTH_TOKEN=' .env-remote | cut -d= -f2-)"
-    [ -n "$token" ] || { echo ".env-remote has no HOTPATH_META_METRICS_AUTH_TOKEN"; exit 1; }
-    hotpath console --metrics-host https://hotpath-meta.mevlog.rs --metrics-port 443 --metrics-auth-token "$token"

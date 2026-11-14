@@ -1,9 +1,9 @@
 #!/bin/bash
 set -euo pipefail 
 
-REMOTE_ENV_FILE="../../.env-remote"
+# Asset file names are prefixed with DEPLOYED_AT (the server reads the same value
+# at runtime). Deploys pass their release id; local runs default to "now".
 CURRENT_TIMESTAMP="${DEPLOYED_AT:-$(date +%s)}"
-sed -i "" -E "s/^(export )?DEPLOYED_AT=.*/DEPLOYED_AT=$CURRENT_TIMESTAMP/" "$REMOTE_ENV_FILE"
 
 ASSETS_FOLDER="assets"
 SCRIPTS_FOLDER="javascripts"

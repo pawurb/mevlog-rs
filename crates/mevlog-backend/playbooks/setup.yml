@@ -1,9 +1,0 @@
----
-- hosts: web
-  become: yes
-  vars:
-    user: root
-    home: /root
-  roles:
-    - role: nginx
-    - role: server
