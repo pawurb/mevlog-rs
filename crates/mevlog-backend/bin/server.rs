@@ -45,11 +45,11 @@ async fn run() -> Result<()> {
 
     let port = std::env::var("PORT").unwrap_or_else(|_| "3002".to_string());
 
-    if TcpListener::bind(format!("0.0.0.0:{port}")).await.is_err() {
-        eyre::bail!("Port {} is already in use", port);
-    }
-
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{port}")).await?;
+    // Loopback only: nginx proxies to 127.0.0.1, so the app is never directly
+    // reachable from the network even if the cloud firewall is misconfigured.
+    let listener = TcpListener::bind(format!("127.0.0.1:{port}"))
+        .await
+        .map_err(|e| eyre::eyre!("Failed to bind 127.0.0.1:{port}: {e}"))?;
 
     println!("Server started at http://localhost:{}", port);
     info!("Listening on {}", listener.local_addr().unwrap());
