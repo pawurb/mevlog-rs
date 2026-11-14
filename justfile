@@ -41,3 +41,30 @@ refresh-stars:
     curl -sf "https://img.shields.io/badge/Stars-${stars}-blue?style=social&logo=github" -o media/github-stars.svg && \
     mkdir -p assets && cp media/github-stars.svg assets/github-stars.svg && \
     echo "Badge updated: ${stars} stars"
+
+# --- Production: delegated to the private infra repo (override its path with INFRA_DIR) ---
+infra := env("INFRA_DIR", home_directory() / "Programming/infra")
+
+# Build, upload and activate a production release
+release:
+    just -f {{infra}}/justfile release mevlog
+
+# Build and upload a production release without activating it
+deploy:
+    just -f {{infra}}/justfile deploy mevlog
+
+# Activate a production release (default: the newest uploaded)
+activate release="":
+    just -f {{infra}}/justfile activate mevlog {{release}}
+
+# Roll production back to the previous release
+rollback:
+    just -f {{infra}}/justfile rollback mevlog
+
+# List production releases (* = current)
+releases:
+    just -f {{infra}}/justfile releases mevlog
+
+# Production logs, e.g. `just logs -f`
+logs *args:
+    just -f {{infra}}/justfile logs mevlog {{args}}
